@@ -1,15 +1,16 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const discord_js_1 = require("discord.js");
-const Buttons = {
-    MyUrl: new discord_js_1.MessageButton().setURL('https://discord.com/oauth2/authorize?client_id=777195112576450580&permissions=8&scope=bot+applications.commands').setEmoji('🔗').setStyle('LINK').setLabel('Invite'),
-    ServerUrl: new discord_js_1.MessageButton().setURL('https://discord.gg/qMf2Sv3').setEmoji('🛡').setStyle('LINK').setLabel('Help server'),
-    MyWebSite: new discord_js_1.MessageButton().setURL('https://watklok.herokuapp.com').setEmoji('🌐').setStyle('LINK').setLabel('Web site')
-};
-const RunButt = new discord_js_1.MessageActionRow().addComponents(Buttons.MyUrl, Buttons.ServerUrl, Buttons.MyWebSite);
 class guildCreate {
     constructor() {
-        this.run = async (guild) => guild.systemChannel ? guild.systemChannel.send({ embeds: [new ConstructEmbed(guild)], components: [RunButt] }).then(async (msg) => setTimeout(async () => msg.delete().catch(async (err) => console.log(`[Discord Message]: [guildCreate]: [Delete]: ${err}`)), 60e3)).catch(async (e) => console.log(`[Discord event]: [guildCreate]: ${e}`)) : null;
+        this.run = async (guild, f2, client) => {
+            const Buttons = {
+                MyUrl: new discord_js_1.MessageButton().setURL(`https://discord.com/oauth2/authorize?client_id=${client.user.id}&permissions=8&scope=bot+applications.commands`).setEmoji('🔗').setStyle('LINK').setLabel('Invite'),
+                ServerUrl: new discord_js_1.MessageButton().setURL('https://discord.gg/qMf2Sv3').setEmoji('🛡').setStyle('LINK').setLabel('Help server')
+            };
+            const RunButt = new discord_js_1.MessageActionRow().addComponents(Buttons.MyUrl, Buttons.ServerUrl);
+            return guild.systemChannel ? guild.systemChannel.send({ embeds: [new ConstructEmbed(guild)], components: [RunButt] }).then(async (msg) => setTimeout(async () => msg.delete().catch(async (err) => console.log(`[Discord Message]: [guildCreate]: [Delete]: ${err}`)), 60e3)).catch(async (e) => console.log(`[Discord event]: [guildCreate]: ${e}`)) : null;
+        };
         this.name = 'guildCreate';
         this.enable = true;
     }

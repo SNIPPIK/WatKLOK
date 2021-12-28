@@ -25,12 +25,6 @@ const discord_js_1 = require("discord.js");
 const pak = __importStar(require("../../package.json"));
 const ParserTimeSong_1 = require("../../Modules/Music/src/Manager/Functions/ParserTimeSong");
 const core = os.cpus()[0];
-const Buttons = {
-    MyUrl: new discord_js_1.MessageButton().setURL('https://discord.com/oauth2/authorize?client_id=777195112576450580&permissions=8&scope=bot+applications.commands').setEmoji('🔗').setStyle('LINK').setLabel('Invite'),
-    ServerUrl: new discord_js_1.MessageButton().setURL('https://discord.gg/qMf2Sv3').setEmoji('🛡').setStyle('LINK').setLabel('My server'),
-    MyWebSite: new discord_js_1.MessageButton().setURL('https://watklok.herokuapp.com').setEmoji('🌐').setStyle('LINK').setLabel('Web site')
-};
-const RunButt = new discord_js_1.MessageActionRow().addComponents(Buttons.MyUrl, Buttons.ServerUrl, Buttons.MyWebSite);
 class CommandInfo extends Constructor_1.Command {
     constructor() {
         super({
@@ -38,7 +32,14 @@ class CommandInfo extends Constructor_1.Command {
             aliases: ['information'],
             enable: true
         });
-        this.run = async (message) => message.channel.send({ embeds: [new InfoEmbed(message)], components: [RunButt] }).then(async (msg) => (this.DeleteMessage(msg, 35e3), this.DeleteMessage(message, 5e3))).catch((err) => console.log(`[Discord Error]: [Send message]: ${err}`));
+        this.run = async (message) => {
+            const Buttons = {
+                MyUrl: new discord_js_1.MessageButton().setURL(`https://discord.com/oauth2/authorize?client_id=${message.client.user.id}&permissions=8&scope=bot+applications.commands`).setEmoji('🔗').setStyle('LINK').setLabel('Invite'),
+                ServerUrl: new discord_js_1.MessageButton().setURL('https://discord.gg/qMf2Sv3').setEmoji('🛡').setStyle('LINK').setLabel('My server')
+            };
+            const RunButt = new discord_js_1.MessageActionRow().addComponents(Buttons.MyUrl, Buttons.ServerUrl);
+            return message.channel.send({ embeds: [new InfoEmbed(message)], components: [RunButt] }).then(async (msg) => (this.DeleteMessage(msg, 35e3), this.DeleteMessage(message, 5e3))).catch((err) => console.log(`[Discord Error]: [Send message]: ${err}`));
+        };
     }
     ;
 }
