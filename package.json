@@ -1,19 +1,19 @@
 {
-  "name": "watklok-bot",
-  "description": "Discord music bot",
-  "author": "SNIPPIK",
-  "version": "1.2.1",
-  "main": "Core/Client/Client.js",
-  "scripts": {
-    "start": "node Core/Client/Client.js"
-  },
-  "dependencies": {
-    "@discordjs/voice": "^0.7.5",
-    "discord.js": "github:discordjs/discord.js",
-    "node-fetch": "^2.6.1",
-    "sodium": "^3.0.2"
-  },
-  "repository": {
-    "github": "https://github.com/SNIPPIK/Watklok-bot.git"
-  }
+    "name": "watklok-bot",
+    "description": "Discord music bot",
+    "author": "SNIPPIK",
+    "version": "1.2.1",
+    "main": "Core/Client/Client.js",
+    "scripts": {
+        "start": "node Core/Client/Client.js"
+    },
+    "dependencies": {
+        "@discordjs/voice": "^0.7.5",
+        "discord.js": "github:discordjs/discord.js",
+        "node-fetch": "^2.6.1",
+        "sodium": "^3.0.2"
+    },
+    "repository": {
+        "github": "https://github.com/SNIPPIK/Watklok-bot.git"
+    }
 }
