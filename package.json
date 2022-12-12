@@ -15,7 +15,7 @@
     "dotenv": "^16.0.2",
     "tiny-typed-emitter": "^2.1.0"
   },
-  "devDependencies": { "typescript": "4.9.2-rc" },
+  "devDependencies": { "typescript": "4.9.4" },
   "engines": { "node": ">17" },
   "repository": { "github": "https://github.com/SNIPPIK/WatKLOK.git" }
 }
