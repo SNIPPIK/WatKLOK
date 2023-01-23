@@ -136,7 +136,7 @@ function CreateCollector(message: ClientMessage, queue: Queue) {
 
         switch (i.customId) {
             case "resume_pause": { //Если надо приостановить музыку или продолжить воспроизведение
-                switch (player.state.status) {
+                switch (player?.state?.status) {
                     case "read": return void EmitPlayer.pause(message);
                     case "pause": return void EmitPlayer.resume(message);
                 }

@@ -251,39 +251,48 @@ export namespace SongFinder {
     export function getLinkResource(song: Song): Promise<string> {
         const {platform, url, author, title, duration} = song;
 
-        if (PlatformsAudio.includes(platform)) return FindTrack(`${author.title} - ${title} (Lyrics)`, duration.seconds);
+        //Если для платформы нет поддержки перехвата аудио
+        if (PlatformsAudio.includes(platform)) {
+            //Ищем трек
+            let track = FindTrack(`${author.title} - ${title} (Lyrics)`, duration.seconds);
+
+            //Если трек не найден пробуем 2 вариант без автора
+            if (!track) track = FindTrack(title, duration.seconds);
+
+            return track;
+        }
 
         const callback = platformSupporter.getCallback(platform);
 
+        //Если нет такой платформы или нет callbacks.track
         if (callback === "!platform" || callback === "!callback") return null;
 
+        //Выдаем ссылку
         return callback(url).then((track: InputTrack) => track?.format?.url);
     }
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Ищем трек на YouTube, если невозможно получить данные другим путем
-     * @param nameSong {string} Название трека
-     * @param duration {number} Длительность трека
-     * @constructor
-     * @private
-     */
-    function FindTrack(nameSong: string, duration: number): Promise<string> {
-        return YouTube.SearchVideos(nameSong, {limit: 20}).then((Tracks) => {
-            //Фильтруем треки оп времени
-            const FindTracks: InputTrack[] = Tracks.filter((track: InputTrack) => {
-                const DurationSong = DurationUtils.ParsingTimeToNumber(track.duration.seconds);
+}
+//====================== ====================== ====================== ======================
+/**
+ * @description Ищем трек на YouTube, если невозможно получить данные другим путем
+ * @param nameSong {string} Название трека
+ * @param duration {number} Длительность трека
+ */
+function FindTrack(nameSong: string, duration: number): Promise<string> {
+    return YouTube.SearchVideos(nameSong, {limit: 7}).then((Tracks) => {
+        //Фильтруем треки оп времени
+        const FindTracks: InputTrack[] = Tracks.filter((track: InputTrack) => {
+            const DurationSong = DurationUtils.ParsingTimeToNumber(track.duration.seconds);
 
-                //Как надо фильтровать треки
-                return DurationSong === duration || DurationSong < duration + 7 && DurationSong > duration - 5;
-            });
-
-            //Если треков нет
-            if (FindTracks?.length < 1) return null;
-
-            //Получаем данные о треке
-            return YouTube.getVideo(FindTracks[0].url).then((video) => video?.format?.url) as Promise<string>;
+            //Как надо фильтровать треки
+            return DurationSong === duration || DurationSong < duration + 7 && DurationSong > duration - 5 || DurationSong < duration + 27 && DurationSong > duration - 27;
         });
-    }
+
+        //Если треков нет
+        if (FindTracks?.length < 1) return null;
+
+        //Получаем данные о треке
+        return YouTube.getVideo(FindTracks[0].url).then((video) => video?.format?.url) as Promise<string>;
+    });
 }
 
 //====================== ====================== ====================== ======================
