@@ -61,7 +61,7 @@ function cycleStep(): void {
 
     setImmediate(() => {
         //Скачиваем трек
-        httpsClient.Request(song.resource).then((req) => {
+        httpsClient.Request(song.resource, {options: {keepAlive: true, userAgent: true}, request: {method: "GET"}}).then((req) => {
             if (req.pipe) {
                 const file = createWriteStream(`./${names.path}`);
 

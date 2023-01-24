@@ -58,7 +58,7 @@ export namespace httpsClient {
             request.end();
 
             //Через 5 секунд после запроса уничтожаем запрос
-            setTimeout(() => {
+            if (!options?.options?.keepAlive) setTimeout(() => {
                 if (!request.destroyed) {
                     request.removeAllListeners();
                     request.destroy();
@@ -158,6 +158,7 @@ interface ReqOptions extends RequestOptions {
 export interface httpsClientOptions {
     request?: ReqOptions;
     options?: {
+        keepAlive?: boolean;
         userAgent?: boolean;
         cookie?: boolean;
     };

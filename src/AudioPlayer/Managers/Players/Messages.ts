@@ -134,9 +134,12 @@ function CreateCollector(message: ClientMessage, queue: Queue) {
         message.author = i?.member?.user as User ?? i?.user;
         try { i.deferReply(); i.deleteReply(); } catch (e) {/*Notfing*/}
 
+        //Если вдруг пользователь будет нажимать на кнопки после выключения плеера
+        if (!player?.state || !player?.state?.status) return;
+
         switch (i.customId) {
             case "resume_pause": { //Если надо приостановить музыку или продолжить воспроизведение
-                switch (player?.state?.status) {
+                switch (player.state.status) {
                     case "read": return void EmitPlayer.pause(message);
                     case "pause": return void EmitPlayer.resume(message);
                 }
