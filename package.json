@@ -22,7 +22,7 @@
   },
   "scripts": {
     "start": "tsc -p ./tsconfig.json && cd build && node -r tsconfig-paths/register ./src/Core/Client/Client.js",
-    "sharder": "tsc -p ./tsconfig.json && cd build && node -r tsconfig-paths/register src/Core/Client/ShardManager.js",
+    "sharder": "tsc -p ./tsconfig.json && cd build && node -r tsconfig-paths/register ./src/Core/Client/ShardManager.js",
     "build": "tsc --watch -p ./tsconfig.json"
   },
   "version": "2.4.2"
