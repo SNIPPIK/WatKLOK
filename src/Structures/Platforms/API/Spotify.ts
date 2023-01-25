@@ -84,11 +84,13 @@ export namespace Spotify {
      * @param url {string} Ссылка на трек
      */
     export function getTrack(url: string): Promise<InputTrack | null> {
-        const id = getID(url);
+        const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
+            if (!ID) return reject("Не найден ID трека!");
+
             try {
-                const result = await API.Request(`tracks/${id}`) as SpotifyTrack & FailResult;
+                const result = await API.Request(`tracks/${ID}`) as SpotifyTrack & FailResult;
 
                 if (!result || !result?.name) return resolve(null);
                 if (result.error) return reject(new Error(result.error.message));
@@ -104,11 +106,12 @@ export namespace Spotify {
      * @param options {limit: number} Настройки
      */
     export function getPlaylist(url: string, options: { limit: number } = {limit: 50}): Promise<InputPlaylist | null> {
-        const id = getID(url);
+        const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
+            if (!ID) return reject("Не найден ID плейлиста!");
             try {
-                const result = await API.Request(`playlists/${id}?offset=0&limit=${options.limit}`) as SpotifyPlaylist & FailResult;
+                const result = await API.Request(`playlists/${ID}?offset=0&limit=${options.limit}`) as SpotifyPlaylist & FailResult;
 
                 if (!result || !result?.name) return resolve(null);
                 if (result.error) return reject(new Error(result.error.message));
@@ -128,11 +131,13 @@ export namespace Spotify {
      * @param options {limit: number} Настройки
      */
     export function getAlbum(url: string, options: { limit: number } = {limit: 50}): Promise<InputPlaylist | null> {
-        const id = getID(url);
+        const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
+            if (!ID) return reject("Не найден ID альбома!");
+
             try {
-                const result = await API.Request(`albums/${id}?offset=0&limit=${options.limit}`) as SpotifyAlbumFull & FailResult;
+                const result = await API.Request(`albums/${ID}?offset=0&limit=${options.limit}`) as SpotifyAlbumFull & FailResult;
 
                 if (!result || !result?.name) return resolve(null);
                 if (result.error) return reject(new Error(result.error.message));
@@ -169,16 +174,18 @@ export namespace Spotify {
      * @param url {string} Ссылка на автора
      */
     export function getAuthorTracks(url: string): any {
-        const id = getID(url);
+        const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
+            if (!ID) return reject("Не найден ID автора!");
             try {
-                const result = await API.Request(`artists/${id}/top-tracks?market=ES&limit=5`) as SpotifyAlbumFull & FailResult;
+                const result = await API.Request(`artists/${ID}/top-tracks?market=ES&limit=5`) as SpotifyAlbumFull & FailResult;
 
                 if (!result) return resolve(null);
                 if (result.error) return reject(new Error(result.error.message));
 
-                return resolve(await Promise.all(result.tracks.items.map(construct.track)));
+                // @ts-ignore
+                return resolve(await Promise.all((result.tracks?.items ?? result.tracks).map(construct.track)));
             } catch (e) { return reject(e) }
         });
     }
@@ -331,7 +338,6 @@ interface SpotifyAlbumFull {
     },
     type: SpotifyType,
     uri: string
-
 }
 
 interface SpotifyAlbum {

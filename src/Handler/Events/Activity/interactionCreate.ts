@@ -196,7 +196,7 @@ export namespace UtilsMsg {
 
         if (typeof text === "string") {
             const description = typeof codeBlock === "string" ? `\`\`\`${codeBlock}\n${text}\n\`\`\`` : text;
-            if (!notAttachEmbed) return { embeds: [{ color: typeof color === "number" ? color : Colors[color] ?? Colors.Blue, description }]};
+            if (!notAttachEmbed) return { embeds: [{ color: typeof color === "number" ? color : Colors[color] ?? 258044, description }]};
             return {content: description};
         }
         return {embeds: [text]};

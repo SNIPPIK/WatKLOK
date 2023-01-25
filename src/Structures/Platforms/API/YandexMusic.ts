@@ -66,9 +66,14 @@ export namespace YandexMusic {
      * @param url {string} Ссылка на yandex music track
      */
     export function getTrack(url: string): Promise<InputTrack> {
+        const ID = url.split(/[^0-9]/g).filter(str => str !== "");
+
         return new Promise(async (resolve, reject) => {
+            if (!ID[0]) return reject("Не удалось получить ID альбома!");
+            else if (!ID[1]) return reject("Не удалось получить ID трека!");
+
             try {
-                const result = await API.Request(url);
+                const result = await API.Request(`https://music.yandex.ru/album/${ID[0]}/track/${ID[1]}`);
 
                 if (result instanceof Error) return resolve(null);
 
@@ -84,9 +89,13 @@ export namespace YandexMusic {
      * @param url {string} Ссылка на альбом
      */
     export function getAlbum(url: string): Promise<InputPlaylist> {
+        const ID = url.split(/[^0-9]/g).find(str => str !== "");
+
         return new Promise(async (resolve, reject) => {
+            if (!ID) return reject("Не удалось получить ID альбома!");
+
             try {
-                const result = await API.Request(url);
+                const result = await API.Request(`https://music.yandex.ru/album/${ID}`);
 
                 if (result instanceof Error) return resolve(null);
 
@@ -135,9 +144,13 @@ export namespace YandexMusic {
      * @param url {string} Ссылка на автора
      */
     export function getArtistTracks(url: string): Promise<InputTrack[]> {
+        const ID = url.split(/[^0-9]/g).find(str => str !== "");
+
         return new Promise(async (resolve, reject) => {
+            if (!ID) return reject("Не удалось получить ID автора!");
+
             try {
-                const result = await API.Request(url, true);
+                const result = await API.Request(`https://music.yandex.ru/artist/${ID}`, true);
 
                 if (result instanceof Error) return resolve(null);
                 const tracks: InputTrack[] = [];

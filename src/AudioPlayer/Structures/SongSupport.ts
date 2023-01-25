@@ -325,7 +325,10 @@ export namespace toPlayer {
 
         const runCallback = callback(argument) as Promise<InputTrack | InputPlaylist | InputTrack[]>;
 
-        runCallback.catch(e => UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e}`, color: "DarkRed", codeBlock: "css", message }));
+        runCallback.catch(e => {
+            if (e.length > 2e3) UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e.message}`, color: "DarkRed", codeBlock: "css", message });
+            else UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e}`, color: "DarkRed", codeBlock: "css", message });
+        });
         runCallback.then((data: InputTrack | InputPlaylist | InputTrack[]): void => {
             if (!data) return UtilsMsg.createMessage({ text: `${author}, данные не были найдены!`, color: "Yellow", message });
 
