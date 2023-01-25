@@ -7,14 +7,13 @@
 - Перейти к [`плееру`](src/AudioPlayer)
 - Перейди к [`демонстрации`](https://www.youtube.com/watch?v=ncvpyWaxycw)
 - Все сообщения удаляются автоматически через время
-- ~~Для удаления аудио кеша `запустить run и выбрать 6`~~
 
 [<img align="center" alt="PGI Settings" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/v2/.github/resource/PGI.png?raw=true" />](https://github.com/SNIPPIK/WatKLOK/blob/v2/.github/resource/PGI.png?raw=true)
 
 ## Гайд по запуску
 1. [`Node.js`](https://nodejs.org/ru/) 18-19
 2. [`FFmpeg & FFprobe`](https://ffmpeg.org/) или npm install (ffmpeg-static и ffprobe-static)
-3. Указываем данные в [`.env`](.env)
+3. Указываем данные в [`build/.env`](build/.env) | `Ps если его нет то надо создать`
 4. Варианты запуска | `Если возникли ошибки повторите шаги заново`
    - Если серверов не более 1к, то `npm run start`
    - Если серверов более 1к, то `npm run sharder`
@@ -22,14 +21,14 @@
 ## Поддерживаемые платформы
 [Можно добавить поддержку иных платформ](src/AudioPlayer/Structures/SongSupport.ts)
 
-| Платформы                                    | Что доступно                         | Аудио       |
-|----------------------------------------------|--------------------------------------|-------------|
-| [**YouTube**](https://www.youtube.com/)      | **видео, плейлисты, поиск, стримы**  | ✔           |
-| [**Spotify**](https://open.spotify.com/)     | **треки, плейлисты, поиск, альбомы** | ✖ (YouTube) |
-| [**Yandex Music**](https://music.yandex.ru/) | **треки, альбомы, поиск**            | ✖ (YouTube) |
-| [**VK**](https://vk.com/)                    | **треки, ~~плейлисты~~, поиск**      | ✔           |
-| [**SoundCloud**](https://soundcloud.com/)    | **треки, плейлисты, поиск, альбомы** | ✔           |
-| [**Discord**](https://discord.com/)          | **ссылки, файлы**                    | ✔           |
+| Платформы                                    | Что доступно                                 | Аудио       |
+|----------------------------------------------|----------------------------------------------|-------------|
+| [**YouTube**](https://www.youtube.com/)      | **видео, плейлисты, поиск, стримы, каналы**  | ✔           |
+| [**Spotify**](https://open.spotify.com/)     | **треки, плейлисты, поиск, альбомы, авторы** | ✖ (YouTube) |
+| [**Yandex Music**](https://music.yandex.ru/) | **треки, альбомы, поиск, авторы**            | ✖ (YouTube) |
+| [**VK**](https://vk.com/)                    | **треки, ~~плейлисты~~, поиск**              | ✔           |
+| [**SoundCloud**](https://soundcloud.com/)    | **треки, плейлисты, поиск, альбомы**         | ✔           |
+| [**Discord**](https://discord.com/)          | **ссылки, файлы**                            | ✔           |
 
 ## Настройки
 1. [`.env`](.env) | для не публичных данных

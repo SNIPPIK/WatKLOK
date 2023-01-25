@@ -54,12 +54,14 @@ export namespace VK {
     export function getTrack(url: string): Promise<InputTrack> {
         const ID = getID(url);
 
-        return new Promise(async (resolve) => {
-            const result = await API.Request("audio", "getById", `&audios=${ID}`) as Track & rateLimit;
+        return new Promise(async (resolve, reject) => {
+            try {
+                const result = await API.Request("audio", "getById", `&audios=${ID}`) as Track & rateLimit;
 
-            if (!result || !result.response) return resolve(null);
+                if (!result || !result.response) return resolve(null);
 
-            return resolve(construct.track(result.response.pop()));
+                return resolve(construct.track(result.response.pop()));
+            } catch (e) { return reject(e) }
         });
     }
     //====================== ====================== ====================== ======================
@@ -75,20 +77,22 @@ export namespace VK {
         const key = PlaylistFullID[2];
 
         return new Promise(async (resolve, reject) => {
-            const result = await API.Request("audio", "getPlaylistById", `&owner_id=${owner_id}&playlist_id=${playlist_id}&access_key=${key}`) as Playlist & rateLimit;
-            const items = await API.Request("audio", "get", `&owner_id=${owner_id}&album_id=${playlist_id}&count=${options.limit}&access_key=${key}`) as SearchTracks;
+            try {
+                const result = await API.Request("audio", "getPlaylistById", `&owner_id=${owner_id}&playlist_id=${playlist_id}&access_key=${key}`) as Playlist & rateLimit;
+                const items = await API.Request("audio", "get", `&owner_id=${owner_id}&album_id=${playlist_id}&count=${options.limit}&access_key=${key}`) as SearchTracks;
 
-            if (result.error) throw reject(new Error(result.error.error_msg));
-            if (!result?.response || !items?.response) return resolve(null);
+                if (result.error) return reject(new Error(result.error.error_msg));
+                if (!result?.response || !items?.response) return resolve(null);
 
-            const playlist = result.response;
-            const image = playlist?.thumbs?.length > 0 ? playlist?.thumbs[0] : null;
+                const playlist = result.response;
+                const image = playlist?.thumbs?.length > 0 ? playlist?.thumbs[0] : null;
 
-            return resolve({
-                url, title: playlist.title,
-                items: items.response.items.map(construct.track),
-                image: {url: image?.photo_1200 ?? image?.photo_600 ?? image?.photo_300 ?? image?.photo_270 ?? undefined}
-            });
+                return resolve({
+                    url, title: playlist.title,
+                    items: items.response.items.map(construct.track),
+                    image: {url: image?.photo_1200 ?? image?.photo_600 ?? image?.photo_300 ?? image?.photo_270 ?? undefined}
+                });
+            } catch (e) { return reject(e) }
         });
     }
     //====================== ====================== ====================== ======================
@@ -99,15 +103,17 @@ export namespace VK {
      */
     export function SearchTracks(search: string, options: { limit: number } = {limit: 15}): Promise<null | InputTrack[]> {
         return new Promise(async (resolve, reject) => {
-            const result = await API.Request("audio", "search", `&q=${search}`) as SearchTracks & rateLimit;
+            try {
+                const result = await API.Request("audio", "search", `&q=${search}`) as SearchTracks & rateLimit;
 
-            if (result.error) throw reject(new Error(result.error.error_msg));
-            if (!result?.response) return resolve(null);
+                if (result.error) return reject(new Error(result.error.error_msg));
+                if (!result?.response) return resolve(null);
 
-            const trackConst = result.response.items.length;
-            if (trackConst > options.limit) result.response.items.splice(options.limit - 1, trackConst - options.limit - 1);
+                const trackConst = result.response.items.length;
+                if (trackConst > options.limit) result.response.items.splice(options.limit - 1, trackConst - options.limit - 1);
 
-            return resolve(result.response.items.map(construct.track));
+                return resolve(result.response.items.map(construct.track));
+            } catch (e) { return reject(e) }
         });
     }
 }

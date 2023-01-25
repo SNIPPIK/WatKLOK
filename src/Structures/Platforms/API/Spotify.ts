@@ -58,18 +58,20 @@ namespace API {
             SpotifyRes.token = result.access_token;
         });
     }
-    //====================== ====================== ====================== ======================
+}
+
+namespace construct {
     /**
      * @description Собираем трек в готовый образ
      * @param track {SpotifyTrack} Трек из Spotify API
      */
-    export async function constructTrack(track: SpotifyTrack) {
+    export async function track(track: SpotifyTrack) {
         const sortImages = track.album.images[0].width > track.album.images.pop().width ? track.album.images[0] : track.album.images.pop();
 
         return {
             title: track.name,
             url: track.external_urls.spotify,
-            author: (await Promise.all([Spotify.getAuthorTrack(track.artists[0].external_urls.spotify, track?.artists[0]?.type !== "artist")]))[0],
+            author: (await Promise.all([getAuthor(track.artists[0].external_urls.spotify, track?.artists[0]?.type !== "artist")]))[0],
             duration: { seconds: (track.duration_ms / 1000).toFixed(0) },
             image: sortImages,
         }
@@ -85,12 +87,14 @@ export namespace Spotify {
         const id = getID(url);
 
         return new Promise(async (resolve, reject) => {
-            const result = await API.Request(`tracks/${id}`) as SpotifyTrack & FailResult;
+            try {
+                const result = await API.Request(`tracks/${id}`) as SpotifyTrack & FailResult;
 
-            if (!result || !result?.name) return resolve(null);
-            if (result.error) throw reject(new Error(result.error.message));
+                if (!result || !result?.name) return resolve(null);
+                if (result.error) return reject(new Error(result.error.message));
 
-            return resolve(API.constructTrack(result));
+                return resolve(construct.track(result));
+            } catch (e) { return reject(e) }
         });
     }
     //====================== ====================== ====================== ======================
@@ -103,16 +107,18 @@ export namespace Spotify {
         const id = getID(url);
 
         return new Promise(async (resolve, reject) => {
-            const result = await API.Request(`playlists/${id}?offset=0&limit=${options.limit}`) as SpotifyPlaylist & FailResult;
+            try {
+                const result = await API.Request(`playlists/${id}?offset=0&limit=${options.limit}`) as SpotifyPlaylist & FailResult;
 
-            if (!result || !result?.name) return resolve(null);
-            if (result.error) throw reject(new Error(result.error.message));
+                if (!result || !result?.name) return resolve(null);
+                if (result.error) return reject(new Error(result.error.message));
 
-            return resolve({
-                url, title: result.name, image: result.images[0],
-                items: await Promise.all(result.tracks.items.map(({track}) => API.constructTrack(track))),
-                author: (await Promise.all([getAuthorTrack(`${SpotifyUrl}/artist/${result.owner.id}`, result?.owner?.type !== "artist")]))[0]
-            });
+                return resolve({
+                    url, title: result.name, image: result.images[0],
+                    items: await Promise.all(result.tracks.items.map(({track}) => construct.track(track))),
+                    author: (await Promise.all([getAuthor(`${SpotifyUrl}/artist/${result.owner.id}`, result?.owner?.type !== "artist")]))[0]
+                });
+            } catch (e) { return reject(e) }
         });
     }
     //====================== ====================== ====================== ======================
@@ -125,16 +131,18 @@ export namespace Spotify {
         const id = getID(url);
 
         return new Promise(async (resolve, reject) => {
-            const result = await API.Request(`albums/${id}?offset=0&limit=${options.limit}`) as SpotifyAlbumFull & FailResult;
+            try {
+                const result = await API.Request(`albums/${id}?offset=0&limit=${options.limit}`) as SpotifyAlbumFull & FailResult;
 
-            if (!result || !result?.name) return resolve(null);
-            if (result.error) throw reject(new Error(result.error.message));
+                if (!result || !result?.name) return resolve(null);
+                if (result.error) return reject(new Error(result.error.message));
 
-            return resolve({
-                url, title: result.name, image: result.images[0],
-                items: await Promise.all(result.tracks.items.map(API.constructTrack)),
-                author: (await Promise.all([getAuthorTrack(`${SpotifyUrl}/artist/${result?.artists[0].id}`, result?.artists[0]?.type !== "artist")]))[0]
-            });
+                return resolve({
+                    url, title: result.name, image: result.images[0],
+                    items: await Promise.all(result.tracks.items.map(construct.track)),
+                    author: (await Promise.all([getAuthor(`${SpotifyUrl}/artist/${result?.artists[0].id}`, result?.artists[0]?.type !== "artist")]))[0]
+                });
+            } catch (e) { return reject(e) }
         });
     }
     //====================== ====================== ====================== ======================
@@ -145,36 +153,59 @@ export namespace Spotify {
      */
     export function SearchTracks(search: string, options: { limit: number } = {limit: 15}): Promise<InputTrack[] | null> {
         return new Promise(async (resolve, reject) => {
-            const result = await API.Request(`search?q=${search}&type=track&limit=${options.limit}`) as SearchTracks & FailResult;
+            try {
+                const result = await API.Request(`search?q=${search}&type=track&limit=${options.limit}`) as SearchTracks & FailResult;
 
-            if (!result) return resolve(null);
-            if (result.error) throw reject(new Error(result.error.message));
+                if (!result) return resolve(null);
+                if (result.error) return reject(new Error(result.error.message));
 
-            return resolve(await Promise.all(result.tracks.items.map(API.constructTrack)));
+                return resolve(await Promise.all(result.tracks.items.map(construct.track)));
+            } catch (e) { return reject(e) }
         });
     }
     //====================== ====================== ====================== ======================
     /**
-     * @description Получаем данные об авторе или пользователе
-     * @param url {string} ссылка на автора или пользователя
-     * @param isUser {boolean} Это пользователь
+     * @description Получаем 5 популярных треков автора
+     * @param url {string} Ссылка на автора
      */
-    export function getAuthorTrack(url: string, isUser: boolean = false): Promise<InputAuthor> {
+    export function getAuthorTracks(url: string): any {
         const id = getID(url);
 
         return new Promise(async (resolve, reject) => {
+            try {
+                const result = await API.Request(`artists/${id}/top-tracks?market=ES&limit=5`) as SpotifyAlbumFull & FailResult;
+
+                if (!result) return resolve(null);
+                if (result.error) return reject(new Error(result.error.message));
+
+                return resolve(await Promise.all(result.tracks.items.map(construct.track)));
+            } catch (e) { return reject(e) }
+        });
+    }
+}
+//====================== ====================== ====================== ======================
+/**
+ * @description Получаем данные об авторе или пользователе
+ * @param url {string} ссылка на автора или пользователя
+ * @param isUser {boolean} Это пользователь
+ */
+function getAuthor(url: string, isUser: boolean = false): Promise<InputAuthor> {
+    const id = getID(url);
+
+    return new Promise(async (resolve, reject) => {
+        try {
             const result = await API.Request(`${isUser ? "users" : "artists"}/${id}`) as (SpotifyArtist | SpotifyUser) & FailResult;
 
             if (!result) return resolve(null);
-            if (result.error) throw reject(new Error(result.error.message));
+            if (result.error) return reject(result.error.message);
 
             return resolve({ // @ts-ignore
                 title: result?.name ?? result?.display_name, url,
                 image: result.images[0],
                 isVerified: result.followers.total >= 500
             });
-        });
-    }
+        } catch (e) { return reject(e) }
+    });
 }
 //====================== ====================== ====================== ======================
 //====================== ====================== ====================== ======================

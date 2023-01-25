@@ -1,5 +1,6 @@
+import { ApplicationCommandOptionType, PermissionResolvable, BaseApplicationCommandOptionsData } from "discord.js";
 import { ClientInteraction, ClientInteractive, ClientMessage, EmbedConstructor } from "@Client/interactionCreate";
-import { ApplicationCommandOptionType, PermissionResolvable } from "discord.js";
+
 
 /**
  * @description Изменение данных
@@ -80,7 +81,7 @@ export class Command {
 /**
  * @description Как выглядит аргумент для SlashCommand
  */
-interface InteractiveOptions {
+interface InteractiveOptions extends BaseApplicationCommandOptionsData {
     //Название аргумента
     name: string;
     //Описание аргумента

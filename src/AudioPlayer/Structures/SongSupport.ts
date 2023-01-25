@@ -12,7 +12,7 @@ import {env} from "@env";
 //Поддерживаемые платформы
 export type platform = "YOUTUBE" | "SPOTIFY" | "VK" | "SOUNDCLOUD" | "DISCORD" | "YANDEX";
 //Поддерживаемые тип для этих платформ
-export type callback = "track" | "playlist" | "search" | "album";
+export type callback = "track" | "playlist" | "search" | "album" | "artist";
 
 const emoji = ReactionMenuSettings.emojis.cancel;
 
@@ -52,7 +52,8 @@ const Platforms = {
         "callbacks": {
             "track": YouTube.getVideo,
             "playlist": YouTube.getPlaylist,
-            "search": YouTube.SearchVideos
+            "search": YouTube.SearchVideos,
+            "artist": YouTube.getChannelVideos
         }
     },
     //Какие данные можно взять с Spotify
@@ -66,14 +67,15 @@ const Platforms = {
             "track": Spotify.getTrack,
             "playlist": Spotify.getPlaylist,
             "album": Spotify.getAlbum,
-            "search": Spotify.SearchTracks
+            "search": Spotify.SearchTracks,
+            "artist": Spotify.getAuthorTracks
         }
     },
     //Какие данные можно взять с Soundcloud
     "SOUNDCLOUD": {
         "color": 0xe67e22,
         "prefix": ["sc"],
-        "reg": /^(https?:\/\/)?(www\.)?(m\.)?(music\.)?( )?(youtube\.com|youtu\.?be)\/.+$/gi,
+        "reg": /^(https?:\/\/)?((?:www|m)\.)?(api\.soundcloud\.com|soundcloud\.com|snd\.sc)\/.+$/gi,
 
         //Доступные запросы для этой платформы
         "callbacks": {
@@ -87,7 +89,7 @@ const Platforms = {
     "VK": {
         "color": 30719,
         "prefix": ["vk"],
-        "reg": /vk.com/gi,
+        "reg": /^(https?:\/\/)?(vk\.com)\/.+$/gi,
 
         //Доступные запросы для этой платформы
         "callbacks": {
@@ -100,13 +102,14 @@ const Platforms = {
     "YANDEX": {
         "color": Colors.Yellow,
         "prefix": ["ym", "yandex", "y"],
-        "reg": /music.yandex.ru/gi,
+        "reg": /^(https?:\/\/)?(music\.)?(yandex\.ru)\/.+$/gi,
 
         //Доступные запросы для этой платформы
         "callbacks": {
             "track": YandexMusic.getTrack,
             "album": YandexMusic.getAlbum,
-            "search": YandexMusic.SearchTracks
+            "search": YandexMusic.SearchTracks,
+            "artist": YandexMusic.getArtistTracks
         }
     },
     //Какие данные можно взять с Discord
@@ -169,7 +172,7 @@ export namespace platformSupporter {
      * @description Получаем тип запроса
      * @param str {string} Ссылка
      */
-    export function getTypeSong(str: string) {
+    export function getTypeSong(str: string): callback {
         //Если нет str, значит пользователь прикрепил файл
         if (!str) return "track";
 
@@ -177,6 +180,7 @@ export namespace platformSupporter {
         if (str.match(/^(https?:\/\/)/gi)) {
             if (str.match(/playlist/)) return "playlist";
             else if ((str.match(/album/) || str.match(/sets/)) && !str.match(/track/)) return "album";
+            else if (str.match(/artist/) || str.match(/channel/) || str.match(/@/)) return "artist";
             return "track";
         }
         return "search";
@@ -312,26 +316,18 @@ export namespace toPlayer {
         const argument = platformSupporter.getArg(arg, platform);
 
         //Если нельзя получить данные с определенной платформы
-        if (platformSupporter.getFailPlatform(platform)) return UtilsMsg.createMessage({
-            text: `${author}, я не могу взять данные с этой платформы **${platform}**\n Причина: [**Authorization data not found**]`, color: "DarkRed", message
-        });
+        if (platformSupporter.getFailPlatform(platform)) return UtilsMsg.createMessage({ text: `${author}, я не могу взять данные с этой платформы **${platform}**\n Причина: [**Authorization data not found**]`, color: "DarkRed", message });
 
         const callback = platformSupporter.getCallback(platform, type); //Ищем в списке платформу
 
-        if (callback === "!platform") return UtilsMsg.createMessage({
-            text: `${author}, у меня нет поддержки такой платформы!\nПлатформа **${platform}**!`, color: "DarkRed", message
-        });
-        else if (callback === "!callback") return UtilsMsg.createMessage({
-            text: `${author}, у меня нет поддержки этого типа запроса!\nТип запроса **${type}**!\nПлатформа: **${platform}**`, color: "DarkRed", message
-        });
+        if (callback === "!platform") return UtilsMsg.createMessage({ text: `${author}, у меня нет поддержки такой платформы!\nПлатформа **${platform}**!`, color: "DarkRed", message });
+        else if (callback === "!callback") return UtilsMsg.createMessage({ text: `${author}, у меня нет поддержки этого типа запроса!\nТип запроса **${type}**!\nПлатформа: **${platform}**`, color: "DarkRed", message });
 
         const runCallback = callback(argument) as Promise<InputTrack | InputPlaylist | InputTrack[]>;
 
-        //Если выходит ошибка
-        runCallback.catch((err) => UtilsMsg.createMessage({ text: `${author}, данные не были найдены!\nПричина: ${err}`, color: "DarkRed", message }));
-
+        runCallback.catch(e => UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e}`, color: "DarkRed", codeBlock: "css", message }));
         runCallback.then((data: InputTrack | InputPlaylist | InputTrack[]): void => {
-            if (!data) return UtilsMsg.createMessage({text: `${author}, данные не были найдены!`, color: "Yellow", message});
+            if (!data) return UtilsMsg.createMessage({ text: `${author}, данные не были найдены!`, color: "Yellow", message });
 
             //Если пользователь ищет трек
             if (data instanceof Array) return toSend(data, {message, platform});

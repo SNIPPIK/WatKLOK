@@ -102,6 +102,7 @@ export namespace EmbedMessages {
 function getFields(queue: Queue, client: WatKLOK): EmbedConstructor["fields"] {
     const {songs, song, player} = queue;
     const VisualDuration = toString(song.duration, player.streamDuration);
+
     //Текущий трек
     const fields = [{ name: `**Щас играет**`, value: `**❯** **[${replacer.replaceText(song.title, 29, true)}](${song.url})**\n${VisualDuration}` }];
 

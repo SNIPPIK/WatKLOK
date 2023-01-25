@@ -108,13 +108,15 @@ export namespace SoundCloud {
      * @param url {string} Ссылка на трек
      */
     export function getTrack(url: string): Promise<InputTrack> {
-        return new Promise(async (resolve) => {
-            const {result, ClientID} = await API.Request(`resolve?url=${url}`);
+        return new Promise(async (resolve, reject) => {
+            try {
+                const {result, ClientID} = await API.Request(`resolve?url=${url}`);
 
-            if (!result?.id || !result) return resolve(null);
-            const format = await API.getFormat(result.media.transcodings, ClientID);
+                if (!result?.id || !result) return resolve(null);
+                const format = await API.getFormat(result.media.transcodings, ClientID);
 
-            return resolve({...construct.track(result, url), format: {url: format}});
+                return resolve({...construct.track(result, url), format: {url: format}});
+            } catch (e) { return reject(e) }
         });
     }
     //====================== ====================== ====================== ======================
@@ -123,19 +125,21 @@ export namespace SoundCloud {
      * @param url {string} Ссылка на плейлист
      */
     export function getPlaylist(url: string): Promise<InputTrack | InputPlaylist> {
-        return new Promise(async (resolve) => {
-            const {result} = await API.Request(`resolve?url=${url}`);
+        return new Promise(async (resolve, reject) => {
+            try {
+                const {result} = await API.Request(`resolve?url=${url}`);
 
-            if (!result?.id || !result) return resolve(null);
-            if (result.tracks === undefined) return getTrack(url).then(resolve);
+                if (!result?.id || !result) return resolve(null);
+                if (result.tracks === undefined) return getTrack(url).then(resolve);
 
-            return resolve({
-                url,
-                title: result.title,
-                author: construct.author(result.user),
-                image: construct.parseImage(result.artwork_url),
-                items: result.tracks.map(construct.track)
-            });
+                return resolve({
+                    url,
+                    title: result.title,
+                    author: construct.author(result.user),
+                    image: construct.parseImage(result.artwork_url),
+                    items: result.tracks.map(construct.track)
+                });
+            } catch (e) { return reject(e) }
         });
     }
     //====================== ====================== ====================== ======================
@@ -146,12 +150,14 @@ export namespace SoundCloud {
      * @constructor
      */
     export function SearchTracks(search: string, options = {limit: 15}): Promise<InputTrack[]> {
-        return new Promise(async (resolve) => {
-            const {result} = await API.Request(`search/tracks?q=${search}&limit=${options.limit}`);
+        return new Promise(async (resolve, reject) => {
+            try {
+                const {result} = await API.Request(`search/tracks?q=${search}&limit=${options.limit}`);
 
-            if (!result) return resolve(null);
+                if (!result) return resolve(null);
 
-            return resolve(result.collection.map(construct.track));
+                return resolve(result.collection.map(construct.track));
+            } catch (e) { return reject(e) }
         });
     }
 }

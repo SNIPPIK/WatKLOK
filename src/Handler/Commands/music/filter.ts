@@ -19,7 +19,7 @@ export class Command_Filter extends Command {
                 {
                     name: "name",
                     description: "Все доступные фильтры - all",
-                    type: ApplicationCommandOptionType.String
+                    type: ApplicationCommandOptionType.String,
                 }
             ],
 

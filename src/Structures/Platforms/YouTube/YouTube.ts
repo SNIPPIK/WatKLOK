@@ -71,25 +71,27 @@ export namespace YouTube {
         const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
-            const page = await API.Request("STRING", `https://www.youtube.com/watch?v=${ID}&has_verified=1`) as string;
-            const result = page.split("var ytInitialPlayerResponse = ")?.[1]?.split(";</script>")[0].split(/(?<=}}});\s*(var|const|let)\s/)[0];
+            try {
+                const page = await API.Request("STRING", `https://www.youtube.com/watch?v=${ID}&has_verified=1`) as string;
+                const result = page.split("var ytInitialPlayerResponse = ")?.[1]?.split(";</script>")[0].split(/(?<=}}});\s*(var|const|let)\s/)[0];
 
-            if (!result) throw reject(new Error("Not found track data!"));
-            const jsonResult = JSON.parse(result);
+                if (!result) return reject(new Error("Not found track data!"));
+                const jsonResult = JSON.parse(result);
 
-            if (jsonResult.playabilityStatus?.status !== "OK") throw reject(new Error(`Не удалось получить данные из-за: ${jsonResult.playabilityStatus.status}`));
+                if (jsonResult.playabilityStatus?.status !== "OK") return reject(new Error(`Не удалось получить данные из-за: ${jsonResult.playabilityStatus.status}`));
 
-            const details = jsonResult.videoDetails;
-            let audios: YouTubeFormat;
+                const details = jsonResult.videoDetails;
+                let audios: YouTubeFormat;
 
-            if (details.isLiveContent) audios = {url: details.streamingData?.dashManifestUrl ?? null}; //dashManifestUrl, hlsManifestUrl
-            else {
-                const html5player = `https://www.youtube.com${page.split('"jsUrl":"')[1].split('"')[0]}`;
+                if (details.isLiveContent) audios = {url: details.streamingData?.dashManifestUrl ?? null}; //dashManifestUrl, hlsManifestUrl
+                else {
+                    const html5player = `https://www.youtube.com${page.split('"jsUrl":"')[1].split('"')[0]}`;
 
-                audios = (await extractSignature([...jsonResult.streamingData?.formats ?? [], ...jsonResult.streamingData?.adaptiveFormats ?? []], html5player));
-            }
+                    audios = (await extractSignature([...jsonResult.streamingData?.formats ?? [], ...jsonResult.streamingData?.adaptiveFormats ?? []], html5player));
+                }
 
-            return resolve({...await construct.video(details), format: audios});
+                return resolve({...await construct.video(details), format: audios});
+            } catch (e) { return reject(e) }
         });
     }
     //====================== ====================== ====================== ======================
@@ -101,23 +103,25 @@ export namespace YouTube {
         const ID = getID(url, true);
 
         return new Promise(async (resolve, reject) => {
-            const page = await API.Request("STRING", `https://www.youtube.com/playlist?list=${ID}`) as string;
-            const result = page.split('var ytInitialData = ')[1].split(';</script>')[0].split(/;\s*(var|const|let)\s/)[0];
+            try {
+                const page = await API.Request("STRING", `https://www.youtube.com/playlist?list=${ID}`) as string;
+                const result = page.split('var ytInitialData = ')[1].split(';</script>')[0].split(/;\s*(var|const|let)\s/)[0];
 
-            if (!result) throw reject(new Error("Not found playlist data!"));
+                if (!result) return reject(new Error("Not found playlist data!"));
 
-            const jsonResult = JSON.parse(result);
-            const info = jsonResult.sidebar.playlistSidebarRenderer.items[0].playlistSidebarPrimaryInfoRenderer;
-            const author = jsonResult.sidebar.playlistSidebarRenderer.items[1].playlistSidebarSecondaryInfoRenderer.videoOwner.videoOwnerRenderer;
-            const videos: any[] = jsonResult.contents.twoColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents[0]
-                .itemSectionRenderer.contents[0].playlistVideoListRenderer.contents;
+                const jsonResult = JSON.parse(result);
+                const info = jsonResult.sidebar.playlistSidebarRenderer.items[0].playlistSidebarPrimaryInfoRenderer;
+                const author = jsonResult.sidebar.playlistSidebarRenderer.items[1].playlistSidebarSecondaryInfoRenderer.videoOwner.videoOwnerRenderer;
+                const videos: any[] = jsonResult.contents.twoColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents[0]
+                    .itemSectionRenderer.contents[0].playlistVideoListRenderer.contents;
 
-            return resolve({
-                title: info.title.runs[0].text, url,
-                items: videos.map(({playlistVideoRenderer}) => construct.playlist(playlistVideoRenderer)),
-                author: await getChannel({ id: author.navigationEndpoint.browseEndpoint.browseId, name: author.title.runs[0].text }),
-                image: info.thumbnailRenderer.playlistVideoThumbnailRenderer.thumbnail.thumbnails.pop()
-            });
+                return resolve({
+                    title: info.title.runs[0].text, url,
+                    items: videos.map(({playlistVideoRenderer}) => construct.playlist(playlistVideoRenderer)),
+                    author: await getChannel({ id: author.navigationEndpoint.browseEndpoint.browseId, name: author.title.runs[0].text }),
+                    image: info.thumbnailRenderer.playlistVideoThumbnailRenderer.thumbnail.thumbnails.pop()
+                });
+            } catch (e) { return reject(e) }
         });
     }
     //====================== ====================== ====================== ======================
@@ -126,33 +130,74 @@ export namespace YouTube {
     * @param search {string} что ищем
     * @param options {limit} Настройки
     */
-    export async function SearchVideos(search: string, options = {limit: 15}): Promise<InputTrack[]> {
+    export function SearchVideos(search: string, options = {limit: 15}): Promise<InputTrack[]> {
         return new Promise(async (resolve, reject) => {
-            const page = await API.Request("STRING", `https://www.youtube.com/results?search_query=${search.replaceAll(' ', '+')}`) as string;
-            const result = (page.split("var ytInitialData = ")[1].split("}};")[0] + '}}').split(';</script><script')[0];
+            try {
+                const page = await API.Request("STRING", `https://www.youtube.com/results?search_query=${search.replaceAll(' ', '+')}`) as string;
+                const result = (page.split("var ytInitialData = ")[1].split("}};")[0] + '}}').split(';</script><script')[0];
 
-            if (!result) throw reject(new Error("Not found search data!"));
+                if (!result) return reject(new Error("Not found search data!"));
 
-            const details = JSON.parse(result)?.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents[0]?.itemSectionRenderer?.contents;
+                const details = JSON.parse(result)?.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents[0]?.itemSectionRenderer?.contents;
 
-            if (!details) throw reject(new Error(`Не удалось найти: ${search}`));
+                if (!details) return reject(new Error(`Не удалось найти: ${search}`));
 
-            let num = 0, videos: InputTrack[] = [];
+                const videos: InputTrack[] = [];
+                for (let i = 0; i < details.length; i++) {
+                    if (i >= options.limit) break;
 
-            for (let i = 0; i < details.length; i++) {
-                if (num >= options.limit) break;
+                    if (!details[i] || !details[i].videoRenderer) continue;
 
-                if (!details[i] || !details[i].videoRenderer) continue;
+                    const video = details[i].videoRenderer;
 
-                const video = details[i].videoRenderer;
+                    if (!video.videoId) continue;
 
-                if (!video.videoId) continue;
-                num++;
+                    videos.push(construct.playlist(video));
+                }
 
-                videos.push(construct.playlist(video));
-            }
+                return resolve(videos);
+            } catch (e) { return reject(e) }
+        });
+    }
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Получаем 5 последних треков автора
+     * @param url {string} Ссылка на автора
+     */
+    export function getChannelVideos(url: string) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                let ID: string;
 
-            return resolve(videos);
+                if (url.match(/@/)) ID = `@${url.split("@")[1]}`;
+                else ID = `channel/${url.split("channel/")[1]}`;
+
+
+                const channel: any[] | any = await API.Request("STRING", `https://www.youtube.com/${ID}/videos`);
+                const info = channel.split("var ytInitialData = ")[1]?.split(";</script><script nonce=")[0];
+
+                if (!info) return reject(new Error("Not found search data!"));
+
+                const details = JSON.parse(info);
+                const tabs: any[] = details?.contents?.twoColumnBrowseResultsRenderer?.tabs;
+                const videos = (tabs[1] ?? tabs[2]).tabRenderer?.content?.richGridRenderer?.contents;
+                const author = details.microformat.microformatDataRenderer;
+
+                const endVideos: InputTrack[] = [];
+                for (let i = 0; i < videos.length; i++) {
+                    if (i >= 5) break;
+
+                    const video = videos[i]?.richItemRenderer?.content?.videoRenderer;
+
+                    if (!video) return;
+
+                    endVideos.push({ url: `https://youtu.be/${video.videoId}`, title: video.title.runs[0].text, duration: {seconds: video.lengthText.simpleText},
+                        author: { url: `https://www.youtube.com/${ID}`, title: author.title }
+                    });
+                }
+
+                return resolve(endVideos);
+            } catch (e) { return reject(e) }
         });
     }
 }
