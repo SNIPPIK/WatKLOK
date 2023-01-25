@@ -21,11 +21,16 @@ namespace API {
      * @param type {string} Тип запроса
      * @param options {string} Параметры через &
      */
-    export function Request(method: methodType, type: requestType, options: string) {
-        const url = `${vkApiLink}${method}.${type}${connectString}${options}&v=5.131`;
+    export function Request(method: methodType, type: requestType, options: string): Promise<any | Error> {
+        return new Promise(async (resolve) => {
+            const url = `${vkApiLink}${method}.${type}${connectString}${options}&v=5.131`;
+            const api = await httpsClient.parseJson(url, { request: {headers: {"accept-encoding": "gzip, deflate, br"}}});
 
-        return httpsClient.parseJson(url, {
-            request: { headers: { "accept-encoding": "gzip, deflate, br" }}
+            if (!api || !api?.response) return resolve(Error("[APIs]: Невозможно найти данные!"));
+            else if (api?.error) return resolve(Error(`[APIs]: ${api.error_msg}`));
+            else if (api?.error_code) return resolve(Error(`[APIs]: ${api?.error_msg}`));
+
+            return resolve(api);
         });
     }
 }
@@ -56,12 +61,12 @@ export namespace VK {
 
         return new Promise(async (resolve, reject) => {
             try {
-                const result = await API.Request("audio", "getById", `&audios=${ID}`) as Track & rateLimit;
+                const api = await API.Request("audio", "getById", `&audios=${ID}`) as Track & rateLimit;
 
-                if (!result || !result.response) return resolve(null);
+                if (api instanceof Error) return reject(api);
 
-                return resolve(construct.track(result.response.pop()));
-            } catch (e) { return reject(e) }
+                return resolve(construct.track(api.response.pop()));
+            } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
     //====================== ====================== ====================== ======================
@@ -78,13 +83,12 @@ export namespace VK {
 
         return new Promise(async (resolve, reject) => {
             try {
-                const result = await API.Request("audio", "getPlaylistById", `&owner_id=${owner_id}&playlist_id=${playlist_id}&access_key=${key}`) as Playlist & rateLimit;
+                const api = await API.Request("audio", "getPlaylistById", `&owner_id=${owner_id}&playlist_id=${playlist_id}&access_key=${key}`) as Playlist & rateLimit;
                 const items = await API.Request("audio", "get", `&owner_id=${owner_id}&album_id=${playlist_id}&count=${options.limit}&access_key=${key}`) as SearchTracks;
 
-                if (result.error) return reject(new Error(result.error.error_msg));
-                if (!result?.response || !items?.response) return resolve(null);
+                if (api instanceof Error || items instanceof Error) return reject(api);
 
-                const playlist = result.response;
+                const playlist = api.response;
                 const image = playlist?.thumbs?.length > 0 ? playlist?.thumbs[0] : null;
 
                 return resolve({
@@ -92,7 +96,7 @@ export namespace VK {
                     items: items.response.items.map(construct.track),
                     image: {url: image?.photo_1200 ?? image?.photo_600 ?? image?.photo_300 ?? image?.photo_270 ?? undefined}
                 });
-            } catch (e) { return reject(e) }
+            } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
     //====================== ====================== ====================== ======================
@@ -104,21 +108,20 @@ export namespace VK {
     export function SearchTracks(search: string, options: { limit: number } = {limit: 15}): Promise<null | InputTrack[]> {
         return new Promise(async (resolve, reject) => {
             try {
-                const result = await API.Request("audio", "search", `&q=${search}`) as SearchTracks & rateLimit;
+                const api = await API.Request("audio", "search", `&q=${search}`) as SearchTracks & rateLimit;
 
-                if (result.error) return reject(new Error(result.error.error_msg));
-                if (!result?.response) return resolve(null);
+                if (api instanceof Error) return reject(api);
 
-                const trackConst = result.response.items.length;
-                if (trackConst > options.limit) result.response.items.splice(options.limit - 1, trackConst - options.limit - 1);
+                const trackConst = api.response.items.length;
+                if (trackConst > options.limit) api.response.items.splice(options.limit - 1, trackConst - options.limit - 1);
 
-                return resolve(result.response.items.map(construct.track));
-            } catch (e) { return reject(e) }
+                return resolve(api.response.items.map(construct.track));
+            } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
 }
-//====================== ====================== ====================== ======================
 
+//====================== ====================== ====================== ======================
 interface SearchTracks {
     response: {
         count: number,

@@ -22,19 +22,26 @@ namespace API {
      * @description Создаем запрос к SPOTIFY API и обновляем токен
      * @param method {string} Ссылка api
      */
-    export async function Request(method: string): Promise<SpotifyRes> {
-        const isLoggedIn = SpotifyRes.token !== undefined && SpotifyRes.time > Date.now() + 2;
-        if (!isLoggedIn) await getToken();
+    export function Request(method: string): Promise<SpotifyRes | Error> {
+        return new Promise(async (resolve) => {
+            const isLoggedIn = SpotifyRes.token !== undefined && SpotifyRes.time > Date.now() + 2;
+            if (!isLoggedIn) await getToken();
 
-        return httpsClient.parseJson(`${ApiUrl}/${method}`, {
-            request: {
-                headers: {
-                    "Accept": "application/json",
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "Authorization": "Bearer " + SpotifyRes.token,
-                    "accept-encoding": "gzip, deflate, br"
+            const api = await httpsClient.parseJson(`${ApiUrl}/${method}`, {
+                request: {
+                    headers: {
+                        "Accept": "application/json",
+                        "Content-Type": "application/x-www-form-urlencoded",
+                        "Authorization": "Bearer " + SpotifyRes.token,
+                        "accept-encoding": "gzip, deflate, br"
+                    }
                 }
-            }
+            }) as SpotifyRes;
+
+            if (!api) return resolve(Error("[APIs]: Не удалось получить данные!"));
+            else if (api.error) return resolve(Error(`[APIs]: ${api.error.message}`));
+
+            return resolve(api);
         });
     }
     //====================== ====================== ====================== ======================
@@ -87,16 +94,15 @@ export namespace Spotify {
         const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
-            if (!ID) return reject("Не найден ID трека!");
+            if (!ID) return reject(Error("[APIs]: Не найден ID трека!"));
 
             try {
-                const result = await API.Request(`tracks/${ID}`) as SpotifyTrack & FailResult;
+                const api = await API.Request(`tracks/${ID}`) as SpotifyTrack & FailResult;
 
-                if (!result || !result?.name) return resolve(null);
-                if (result.error) return reject(new Error(result.error.message));
+                if (api instanceof Error) return reject(api);
 
-                return resolve(construct.track(result));
-            } catch (e) { return reject(e) }
+                return resolve(construct.track(api));
+            } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
     //====================== ====================== ====================== ======================
@@ -109,19 +115,18 @@ export namespace Spotify {
         const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
-            if (!ID) return reject("Не найден ID плейлиста!");
+            if (!ID) return reject(Error("[APIs]: Не найден ID плейлиста!"));
             try {
-                const result = await API.Request(`playlists/${ID}?offset=0&limit=${options.limit}`) as SpotifyPlaylist & FailResult;
+                const api = await API.Request(`playlists/${ID}?offset=0&limit=${options.limit}`) as SpotifyPlaylist & FailResult;
 
-                if (!result || !result?.name) return resolve(null);
-                if (result.error) return reject(new Error(result.error.message));
+                if (api instanceof Error) return reject(api);
 
                 return resolve({
-                    url, title: result.name, image: result.images[0],
-                    items: await Promise.all(result.tracks.items.map(({track}) => construct.track(track))),
-                    author: (await Promise.all([getAuthor(`${SpotifyUrl}/artist/${result.owner.id}`, result?.owner?.type !== "artist")]))[0]
+                    url, title: api.name, image: api.images[0],
+                    items: await Promise.all(api.tracks.items.map(({track}) => construct.track(track))),
+                    author: (await Promise.all([getAuthor(`${SpotifyUrl}/artist/${api.owner.id}`, api?.owner?.type !== "artist")]))[0]
                 });
-            } catch (e) { return reject(e) }
+            } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
     //====================== ====================== ====================== ======================
@@ -134,20 +139,19 @@ export namespace Spotify {
         const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
-            if (!ID) return reject("Не найден ID альбома!");
+            if (!ID) return reject(Error("[APIs]: Не найден ID альбома!"));
 
             try {
-                const result = await API.Request(`albums/${ID}?offset=0&limit=${options.limit}`) as SpotifyAlbumFull & FailResult;
+                const api = await API.Request(`albums/${ID}?offset=0&limit=${options.limit}`) as SpotifyAlbumFull & FailResult;
 
-                if (!result || !result?.name) return resolve(null);
-                if (result.error) return reject(new Error(result.error.message));
+                if (api instanceof Error) return reject(api);
 
                 return resolve({
-                    url, title: result.name, image: result.images[0],
-                    items: await Promise.all(result.tracks.items.map(construct.track)),
-                    author: (await Promise.all([getAuthor(`${SpotifyUrl}/artist/${result?.artists[0].id}`, result?.artists[0]?.type !== "artist")]))[0]
+                    url, title: api.name, image: api.images[0],
+                    items: await Promise.all(api.tracks.items.map(construct.track)),
+                    author: (await Promise.all([getAuthor(`${SpotifyUrl}/artist/${api?.artists[0].id}`, api?.artists[0]?.type !== "artist")]))[0]
                 });
-            } catch (e) { return reject(e) }
+            } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
     //====================== ====================== ====================== ======================
@@ -159,13 +163,12 @@ export namespace Spotify {
     export function SearchTracks(search: string, options: { limit: number } = {limit: 15}): Promise<InputTrack[] | null> {
         return new Promise(async (resolve, reject) => {
             try {
-                const result = await API.Request(`search?q=${search}&type=track&limit=${options.limit}`) as SearchTracks & FailResult;
+                const api = await API.Request(`search?q=${search}&type=track&limit=${options.limit}`) as SearchTracks & FailResult;
 
-                if (!result) return resolve(null);
-                if (result.error) return reject(new Error(result.error.message));
+                if (api instanceof Error) return reject(api);
 
-                return resolve(await Promise.all(result.tracks.items.map(construct.track)));
-            } catch (e) { return reject(e) }
+                return resolve(await Promise.all(api.tracks.items.map(construct.track)));
+            } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
     //====================== ====================== ====================== ======================
@@ -177,19 +180,20 @@ export namespace Spotify {
         const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
-            if (!ID) return reject("Не найден ID автора!");
+            if (!ID) return reject(Error("[APIs]: Не найден ID автора!"));
             try {
-                const result = await API.Request(`artists/${ID}/top-tracks?market=ES&limit=5`) as SpotifyAlbumFull & FailResult;
+                const api = await API.Request(`artists/${ID}/top-tracks?market=ES&limit=5`) as SpotifyAlbumFull & FailResult;
 
-                if (!result) return resolve(null);
-                if (result.error) return reject(new Error(result.error.message));
+                if (api instanceof Error) return reject(api);
 
                 // @ts-ignore
-                return resolve(await Promise.all((result.tracks?.items ?? result.tracks).map(construct.track)));
-            } catch (e) { return reject(e) }
+                return resolve(await Promise.all((api.tracks?.items ?? api.tracks).map(construct.track)));
+            } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
 }
+
+//====================== ====================== ====================== ======================
 //====================== ====================== ====================== ======================
 /**
  * @description Получаем данные об авторе или пользователе
@@ -197,21 +201,20 @@ export namespace Spotify {
  * @param isUser {boolean} Это пользователь
  */
 function getAuthor(url: string, isUser: boolean = false): Promise<InputAuthor> {
-    const id = getID(url);
+    const ID = getID(url);
 
     return new Promise(async (resolve, reject) => {
         try {
-            const result = await API.Request(`${isUser ? "users" : "artists"}/${id}`) as (SpotifyArtist | SpotifyUser) & FailResult;
+            const api = await API.Request(`${isUser ? "users" : "artists"}/${ID}`) as (SpotifyArtist | SpotifyUser) & FailResult;
 
-            if (!result) return resolve(null);
-            if (result.error) return reject(result.error.message);
+            if (api instanceof Error) return reject(api);
 
             return resolve({ // @ts-ignore
-                title: result?.name ?? result?.display_name, url,
-                image: result.images[0],
-                isVerified: result.followers.total >= 500
+                title: api?.name ?? api?.display_name, url,
+                image: api.images[0],
+                isVerified: api.followers.total >= 500
             });
-        } catch (e) { return reject(e) }
+        } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
     });
 }
 //====================== ====================== ====================== ======================

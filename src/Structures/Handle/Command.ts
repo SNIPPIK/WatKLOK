@@ -6,11 +6,6 @@ import { ClientInteraction, ClientInteractive, ClientMessage, EmbedConstructor }
  * @description Изменение данных
  */
 export namespace replacer {
-    export function replaceArray(text: string, srt: string[]) {
-        srt.forEach((str) => text.replaceAll(str, ""));
-
-        return text;
-    }
     //Обрезает текст до необходимых значений
     export function replaceText(text: string, value: number | any, clearText: boolean = false) {
         try {

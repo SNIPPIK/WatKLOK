@@ -2,14 +2,6 @@ import {InputPlaylist, InputTrack} from "@Queue/Song";
 import {DurationUtils} from "@Managers/DurationUtils";
 import {httpsClient} from "@httpsClient";
 
-/**
- * @description У yandex.music странная система времени делаем ее нормальной
- * @param duration {string} Исходное время yandex.music
- */
-function parseDuration(duration: string): string { //duration PT00H03M48S
-    const parsedDuration = duration.split("PT")[1].replace(/[H,M]/gi, ":").split("S")[0];
-    return `${DurationUtils.ParsingTimeToNumber(parsedDuration)}`;
-}
 
 namespace API {
     /**
@@ -21,28 +13,38 @@ namespace API {
     export function Request(url: string, isFull: boolean = false): Promise<Error | any> {
         return new Promise(async (resolve) => {
             const body = await httpsClient.parseBody(url, { request: { headers: { "accept-encoding": "gzip, deflate, br" }}});
+            let info = "";
 
-            if (!isFull) {
-                const LightInfo = body.split("/><script class=\"light-data\" type=\"application/ld+json\" nonce=\"")[1].split("\" >")[1].split("</script><link href=\"")[0];
+            //Если вместо запроса получаем ошибку
+            if (body instanceof Error) return resolve(Error("[APIs]: Не удалось получить данные со странницы!"));
 
-                if (!LightInfo) return resolve(new Error("Not found information"));
-                return resolve(JSON.parse(LightInfo));
+            if (isFull) info = body?.split("\">var Mu=")[1]?.split(";</script><script src=")[0];
+            else info = body?.split("/><script class=\"light-data\" type=\"application/ld+json\" nonce=\"")[1]?.split("\" >")[1]?.split("</script><link href=\"")[0];
+
+            //Если страница пуста, то выводим ошибку
+            if (!info) return resolve(Error("[APIs]: Не удалось получить данные со странницы!"));
+
+            const json = JSON.parse(info);
+
+            //Если нужна полная информация о странице
+            if (json?.pageData) {
+                if (json?.pageData === 404) return resolve(Error("[APIs]: Не удалось получить данные ошибка 404"));
+
+                return resolve(json.pageData);
             }
-            const Full = body.split("\">var Mu=")[1]?.split(";</script><script src=")[0];
 
-            if (!Full) return resolve(new Error("Not found information"));
-            return resolve(JSON.parse(Full).pageData);
+            return resolve(json);
         });
     }
 }
 
 namespace construct {
-    export function track(track: any, author?: any, image?: string): InputTrack {
-        const Author: any = author ?? track?.artists?.length ? track?.artists[0] : null;
-        const Image: string = image ?? track?.inAlbum?.image;
+    export function track(track: any): InputTrack {
+        const Author: any = track?.artists?.length ? track?.artists[0] : track.author;
+        const Image: string = track.Image ?? track?.inAlbum?.image;
         let trackName = (track?.title ?? track?.name);
 
-        if (track?.version) trackName += ` ${track.version}`;
+        if (track?.version) trackName += ` - ${track.version}`;
 
         return {
             title: trackName, image: {url: Image},
@@ -50,12 +52,12 @@ namespace construct {
             url: track?.url ?? `https://music.yandex.ru/album/${track.albums.id}/track/${track.id}`,
             duration: {seconds: track?.durationMs ? (track.durationMs / 1000).toFixed(0) : parseDuration(track.duration)},
 
-            author: Author ? {
+            author: track.author ?? {
                 title: Author.name,
                 url: `https://music.yandex.ru/artist/${Author.id}`,
                 image: {url: Author.image},
                 isVerified: true
-            } : null
+            }
         };
     }
 }
@@ -69,18 +71,18 @@ export namespace YandexMusic {
         const ID = url.split(/[^0-9]/g).filter(str => str !== "");
 
         return new Promise(async (resolve, reject) => {
-            if (!ID[0]) return reject("Не удалось получить ID альбома!");
-            else if (!ID[1]) return reject("Не удалось получить ID трека!");
+            if (!ID[0]) return reject(Error("[APIs]: Не удалось получить ID альбома!"));
+            else if (!ID[1]) return reject(Error("[APIs]: Не удалось получить ID трека!"));
 
             try {
-                const result = await API.Request(`https://music.yandex.ru/album/${ID[0]}/track/${ID[1]}`);
+                const api = await API.Request(`https://music.yandex.ru/album/${ID[0]}/track/${ID[1]}`);
 
-                if (result instanceof Error) return resolve(null);
+                if (api instanceof Error) return reject(api);
 
-                const author = await getAuthor(result.byArtist.url);
-
-                return resolve({...construct.track(result), author});
-            } catch (e) { return reject(e) }
+                api.url = url;
+                api.author = await getAuthor(api.byArtist.url);
+                return resolve(construct.track(api));
+            } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
     //====================== ====================== ====================== ======================
@@ -92,23 +94,26 @@ export namespace YandexMusic {
         const ID = url.split(/[^0-9]/g).find(str => str !== "");
 
         return new Promise(async (resolve, reject) => {
-            if (!ID) return reject("Не удалось получить ID альбома!");
+            if (!ID) return reject(Error("[APIs]: Не удалось получить ID альбома!"));
 
             try {
-                const result = await API.Request(`https://music.yandex.ru/album/${ID}`);
+                const api = await API.Request(`https://music.yandex.ru/album/${ID}`);
 
-                if (result instanceof Error) return resolve(null);
+                if (api instanceof Error) return reject(api);
 
-                const Image = result?.image;
-                const MainArtist = await getAuthor(result.byArtist.url)
+                const Image = api?.image;
+                const MainArtist = await getAuthor(api.byArtist.url)
 
                 return resolve({
-                    url, title: result.name,
+                    url, title: api.name,
                     image: {url: Image},
                     author: MainArtist,
-                    items: result.track.map((track: any) => construct.track(track, MainArtist, Image))
+                    items: api.track.map((track: any) => {
+                        track.author = MainArtist; track.Image = Image;
+                        return construct.track(track);
+                    })
                 })
-            } catch (e) { return reject(e) }
+            } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
     //====================== ====================== ====================== ======================
@@ -120,22 +125,21 @@ export namespace YandexMusic {
     export function SearchTracks(str: string): Promise<InputTrack[]> {
         return new Promise(async (resolve, reject) => {
             try {
-                const result = await API.Request(`https://music.yandex.ru/search?text=${str.split(" ").join("%20")}&type=tracks`, true);
+                const api = await API.Request(`https://music.yandex.ru/search?text=${str.split(" ").join("%20")}&type=tracks`, true);
                 const tracks: InputTrack[] = [];
                 let NumberTrack = 0;
 
-                if (result instanceof Error) return resolve(null);
+                if (api instanceof Error) return reject(api);
 
-                for (const track of result.result.tracks.items) {
+                for (const track of api.result.tracks.items) {
                     if (NumberTrack === 15) break;
-                    const Author = track.artists[0];
 
                     NumberTrack++;
-                    tracks.push(construct.track(track, Author))
+                    tracks.push(construct.track(track))
                 }
 
                 return resolve(tracks);
-            } catch (e) { return reject(e) }
+            } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
     //====================== ====================== ====================== ======================
@@ -147,23 +151,28 @@ export namespace YandexMusic {
         const ID = url.split(/[^0-9]/g).find(str => str !== "");
 
         return new Promise(async (resolve, reject) => {
-            if (!ID) return reject("Не удалось получить ID автора!");
+            if (!ID) return reject(Error("[APIs]: Не удалось получить ID автора!"));
 
             try {
-                const result = await API.Request(`https://music.yandex.ru/artist/${ID}`, true);
+                const api = await API.Request(`https://music.yandex.ru/artist/${ID}`, true);
 
-                if (result instanceof Error) return resolve(null);
+                if (api instanceof Error) return reject(api);
                 const tracks: InputTrack[] = [];
-                const author = result.artist;
+                const author = api.artist;
 
                 //На главной странице всегда есть 5 популярных треков автора
-                for (const track of result.tracks) tracks.push(construct.track(track, author));
+                for (const track of api.tracks) {
+                    track.author = author;
+                    tracks.push(construct.track(track));
+                }
 
                 return resolve(tracks);
-            } catch (e) { return reject(e) }
+            } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
 }
+
+//====================== ====================== ====================== ======================
 //====================== ====================== ====================== ======================
 /**
  * @description Получаем данные об авторе трека
@@ -172,15 +181,20 @@ export namespace YandexMusic {
 function getAuthor(url: string): Promise<InputTrack["author"]> {
     return new Promise(async (resolve, reject) => {
         try {
-            const result = await API.Request(url);
+            const api = await API.Request(url);
 
-            if (result instanceof Error) return resolve(null);
+            if (api instanceof Error) return reject(api);
 
-            return resolve({
-                url, title: result.name,
-                image: {url: result.image},
-                isVerified: true
-            });
-        } catch (e) { return reject(e) }
+            return resolve({url, title: api.name, image: {url: api.image}, isVerified: true });
+        } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
     });
+}
+//====================== ====================== ====================== ======================
+/**
+ * @description У yandex.music странная система времени делаем ее нормальной
+ * @param duration {string} Исходное время yandex.music
+ */
+function parseDuration(duration: string): string { //duration PT00H03M48S
+    const parsedDuration = duration.split("PT")[1].replace(/[H,M]/gi, ":").split("S")[0];
+    return `${DurationUtils.ParsingTimeToNumber(parsedDuration)}`;
 }

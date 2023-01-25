@@ -5,15 +5,32 @@ import {env} from "@env";
 const APiLink = "https://api-v2.soundcloud.com";
 const clientID = env.get("SOUNDCLOUD");
 
+interface SoundCloudFormat {
+    url: string,
+    preset: "mp3_0_0" | "opus_0_0",
+    duration: number,
+    snipped: boolean,
+    format: {
+        protocol: "hls" | "progressive",
+        mime_type: "audio/mpeg"
+    },
+    quality: "sq"
+}
+
 namespace API {
     /**
      * @description Делаем запрос с привязкой ClientID
      * @param method {string} Ссылка
      */
-    export function Request(method: string): Promise<{ result: any, ClientID: string }> {
+    export function Request(method: string): Promise<{ result: any, ClientID: string } | Error> {
         return new Promise(async (resolve) => {
             const ClientID = await getClientID();
+
+            if (!ClientID) return resolve(Error("[APIs]: Невозможно получить ID клиента!"));
+
             const result = await httpsClient.parseJson(`${APiLink}/${method}&client_id=${ClientID}`);
+
+            if (!result) return resolve(Error("[APIs]: Невозможно найти данные!"));
 
             return resolve({ result, ClientID });
         });
@@ -52,7 +69,7 @@ namespace API {
                 }
             });
 
-            if (!parsedPage) return resolve(null);
+            if (!parsedPage || parsedPage instanceof Error) return resolve(null);
 
             const split = parsedPage.split("<script crossorigin src=\"");
             const urls: string[] = [];
@@ -60,12 +77,85 @@ namespace API {
             split.forEach((r) => r.startsWith("https") ? urls.push(r.split("\"")[0]) : null);
 
             const parsedPage2 = await httpsClient.parseBody(urls.pop());
+
+            if (parsedPage2 instanceof Error) return resolve(null);
             return resolve(parsedPage2.split(",client_id:\"")[1].split("\"")[0]);
         });
     }
 }
 
+export namespace SoundCloud {
+    /**
+     * @description Получаем трек
+     * @param url {string} Ссылка на трек
+     */
+    export function getTrack(url: string): Promise<InputTrack> {
+        return new Promise<InputTrack>(async (resolve, reject) => {
+            try {
+                const api = await API.Request(`resolve?url=${url}`);
+
+                if (api instanceof Error) return reject(api);
+
+                const {result, ClientID} = api;
+                const format = await API.getFormat(result.media.transcodings, ClientID);
+
+                return resolve({...construct.track(result, url), format: {url: format}});
+            } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
+        });
+    }
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Получаем плейлист
+     * @param url {string} Ссылка на плейлист
+     */
+    export function getPlaylist(url: string): Promise<InputTrack | InputPlaylist> {
+        return new Promise<InputPlaylist | InputTrack>(async (resolve, reject) => {
+            try {
+                const api = await API.Request(`resolve?url=${url}`);
+
+                if (api instanceof Error) return reject(api);
+
+                const {result} = api;
+
+                if (result.tracks === undefined) return getTrack(url).then(resolve);
+
+                return resolve({
+                    url,
+                    title: result.title,
+                    author: construct.author(result.user),
+                    image: construct.parseImage(result.artwork_url),
+                    items: result.tracks.map(construct.track)
+                });
+            } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
+        });
+    }
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Ищем треки в soundcloud
+     * @param search {string} Что ищем
+     * @param options {limit: number} Кол-во выдаваемых треков
+     * @constructor
+     */
+    export function SearchTracks(search: string, options = {limit: 15}): Promise<InputTrack[]> {
+        return new Promise<InputTrack[]>(async (resolve, reject) => {
+            try {
+                const api = await API.Request(`search/tracks?q=${search}&limit=${options.limit}`);
+
+                if (api instanceof Error) return reject(api);
+
+                const {result} = api;
+                return resolve(result.collection.map(construct.track));
+            } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
+        });
+    }
+}
+
 namespace construct {
+    /**
+     * @description Заготавливаем пример трека
+     * @param track {any} Трек
+     * @param url {string} Ссылка на трек
+     */
     export function track(track: any, url?: string): InputTrack {
         if (!track.user) return;
 
@@ -77,6 +167,11 @@ namespace construct {
             duration: { seconds: (track.duration / 1e3).toFixed(0) }
         };
     }
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Заготавливаем пример автора
+     * @param user {any} Автор
+     */
     export function author(user: any) {
         return {
             url: user.permalink_url,
@@ -85,6 +180,7 @@ namespace construct {
             isVerified: user.verified
         }
     }
+    //====================== ====================== ====================== ======================
     /**
      * @description Получаем картинку в исходном качестве
      * @param image {string} Ссылка на картинку
@@ -100,76 +196,4 @@ namespace construct {
 
         return {url: `${imageSplit.join("-")}.${FormatImage}`};
     }
-}
-
-export namespace SoundCloud {
-    /**
-     * @description Получаем трек
-     * @param url {string} Ссылка на трек
-     */
-    export function getTrack(url: string): Promise<InputTrack> {
-        return new Promise(async (resolve, reject) => {
-            try {
-                const {result, ClientID} = await API.Request(`resolve?url=${url}`);
-
-                if (!result?.id || !result) return resolve(null);
-                const format = await API.getFormat(result.media.transcodings, ClientID);
-
-                return resolve({...construct.track(result, url), format: {url: format}});
-            } catch (e) { return reject(e) }
-        });
-    }
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Получаем плейлист
-     * @param url {string} Ссылка на плейлист
-     */
-    export function getPlaylist(url: string): Promise<InputTrack | InputPlaylist> {
-        return new Promise(async (resolve, reject) => {
-            try {
-                const {result} = await API.Request(`resolve?url=${url}`);
-
-                if (!result?.id || !result) return resolve(null);
-                if (result.tracks === undefined) return getTrack(url).then(resolve);
-
-                return resolve({
-                    url,
-                    title: result.title,
-                    author: construct.author(result.user),
-                    image: construct.parseImage(result.artwork_url),
-                    items: result.tracks.map(construct.track)
-                });
-            } catch (e) { return reject(e) }
-        });
-    }
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Ищем треки в soundcloud
-     * @param search {string} Что ищем
-     * @param options {limit: number} Кол-во выдаваемых треков
-     * @constructor
-     */
-    export function SearchTracks(search: string, options = {limit: 15}): Promise<InputTrack[]> {
-        return new Promise(async (resolve, reject) => {
-            try {
-                const {result} = await API.Request(`search/tracks?q=${search}&limit=${options.limit}`);
-
-                if (!result) return resolve(null);
-
-                return resolve(result.collection.map(construct.track));
-            } catch (e) { return reject(e) }
-        });
-    }
-}
-
-interface SoundCloudFormat {
-    url: string,
-    preset: "mp3_0_0" | "opus_0_0",
-    duration: number,
-    snipped: boolean,
-    format: {
-        protocol: "hls" | "progressive",
-        mime_type: "audio/mpeg"
-    },
-    quality: "sq"
 }

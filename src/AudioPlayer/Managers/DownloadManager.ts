@@ -36,8 +36,8 @@ export namespace DownloadManager {
      * @param track {Song | DownloadSong} Трек
      */
     export function getNames(track: DownloadSong | Song): {status: "download" | "final" | "not", path: string} {
-        const author = replacer.replaceArray((track as Song)?.author?.title ?? (track as DownloadSong)?.author, ["|", ",", "<", ">", ":", "\\", "/", "*", "?"]);
-        const song = replacer.replaceArray(track.title, ["|", ",", "<", ">", ":", "\\", "/", "*", "?"]);
+        const author = ((track as Song)?.author?.title ?? (track as DownloadSong)?.author).replace(/[|,'";*/\\{}!?.:<>]/gi, "");
+        const song = track.title.replace(/[|,'";*/\\{}!?.:<>]/gi, "");
         const fullPath = `${Music.CacheDir}/[${author}]/[${song}]`;
 
         if (existsSync(`${fullPath}.opus`)) return { status: "final", path: `${fullPath}.opus` };
@@ -62,6 +62,8 @@ function cycleStep(): void {
     setImmediate(() => {
         //Скачиваем трек
         httpsClient.Request(song.resource, {options: {keepAlive: true, userAgent: true}, request: {method: "GET"}}).then((req) => {
+            if (req instanceof Error) return;
+
             if (req.pipe) {
                 const file = createWriteStream(`./${names.path}`);
 

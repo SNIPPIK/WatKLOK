@@ -1,8 +1,8 @@
 import {ActivityType, Client, IntentsBitField, Options, SnowflakeUtil} from "discord.js";
 import {DurationUtils} from "@AudioPlayer/Managers/DurationUtils";
 import {ClientMessage} from "@Client/interactionCreate";
+import {Bot, Channels, APIs} from "@db/Config.json";
 import {Command} from "@Structures/Handle/Command";
-import {Bot, Channels} from "@db/Config.json";
 import {Player} from "@AudioPlayer/index";
 import {LoadFiles} from "@FileSystem";
 import {Queue} from "@Queue/Queue";
@@ -146,7 +146,11 @@ const client = new WatKLOK();
 
 client.login().then(() => {
     if (Bot.ignoreErrors) process.on("uncaughtException", (err) => {
+        if (!APIs.showErrors && err?.message?.match(/APIs/)) return;
+
         consoleTime(`[IgnoreError]: ${err.name} | ${err.message}\n${err.stack}`);
+
+        if (!APIs.sendErrors && err?.message?.match(/APIs/)) return;
 
         try {
             const channel = client.channels.cache.get(Channels.sendErrors) as ClientMessage["channel"];

@@ -75,10 +75,10 @@ export namespace YouTube {
                 const page = await API.Request("STRING", `https://www.youtube.com/watch?v=${ID}&has_verified=1`) as string;
                 const result = page.split("var ytInitialPlayerResponse = ")?.[1]?.split(";</script>")[0].split(/(?<=}}});\s*(var|const|let)\s/)[0];
 
-                if (!result) return reject(new Error("Not found track data!"));
+                if (!result) return reject(Error("[APIs]: Не удалось получить данные!"));
                 const jsonResult = JSON.parse(result);
 
-                if (jsonResult.playabilityStatus?.status !== "OK") return reject(new Error(`Не удалось получить данные из-за: ${jsonResult.playabilityStatus.status}`));
+                if (jsonResult.playabilityStatus?.status !== "OK") return reject(Error("[APIs]: Не удалось получить данные!"));
 
                 const details = jsonResult.videoDetails;
                 let audios: YouTubeFormat;
@@ -91,7 +91,7 @@ export namespace YouTube {
                 }
 
                 return resolve({...await construct.video(details), format: audios});
-            } catch (e) { return reject(e) }
+            } catch (e) { return reject(Error(e)) }
         });
     }
     //====================== ====================== ====================== ======================
@@ -107,7 +107,7 @@ export namespace YouTube {
                 const page = await API.Request("STRING", `https://www.youtube.com/playlist?list=${ID}`) as string;
                 const result = page.split('var ytInitialData = ')[1].split(';</script>')[0].split(/;\s*(var|const|let)\s/)[0];
 
-                if (!result) return reject(new Error("Not found playlist data!"));
+                if (!result) return reject(new Error("[APIs]: Не удалось получить данные!"));
 
                 const jsonResult = JSON.parse(result);
                 const info = jsonResult.sidebar.playlistSidebarRenderer.items[0].playlistSidebarPrimaryInfoRenderer;
@@ -121,7 +121,7 @@ export namespace YouTube {
                     author: await getChannel({ id: author.navigationEndpoint.browseEndpoint.browseId, name: author.title.runs[0].text }),
                     image: info.thumbnailRenderer.playlistVideoThumbnailRenderer.thumbnail.thumbnails.pop()
                 });
-            } catch (e) { return reject(e) }
+            } catch (e) { return reject(Error(e)) }
         });
     }
     //====================== ====================== ====================== ======================
@@ -136,11 +136,11 @@ export namespace YouTube {
                 const page = await API.Request("STRING", `https://www.youtube.com/results?search_query=${search.replaceAll(' ', '+')}`) as string;
                 const result = (page.split("var ytInitialData = ")[1].split("}};")[0] + '}}').split(';</script><script')[0];
 
-                if (!result) return reject(new Error("Not found search data!"));
+                if (!result) return reject(Error("[APIs]: Не удалось получить данные!"));
 
                 const details = JSON.parse(result)?.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents[0]?.itemSectionRenderer?.contents;
 
-                if (!details) return reject(new Error(`Не удалось найти: ${search}`));
+                if (!details) return reject(Error(`[APIs]: Не удалось найти: ${search}`));
 
                 const videos: InputTrack[] = [];
                 for (let i = 0; i < details.length; i++) {
@@ -156,7 +156,7 @@ export namespace YouTube {
                 }
 
                 return resolve(videos);
-            } catch (e) { return reject(e) }
+            } catch (e) { return reject(Error(e)) }
         });
     }
     //====================== ====================== ====================== ======================
@@ -176,7 +176,7 @@ export namespace YouTube {
                 const channel: any[] | any = await API.Request("STRING", `https://www.youtube.com/${ID}/videos`);
                 const info = channel.split("var ytInitialData = ")[1]?.split(";</script><script nonce=")[0];
 
-                if (!info) return reject(new Error("Not found search data!"));
+                if (!info) return reject(Error("[APIs]: Не удалось получить данные!"));
 
                 const details = JSON.parse(info);
                 const tabs: any[] = details?.contents?.twoColumnBrowseResultsRenderer?.tabs;
@@ -197,7 +197,7 @@ export namespace YouTube {
                 }
 
                 return resolve(endVideos);
-            } catch (e) { return reject(e) }
+            } catch (e) { return reject(Error(e)) }
         });
     }
 }

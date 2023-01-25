@@ -50,7 +50,8 @@ export function extractSignature(formats: YouTubeFormat[], html5player: string):
                 else { format.url = url; break; }
             }
         } catch (e) { //Если 1 способ не помог пробуем 2
-            const tokens = parseTokens(await httpsClient.parseBody(html5player));
+            const page = await httpsClient.parseBody(html5player) as string;
+            const tokens = parseTokens(page);
 
             for (const format of sortingQuality) {
                 const url = setDownload(format, tokens);
@@ -72,7 +73,7 @@ export function extractSignature(formats: YouTubeFormat[], html5player: string):
  * @returns {Promise<Array.<string>>}
  */
 async function extractFunctions (html5Link: string) {
-    const body = await httpsClient.parseBody(html5Link), functions: string[] = [];
+    const body = await httpsClient.parseBody(html5Link) as string, functions: string[] = [];
 
     if (!body) return;
 

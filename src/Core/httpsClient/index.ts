@@ -23,7 +23,7 @@ export namespace httpsClient {
      * @param options {httpsClientOptions} Настройки запроса
      * @requires {uploadCookie, getCookies}
      */
-    export function Request(url: string, options: httpsClientOptions = {request: {headers: {}, method: "GET"}, options: {}}): Promise<IncomingMessage> {
+    export function Request(url: string, options: httpsClientOptions = {request: {headers: {}, method: "GET"}, options: {}}): Promise<IncomingMessage | Error> {
         //Добавляем User-Agent
         if (options.options?.userAgent) {
             const {Agent, Version} = GetUserAgent();
@@ -38,7 +38,7 @@ export namespace httpsClient {
             options.request.headers = {...options.request.headers, "cookie": cookie};
         }
 
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             const {hostname, pathname, search, port} = new URL(url);
             const request = protocols[url.split("://")[0] as "https" | "http"]({ host: hostname, path: pathname + search, port, ...options.request }, (res: IncomingMessage) => {
                 //Автоматическое перенаправление
@@ -49,7 +49,7 @@ export namespace httpsClient {
             });
 
             //Если возникла ошибка
-            request.on("error", reject);
+            request.once("error", resolve);
 
             //Если запрос POST, отправляем ответ на сервер
             if (options?.request?.method === "POST") request.write(options.request?.body);
@@ -73,13 +73,17 @@ export namespace httpsClient {
      * @param options {httpsClientOptions} Настройки запроса
      * @requires {Request}
      */
-    export function parseBody(url: string, options?: httpsClientOptions): Promise<string> {
-        return Request(url, options).then((res: IncomingMessage) => {
-            const encoding = res.headers["content-encoding"] as "br" | "gzip" | "deflate";
+    export function parseBody(url: string, options?: httpsClientOptions): Promise<string | Error> {
+        return new Promise(async (resolve) => {
+            const request = await Request(url, options);
+
+            if (request instanceof Error) return resolve(request);
+
+            const encoding = request.headers["content-encoding"] as "br" | "gzip" | "deflate";
             const decoder: Decoder | null = decoderBase[encoding] ? decoderBase[encoding]() : null;
 
-            if (!decoder) return extractPage(res);
-            return extractPage(res.pipe(decoder));
+            if (!decoder) return resolve(extractPage(request));
+            return resolve(extractPage(request.pipe(decoder)));
         });
     }
     //====================== ====================== ====================== ======================
@@ -90,13 +94,14 @@ export namespace httpsClient {
      * @requires {parseBody}
      */
     export function parseJson(url: string, options?: httpsClientOptions): Promise<null | any> {
-        return parseBody(url, options).then((body: string) => {
-            if (!body) return null;
+        return new Promise(async (resolve) => {
+            const body = await parseBody(url, options);
 
-            try { return JSON.parse(body); } catch (e) {
-                console.log(`[httpsClient]: Invalid json response body at ${url} reason: ${e.message}`);
-                return null;
-            }
+            if (body instanceof Error) return resolve(null);
+
+            try {
+                return resolve(JSON.parse(body));
+            } catch (e) { console.log(`[httpsClient]: Invalid json response body at ${url} reason: ${e.message}`); return resolve(null); }
         });
     }
     //====================== ====================== ====================== ======================
