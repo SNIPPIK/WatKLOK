@@ -1,6 +1,6 @@
 {
   "APIs": {
-    "showErrors": true,
+    "showErrors": false,
     "sendErrors": false
   },
   "Channels": {
