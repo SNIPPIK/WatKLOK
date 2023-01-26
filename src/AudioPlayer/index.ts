@@ -1,10 +1,10 @@
 import {ClientMessage, UtilsMsg} from "@Client/interactionCreate";
 import {DurationUtils} from "@Managers/DurationUtils";
+import {toQueue} from "@Managers/QueueManager";
 import {VoiceState} from "discord.js";
 import {Voice} from "@VoiceManager";
 import {Queue} from "@Queue/Queue";
 import {Song} from "@Queue/Song";
-import {toQueue} from "@Managers/QueueManager";
 
 //Здесь все функции для взаимодействия с плеером
 export namespace Player {

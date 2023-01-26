@@ -10,7 +10,6 @@
       "@Managers/*": ["src/AudioPlayer/Managers/*"],
       "@httpsClient": ["src/Core/httpsClient/index"],
       "@FileSystem": ["src/Core/FileSystem"],
-      "@APIs": ["src/Structures/Platforms/index"],
       "@FFspace": ["src/AudioPlayer/Structures/Media/FFspace"],
 
       "@AudioPlayer/*": ["src/AudioPlayer/*"],

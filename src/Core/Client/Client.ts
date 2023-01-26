@@ -129,7 +129,7 @@ export class WatKLOK extends Client {
             ws: { properties: { browser: "Web" as "Discord iOS" | "Web" } },
             presence: {
                 activities: [{
-                    name: "музыку в youtube, spotify, soundcloud, vk",
+                    name: "Music 🎶",
                     type: ActivityType.Listening
                 }]
             }

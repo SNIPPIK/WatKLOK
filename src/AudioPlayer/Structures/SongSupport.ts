@@ -1,4 +1,4 @@
-import {SoundCloud, Spotify, VK, YandexMusic, YouTube} from "@APIs";
+import {SoundCloud, Spotify, VK, YandexMusic, YouTube} from "@AudioPlayer/APIs";
 import {ClientMessage, UtilsMsg} from "@Client/interactionCreate";
 import {InputPlaylist, InputTrack, Song} from "@Queue/Song";
 import {Music, ReactionMenuSettings} from "@db/Config.json";
@@ -17,7 +17,7 @@ export type callback = "track" | "playlist" | "search" | "album" | "artist";
 const emoji = ReactionMenuSettings.emojis.cancel;
 
 /*
-Для добавления поддержки других платформ надо указать как получать данные в {Platforms}
+Для добавления поддержки других платформ надо указать как получать данные в {APIs}
 Доступные типы запросов {callback}, доступные платформы {platform}
 Если при указывании новой платформы с нее невозможно получать треки добавить в {PlatformsAudio}
  */

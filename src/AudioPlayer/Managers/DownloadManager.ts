@@ -1,5 +1,4 @@
 import {existsSync, createWriteStream, rename} from "fs";
-import {replacer} from "@Structures/Handle/Command";
 import {httpsClient} from "@httpsClient";
 import {FileSystem} from "@FileSystem";
 import {Music} from "@db/Config.json";
@@ -71,6 +70,9 @@ function cycleStep(): void {
                 file.once("error", console.warn);
                 ["close", "finish"].forEach(event => file.once(event, () => {
                     const refreshName = DownloadManager.getNames(song).path.split(".raw")[0];
+
+                    if (!req.destroyed) req.destroy();
+                    if (!file.destroyed) file.destroy();
 
                     rename(names.path, `${refreshName}.opus`, () => null);
                     void setTimeout(() => cycleStep(), 2e3);
