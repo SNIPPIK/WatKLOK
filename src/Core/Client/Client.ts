@@ -158,4 +158,4 @@ client.login().then(() => {
             if (channel) channel.send({content: `\`\`\`ts\nError: ${err.message}\nType: ${err.name}\n\nFull Error: ${err.stack}\n\`\`\``}).catch(() => null);
         } catch {/* Continue */}
     });
-})
+});

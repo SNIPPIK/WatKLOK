@@ -185,7 +185,7 @@ export class Queue {
  * @param array {Array<any>} Array
  * @param position {number} Номер позиции
  */
-export function swapPositions<V>(array: V[], position: number): void {
+function swapPositions<V>(array: V[], position: number): void {
     const first = array[0];
     array[0] = array[position];
     array[position] = first;
