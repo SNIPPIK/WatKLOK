@@ -4,11 +4,6 @@ import * as querystring from "querystring";
 import {httpsClient} from "@httpsClient";
 import * as vm from "vm";
 
-//====================== ====================== ====================== ======================
-/*                        Original YouTube Signature extractor                             //
-               https://github.com/fent/node-ytdl-core/blob/master/lib/sig.js               */
-//====================== ====================== ====================== ======================
-
 /**
  * Запускаем расшифровку в другом потоке, поскольку из-за <vm>.Script возникают утечки памяти
  * После получения данных удаляем поток и устраняем утечку
@@ -16,9 +11,16 @@ import * as vm from "vm";
 if (!isMainThread) (async () => {
     const formats = await extractSignature(workerData.formats, workerData.html);
 
+    delete workerData.formats;
+    delete workerData.html;
+
     return parentPort.postMessage({format: formats});
 })();
 
+//====================== ====================== ====================== ======================
+/*                        Original YouTube Signature extractor                             //
+//             https://github.com/fent/node-ytdl-core/blob/master/lib/sig.js               */
+//====================== ====================== ====================== ======================
 
 export interface YouTubeFormat {
     url: string;
@@ -161,7 +163,7 @@ function _decipher(url: string, decipherScript: vm.Script): string {
     const sig = extractUrl.sp ? extractUrl.sp : "signature";
 
     try {
-        return `${decodeURL}&${sig}=${decipherScript.runInNewContext({sig: decodeURIComponent(extractUrl.s as string)}, {timeout: 1e3, breakOnSigint: true})}`;
+        return `${decodeURL}&${sig}=${decipherScript.runInNewContext({sig: decodeURIComponent(extractUrl.s as string)})}`;
     } catch (e) { return decodeURL; }
 }
 //====================== ====================== ====================== ======================
@@ -177,7 +179,7 @@ function _ncode(url: string, nTransformScript: vm.Script) {
     if (!n) return url;
 
     try {
-        components.searchParams.set('n', nTransformScript.runInNewContext({ncode: n}, {timeout: 1e3, breakOnSigint: true}));
+        components.searchParams.set('n', nTransformScript.runInNewContext({ncode: n}));
     } catch (e) { return components.toString(); }
 
     return components.toString();

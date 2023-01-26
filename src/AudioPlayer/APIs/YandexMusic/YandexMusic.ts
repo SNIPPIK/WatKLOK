@@ -78,6 +78,7 @@ export namespace YandexMusic {
                 const api = await API.Request(`https://music.yandex.ru/album/${ID[0]}/track/${ID[1]}`);
 
                 if (api instanceof Error) return reject(api);
+                else if (!api?.byArtist?.url) return reject(Error("[APIs]: Не удалось получить информацию о треке!"));
 
                 api.url = url;
                 api.author = await getAuthor(api.byArtist.url);
