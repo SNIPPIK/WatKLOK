@@ -1,6 +1,8 @@
 import {InputAuthor, InputPlaylist, InputTrack} from "@Queue/Song";
 import {httpsClient, httpsClientOptions} from "@httpsClient";
-import {extractSignature, YouTubeFormat} from "./Decipher";
+import {YouTubeFormat} from "./Decipher";
+import {Worker} from "worker_threads";
+
 
 namespace API {
     export function Request(type: "JSON" | "STRING", url: string, options: httpsClientOptions = {options: {}, request: {}}): string | {} {
@@ -70,8 +72,14 @@ export namespace YouTube {
                 if (details.isLiveContent) audios = {url: details.streamingData?.dashManifestUrl ?? null}; //dashManifestUrl, hlsManifestUrl
                 else {
                     const html5player = `https://www.youtube.com${page.split('"jsUrl":"')[1].split('"')[0]}`;
+                    const format = await runWorkerSignature({
+                        formats: [...jsonResult.streamingData?.formats ?? [], ...jsonResult.streamingData?.adaptiveFormats ?? []],
+                        html: html5player
+                    });
 
-                    audios = (await extractSignature([...jsonResult.streamingData?.formats ?? [], ...jsonResult.streamingData?.adaptiveFormats ?? []], html5player));
+                    if (format instanceof Error) return reject(format);
+
+                    audios = format;
                 }
 
                 return resolve({...await construct.video(details), format: audios});
@@ -228,4 +236,19 @@ function getID(url: string, isPlaylist: boolean = false) {
     if (parsedLink.searchParams.get("list") && isPlaylist) return parsedLink.searchParams.get("list");
     else if (parsedLink.searchParams.get("v") && !isPlaylist) return parsedLink.searchParams.get("v");
     return parsedLink.pathname.split("/")[1];
+}
+//====================== ====================== ====================== ======================
+/**
+ * @description Запускаем расшифровку на другом потоке
+ * @param workerData
+ */
+function runWorkerSignature(workerData: {}): Promise<YouTubeFormat | Error> {
+    return new Promise((resolve) => {
+        const worker = new Worker(__dirname + "/Decipher.js", { workerData, resourceLimits: {stackSizeMb: 10} });
+        worker.once('message', (exitCode) => resolve(exitCode.format));
+        worker.once('error', (err) => resolve(Error(`[APIs]: ${err}`)));
+        worker.once('exit', (code) => {
+            if (code !== 0) resolve(Error(`[APIs]: Worker stopped with exit code ${code}`));
+        });
+    });
 }

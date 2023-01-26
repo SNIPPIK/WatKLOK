@@ -1,5 +1,5 @@
+import {workerData, parentPort, isMainThread} from "worker_threads";
 import {URL, URLSearchParams} from 'node:url';
-import {swapPositions} from "@Queue/Queue";
 import * as querystring from "querystring";
 import {httpsClient} from "@httpsClient";
 import * as vm from "vm";
@@ -9,8 +9,17 @@ import * as vm from "vm";
                https://github.com/fent/node-ytdl-core/blob/master/lib/sig.js               */
 //====================== ====================== ====================== ======================
 
+/**
+ * Запускаем расшифровку в другом потоке, поскольку из-за <vm>.Script возникают утечки памяти
+ * После получения данных удаляем поток и устраняем утечку
+ */
+if (!isMainThread) (async () => {
+    const formats = await extractSignature(workerData.formats, workerData.html);
 
-interface scriptVM extends vm.Script { runInNewContext: ((options?: vm.RunningScriptOptions | {sig?: string, ncode?: string}) => any); }
+    return parentPort.postMessage({format: formats});
+})();
+
+
 export interface YouTubeFormat {
     url: string;
     signatureCipher?: string;
@@ -29,7 +38,7 @@ export interface YouTubeFormat {
  * @param {Array.<Object>} formats
  * @param {string} html5player
  */
-export function extractSignature(formats: YouTubeFormat[], html5player: string): Promise<YouTubeFormat> {
+function extractSignature(formats: YouTubeFormat[], html5player: string): Promise<YouTubeFormat> {
     //Делаем сортировку (получаем самый лучший формат по качеству)
     const sortingQuality = formats.filter((format: YouTubeFormat) => (format.mimeType?.match(/opus/) || format?.mimeType?.match(/audio/)) && format.bitrate > 100 );
 
@@ -128,7 +137,7 @@ function extractManipulations(caller: string, body: string) {
  * @param decipherScript {vm.Script}
  * @param nTransformScript {vm.Script}
  */
-function setDownloadURL(format: YouTubeFormat, decipherScript?: scriptVM, nTransformScript?: scriptVM): string | void {
+function setDownloadURL(format: YouTubeFormat, decipherScript?: vm.Script, nTransformScript?: vm.Script): string | void {
     const url = format.signatureCipher || format.cipher;
 
    if (url && decipherScript && !format.url) {
@@ -146,9 +155,14 @@ function setDownloadURL(format: YouTubeFormat, decipherScript?: scriptVM, nTrans
  * @param url {string} Ссылка которая не работает
  * @param decipherScript {vm.Script}
  */
-function _decipher(url: string, decipherScript: scriptVM): string {
+function _decipher(url: string, decipherScript: vm.Script): string {
     const extractUrl = querystring.parse(url);
-    return `${decodeURIComponent(extractUrl.url as string)}&${extractUrl.sp}=${decipherScript.runInNewContext({ sig: decodeURIComponent(extractUrl.s as string) })}`;
+    const decodeURL = decodeURIComponent(extractUrl.url as string);
+    const sig = extractUrl.sp ? extractUrl.sp : "signature";
+
+    try {
+        return `${decodeURL}&${sig}=${decipherScript.runInNewContext({sig: decodeURIComponent(extractUrl.s as string)}, {timeout: 1e3, breakOnSigint: true})}`;
+    } catch (e) { return decodeURL; }
 }
 //====================== ====================== ====================== ======================
 /**
@@ -156,13 +170,16 @@ function _decipher(url: string, decipherScript: scriptVM): string {
  * @param url {string} Ссылка которая работает
  * @param nTransformScript {vm.Script}
  */
-function _ncode(url: string, nTransformScript: scriptVM) {
+function _ncode(url: string, nTransformScript: vm.Script) {
     const components = new URL(url);
     const n = components.searchParams.get('n');
 
     if (!n) return url;
 
-    components.searchParams.set('n', nTransformScript.runInNewContext({ ncode: n }));
+    try {
+        components.searchParams.set('n', nTransformScript.runInNewContext({ncode: n}, {timeout: 1e3, breakOnSigint: true}));
+    } catch (e) { return components.toString(); }
+
     return components.toString();
 }
 //====================== ====================== ====================== ======================
@@ -357,4 +374,14 @@ function setDownload(format: YouTubeFormat, tokens: string[]): string {
     }
 
     return null;
+}
+/**
+ * @description Смена позиции в Array
+ * @param array {Array<any>} Array
+ * @param position {number} Номер позиции
+ */
+function swapPositions<V>(array: V[], position: number): void {
+    const first = array[0];
+    array[0] = array[position];
+    array[position] = first;
 }
