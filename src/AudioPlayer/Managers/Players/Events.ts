@@ -9,17 +9,16 @@ export namespace PlayerEvents {
      * @requires {isRemoveSong}
      */
     export function onIdlePlayer(queue: Queue): void {
-        setTimeout(() => {
-            if (queue?.songs) isRemoveSong(queue); //Определяем тип loop
+        if (queue?.songs) isRemoveSong(queue); //Определяем тип loop
 
-            //Выбираем случайный номер трека, просто меняем их местами
-            if (queue?.options?.random) {
-                const RandomNumSong = Math.floor(Math.random() * queue.songs.length)
-                queue.swapSongs(RandomNumSong);
-            }
+        //Выбираем случайный номер трека, просто меняем их местами
+        if (queue?.options?.random) {
+            const RandomNumSong = Math.floor(Math.random() * queue.songs.length)
+            queue.swapSongs(RandomNumSong);
+        }
 
-            return queue.play(); //Включаем трек
-        }, 1200);
+        //Включаем трек
+        setTimeout(() => queue.play(), 1200);
     }
     //====================== ====================== ====================== ======================
     /**

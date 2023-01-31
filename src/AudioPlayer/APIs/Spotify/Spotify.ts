@@ -95,11 +95,14 @@ export namespace Spotify {
         const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
+            //Если ID трека не удалось извлечь из ссылки
             if (!ID) return reject(Error("[APIs]: Не найден ID трека!"));
 
             try {
+                //Создаем запрос
                 const api = await API.Request(`tracks/${ID}`) as SpotifyTrack & FailResult;
 
+                //Если запрос выдал ошибку то
                 if (api instanceof Error) return reject(api);
 
                 return resolve(construct.track(api));
@@ -116,10 +119,14 @@ export namespace Spotify {
         const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
+            //Если ID плейлиста не удалось извлечь из ссылки
             if (!ID) return reject(Error("[APIs]: Не найден ID плейлиста!"));
+
             try {
+                //Создаем запрос
                 const api = await API.Request(`playlists/${ID}?offset=0&limit=${options.limit}`) as SpotifyPlaylist & FailResult;
 
+                //Если запрос выдал ошибку то
                 if (api instanceof Error) return reject(api);
 
                 return resolve({
@@ -140,11 +147,14 @@ export namespace Spotify {
         const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
+            //Если ID альбома не удалось извлечь из ссылки
             if (!ID) return reject(Error("[APIs]: Не найден ID альбома!"));
 
             try {
+                //Создаем запрос
                 const api = await API.Request(`albums/${ID}?offset=0&limit=${options.limit}`) as SpotifyAlbumFull & FailResult;
 
+                //Если запрос выдал ошибку то
                 if (api instanceof Error) return reject(api);
 
                 return resolve({
@@ -164,8 +174,10 @@ export namespace Spotify {
     export function SearchTracks(search: string, options: { limit: number } = {limit: 15}): Promise<InputTrack[] | null> {
         return new Promise(async (resolve, reject) => {
             try {
+                //Создаем запрос
                 const api = await API.Request(`search?q=${search}&type=track&limit=${options.limit}`) as SearchTracks & FailResult;
 
+                //Если запрос выдал ошибку то
                 if (api instanceof Error) return reject(api);
 
                 return resolve(await Promise.all(api.tracks.items.map(construct.track)));
@@ -181,14 +193,18 @@ export namespace Spotify {
         const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
+            //Если ID автора не удалось извлечь из ссылки
             if (!ID) return reject(Error("[APIs]: Не найден ID автора!"));
+
             try {
+                //Создаем запрос
                 const api = await API.Request(`artists/${ID}/top-tracks?market=ES&limit=5`) as SpotifyAlbumFull & FailResult;
 
+                //Если запрос выдал ошибку то
                 if (api instanceof Error) return reject(api);
 
                 // @ts-ignore
-                return resolve(await Promise.all((api.tracks?.items ?? api.tracks).map(construct.track)));
+                return resolve(await Promise.all((api.tracks?.items as SpotifyTrack[] ?? api.tracks as SpotifyTrack[]).map(construct.track)));
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
@@ -206,8 +222,10 @@ function getAuthor(url: string, isUser: boolean = false): Promise<InputAuthor> {
 
     return new Promise(async (resolve, reject) => {
         try {
+            //Создаем запрос
             const api = await API.Request(`${isUser ? "users" : "artists"}/${ID}`) as (SpotifyArtist | SpotifyUser) & FailResult;
 
+            //Если запрос выдал ошибку то
             if (api instanceof Error) return reject(api);
 
             return resolve({ // @ts-ignore

@@ -1,7 +1,7 @@
 import {ActionRowBuilder, ButtonBuilder, ButtonStyle, Colors, Guild, Message} from "discord.js";
 import {EmbedConstructor} from "@Client/interactionCreate";
 import {Event} from "@Structures/Handle/Event";
-import {WatKLOK} from "@Client/Client";
+import {WatKLOK} from "../../../Client/Client";
 
 const Buttons = () => {
     const Buttons = {

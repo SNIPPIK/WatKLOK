@@ -17,7 +17,7 @@ export class Deploy extends Command {
         const {author, client} = message;
         let TotalCommands: number = 0;
 
-        client.commands.Array.forEach((command) => {
+        client.commands.forEach((command) => {
             if (command.isOwner || !command.isSlash) return null;
             const SlashCommands = client.application.commands;
             let slashCommandData: any = { name: command.name, description: command.description };

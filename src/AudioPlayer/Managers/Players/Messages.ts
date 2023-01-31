@@ -3,7 +3,7 @@ import {ClientMessage, UtilsMsg} from "@Client/interactionCreate";
 import {MessageCycle} from "@Managers/Players/CycleStep";
 import {EmbedMessages} from "@Structures/EmbedMessages";
 import {InputPlaylist, Song} from "@Queue/Song";
-import {consoleTime} from "@Client/Client";
+import {consoleTime} from "../../../Client/Client";
 import {Queue} from "@Queue/Queue";
 
 //Кнопки с которыми можно взаимодействовать
@@ -42,7 +42,7 @@ export namespace MessagePlayer {
 
                 WarningChannelSend.then(UtilsMsg.deleteMessage);
             } catch (e) {
-                consoleTime(`[MessagePlayer]: [function: toError]: ${e.message}`);
+                return consoleTime(`[MessagePlayer]: [function: toError]: ${e.message}`);
             }
         });
     }
@@ -62,7 +62,7 @@ export namespace MessagePlayer {
 
                 PushChannel.then(UtilsMsg.deleteMessage);
             } catch (e) {
-                consoleTime(`[MessagePlayer]: [function: toPushSong]: ${e.message}`);
+                return consoleTime(`[MessagePlayer]: [function: toPushSong]: ${e.message}`);
             }
         });
     }
@@ -82,7 +82,7 @@ export namespace MessagePlayer {
 
                 PushChannel.then(UtilsMsg.deleteMessage);
             } catch (e) {
-                consoleTime(`[MessagePlayer]: [function: toPushPlaylist]: ${e.message}`);
+                return consoleTime(`[MessagePlayer]: [function: toPushPlaylist]: ${e.message}`);
             }
         });
     }
@@ -122,7 +122,7 @@ function pushCurrentSongMessage(message: ClientMessage): Promise<ClientMessage> 
  */
 function CreateCollector(message: ClientMessage, queue: Queue) {
     //Создаем сборщик кнопок
-    const collector = message.createMessageComponentCollector({ filter: (i) => ButtonIDs.includes(i.customId), componentType: ComponentType.Button });
+    const collector = message.createMessageComponentCollector({ filter: (i) => ButtonIDs.includes(i.customId), componentType: ComponentType.Button, time: 60e5 });
     const {player} = queue;
     const EmitPlayer = message.client.player;
 

@@ -60,9 +60,14 @@ export namespace VK {
         const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
+            //Если ID трека не удалось извлечь из ссылки
+            if (!ID) return reject(Error("[APIs]: Не найден ID трека!"));
+
             try {
+                //Создаем запрос
                 const api = await API.Request("audio", "getById", `&audios=${ID}`) as Track & rateLimit;
 
+                //Если запрос выдал ошибку то
                 if (api instanceof Error) return reject(api);
 
                 return resolve(construct.track(api.response.pop()));
@@ -82,10 +87,15 @@ export namespace VK {
         const key = PlaylistFullID[2];
 
         return new Promise(async (resolve, reject) => {
+            //Если ID не полный
+            if (PlaylistFullID.length < 3) return reject(Error("[APIs]: ID плейлиста не полный!"));
+
             try {
+                //Создаем запрос и получаем треки из этого плейлиста
                 const api = await API.Request("audio", "getPlaylistById", `&owner_id=${owner_id}&playlist_id=${playlist_id}&access_key=${key}`) as Playlist & rateLimit;
                 const items = await API.Request("audio", "get", `&owner_id=${owner_id}&album_id=${playlist_id}&count=${options.limit}&access_key=${key}`) as SearchTracks;
 
+                //Если запрос выдал ошибку то
                 if (api instanceof Error || items instanceof Error) return reject(api);
 
                 const playlist = api.response;
@@ -108,8 +118,10 @@ export namespace VK {
     export function SearchTracks(search: string, options: { limit: number } = {limit: 15}): Promise<null | InputTrack[]> {
         return new Promise(async (resolve, reject) => {
             try {
+                //Создаем запрос
                 const api = await API.Request("audio", "search", `&q=${search}`) as SearchTracks & rateLimit;
 
+                //Если запрос выдал ошибку то
                 if (api instanceof Error) return reject(api);
 
                 const trackConst = api.response.items.length;

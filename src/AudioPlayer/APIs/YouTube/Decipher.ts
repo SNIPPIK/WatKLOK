@@ -143,7 +143,7 @@ function setDownloadURL(format: YouTubeFormat, decipherScript?: vm.Script, nTran
     const url = format.signatureCipher || format.cipher;
 
    if (url && decipherScript && !format.url) {
-       const decipher =  _decipher(url, decipherScript);
+       const decipher = _decipher(url, decipherScript);
 
        if (nTransformScript) return _ncode(decipher, nTransformScript);
        return decipher;
@@ -168,7 +168,7 @@ function _decipher(url: string, decipherScript: vm.Script): string {
 }
 //====================== ====================== ====================== ======================
 /**
- * @description Добавляем ссылке n=sig
+ * @description Добавляем ссылке n=sig, для ускорения работы ссылки, данные с такой ссылки будут обрабатываться быстрее
  * @param url {string} Ссылка которая работает
  * @param nTransformScript {vm.Script}
  */

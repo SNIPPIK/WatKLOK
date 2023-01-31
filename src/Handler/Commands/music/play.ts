@@ -8,15 +8,15 @@ export class Command_Play extends Command {
     public constructor() {
         super({
             name: "play",
-            aliases: ["p", "playing", "з"],
+            aliases: ["p", "playing", "з", "search", "find"],
             description: "Включение музыки по ссылке или названию, можно прикрепить свой файл!",
-            usage: "name song | url song | platform name song",
+            usage: "name song | url song | platform, name song",
 
             permissions: {client: ["Speak", "Connect"], user: []},
             options: [
                 {
                     name: "parameter",
-                    description: "Название трека, ссылку на трек или тип yt, sp, sc, vk!",
+                    description: "Название трека, ссылку на трек или тип yt, sp, sc, vk, ym!",
                     required: true,
                     type: ApplicationCommandOptionType.String
                 },

@@ -5,6 +5,7 @@ import {PlayerCycle} from "@Managers/Players/CycleStep";
 
 const NotSkippedStatuses = ["read", "pause", "autoPause"];
 const UpdateMessage = ["idle", "pause", "autoPause"];
+const SilenceFrame = Buffer.from([0xf8, 0xff, 0xfe, 0xfae]);
 
 //Ивенты которые плеер может вернуть
 interface PlayerEvents {
@@ -67,7 +68,7 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
         //Заставляем ивенты работать
         if (oldStatus !== newStatus || oldStatus !== "idle" && newStatus === "read") {
             PlayerCycle.toRemove(this);
-            this.sendPacket();
+            this.sendPacket(SilenceFrame);
             this.emit(newStatus);
         }
 
@@ -117,7 +118,7 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
         else {
             //Включаем поток когда можно будет начать читать
             stream.opus.once("readable", () => {
-                this.sendPacket();
+                this.sendPacket(SilenceFrame);
                 this.state = {status: "read", stream};
             });
             //Если происходит ошибка, то продолжаем читать этот же поток
@@ -130,7 +131,7 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
      * @param packet {null} Пакет
      * @private
      */
-    public sendPacket = (packet: Buffer | null = Buffer.from([0xf8, 0xff, 0xfe, 0xfae])) => {
+    public sendPacket = (packet: Buffer | null) => {
         const voiceConnection = this.voice;
 
         if (packet && voiceConnection.state.status === "ready") voiceConnection.playOpusPacket(packet);

@@ -92,12 +92,14 @@ export namespace SoundCloud {
     export function getTrack(url: string): Promise<InputTrack> {
         return new Promise<InputTrack>(async (resolve, reject) => {
             try {
+                //Создаем запрос
                 const api = await API.Request(`resolve?url=${url}`);
 
+                //Если запрос выдал ошибку то
                 if (api instanceof Error) return reject(api);
 
                 const {result, ClientID} = api;
-                const format = await API.getFormat(result.media.transcodings, ClientID);
+                const format = await API.getFormat(result.media.transcodings, ClientID); //Получаем исходный файл музыки
 
                 return resolve({...construct.track(result, url), format: {url: format}});
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
@@ -111,17 +113,18 @@ export namespace SoundCloud {
     export function getPlaylist(url: string): Promise<InputTrack | InputPlaylist> {
         return new Promise<InputPlaylist | InputTrack>(async (resolve, reject) => {
             try {
+                //Создаем запрос
                 const api = await API.Request(`resolve?url=${url}`);
 
+                //Если запрос выдал ошибку то
                 if (api instanceof Error) return reject(api);
 
                 const {result} = api;
 
+                //Если треков нет значит, это ссылка на трек, а не на плейлист
                 if (result.tracks === undefined) return getTrack(url).then(resolve);
 
-                return resolve({
-                    url,
-                    title: result.title,
+                return resolve({ url, title: result.title,
                     author: construct.author(result.user),
                     image: construct.parseImage(result.artwork_url),
                     items: result.tracks.map(construct.track)
@@ -139,8 +142,10 @@ export namespace SoundCloud {
     export function SearchTracks(search: string, options = {limit: 15}): Promise<InputTrack[]> {
         return new Promise<InputTrack[]>(async (resolve, reject) => {
             try {
+                //Создаем запрос
                 const api = await API.Request(`search/tracks?q=${search}&limit=${options.limit}`);
 
+                //Если запрос выдал ошибку то
                 if (api instanceof Error) return reject(api);
 
                 const {result} = api;

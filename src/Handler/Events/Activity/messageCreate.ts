@@ -20,7 +20,7 @@ export class messageCreate extends Event<ClientMessage, null> {
 
         const args = (message as ClientMessage).content.split(" ").slice(1);
         const commandName = (message as ClientMessage).content?.split(" ")[0]?.slice(Bot.prefix.length)?.toLowerCase();
-        const command = message.client.commands.get(commandName) ?? message.client.commands.Array.find(cmd => cmd.aliases.includes(commandName));
+        const command = message.client.commands.get(commandName) ?? message.client.commands.find(cmd => cmd.aliases.includes(commandName));
 
         return runCommand(message, command, args);
     };

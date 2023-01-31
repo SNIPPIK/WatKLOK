@@ -71,12 +71,15 @@ export namespace YandexMusic {
         const ID = url.split(/[^0-9]/g).filter(str => str !== "");
 
         return new Promise(async (resolve, reject) => {
+            //Если ID трека или альбома не удалось извлечь из ссылки
             if (!ID[0]) return reject(Error("[APIs]: Не удалось получить ID альбома!"));
             else if (!ID[1]) return reject(Error("[APIs]: Не удалось получить ID трека!"));
 
             try {
+                //Создаем запрос
                 const api = await API.Request(`https://music.yandex.ru/album/${ID[0]}/track/${ID[1]}`);
 
+                //Если запрос выдал ошибку или нет автора то
                 if (api instanceof Error) return reject(api);
                 else if (!api?.byArtist?.url) return reject(Error("[APIs]: Не удалось получить информацию о треке!"));
 
@@ -95,25 +98,22 @@ export namespace YandexMusic {
         const ID = url.split(/[^0-9]/g).find(str => str !== "");
 
         return new Promise(async (resolve, reject) => {
+            //Если ID альбома не удалось извлечь из ссылки
             if (!ID) return reject(Error("[APIs]: Не удалось получить ID альбома!"));
 
             try {
+                //Создаем запрос
                 const api = await API.Request(`https://music.yandex.ru/album/${ID}`);
 
+                //Если запрос выдал ошибку то
                 if (api instanceof Error) return reject(api);
 
                 const Image = api?.image;
                 const MainArtist = await getAuthor(api.byArtist.url)
 
-                return resolve({
-                    url, title: api.name,
-                    image: {url: Image},
-                    author: MainArtist,
-                    items: api.track.map((track: any) => {
-                        track.author = MainArtist; track.Image = Image;
-                        return construct.track(track);
-                    })
-                })
+                return resolve({ url, title: api.name, image: {url: Image}, author: MainArtist,
+                    items: api.track.map((track: any) => { track.author = MainArtist; track.Image = Image; return construct.track(track); })
+                });
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
@@ -126,11 +126,14 @@ export namespace YandexMusic {
     export function SearchTracks(str: string): Promise<InputTrack[]> {
         return new Promise(async (resolve, reject) => {
             try {
+                //Создаем запрос
                 const api = await API.Request(`https://music.yandex.ru/search?text=${str.split(" ").join("%20")}&type=tracks`, true);
+
+                //Если запрос выдал ошибку то
+                if (api instanceof Error) return reject(api);
+
                 const tracks: InputTrack[] = [];
                 let NumberTrack = 0;
-
-                if (api instanceof Error) return reject(api);
 
                 for (const track of api.result.tracks.items) {
                     if (NumberTrack === 15) break;
@@ -152,12 +155,16 @@ export namespace YandexMusic {
         const ID = url.split(/[^0-9]/g).find(str => str !== "");
 
         return new Promise(async (resolve, reject) => {
+            //Если ID автора не удалось извлечь из ссылки
             if (!ID) return reject(Error("[APIs]: Не удалось получить ID автора!"));
 
             try {
+                //Создаем запрос
                 const api = await API.Request(`https://music.yandex.ru/artist/${ID}`, true);
 
+                //Если запрос выдал ошибку то
                 if (api instanceof Error) return reject(api);
+
                 const tracks: InputTrack[] = [];
                 const author = api.artist;
 
@@ -182,8 +189,10 @@ export namespace YandexMusic {
 function getAuthor(url: string): Promise<InputTrack["author"]> {
     return new Promise(async (resolve, reject) => {
         try {
+            //Создаем запрос
             const api = await API.Request(url);
 
+            //Если запрос выдал ошибку то
             if (api instanceof Error) return reject(api);
 
             return resolve({url, title: api.name, image: {url: api.image}, isVerified: true });

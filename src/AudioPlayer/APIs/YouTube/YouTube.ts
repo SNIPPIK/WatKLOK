@@ -57,18 +57,25 @@ export namespace YouTube {
         const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
+            //Если ID видео не удалось извлечь из ссылки
+            if (!ID) return reject(Error("[APIs]: Не удалось получить ID трека!"));
+
             try {
+                //Создаем запрос
                 const page = await API.Request("STRING", `https://www.youtube.com/watch?v=${ID}&has_verified=1`) as string;
                 const result = page.split("var ytInitialPlayerResponse = ")?.[1]?.split(";</script>")[0].split(/(?<=}}});\s*(var|const|let)\s/)[0];
 
+                //Если нет данных на странице
                 if (!result) return reject(Error("[APIs]: Не удалось получить данные!"));
                 const jsonResult = JSON.parse(result);
 
+                //Если статус получения данные не OK
                 if (jsonResult.playabilityStatus?.status !== "OK") return reject(Error("[APIs]: Не удалось получить данные!"));
 
                 const details = jsonResult.videoDetails;
                 let audios: YouTubeFormat;
 
+                //Выбираем какой формат у видео из <VideoDetails>.isLiveContent
                 if (details.isLiveContent) audios = {url: details.streamingData?.dashManifestUrl ?? null}; //dashManifestUrl, hlsManifestUrl
                 else {
                     const html5player = `https://www.youtube.com${page.split('"jsUrl":"')[1].split('"')[0]}`;
@@ -77,6 +84,7 @@ export namespace YouTube {
                         html: html5player
                     });
 
+                    //Если формат ну удалось получить из-за ошибки
                     if (format instanceof Error) return reject(format);
 
                     audios = format;
@@ -95,10 +103,15 @@ export namespace YouTube {
         const ID = getID(url, true);
 
         return new Promise(async (resolve, reject) => {
+            //Если ID плейлиста не удалось извлечь из ссылки
+            if (!ID) return reject(Error("[APIs]: Не удалось получить ID плейлиста!"));
+
             try {
+                //Создаем запрос
                 const page = await API.Request("STRING", `https://www.youtube.com/playlist?list=${ID}`) as string;
                 const result = page.split('var ytInitialData = ')[1].split(';</script>')[0].split(/;\s*(var|const|let)\s/)[0];
 
+                //Если нет данных на странице
                 if (!result) return reject(new Error("[APIs]: Не удалось получить данные!"));
 
                 const jsonResult = JSON.parse(result);
@@ -125,13 +138,16 @@ export namespace YouTube {
     export function SearchVideos(search: string, options = {limit: 15}): Promise<InputTrack[]> {
         return new Promise(async (resolve, reject) => {
             try {
+                //Создаем запрос
                 const page = await API.Request("STRING", `https://www.youtube.com/results?search_query=${search.replaceAll(' ', '+')}`) as string;
                 const result = (page.split("var ytInitialData = ")[1].split("}};")[0] + '}}').split(';</script><script')[0];
 
+                //Если нет данных на странице
                 if (!result) return reject(Error("[APIs]: Не удалось получить данные!"));
 
                 const details = JSON.parse(result)?.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents[0]?.itemSectionRenderer?.contents;
 
+                //Если нет данных на странице (если нет результатов поиска)
                 if (!details) return reject(Error(`[APIs]: Не удалось найти: ${search}`));
 
                 const videos: InputTrack[] = [];
@@ -165,9 +181,11 @@ export namespace YouTube {
                 else ID = `channel/${url.split("channel/")[1]}`;
 
 
+                //Создаем запрос
                 const channel: any[] | any = await API.Request("STRING", `https://www.youtube.com/${ID}/videos`);
                 const info = channel.split("var ytInitialData = ")[1]?.split(";</script><script nonce=")[0];
 
+                //Если нет данных на странице
                 if (!info) return reject(Error("[APIs]: Не удалось получить данные!"));
 
                 const details = JSON.parse(info);
@@ -181,6 +199,7 @@ export namespace YouTube {
 
                     const video = videos[i]?.richItemRenderer?.content?.videoRenderer;
 
+                    //Если нет <video>, то не добавляем его
                     if (!video) return;
 
                     endVideos.push({ url: `https://youtu.be/${video.videoId}`, title: video.title.runs[0].text, duration: {seconds: video.lengthText.simpleText},
@@ -201,6 +220,7 @@ export namespace YouTube {
  */
 function getChannel({id, name}: { id: string, name?: string }): Promise<InputAuthor> {
     return new Promise(async (resolve) => {
+        //Создаем запрос
         const channel: any[] | any = await API.Request("JSON", `https://www.youtube.com/channel/${id}/channels?flow=grid&view=0&pbj=1`, {
             request: {
                 headers: {
@@ -230,12 +250,14 @@ function getChannel({id, name}: { id: string, name?: string }): Promise<InputAut
  * @param isPlaylist
  */
 function getID(url: string, isPlaylist: boolean = false) {
-    if (typeof url !== "string") return "Url is not string";
-    const parsedLink = new URL(url);
+    try {
+        if (typeof url !== "string") return null;
+        const parsedLink = new URL(url);
 
-    if (parsedLink.searchParams.get("list") && isPlaylist) return parsedLink.searchParams.get("list");
-    else if (parsedLink.searchParams.get("v") && !isPlaylist) return parsedLink.searchParams.get("v");
-    return parsedLink.pathname.split("/")[1];
+        if (parsedLink.searchParams.get("list") && isPlaylist) return parsedLink.searchParams.get("list");
+        else if (parsedLink.searchParams.get("v") && !isPlaylist) return parsedLink.searchParams.get("v");
+        return parsedLink.pathname.split("/")[1];
+    } catch (err) { return null; }
 }
 //====================== ====================== ====================== ======================
 /**
@@ -244,11 +266,18 @@ function getID(url: string, isPlaylist: boolean = false) {
  */
 function runWorkerSignature(workerData: {}): Promise<YouTubeFormat | Error> {
     return new Promise((resolve) => {
-        const worker = new Worker(__dirname + "/Decipher.js", { workerData, resourceLimits: {stackSizeMb: 10} });
-        worker.once('message', (exitCode) => resolve(exitCode.format));
-        worker.once('error', (err) => resolve(Error(`[APIs]: ${err}`)));
+        const worker = new Worker(__dirname + "/Decipher.js", { workerData, resourceLimits: { stackSizeMb: 2, codeRangeSizeMb: 5, maxOldGenerationSizeMb: 15 }});
+        worker.once('message', (exitCode) => {
+            worker.emit("exit", 0);
+            return resolve(exitCode.format);
+        });
+        worker.once('error', (err) => {
+            worker.emit("exit", 0);
+            return resolve(Error(`[APIs]: ${err}`));
+        });
         worker.once('exit', (code) => {
             if (code !== 0) resolve(Error(`[APIs]: Worker stopped with exit code ${code}`));
+            return;
         });
     });
 }

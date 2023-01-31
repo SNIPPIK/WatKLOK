@@ -1,7 +1,7 @@
 import {ChildProcessWithoutNullStreams, spawn, spawnSync} from "child_process";
 import {Duplex, DuplexOptions, Readable, Writable} from "stream";
 import AudioFilters from "@db/Filters.json";
-import {consoleTime} from "@Client/Client";
+import {consoleTime} from "../../../Client/Client";
 import {dependencies} from "package.json";
 import {Debug} from "@db/Config.json";
 

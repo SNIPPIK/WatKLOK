@@ -1,7 +1,7 @@
 import {EmbedMessages} from "@Structures/EmbedMessages";
 import {ClientMessage} from "@Client/interactionCreate";
 import {AudioPlayer} from "@Structures/AudioPlayer";
-import {consoleTime} from "@Client/Client";
+import {consoleTime} from "../../../Client/Client";
 import {Music} from "@db/Config.json";
 import {Queue} from "@Queue/Queue";
 
@@ -83,14 +83,14 @@ export namespace MessageCycle {
     /**
      * @description Добавляем сообщение в <Message[]>
      * @param message {message} Сообщение
-     * @requires {StepCycleMessage}
+     * @requires {messageCycleStep}
      */
     export function toPush(message: ClientMessage) {
         if (db.msg.find(msg => message.channelId === msg.channelId)) return; //Если сообщение уже есть в базе, то ничего не делаем
         db.msg.push(message); //Добавляем сообщение в базу
 
         //Если в базе есть хоть одно сообщение, то запускаем таймер
-        if (db.msg.length === 1) setImmediate(StepCycleMessage);
+        if (db.msg.length === 1) setImmediate(messageCycleStep);
     }
     //====================== ====================== ====================== ======================
     /**
@@ -122,11 +122,11 @@ export namespace MessageCycle {
 /**
  * @description Обновляем сообщения на текстовый каналах
  */
-function StepCycleMessage() {
+function messageCycleStep() {
     setImmediate(() => {
         try {
-            setTimeout(() => db.msg.forEach(UpdateMessage), 1e3);
-        } finally { db.timeout_m = setTimeout(StepCycleMessage, 15e3); }
+            setTimeout(() => db.msg.forEach(editMessage), 1e3);
+        } finally { db.timeout_m = setTimeout(messageCycleStep, 15e3); }
     });
 }
 //====================== ====================== ====================== ======================
@@ -135,7 +135,7 @@ function StepCycleMessage() {
  * @param message {ClientMessage} Сообщение
  * @requires {MessageCycle}
  */
-function UpdateMessage(message: ClientMessage): void {
+function editMessage(message: ClientMessage): void {
     const {client, guild} = message;
     const queue: Queue = client.queue.get(guild.id);
 

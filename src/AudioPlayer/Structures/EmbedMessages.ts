@@ -2,7 +2,7 @@ import {ClientMessage, EmbedConstructor} from "@Client/interactionCreate";
 import {DurationUtils} from "@Managers/DurationUtils";
 import {replacer} from "@Structures/Handle/Command";
 import {InputPlaylist, Song} from "@Queue/Song";
-import {WatKLOK} from "@Client/Client";
+import {WatKLOK} from "../../Client/Client";
 import {Music} from "@db/Config.json";
 import {Queue} from "@Queue/Queue";
 import {Colors} from "discord.js";

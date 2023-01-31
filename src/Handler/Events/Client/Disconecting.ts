@@ -1,5 +1,5 @@
 import {Event} from "@Structures/Handle/Event";
-import {consoleTime} from "@Client/Client";
+import {consoleTime} from "../../../Client/Client";
 
 export class shardDisconnect extends Event<null, null> {
     public readonly name: string = "shardDisconnect";

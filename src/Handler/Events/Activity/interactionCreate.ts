@@ -18,7 +18,7 @@ export class interactionCreate extends Event<ClientInteraction, null> {
         //Если в сообщении нет префикса или interaction type не команда, то игнорируем
         if (message?.user.bot || message?.member?.user?.bot || message?.isButton() || !message?.isChatInputCommand() || !message?.isRepliable() || !message?.isCommand()) return;
         const args = message.options?._hoistedOptions?.map((f: CommandInteractionOption) => `${f.value}`);
-        const command = message.client.commands.get(message.commandName) ?? message.client.commands.Array.find(cmd => cmd.aliases.includes(message.commandName));
+        const command = message.client.commands.get(message.commandName) ?? message.client.commands.find(cmd => cmd.aliases.includes(message.commandName));
         message.author = message?.member?.user ?? message?.user;
 
         return interactionCreate.runCommand(message, command, args);

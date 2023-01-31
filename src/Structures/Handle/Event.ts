@@ -1,4 +1,4 @@
-import {WatKLOK} from "@Client/Client";
+import {WatKLOK} from "../../Client/Client";
 
 export class Event<K, P> {
     //Название ивента Discord.<Client>

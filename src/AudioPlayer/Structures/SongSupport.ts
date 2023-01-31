@@ -7,7 +7,7 @@ import {replacer} from "@Structures/Handle/Command";
 import {ArraySort} from "@Structures/ArraySort";
 import {Colors} from "discord.js";
 import {FFspace} from "@FFspace";
-import {env} from "@env";
+import {env} from "../../FileSystem/env";
 
 //Поддерживаемые платформы
 export type platform = "YOUTUBE" | "SPOTIFY" | "VK" | "SOUNDCLOUD" | "DISCORD" | "YANDEX";
