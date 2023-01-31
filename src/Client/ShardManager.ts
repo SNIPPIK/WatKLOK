@@ -6,7 +6,7 @@ import {env} from "../FileSystem/env";
  */
 class ShardManager extends ShardingManager {
     public constructor() {
-        super("./src/Core/Client/Client.js", {token: env.get("TOKEN"), mode: "process", respawn: true, totalShards: "auto", execArgv: ["-r", "tsconfig-paths/register"]});
+        super("./src/Client/Client.js", {token: env.get("TOKEN"), mode: "process", respawn: true, totalShards: "auto", execArgv: ["-r", "tsconfig-paths/register"]});
 
         //Ивент создания дубликата
         this.on("shardCreate", (shard: Shard) => {
