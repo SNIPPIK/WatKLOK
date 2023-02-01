@@ -36,7 +36,7 @@ export class Command_Help extends Command {
         const Commands: Command[] = client.commands.filter((command: Command) => Arg !== "all" ? command.name === Arg || command.aliases.includes(Arg) : !command.isOwner).values() as any;
 
         //Если пользователь хочет получить данные о не существующей команде
-        if (Commands.length < 1) return {text: `${author}, у меня нет такой команды!`};
+        if (!Commands?.length) return {text: `${author}, у меня нет такой команды!`};
 
         const embed = this.CreateEmbedMessage(message);
         const pages = ArraySort<Command>(5, Commands, (command) =>
