@@ -1,9 +1,9 @@
 import {ClientMessage, EmbedConstructor} from "@Client/interactionCreate";
 import {ApplicationCommandOptionType, Colors} from "discord.js";
 import {Command, ResolveData} from "@Structures/Handle/Command";
-import {ArraySort} from "@Structures/ArraySort";
 import {ReactionMenu} from "@Structures/ReactionMenu";
 import {FFspace} from "@Structures/Media/FFspace";
+import {ArraySort} from "@Structures/ArraySort";
 import Filters from "@db/Filters.json";
 import {Queue} from "@Queue/Queue";
 

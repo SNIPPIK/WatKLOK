@@ -1,8 +1,8 @@
-import {ClientMessage} from "@Client/interactionCreate";
 import {Command, ResolveData} from "@Structures/Handle/Command";
+import {ClientMessage} from "@Client/interactionCreate";
 import {ApplicationCommandOptionType} from "discord.js";
-import {Queue} from "@Queue/Queue";
 import {toPlayer} from "@Structures/SongSupport";
+import {Queue} from "@Queue/Queue";
 
 export class Command_Play extends Command {
     public constructor() {

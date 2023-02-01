@@ -1,5 +1,5 @@
 import {Music, Debug} from "@db/Config.json";
-import {consoleTime} from "../../../Client/Client";
+import {consoleTime} from "@Client/Client";
 import {AudioFilters} from "@Queue/Queue";
 import {FFspace} from "@FFspace";
 import {opus} from "prism-media";

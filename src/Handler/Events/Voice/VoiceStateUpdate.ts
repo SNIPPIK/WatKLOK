@@ -1,4 +1,4 @@
-import {consoleTime, WatKLOK} from "../../../Client/Client";
+import {consoleTime, WatKLOK} from "@Client/Client";
 import {GuildMember, VoiceState} from "discord.js";
 import {Event} from "@Structures/Handle/Event";
 import {Debug} from "@db/Config.json";

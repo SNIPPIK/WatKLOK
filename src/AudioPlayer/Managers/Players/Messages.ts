@@ -3,7 +3,7 @@ import {ClientMessage, UtilsMsg} from "@Client/interactionCreate";
 import {MessageCycle} from "@Managers/Players/CycleStep";
 import {EmbedMessages} from "@Structures/EmbedMessages";
 import {InputPlaylist, Song} from "@Queue/Song";
-import {consoleTime} from "../../../Client/Client";
+import {consoleTime} from "@Client/Client";
 import {Queue} from "@Queue/Queue";
 
 //Кнопки с которыми можно взаимодействовать

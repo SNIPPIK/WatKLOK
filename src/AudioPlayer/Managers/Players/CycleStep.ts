@@ -1,9 +1,10 @@
 import {EmbedMessages} from "@Structures/EmbedMessages";
 import {ClientMessage} from "@Client/interactionCreate";
 import {AudioPlayer} from "@Structures/AudioPlayer";
-import {consoleTime} from "../../../Client/Client";
+import {consoleTime} from "@Client/Client";
 import {Music} from "@db/Config.json";
 import {Queue} from "@Queue/Queue";
+import {Message} from "discord.js";
 
 //База данных
 const db = {
@@ -126,7 +127,7 @@ function messageCycleStep() {
     setImmediate(() => {
         try {
             setTimeout(() => db.msg.forEach(editMessage), 1e3);
-        } finally { db.timeout_m = setTimeout(messageCycleStep, 15e3); }
+        } finally { db.timeout_m = setTimeout(messageCycleStep, Music.AudioPlayer.updateMessage < 10 ? 15e3 : Music.AudioPlayer.updateMessage * 1e3); }
     });
 }
 //====================== ====================== ====================== ======================

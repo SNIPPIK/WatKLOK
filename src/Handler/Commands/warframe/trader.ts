@@ -1,7 +1,7 @@
 import {ClientMessage, EmbedConstructor} from "@Client/interactionCreate";
 import {Command, ResolveData} from "@Structures/Handle/Command";
-import {ArraySort} from "@Structures/ArraySort";
 import {Colors, MessageReaction, User} from "discord.js";
+import {ArraySort} from "@Structures/ArraySort";
 import {httpsClient} from "@httpsClient";
 
 const TraderApi = "https://api.warframestat.us/pc/ru/voidTrader/";

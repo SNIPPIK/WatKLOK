@@ -7,7 +7,7 @@ import {replacer} from "@Structures/Handle/Command";
 import {ArraySort} from "@Structures/ArraySort";
 import {Colors} from "discord.js";
 import {FFspace} from "@FFspace";
-import {env} from "../../FileSystem/env";
+import {env} from "@env";
 
 //Поддерживаемые платформы
 export type platform = "YOUTUBE" | "SPOTIFY" | "VK" | "SOUNDCLOUD" | "DISCORD" | "YANDEX";
@@ -16,12 +16,14 @@ export type callback = "track" | "playlist" | "search" | "album" | "artist";
 
 const emoji = ReactionMenuSettings.emojis.cancel;
 
-/*
-Для добавления поддержки других платформ надо указать как получать данные в {APIs}
-Доступные типы запросов {callback}, доступные платформы {platform}
-Если при указывании новой платформы с нее невозможно получать треки добавить в {PlatformsAudio}
+//====================== ====================== ====================== ======================
+/**
+ * Для добавления поддержки других платформ надо указать как получать данные в {APIs}
+ * Доступные типы запросов {callback}, доступные платформы {platform}
+ * Если при указывании новой платформы с нее невозможно получать треки добавить в {PlatformsAudio}
  */
 //====================== ====================== ====================== ======================
+
 /**
  * @description Платформы которые нельзя использовать из-за ошибок авторизации
  */
@@ -282,7 +284,7 @@ export namespace SongFinder {
  * @param duration {number} Длительность трека
  */
 function FindTrack(nameSong: string, duration: number): Promise<string> {
-    return YouTube.SearchVideos(nameSong, {limit: 7}).then((Tracks) => {
+    return YouTube.SearchVideos(nameSong, {limit: 7}).then((Tracks: InputTrack[]) => {
         //Фильтруем треки оп времени
         const FindTracks: InputTrack[] = Tracks.filter((track: InputTrack) => {
             const DurationSong = DurationUtils.ParsingTimeToNumber(track.duration.seconds);
@@ -295,7 +297,7 @@ function FindTrack(nameSong: string, duration: number): Promise<string> {
         if (FindTracks?.length < 1) return null;
 
         //Получаем данные о треке
-        return YouTube.getVideo(FindTracks[0].url).then((video) => video?.format?.url) as Promise<string>;
+        return YouTube.getVideo(FindTracks[0].url).then((video: InputTrack) => video?.format?.url) as Promise<string>;
     });
 }
 
@@ -324,6 +326,8 @@ export namespace toPlayer {
         else if (callback === "!callback") return UtilsMsg.createMessage({ text: `${author}, у меня нет поддержки этого типа запроса!\nТип запроса **${type}**!\nПлатформа: **${platform}**`, color: "DarkRed", message });
 
         const runCallback = callback(argument) as Promise<InputTrack | InputPlaylist | InputTrack[]>;
+
+        if (Music.showGettingData) UtilsMsg.createMessage({ text: `${author}, произведен запрос на **${platform.toLowerCase()}.${type}**, получение всех данных может занять какое-то время!`, color: "Grey", message });
 
         runCallback.catch(e => {
             if (e.length > 2e3) UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e.message}`, color: "DarkRed", codeBlock: "css", message });

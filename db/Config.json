@@ -1,6 +1,6 @@
 {
   "APIs": {
-    "showErrors": false,
+    "showErrors": true,
     "sendErrors": false
   },
   "Channels": {
@@ -11,7 +11,7 @@
     "ignoreErrors": true,
     "prefix": "!",
     "OwnerIDs": [],
-    
+
     "TypingMessage": true
   },
   "Debug": false,
@@ -20,8 +20,11 @@
     "CacheMusic": false,
     "CacheDir": "AudioCache",
 
+    "showGettingData": true,
+
     "AudioPlayer": {
-      "sendDuration": 20
+      "sendDuration": 20,
+      "updateMessage": 15
     },
     "ProgressBar": {
       "enable": true,
@@ -31,7 +34,7 @@
     },
     "Audio": {
       "bitrate": "256k",
-      "transition": true
+      "transition": false
     },
     "images": {
       "ver": "https://media.discordapp.net/attachments/815897363188154408/1028014390299082852/Ok.png",

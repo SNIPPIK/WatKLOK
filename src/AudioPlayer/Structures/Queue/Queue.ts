@@ -2,7 +2,7 @@ import {MessagePlayer} from "@Managers/Players/Messages";
 import {ClientMessage} from "@Client/interactionCreate";
 import {PlayerEvents} from "@Managers/Players/Events";
 import {AudioPlayer} from "../AudioPlayer";
-import {consoleTime} from "../../../Client/Client";
+import {consoleTime} from "@Client/Client";
 import {StageChannel} from "discord.js";
 import {Debug} from "@db/Config.json";
 import {Voice} from "@VoiceManager";

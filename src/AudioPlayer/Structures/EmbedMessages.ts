@@ -2,7 +2,7 @@ import {ClientMessage, EmbedConstructor} from "@Client/interactionCreate";
 import {DurationUtils} from "@Managers/DurationUtils";
 import {replacer} from "@Structures/Handle/Command";
 import {InputPlaylist, Song} from "@Queue/Song";
-import {WatKLOK} from "../../Client/Client";
+import {WatKLOK} from "@Client/Client";
 import {Music} from "@db/Config.json";
 import {Queue} from "@Queue/Queue";
 import {Colors} from "discord.js";
@@ -104,10 +104,10 @@ function getFields(queue: Queue, client: WatKLOK): EmbedConstructor["fields"] {
     const VisualDuration = toString(song.duration, player.streamDuration);
 
     //Текущий трек
-    const fields = [{ name: `**Щас играет**`, value: `**❯** **[${replacer.replaceText(song.title, 29, true)}](${song.url})**\n${VisualDuration}` }];
+    const fields = [{ name: `**Сейчас играет**`, value: `**❯** **[${replacer.replaceText(song.title, 29, true)}](${song.url})**\n${VisualDuration}` }];
 
     //Следующий трек
-    if (songs.length > 1) fields.push({ name: `**Потом**`, value: `**❯** **[${replacer.replaceText(songs[1].title, 29, true)}](${songs[1].url})**` });
+    if (songs.length > 1) fields.push({ name: `**Следующий трек**`, value: `**❯** **[${replacer.replaceText(songs[1].title, 29, true)}](${songs[1].url})**` });
     return fields;
 }
 //====================== ====================== ====================== ======================
