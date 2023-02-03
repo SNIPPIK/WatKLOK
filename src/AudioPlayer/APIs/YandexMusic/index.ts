@@ -55,14 +55,15 @@ namespace construct {
     export function track(track: any): InputTrack {
         const Author: any = track?.artists?.length ? track?.artists[0] : track.author;
         const Image: string = track.Image ?? track?.inAlbum?.image;
+        const Albums = track.albums?.length ? track.albums[0] : track.albums;
         let trackName = (track?.title ?? track?.name);
-
+        
         if (track?.version) trackName += ` - ${track.version}`;
 
         return {
             title: trackName, image: {url: Image},
 
-            url: track?.url ?? `https://music.yandex.ru/album/${track.albums.id}/track/${track.id}`,
+            url: track?.url ?? `https://music.yandex.ru/album/${Albums.id}/track/${track.id}`,
             duration: {seconds: track?.durationMs ? (track.durationMs / 1000).toFixed(0) : parseDuration(track.duration)},
 
             author: track.author ?? {
@@ -181,15 +182,10 @@ export namespace YandexMusic {
 
                 //Если запрос выдал ошибку то
                 if (api instanceof Error) return reject(api);
-
                 const tracks: InputTrack[] = [];
-                const author = api.artist;
 
                 //На главной странице всегда есть 5 популярных треков автора
-                for (const track of api.tracks) {
-                    track.author = author;
-                    tracks.push(construct.track(track));
-                }
+                for (const track of api.tracks) tracks.push(construct.track(track));
 
                 return resolve(tracks);
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
