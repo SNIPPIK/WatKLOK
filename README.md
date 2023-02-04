@@ -30,7 +30,10 @@
 | [**SoundCloud**](https://soundcloud.com/)    | **треки, плейлисты, поиск, альбомы**         | ✔           |
 | [**Discord**](https://discord.com/)          | **ссылки, файлы**                            | ✔           |
 
-## Настройки
+<details>
+  <summary>Показать настройки</summary>
+
+### Настройки
 1. [`.env`](.env) | для не публичных данных
    ```dotenv
     TOKEN="" #Discord bot token
@@ -39,13 +42,13 @@
     SOUNDCLOUD="" #Soundcloud client id
     VK_TOKEN="" #Vk auth token (user token, not a bot token)
    ```
-1. [`Cookie.json`](db/Cookie.json) | необходим для видео 18+ (**YouTube**)
+2. [`Cookie.json`](db/Cookie.json) | необходим для видео 18+ (**YouTube**)
     ```json5
    {
       "Cookie": ""
    }
    ```
-2. [`Config.json`](db/Config.json) | основные настройки
+3. [`Config.json`](db/Config.json) | основные настройки
    ```json5
    {
       "APIs": {
@@ -102,6 +105,7 @@
         },
         //Кнопки под сообщение о текущем треке
         //Вариации [{id: "ID emoji"}] или [{name: "emoji"}]
+        //Поддержка больших кол-во кнопок будет введена позже
         "Buttons": [
             { "name": "⏪" }, { "name": "⏯" }, { "name": "⏩" }, { "name": "🔃" }
         ]
@@ -117,7 +121,7 @@
       }
    }
    ```
-3. [`Filters.json`](db/Filters.json) | Можно добавлять свои фильтры в конфиг | [`FFmpeg Docs`](https://ffmpeg.org/ffmpeg.html)
+4. [`Filters.json`](db/Filters.json) | Можно добавлять свои фильтры в конфиг | [`FFmpeg Docs`](https://ffmpeg.org/ffmpeg.html)
     ```json5
    [
       {
@@ -137,3 +141,4 @@
       }
    ]
      ```
+</details>
