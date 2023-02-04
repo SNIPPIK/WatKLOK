@@ -43,9 +43,9 @@
       "_found": "https://media.discordapp.net/attachments/815897363188154408/1028014390752055306/WTF.png",
       "_image": "https://media.discordapp.net/attachments/815897363188154408/1028014391146328124/MusciNote.png"
     },
-    "Buttons": {
-      "1": { "name": "⏪" }, "2": { "name": "⏯" }, "3": { "name": "⏩" }, "4": { "name": "🔃" }
-    }
+    "Buttons": [
+      { "name": "⏪" }, { "name": "⏯" }, { "name": "⏩" }, { "name": "🔃" }
+    ]
   },
   "ReactionMenuSettings": {
     "emojis": {
