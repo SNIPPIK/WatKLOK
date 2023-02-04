@@ -23,6 +23,7 @@
     "showGettingData": true,
 
     "AudioPlayer": {
+      "typeSenderPacket": "djs",
       "sendDuration": 20,
       "updateMessage": 15
     },
