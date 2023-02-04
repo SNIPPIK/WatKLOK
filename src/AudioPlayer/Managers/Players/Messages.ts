@@ -7,15 +7,17 @@ import {consoleTime} from "@Client/Client";
 import {Music} from "@db/Config.json";
 import {Queue} from "@Queue/Queue";
 
+if (Music.Buttons.length < 4) Error(`[Config]: Buttons has not found, find ${Music.Buttons.length}, need 4`);
+
 //Кнопки с которыми можно взаимодействовать
 const ButtonIDs = ["skip", "resume_pause", "replay", "last"];
 //Кнопки над сообщением о проигрывании трека
 const Buttons = new ActionRowBuilder().addComponents([
-        new ButtonBuilder().setCustomId("last").setEmoji(Music.Buttons["1"]).setStyle(ButtonStyle.Secondary), //id: "986009800867479572" или name: "⏪"
-        new ButtonBuilder().setCustomId("resume_pause").setEmoji(Music.Buttons["2"]).setStyle(ButtonStyle.Secondary), //id: "986009725432893590" или name: "⏯"
-        new ButtonBuilder().setCustomId("skip").setEmoji(Music.Buttons["3"]).setStyle(ButtonStyle.Secondary), //id: "986009774015520808" или name: "⏩"
-        new ButtonBuilder().setCustomId("replay").setEmoji(Music.Buttons["4"]).setStyle(ButtonStyle.Secondary)
-    ] //id: "986009690716667964" или name: "🔃"
+        new ButtonBuilder().setCustomId("last").setEmoji(Music.Buttons[0]).setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("resume_pause").setEmoji(Music.Buttons[1]).setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("skip").setEmoji(Music.Buttons[2]).setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("replay").setEmoji(Music.Buttons[3]).setStyle(ButtonStyle.Secondary)
+    ]
 );
 
 //Сообщения, которые отправляет плеер
