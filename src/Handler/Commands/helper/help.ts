@@ -32,8 +32,12 @@ export class Command_Help extends Command {
 
     public readonly run = (message: ClientMessage, args: string[]): ResolveData => {
         const {author, client} = message;
-        const Arg = args[args.length - 1];
-        const Commands: Command[] = client.commands.filter((command: Command) => Arg !== "all" ? command.name === Arg || command.aliases.includes(Arg) : !command.isOwner).values() as any;
+        const Arg = args[args.length - 1]?.toLowerCase();
+
+        const Commands: Command[] = client.commands.filter((command: Command) => {
+            if (!Arg || Arg === "all") return !command.isOwner;
+            else return command.name === Arg || command.aliases.includes(Arg);
+        }).toJSON();
 
         //Если пользователь хочет получить данные о не существующей команде
         if (!Commands?.length) return {text: `${author}, у меня нет такой команды!`};
