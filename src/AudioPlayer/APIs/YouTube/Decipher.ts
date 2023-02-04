@@ -196,7 +196,7 @@ function cutAfterJS(mixedJson: string): string {
     if (mixedJson[0] === '[') { open = '['; close = ']'; }
     else if (mixedJson[0] === '{') { open = '{'; close = '}'; }
 
-    if (!open) throw new Error(`Can't cut unsupported JSON (need to begin with [ or { ) but got: ${mixedJson[0]}`);
+    if (!open) throw Error(`Can't cut unsupported JSON (need to begin with [ or { ) but got: ${mixedJson[0]}`);
 
     // counter - Current open brackets to be closed
     // isEscaped - States if the current character is treated as escaped or not

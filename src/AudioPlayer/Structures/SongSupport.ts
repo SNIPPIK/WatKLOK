@@ -327,7 +327,7 @@ export namespace toPlayer {
 
         const runCallback = callback(argument) as Promise<InputTrack | InputPlaylist | InputTrack[]>;
 
-        if (Music.showGettingData) UtilsMsg.createMessage({ text: `${author}, произведен запрос на **${platform.toLowerCase()}.${type}**, получение всех данных может занять какое-то время!`, color: "Grey", message });
+        if (Music.showGettingData) UtilsMsg.createMessage({ text: `${author}, производится запрос в **${platform.toLowerCase()}.${type}**`, color: "Grey", message });
 
         runCallback.catch(e => {
             if (e.length > 2e3) UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e.message}`, color: "DarkRed", codeBlock: "css", message });

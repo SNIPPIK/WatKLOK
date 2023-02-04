@@ -15,17 +15,33 @@ export function consoleTime(data: string) {
     return console.log(`[${reformatDate.join(":")}.${date.getMilliseconds()}] ${data}`);
 }
 
+const queue = new Collection<string, Queue>();
+const commands = new Collection<string, Command>(); //База, со всеми командами
+
 export class WatKLOK extends Client {
-    private readonly _queue = new Collection<string, Queue>();
-    private readonly _commands = new Collection<string, Command>(); //База, со всеми командами
-    private readonly _player = Player; //Плеер
-    private readonly _ShardID = this.shard?.ids[0] ?? undefined; //Если запущен ShardManager, будет отображаться номер дубликата
-
-    public get commands() { return this._commands; };
-    public get queue() { return this._queue; };
-    public get player() { return this._player; };
-    public get ShardID() { return this._ShardID; };
-
+    /**
+     * @description Все команды бота
+     */
+    public get commands() { return commands; };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Все музыкальные очереди бота
+     */
+    public get queue() { return queue; };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Плеер
+     */
+    public get player() { return Player; };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Текущий ID осколка
+     */
+    public get ShardID() { return this.shard?.ids[0] ?? undefined; };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Создаем класс бота и затем запускаем
+     */
     public constructor() {
         super({
             sweepers: { ...Options.DefaultSweeperSettings,
@@ -95,7 +111,11 @@ export class WatKLOK extends Client {
             }
         });
     };
-    //Включаем бота
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Немного меняем djs<Client.login>
+     * @param token {string} Токен, по умолчанию будет взят из env.TOKEN
+     */
     public login(token: string = env.get("TOKEN")): Promise<string> {
         LoadFiles(this);
 

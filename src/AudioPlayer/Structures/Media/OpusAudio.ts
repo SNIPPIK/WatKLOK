@@ -9,7 +9,7 @@ import fs from "fs";
 type FFmpegOptions = {seek?: number, filters?: AudioFilters};
 
 export class OpusAudio {
-    private _opus: opus.OggDemuxer = new opus.OggDemuxer({autoDestroy: true, objectMode: true, highWaterMark: 8});
+    private _opus: opus.OggDemuxer = new opus.OggDemuxer({autoDestroy: true});
     private _streams: Array<Readable> = [];
     private _ffmpeg: FFspace.FFmpeg;
 
@@ -54,7 +54,7 @@ export class OpusAudio {
         const resource = choiceResource(path);
 
         //Создаем ffmpeg
-        this.ffmpeg = new FFspace.FFmpeg(choiceArgs(path, typeof resource, options), {highWaterMark: 8});
+        this.ffmpeg = new FFspace.FFmpeg(choiceArgs(path, typeof resource, options));
 
         //Если resource является Readable то загружаем его в ffmpeg
         if (resource instanceof Readable) {

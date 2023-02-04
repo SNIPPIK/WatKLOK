@@ -5,6 +5,9 @@ import {Colors} from "discord.js";
 import pak from "package.json";
 import os from "node:os";
 
+const cpu = os.cpus();
+const processor = cpu.length > 0 ? cpu[0] : "Невозможно определить";
+
 export class Command_Info extends Command {
     public constructor() {
         super({
@@ -25,17 +28,13 @@ export class Command_Info extends Command {
 
         return {
             embed: {
-                color: Colors.Green,
-                thumbnail: {
-                    url: client.user.displayAvatarURL()
-                },
-                author: {
-                    name: "Информация"
-                },
+                timestamp: new Date(), color: Colors.Green,
+                thumbnail: { url: client.user.displayAvatarURL() },
+                author: { name: "Информация" },
                 fields: [
                     {
                         name: "Основные",
-                        value: `**❯ Разработчик: SNIPPIK#4178 **\n**❯ Команд:** ${client.commands.size}\n**❯ Версия:** [${pak.version}]\n**❯ Процессор [${os.cpus()[0].model}]**`
+                        value: `**❯ Разработчик: SNIPPIK#4178 **\n**❯ Команд:** ${client.commands.size}\n**❯ Версия:** [${pak.version}]\n**❯ Процессор [${processor}]**`
                     },
                     {
                         name: "Статистика",
@@ -46,7 +45,6 @@ export class Command_Info extends Command {
                         value: `\`\`\`css\n• Queue      => ${client.queue.size}\n• Player     => ${client.queue.get(guild.id) ? client.queue.get(guild.id).player.state.status : 'Is not a work player'}\`\`\``
                     }
                 ],
-                timestamp: new Date(),
                 footer: {
                     text: `Latency - ${(Date.now() - message.createdTimestamp < 0 ? Math.random() * 78 : Date.now() - message.createdTimestamp).toFixed(0)} | Api - ${(client.ws.ping < 0 ? Math.random() * 78 : client.ws.ping).toFixed(0)} | Uptime: ${DurationUtils.ParsingTimeToString(client.uptime / 1000)}`,
                     iconURL: client.user.displayAvatarURL()

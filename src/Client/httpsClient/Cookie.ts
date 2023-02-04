@@ -22,7 +22,7 @@ export function uploadCookie(Cookie: string | string[]): void {
         const newCookie: string = ParsingCookieToString({...ParsingCookieToJson(CookieFile.cookie), ...ParsingCookieToJson(Cookie)});
 
         writeFile('./db/Cookie.json', JSON.stringify({cookie: newCookie}, null, `\t`), () => null);
-    } catch (err) { throw new Error("Cookie file has damaged!"); }
+    } catch (err) { throw Error("[APIs]: Cookie file has damaged!"); }
 }
 //====================== ====================== ====================== ======================
 /**

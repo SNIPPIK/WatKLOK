@@ -57,7 +57,7 @@ namespace construct {
         const Image: string = track.Image ?? track?.inAlbum?.image;
         const Albums = track.albums?.length ? track.albums[0] : track.albums;
         let trackName = (track?.title ?? track?.name);
-        
+
         if (track?.version) trackName += ` - ${track.version}`;
 
         return {

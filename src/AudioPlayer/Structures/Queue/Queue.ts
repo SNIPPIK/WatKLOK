@@ -7,6 +7,7 @@ import {StageChannel} from "discord.js";
 import {Debug} from "@db/Config.json";
 import {Voice} from "@VoiceManager";
 import {Song} from "./Song";
+import {OpusAudio} from "@OpusAudio";
 
 export type AudioFilters = Array<string> | Array<string | number>;
 
@@ -110,16 +111,34 @@ export class Queue {
      * @description Включение текущего трека
      * @param seek {number} До скольки надо перемотать трек
      */
-    public play = (seek: number = 0): void => {
+    public play = (seek: number = 0): Promise<void> | void => {
+        //Если треков в очереди больше нет
         if (!this.song) return this.cleanup();
 
-        //Получаем ссылку на resource
-        this.song.resource(seek)
-            .then((url: string) => this.player.readStream(url,{seek, filters: this.song.isLive ? [] : this.filters}))
-            .catch((err) => this.player.emit("error", new Error(err), true));
+        //Отправляем сообщение с авто обновлением
+        if (!seek) MessagePlayer.toPlay(this.message);
 
-        if (!seek) MessagePlayer.toPlay(this.message); //Отправляем сообщение с авто обновлением
+        //Если включен режим отладки показывает что сейчас играет и где
         if (Debug) consoleTime(`[Debug] -> Play: ${this.guild.id}: ${this.song.title}`);
+
+        return new Promise<void>((resolve) => {
+            const resource = this.song.resource(seek);
+
+            resource.then((url: string) => {
+                //Если ссылка не была найдена
+                if (!url) return void this.player.emit("error", Error(`Link to resource, not found`), true);
+
+                //Создаем поток
+                const stream = new OpusAudio(url, {seek, filters: this.song.isLive ? [] : this.filters});
+
+                //Отправляем поток в плеер
+                return this.player.readStream(stream);
+            });
+            //Если получение ссылки вызывает ошибку
+            resource.catch((err) => this.player.emit("error", Error(err), true));
+
+            return resolve(null)
+        });
     };
     //====================== ====================== ====================== ======================
     /**

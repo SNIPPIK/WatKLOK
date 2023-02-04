@@ -25,7 +25,7 @@ export namespace EmbedMessages {
     * @param client {WatKLOK} Клиент
     * @param queue {Queue} Очередь
     */
-    export function toPlay(client: WatKLOK, queue: Queue): EmbedConstructor {
+    export function toPlaying(client: WatKLOK, queue: Queue): EmbedConstructor {
         const { color, author, image, requester } = queue.song;
         const fields = getFields(queue, client);
         const AuthorSong = replacer.replaceText(author.title, 45, false);

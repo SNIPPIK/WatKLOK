@@ -4,26 +4,49 @@ import {MessageCycle} from "@Managers/Players/CycleStep";
 import {EmbedMessages} from "@Structures/EmbedMessages";
 import {InputPlaylist, Song} from "@Queue/Song";
 import {consoleTime} from "@Client/Client";
+import {Music} from "@db/Config.json";
 import {Queue} from "@Queue/Queue";
 
 //Кнопки с которыми можно взаимодействовать
 const ButtonIDs = ["skip", "resume_pause", "replay", "last"];
+//Кнопки над сообщением о проигрывании трека
+const Buttons = new ActionRowBuilder().addComponents([
+        new ButtonBuilder().setCustomId("last").setEmoji(Music.Buttons["1"]).setStyle(ButtonStyle.Secondary), //id: "986009800867479572" или name: "⏪"
+        new ButtonBuilder().setCustomId("resume_pause").setEmoji(Music.Buttons["2"]).setStyle(ButtonStyle.Secondary), //id: "986009725432893590" или name: "⏯"
+        new ButtonBuilder().setCustomId("skip").setEmoji(Music.Buttons["3"]).setStyle(ButtonStyle.Secondary), //id: "986009774015520808" или name: "⏩"
+        new ButtonBuilder().setCustomId("replay").setEmoji(Music.Buttons["4"]).setStyle(ButtonStyle.Secondary)
+    ] //id: "986009690716667964" или name: "🔃"
+);
 
 //Сообщения, которые отправляет плеер
 export namespace MessagePlayer {
     /**
      * @description Отправляем сообщение о текущем треке, обновляем раз в 15 сек
      * @param message {ClientMessage} Сообщение
-     * @requires {MessageCycle, pushCurrentSongMessage, Message}
+     * @requires {MessageCycle, Message}
      */
-    export function toPlay(message: ClientMessage) {
+    export function toPlay(message: ClientMessage): void {
         //Если уже есть сообщение то удаляем
         MessageCycle.toRemove(message.channelId);
+        const queue: Queue = message.client.queue.get(message.guild.id);
+
+        if (!queue?.song) return;
 
         setImmediate(() => {
-            const msg = pushCurrentSongMessage(message);
+            const embedCurrentPlaying = EmbedMessages.toPlaying(message.client, queue);
+            const msg = message.channel.send({embeds: [embedCurrentPlaying as any], components: [Buttons as any]});
 
-            if (msg) msg.then(MessageCycle.toPush).catch(console.log);
+            msg.catch((e) => console.log(`[MessagePlayer]: [function: toPlay]: ${e.message}`));
+            msg.then((msg) => {
+                //Добавляем к сообщению кнопки
+                const collector = CreateCollector(msg, queue);
+
+                //Удаляем сборщик после проигрывания трека
+                queue.player.once("idle", () => collector?.stop());
+
+                //Добавляем сообщение к CycleStep
+                MessageCycle.toPush(msg);
+            });
         });
     }
     //====================== ====================== ====================== ======================
@@ -32,7 +55,7 @@ export namespace MessagePlayer {
      * @param queue {Queue} Очередь
      * @param err {Error | string} Ошибка
      */
-    export function toError(queue: Queue, err: Error | string = null) {
+    export function toError(queue: Queue, err: Error | string = null): void {
         const {client, channel} = queue.message;
 
         setImmediate(() => {
@@ -52,7 +75,7 @@ export namespace MessagePlayer {
      * @param queue {Queue} Очередь
      * @param song {Song} Трек
      */
-    export function toPushSong(queue: Queue, song: Song) {
+    export function toPushSong(queue: Queue, song: Song): void {
         const {client, channel} = queue.message;
 
         setImmediate(() => {
@@ -72,7 +95,7 @@ export namespace MessagePlayer {
      * @param message {ClientMessage} Сообщение
      * @param playlist {InputPlaylist} Сам плейлист
      */
-    export function toPushPlaylist(message: ClientMessage, playlist: InputPlaylist) {
+    export function toPushPlaylist(message: ClientMessage, playlist: InputPlaylist): void {
         const {channel} = message;
 
         setImmediate(() => {
@@ -89,33 +112,6 @@ export namespace MessagePlayer {
 }
 //====================== ====================== ====================== ======================
 /**
- * @description Отправляем сообщение
- * @param message {ClientMessage} Сообщение
- * @requires {CreateCollector}
- */
-function pushCurrentSongMessage(message: ClientMessage): Promise<ClientMessage> {
-    const queue: Queue = message.client.queue.get(message.guild.id);
-
-    if (!queue?.song) return;
-
-    const CurrentPlayEmbed = EmbedMessages.toPlay(message.client, queue);
-    //Кнопки над сообщением о проигрывании трека
-    const Buttons = new ActionRowBuilder().addComponents([
-        new ButtonBuilder().setCustomId("last").setEmoji({id: "986009800867479572"}).setStyle(ButtonStyle.Secondary), //id: "986009800867479572" или name: "⏪"
-        new ButtonBuilder().setCustomId("resume_pause").setEmoji({id: "986009725432893590"}).setStyle(ButtonStyle.Secondary), //id: "986009725432893590" или name: "⏯"
-        new ButtonBuilder().setCustomId("skip").setEmoji({id: "986009774015520808"}).setStyle(ButtonStyle.Secondary), //id: "986009774015520808" или name: "⏩"
-        new ButtonBuilder().setCustomId("replay").setEmoji({id: "986009690716667964"}).setStyle(ButtonStyle.Secondary)] //id: "986009690716667964" или name: "🔃"
-    );
-
-    const sendMessage = message.channel.send({embeds: [CurrentPlayEmbed as any], components: [Buttons as any]});
-
-    sendMessage.then((msg) => CreateCollector(msg, queue)); //Добавляем к сообщению кнопки
-    sendMessage.catch((e) => console.log(`[MessageEmitter]: [function: pushCurrentSongMessage]: ${e.message}`));
-
-    return sendMessage;
-}
-//====================== ====================== ====================== ======================
-/**
  * @description Создаем сборщик кнопок
  * @param message {ClientMessage} Сообщение
  * @param queue {Queue} Очередь сервера
@@ -125,9 +121,6 @@ function CreateCollector(message: ClientMessage, queue: Queue) {
     const collector = message.createMessageComponentCollector({ filter: (i) => ButtonIDs.includes(i.customId), componentType: ComponentType.Button, time: 60e5 });
     const {player} = queue;
     const EmitPlayer = message.client.player;
-
-    //Удаляем сборщик после проигрывания трека
-    player.once("idle", () => collector.stop());
 
     //Добавляем ему ивент сборки кнопок
     collector.on("collect", (i): void => {

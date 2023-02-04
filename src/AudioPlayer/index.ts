@@ -116,7 +116,7 @@ export namespace Player {
      * @description Применяем фильтры для плеера
      * @param message {ClientMessage} Сообщение с сервера
      */
-    export function filter(message: ClientMessage): void {
+    export function filter(message: ClientMessage): Promise<void> | void {
         const {client, guild} = message;
         const {player, play}: Queue = client.queue.get(guild.id);
         const seek: number = player.streamDuration;
