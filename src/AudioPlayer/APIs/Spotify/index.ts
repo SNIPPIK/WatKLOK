@@ -1,4 +1,4 @@
-import {InputAuthor, InputPlaylist, InputTrack} from "@Queue/Song";
+import {inAuthor, inPlaylist, inTrack} from "@Queue/Song";
 import {httpsClient} from "@httpsClient";
 import {env} from "@env";
 
@@ -14,7 +14,7 @@ const SpotifyRes = { token: "", time: 0 };
 function getID(url: string): string {
     if (typeof url !== "string") return undefined;
 
-    return new URL(url).pathname.split('/')[2];
+    return url?.split('/')?.at(- 1);
 }
 
 //====================== ====================== ====================== ======================
@@ -54,27 +54,6 @@ namespace API {
             return resolve(api);
         });
     }
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Получаем токен
-     */
-    function getToken(): Promise<void> {
-        return httpsClient.parseJson(`${AccountUrl}/token`, {
-            request: {
-                method: "POST",
-                headers: {
-                    "Accept": "application/json",
-                    "Authorization": `Basic ${Buffer.from(aut).toString("base64")}`,
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "accept-encoding": "gzip, deflate, br"
-                },
-                body: "grant_type=client_credentials"
-            }
-        }).then((result) => {
-            SpotifyRes.time = Date.now() + result.expires_in;
-            SpotifyRes.token = result.access_token;
-        });
-    }
 }
 //====================== ====================== ====================== ======================
 
@@ -108,7 +87,7 @@ export namespace Spotify {
      * @description Получаем данные о треке
      * @param url {string} Ссылка на трек
      */
-    export function getTrack(url: string): Promise<InputTrack | null> {
+    export function getTrack(url: string): Promise<inTrack | null> {
         const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
@@ -132,7 +111,7 @@ export namespace Spotify {
      * @param url {string} Ссылка на плейлист
      * @param options {limit: number} Настройки
      */
-    export function getPlaylist(url: string, options: { limit: number } = {limit: 50}): Promise<InputPlaylist | null> {
+    export function getPlaylist(url: string, options: { limit: number } = {limit: 50}): Promise<inPlaylist | null> {
         const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
@@ -160,7 +139,7 @@ export namespace Spotify {
      * @param url {string} Ссылка на альбом
      * @param options {limit: number} Настройки
      */
-    export function getAlbum(url: string, options: { limit: number } = {limit: 50}): Promise<InputPlaylist | null> {
+    export function getAlbum(url: string, options: { limit: number } = {limit: 50}): Promise<inPlaylist | null> {
         const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
@@ -188,7 +167,7 @@ export namespace Spotify {
      * @param search {string} Что ищем
      * @param options {limit: number} Настройки поиска
      */
-    export function SearchTracks(search: string, options: { limit: number } = {limit: 15}): Promise<InputTrack[] | null> {
+    export function SearchTracks(search: string, options: { limit: number } = {limit: 15}): Promise<inTrack[] | null> {
         return new Promise(async (resolve, reject) => {
             try {
                 //Создаем запрос
@@ -226,15 +205,13 @@ export namespace Spotify {
         });
     }
 }
-
-//====================== ====================== ====================== ======================
 //====================== ====================== ====================== ======================
 /**
  * @description Получаем данные об авторе или пользователе
  * @param url {string} ссылка на автора или пользователя
  * @param isUser {boolean} Это пользователь
  */
-function getAuthor(url: string, isUser: boolean = false): Promise<InputAuthor> {
+function getAuthor(url: string, isUser: boolean = false): Promise<inAuthor> {
     const ID = getID(url);
 
     return new Promise(async (resolve, reject) => {
@@ -254,13 +231,30 @@ function getAuthor(url: string, isUser: boolean = false): Promise<InputAuthor> {
     });
 }
 //====================== ====================== ====================== ======================
-//====================== ====================== ====================== ======================
-//====================== ====================== ====================== ======================
-//====================== ====================== ====================== ======================
+/**
+ * @description Получаем токен
+ */
+function getToken(): Promise<void> {
+    return httpsClient.parseJson(`${AccountUrl}/token`, {
+        request: {
+            method: "POST",
+            headers: {
+                "Accept": "application/json",
+                "Authorization": `Basic ${Buffer.from(aut).toString("base64")}`,
+                "Content-Type": "application/x-www-form-urlencoded",
+                "accept-encoding": "gzip, deflate, br"
+            },
+            body: "grant_type=client_credentials"
+        }
+    }).then((result) => {
+        SpotifyRes.time = Date.now() + result.expires_in;
+        SpotifyRes.token = result.access_token;
+    });
+}
+
 //====================== ====================== ====================== ======================
 
 type SpotifyType = "track" | "playlist" | "album" | "artist" | "user";
-type AlbumType = "single";
 type SpotifyRes = (SpotifyPlaylist | SpotifyTrack | SpotifyArtist | SpotifyUser | SpotifyAlbumFull | SearchTracks) & FailResult;
 
 interface FailResult {
@@ -292,7 +286,6 @@ interface SpotifyTrack {
     type: SpotifyType,
     uri: string
 }
-
 interface AlbumImage {
     height: number,
     url: string,
@@ -341,7 +334,7 @@ interface SpotifyPlaylist {
 
 /*   interface Album    */
 interface SpotifyAlbumFull {
-    album_type: AlbumType,
+    album_type: "single",
     artists: SpotifyArtist[],
     available_markets: string[],
     copyrights: [
@@ -378,9 +371,8 @@ interface SpotifyAlbumFull {
     type: SpotifyType,
     uri: string
 }
-
 interface SpotifyAlbum {
-    album_type: AlbumType,
+    album_type: "single",
     artists: SpotifyArtist[],
     available_markets: string[],
     external_urls: {
@@ -428,7 +420,6 @@ interface SpotifyArtist {
     type: SpotifyType,
     uri: string
 }
-
 interface SpotifyUser {
     display_name: string,
     external_urls: {

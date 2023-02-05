@@ -1,4 +1,4 @@
-import {InputPlaylist, InputTrack} from "@Queue/Song";
+import {inPlaylist, inTrack} from "@Queue/Song";
 import {DurationUtils} from "@Managers/DurationUtils";
 import {httpsClient} from "@httpsClient";
 
@@ -52,7 +52,7 @@ namespace API {
  * @description Формирование общих данных
  */
 namespace construct {
-    export function track(track: any): InputTrack {
+    export function track(track: any): inTrack {
         const Author: any = track?.artists?.length ? track?.artists[0] : track.author;
         const Image: string = track.Image ?? track?.inAlbum?.image;
         const Albums = track.albums?.length ? track.albums[0] : track.albums;
@@ -85,7 +85,7 @@ export namespace YandexMusic {
      * @description Получаем данные о треке на YM
      * @param url {string} Ссылка на yandex music track
      */
-    export function getTrack(url: string): Promise<InputTrack> {
+    export function getTrack(url: string): Promise<inTrack> {
         const ID = url.split(/[^0-9]/g).filter(str => str !== "");
 
         return new Promise(async (resolve, reject) => {
@@ -112,7 +112,7 @@ export namespace YandexMusic {
      * @description Получаем данные об альбоме
      * @param url {string} Ссылка на альбом
      */
-    export function getAlbum(url: string): Promise<InputPlaylist> {
+    export function getAlbum(url: string): Promise<inPlaylist> {
         const ID = url.split(/[^0-9]/g).find(str => str !== "");
 
         return new Promise(async (resolve, reject) => {
@@ -141,7 +141,7 @@ export namespace YandexMusic {
      * @param str {string} Что надо искать
      * @constructor
      */
-    export function SearchTracks(str: string): Promise<InputTrack[]> {
+    export function SearchTracks(str: string): Promise<inTrack[]> {
         return new Promise(async (resolve, reject) => {
             try {
                 //Создаем запрос
@@ -150,7 +150,7 @@ export namespace YandexMusic {
                 //Если запрос выдал ошибку то
                 if (api instanceof Error) return reject(api);
 
-                const tracks: InputTrack[] = [];
+                const tracks: inTrack[] = [];
                 let NumberTrack = 0;
 
                 for (const track of api.result.tracks.items) {
@@ -169,7 +169,7 @@ export namespace YandexMusic {
      * @description Получаем 5 популярных треков автора
      * @param url {string} Ссылка на автора
      */
-    export function getArtistTracks(url: string): Promise<InputTrack[]> {
+    export function getArtistTracks(url: string): Promise<inTrack[]> {
         const ID = url.split(/[^0-9]/g).find(str => str !== "");
 
         return new Promise(async (resolve, reject) => {
@@ -182,7 +182,7 @@ export namespace YandexMusic {
 
                 //Если запрос выдал ошибку то
                 if (api instanceof Error) return reject(api);
-                const tracks: InputTrack[] = [];
+                const tracks: inTrack[] = [];
 
                 //На главной странице всегда есть 5 популярных треков автора
                 for (const track of api.tracks) tracks.push(construct.track(track));
@@ -199,7 +199,7 @@ export namespace YandexMusic {
  * @description Получаем данные об авторе трека
  * @param url {string} Ссылка на автора
  */
-function getAuthor(url: string): Promise<InputTrack["author"]> {
+function getAuthor(url: string): Promise<inTrack["author"]> {
     return new Promise(async (resolve, reject) => {
         try {
             //Создаем запрос

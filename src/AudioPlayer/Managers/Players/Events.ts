@@ -18,7 +18,7 @@ export namespace PlayerEvents {
         }
 
         //Включаем трек
-        setTimeout(() => queue.play(), 1200);
+        setTimeout(queue.play, 1200);
     }
     //====================== ====================== ====================== ======================
     /**

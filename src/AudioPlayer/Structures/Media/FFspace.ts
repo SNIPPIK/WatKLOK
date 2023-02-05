@@ -146,5 +146,5 @@ export namespace FFspace {
 }
 
 function runProcess(file: string, args: any[]): ChildProcessWithoutNullStreams & { stdout: { _readableState: Readable }, stdin: { _writableState: Writable } } {
-    return spawn(file, args, {shell: false}) as any;
+    return spawn(file, args) as any;
 }

@@ -1,4 +1,4 @@
-import {InputAuthor, InputPlaylist, InputTrack} from "@Queue/Song";
+import {inAuthor, inPlaylist, inTrack} from "@Queue/Song";
 import {httpsClient, httpsClientOptions} from "@httpsClient";
 import {YouTubeFormat} from "./Decipher";
 import {Worker} from "worker_threads";
@@ -6,7 +6,7 @@ import {Worker} from "worker_threads";
 //====================== ====================== ====================== ======================
 /**
  * Простой парсер youtube
- * Некоторое взято у ytdl-core
+ * Некоторое взято у ytdl-core (Decipher или extractorSignature)
  */
 //====================== ====================== ====================== ======================
 
@@ -38,7 +38,7 @@ namespace API {
  * @description Формирование общих данных
  */
 namespace construct {
-    export async function video(video: any): Promise<InputTrack> {
+    export async function video(video: any): Promise<inTrack> {
         return {
             url: `https://youtu.be/${video.videoId}`,
             title: video.title,
@@ -48,7 +48,7 @@ namespace construct {
             isLive: video.isLiveContent
         };
     }
-    export function playlist(video: any): InputTrack {
+    export function playlist(video: any): inTrack {
         return {
             url: `https://www.youtube.com/watch?v=${video.videoId}`,
             title: video.title.runs[0].text,
@@ -76,7 +76,7 @@ export namespace YouTube {
      * @description Получаем данные о видео
      * @param url {string} Ссылка на видео
      */
-    export function getVideo(url: string): Promise<InputTrack> {
+    export function getVideo(url: string): Promise<inTrack> {
         const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
@@ -122,7 +122,7 @@ export namespace YouTube {
      * @description Получаем данные о плейлисте
      * @param url {string} Ссылка на плейлист
      */
-    export function getPlaylist(url: string): Promise<InputPlaylist> {
+    export function getPlaylist(url: string): Promise<inPlaylist> {
         const ID = getID(url, true);
 
         return new Promise(async (resolve, reject) => {
@@ -158,7 +158,7 @@ export namespace YouTube {
     * @param search {string} что ищем
     * @param options {limit} Настройки
     */
-    export function SearchVideos(search: string, options = {limit: 15}): Promise<InputTrack[]> {
+    export function SearchVideos(search: string, options = {limit: 15}): Promise<inTrack[]> {
         return new Promise(async (resolve, reject) => {
             try {
                 //Создаем запрос
@@ -173,7 +173,7 @@ export namespace YouTube {
                 //Если нет данных на странице (если нет результатов поиска)
                 if (!details) return reject(Error(`[APIs]: Не удалось найти: ${search}`));
 
-                const videos: InputTrack[] = [];
+                const videos: inTrack[] = [];
                 for (let i = 0; i < details.length; i++) {
                     if (i >= options.limit) break;
 
@@ -216,7 +216,7 @@ export namespace YouTube {
                 const videos = (tabs[1] ?? tabs[2]).tabRenderer?.content?.richGridRenderer?.contents;
                 const author = details.microformat.microformatDataRenderer;
 
-                const endVideos: InputTrack[] = [];
+                const endVideos: inTrack[] = [];
                 for (let i = 0; i < videos.length; i++) {
                     if (i >= 5) break;
 
@@ -241,7 +241,7 @@ export namespace YouTube {
  * @param id {string} ID канала
  * @param name {string} Название канала
  */
-function getChannel({id, name}: { id: string, name?: string }): Promise<InputAuthor> {
+function getChannel({id, name}: { id: string, name?: string }): Promise<inAuthor> {
     return new Promise(async (resolve) => {
         //Создаем запрос
         const channel: any[] | any = await API.Request("JSON", `https://www.youtube.com/channel/${id}/channels?flow=grid&view=0&pbj=1`, {

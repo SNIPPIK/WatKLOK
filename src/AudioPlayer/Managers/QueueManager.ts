@@ -1,6 +1,6 @@
-import {InputPlaylist, InputTrack, Song} from "@Queue/Song";
 import {MessagePlayer} from "@Managers/Players/Messages";
 import {ClientMessage} from "@Client/interactionCreate";
+import {inPlaylist, inTrack, Song} from "@Queue/Song";
 import {Voice} from "@VoiceManager";
 import {Queue} from "@Queue/Queue";
 
@@ -8,10 +8,10 @@ import {Queue} from "@Queue/Queue";
  * @description Добавляем плейлист или трек в очередь
  * @param message {ClientMessage} Сообщение с сервера
  * @param VoiceChannel {Voice.VoiceChannels} К какому голосовому каналу надо подключатся
- * @param info {InputTrack | InputPlaylist} Входные данные это трек или плейлист?
+ * @param info {inTrack | inPlaylist} Входные данные это трек или плейлист?
  * @requires {CreateQueue}
  */
-export function toQueue(message: ClientMessage, VoiceChannel: Voice.VoiceChannels, info: InputTrack | InputPlaylist): void {
+export function toQueue(message: ClientMessage, VoiceChannel: Voice.VoiceChannels, info: inTrack | inPlaylist): void {
     const {queue, status} = CreateQueue(message, VoiceChannel);
     const requester = message.author;
 
@@ -20,7 +20,7 @@ export function toQueue(message: ClientMessage, VoiceChannel: Voice.VoiceChannel
         if ("items" in info) {
             MessagePlayer.toPushPlaylist(message, info);
             //Добавляем треки в очередь
-            info.items.forEach((track) => queue.push(new Song(track, requester)));
+            info.items.forEach((track: inTrack) => queue.push(new Song(track, requester)));
         } else queue.push(new Song(info, requester), queue.songs.length >= 1); //Добавляем трек в очередь
 
         //Запускаем callback плеера, если очередь была создана, а не загружена!

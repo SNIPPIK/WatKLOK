@@ -4,32 +4,10 @@ import {TypedEmitter} from "tiny-typed-emitter";
 import {Music} from "@db/Config.json";
 import {OpusAudio} from "@OpusAudio";
 
-const NotSkippedStatuses = ["read", "pause", "autoPause"];
-const UpdateMessage = ["idle", "pause", "autoPause"];
 const SilenceFrame = Buffer.from([0xf8, 0xff, 0xfe, 0xfae]);
-const packetSender = Music.AudioPlayer.typeSenderPacket;
-
-//Ивенты которые плеер может вернуть
-interface PlayerEvents {
-    //Плеер начал проигрывать поток
-    read: () => any;
-    //Плеер встал на паузу
-    pause: () => any;
-    //Плеер не находит <player>.voice
-    autoPause: () => any;
-    //Плеер закончил последние действие
-    idle: () => any;
-    //Плеер получил ошибку
-    error: (error: Error, skipSong: boolean) => void;
-}
-
-//Статусы и тип потока
-interface PlayerStatus {
-    //Текущий статус плеера
-    status: "read" | "pause" | "idle" | "error";
-    //Текущий поток
-    stream?: OpusAudio;
-}
+const packetSender = Music.AudioPlayer.methodSendPackets;
+const NotSkippedStatuses = ["read", "pause"];
+const UpdateMessage = ["read"];
 
 export class AudioPlayer extends TypedEmitter<PlayerEvents> {
     private _voice: VoiceConnection;
@@ -87,17 +65,25 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
      */
     public get hasUpdate() { return UpdateMessage.includes(this.state.status); };
     //====================== ====================== ====================== ======================
-    //Ставим на паузу плеер
+    /**
+     * @description Ставим на паузу плеер
+     */
     public pause = (): void => {
         if (this.state.status !== "read") return;
         this.state = {...this.state, status: "pause"};
     };
-    //Убираем с паузы плеер
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Убираем с паузы плеер
+     */
     public resume = (): void => {
         if (this.state.status !== "pause") return;
         this.state = {...this.state, status: "read"};
     };
-    //Останавливаем воспроизведение текущего трека
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Останавливаем воспроизведение текущего трека
+     */
     public stop = (): void => {
         if (this.state.status === "idle") return;
         this.state = {status: "idle"};
@@ -196,4 +182,30 @@ function isDestroy(oldS: PlayerStatus, newS: PlayerStatus): boolean {
     else if (oldS.status === "read" && newS.status === "idle") return true;
 
     return false;
+}
+//====================== ====================== ====================== ======================
+/**
+ * @description Ивенты которые плеер может вернуть
+ */
+interface PlayerEvents {
+    //Плеер начал проигрывать аудио
+    read: () => any;
+    //Плеер встал на паузу
+    pause: () => any;
+    //Плеер не находит <player>.voice
+    autoPause: () => any;
+    //Плеер закончил последние действие
+    idle: () => any;
+    //Плеер получил ошибку
+    error: (error: Error, skipSong: boolean) => void;
+}
+//====================== ====================== ====================== ======================
+/**
+ * @description Статусы и тип потока
+ */
+interface PlayerStatus {
+    //Текущий статус плеера
+    status: "read" | "pause" | "idle" | "error";
+    //OggOpus Конвертер
+    stream?: OpusAudio;
 }

@@ -34,7 +34,7 @@ export class interactionCreate extends Event<ClientInteraction, null> {
         const {author} = message;
 
         //Если нет команды, которую требует пользователь сообщаем ему об этом
-        if (!command) return interactionCreate.sendMessage(message, { text: `${author}, Я не нахожу такой команды!`, color: "DarkRed" });
+        if (!command) return interactionCreate.sendMessage(message, { text: `${author}, я не нахожу такой команды!`, color: "DarkRed" });
         //Если команду нельзя использовать все сервера
         if (command.isGuild && !message.guild) return interactionCreate.sendMessage(message,{text: `${author}, эта команда не работает вне сервера!`, color: "DarkRed"});
 
@@ -185,42 +185,70 @@ export namespace UtilsMsg {
         channelSend.then(deleteMessage);
         channelSend.catch((err: Error) => console.log(`[Discord Error]: [Send message] ${err}`));
     }
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Создаем аргумент сообщения
-     * @param options {messageUtilsOptions} Опции для отправления сообщения
-     * @private
-     */
-    function sendArgs(options: messageUtilsOptions): { content: string } | { embeds: [EmbedConstructor] } {
-        const {color, text, codeBlock, notAttachEmbed} = options;
-
-        if (typeof text === "string") {
-            const description = typeof codeBlock === "string" ? `\`\`\`${codeBlock}\n${text}\n\`\`\`` : text;
-            if (!notAttachEmbed) return { embeds: [{ color: typeof color === "number" ? color : Colors[color] ?? 258044, description }]};
-            return {content: description};
-        }
-        return {embeds: [text]};
-    }
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Варианты отправления сообщения
-     * @param message {ClientInteractive} Сообщение
-     * @param isSlash {boolean} Это запрос от пользователя
-     * @param args {string} Аргументы для создания сообщения
-     * @private
-     */
-    function sendMessage(message: ClientMessage | ClientInteraction, isSlash: boolean, args: any) {
-        if (isSlash) return message.reply({...args, fetchReply: true});
-        return message.channel.send({...args, fetchReply: true});
-    }
 }
-/* */
-/* */
-/* */
-/* */
-/* */
+//====================== ====================== ====================== ======================
+/**
+ * @description Создаем аргумент сообщения
+ * @param options {messageUtilsOptions} Опции для отправления сообщения
+ * @private
+ */
+function sendArgs(options: messageUtilsOptions): { content: string } | { embeds: [EmbedConstructor] } {
+    const {color, text, codeBlock, notAttachEmbed} = options;
+
+    if (typeof text === "string") {
+        const description = typeof codeBlock === "string" ? `\`\`\`${codeBlock}\n${text}\n\`\`\`` : text;
+        if (!notAttachEmbed) return { embeds: [{ color: typeof color === "number" ? color : Colors[color] ?? 258044, description }]};
+        return {content: description};
+    }
+    return {embeds: [text]};
+}
+//====================== ====================== ====================== ======================
+/**
+ * @description Варианты отправления сообщения
+ * @param message {ClientInteractive} Сообщение
+ * @param isSlash {boolean} Это запрос от пользователя
+ * @param args {string} Аргументы для создания сообщения
+ * @private
+ */
+function sendMessage(message: ClientMessage | ClientInteraction, isSlash: boolean, args: any) {
+    if (isSlash) return message.reply({...args, fetchReply: true});
+    return message.channel.send({...args, fetchReply: true});
+}
+//====================== ====================== ====================== ======================
+/**
+ * @description Все доступные каналы
+ */
+type Channels = DMChannel | PartialDMChannel | NewsChannel | TextChannel | ThreadChannel;
+//====================== ====================== ====================== ======================
+/**
+ * @description Необходимо для некоторых функций (для совместного применения)
+ */
 export type ClientInteractive = ClientMessage | ClientInteraction;
+//====================== ====================== ====================== ======================
+/**
+ * @description Embed, format JSON
+ */
+export interface EmbedConstructor extends EmbedData {}
+//====================== ====================== ====================== ======================
+/**
+ * @description Структура сообщения с тестового канала вызванная через "/"
+ */
+export interface ClientInteraction extends BaseInteraction {
+    client: WatKLOK;
+    member: GuildMember; customId: string; commandName: string; commandId: string; author: User;
+    //delete: () => void;
+    deferReply: () => Promise<void>; deleteReply: () => Promise<void>; options?: { _hoistedOptions: any[] };
+    reply: ClientMessage["channel"]["send"];
+}
+//====================== ====================== ====================== ======================
+/**
+ * @description Аргументы для отправки сообщения
+ */
 type SendMessageOptions = string | MessagePayload | BaseMessageOptions | { embeds?: EmbedConstructor[], components?: ActionRow<any> | ActionRowBuilder<any> };
+//====================== ====================== ====================== ======================
+/**
+ * @description Структура сообщения с текстового канала через <prefix>
+ */
 // @ts-ignore
 export interface ClientMessage extends Message {
     client: WatKLOK;
@@ -229,13 +257,3 @@ export interface ClientMessage extends Message {
     reply(options: SendMessageOptions): Promise<ClientMessage>
     user: null;
 }
-type Channels = DMChannel | PartialDMChannel | NewsChannel | TextChannel | ThreadChannel;
-export interface ClientInteraction extends BaseInteraction {
-    client: WatKLOK;
-    member: GuildMember; customId: string; commandName: string; commandId: string; author: User;
-    //delete: () => void;
-    deferReply: () => Promise<void>; deleteReply: () => Promise<void>; options?: { _hoistedOptions: any[] };
-    reply: ClientMessage["channel"]["send"];
-}
-//Embed JSON
-export interface EmbedConstructor extends EmbedData {}

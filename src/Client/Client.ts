@@ -4,7 +4,7 @@ import {ClientMessage} from "@Client/interactionCreate";
 import {Bot, Channels, APIs} from "@db/Config.json";
 import {Command} from "@Structures/Handle/Command";
 import {Player} from "@AudioPlayer/index";
-import {LoadFiles} from "@FileSystem";
+import {FileSystem} from "@FileSystem";
 import {Queue} from "@Queue/Queue";
 import {env} from "@env";
 
@@ -117,7 +117,7 @@ export class WatKLOK extends Client {
      * @param token {string} Токен, по умолчанию будет взят из env.TOKEN
      */
     public login(token: string = env.get("TOKEN")): Promise<string> {
-        LoadFiles(this);
+        FileSystem.initFileSystem(this);
 
         return super.login(token);
     };
@@ -126,10 +126,12 @@ const client = new WatKLOK();
 
 client.login().then(() => {
     if (Bot.ignoreErrors) process.on("uncaughtException", (err) => {
+        //Если выключено APIs.showErrors, то ошибки не будут отображаться
         if (!APIs.showErrors && err?.message?.match(/APIs/)) return;
 
         consoleTime(`[IgnoreError]: ${err.name} | ${err.message}\n${err.stack}`);
 
+        //Если выключено APIs.sendErrors, то ошибки не буду отправляться в текстовый канал
         if (!APIs.sendErrors && err?.message?.match(/APIs/)) return;
 
         try {

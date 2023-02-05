@@ -1,4 +1,4 @@
-import {InputPlaylist, InputTrack} from "@Queue/Song";
+import {inPlaylist, inTrack} from "@Queue/Song";
 import {httpsClient} from "@httpsClient";
 import {env} from "@env";
 
@@ -60,38 +60,6 @@ namespace API {
             return resolve(EndFormat.url);
         });
     }
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Если нет ClientID то получаем его как неавторизованный пользователь
-     * @private
-     */
-    function getClientID(): Promise<string> | string {
-        if (clientID) return clientID;
-
-        return new Promise<string>(async (resolve) => {
-            const parsedPage = await httpsClient.parseBody("https://soundcloud.com/", {
-                options: { userAgent: true },
-                request: {
-                    headers: {
-                        "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7",
-                        "accept-encoding": "gzip, deflate, br"
-                    }
-                }
-            });
-
-            if (!parsedPage || parsedPage instanceof Error) return resolve(null);
-
-            const split = parsedPage.split("<script crossorigin src=\"");
-            const urls: string[] = [];
-
-            split.forEach((r) => r.startsWith("https") ? urls.push(r.split("\"")[0]) : null);
-
-            const parsedPage2 = await httpsClient.parseBody(urls.pop());
-
-            if (parsedPage2 instanceof Error) return resolve(null);
-            return resolve(parsedPage2.split(",client_id:\"")[1].split("\"")[0]);
-        });
-    }
 }
 //====================== ====================== ====================== ======================
 
@@ -104,7 +72,7 @@ namespace construct {
      * @param track {any} Трек
      * @param url {string} Ссылка на трек
      */
-    export function track(track: any, url?: string): InputTrack {
+    export function track(track: any, url?: string): inTrack {
         if (!track.user) return;
 
         return {
@@ -155,8 +123,8 @@ export namespace SoundCloud {
      * @description Получаем трек
      * @param url {string} Ссылка на трек
      */
-    export function getTrack(url: string): Promise<InputTrack> {
-        return new Promise<InputTrack>(async (resolve, reject) => {
+    export function getTrack(url: string): Promise<inTrack> {
+        return new Promise<inTrack>(async (resolve, reject) => {
             try {
                 //Создаем запрос
                 const api = await API.Request(`resolve?url=${url}`);
@@ -176,8 +144,8 @@ export namespace SoundCloud {
      * @description Получаем плейлист
      * @param url {string} Ссылка на плейлист
      */
-    export function getPlaylist(url: string): Promise<InputTrack | InputPlaylist> {
-        return new Promise<InputPlaylist | InputTrack>(async (resolve, reject) => {
+    export function getPlaylist(url: string): Promise<inTrack | inPlaylist> {
+        return new Promise<inPlaylist | inTrack>(async (resolve, reject) => {
             try {
                 //Создаем запрос
                 const api = await API.Request(`resolve?url=${url}`);
@@ -205,8 +173,8 @@ export namespace SoundCloud {
      * @param options {limit: number} Кол-во выдаваемых треков
      * @constructor
      */
-    export function SearchTracks(search: string, options = {limit: 15}): Promise<InputTrack[]> {
-        return new Promise<InputTrack[]>(async (resolve, reject) => {
+    export function SearchTracks(search: string, options = {limit: 15}): Promise<inTrack[]> {
+        return new Promise<inTrack[]>(async (resolve, reject) => {
             try {
                 //Создаем запрос
                 const api = await API.Request(`search/tracks?q=${search}&limit=${options.limit}`);
@@ -219,4 +187,36 @@ export namespace SoundCloud {
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
+}
+//====================== ====================== ====================== ======================
+/**
+ * @description Если нет ClientID то получаем его как неавторизованный пользователь
+ * @private
+ */
+function getClientID(): Promise<string> | string {
+    if (clientID) return clientID;
+
+    return new Promise<string>(async (resolve) => {
+        const parsedPage = await httpsClient.parseBody("https://soundcloud.com/", {
+            options: { userAgent: true },
+            request: {
+                headers: {
+                    "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7",
+                    "accept-encoding": "gzip, deflate, br"
+                }
+            }
+        });
+
+        if (!parsedPage || parsedPage instanceof Error) return resolve(null);
+
+        const split = parsedPage.split("<script crossorigin src=\"");
+        const urls: string[] = [];
+
+        split.forEach((r) => r.startsWith("https") ? urls.push(r.split("\"")[0]) : null);
+
+        const parsedPage2 = await httpsClient.parseBody(urls.pop());
+
+        if (parsedPage2 instanceof Error) return resolve(null);
+        return resolve(parsedPage2.split(",client_id:\"")[1].split("\"")[0]);
+    });
 }

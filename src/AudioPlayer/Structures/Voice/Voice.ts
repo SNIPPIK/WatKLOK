@@ -4,10 +4,10 @@ import {getVoiceConnection, getVoiceConnections, joinVoiceChannel} from "@discor
 const VoiceChannelsGroup = "A";
 
 /**
- * Здесь все возможные взаимодействия с голосовым каналом (еще не финал)
+ * @description Здесь все возможные взаимодействия с голосовым каналом (еще не финал)
  */
 export namespace Voice {
-    //Допустимые голосовые каналы
+    //Допустимые голосовые каналы (стандартный и трибуна)
     export type VoiceChannels = VoiceChannel | StageChannel;
     /**
      * @description Подключаемся к голосовому каналу
@@ -49,7 +49,7 @@ export namespace Voice {
     export function Members(Guild: Guild): VoiceState[] | "Fail" {
         const connection = getVoice(Guild.id), Users: VoiceState[] = [];
 
-        if (connection) Guild.voiceStates.cache.forEach((state: VoiceState): any => {
+        if (connection) Guild.voiceStates.cache.forEach((state: VoiceState): void => {
             if (!(state.channelId === connection.joinConfig.channelId && state.guild.id === connection.joinConfig.guildId)) return;
             Users.push(state);
         });

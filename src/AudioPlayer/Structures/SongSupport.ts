@@ -1,7 +1,7 @@
 import {SoundCloud, Spotify, VK, YandexMusic, YouTube} from "@AudioPlayer/APIs";
 import {ClientMessage, UtilsMsg} from "@Client/interactionCreate";
-import {InputPlaylist, InputTrack, Song} from "@Queue/Song";
-import {Music, ReactionMenuSettings} from "@db/Config.json";
+import {Music, ReactionMenuSettings, APIs} from "@db/Config.json";
+import {inPlaylist, inTrack, Song} from "@Queue/Song";
 import {DurationUtils} from "@Managers/DurationUtils";
 import {replacer} from "@Structures/Handle/Command";
 import {ArraySort} from "@Structures/ArraySort";
@@ -14,7 +14,7 @@ export type platform = "YOUTUBE" | "SPOTIFY" | "VK" | "SOUNDCLOUD" | "DISCORD" |
 //Поддерживаемые тип для этих платформ
 export type callback = "track" | "playlist" | "search" | "album" | "artist";
 
-const emoji = ReactionMenuSettings.emojis.cancel;
+const emoji: string = ReactionMenuSettings.emojis.cancel;
 
 //====================== ====================== ====================== ======================
 /**
@@ -37,7 +37,7 @@ const RegisterPlatform: platform[] = [];
 /**
  * @description Платформы на которых недоступно получение музыки
 **/
-const PlatformsAudio = ["SPOTIFY", "YANDEX"];
+const PlatformsAudio: platform[] = ["SPOTIFY", "YANDEX"];
 //====================== ====================== ====================== ======================
 /**
  * @description Список всех доступных платформ
@@ -121,7 +121,7 @@ const Platforms = {
 
         //Доступные запросы для этой платформы
         "callbacks": {
-            "track": (url: string): Promise<InputTrack> => FFspace.FFprobe(url).then((trackInfo: any) => {
+            "track": (url: string): Promise<inTrack> => FFspace.FFprobe(url).then((trackInfo: any) => {
                 //Если не найдена звуковая дорожка
                 if (!trackInfo) return null;
 
@@ -163,7 +163,7 @@ export namespace platformSupporter {
         if (!plt) return "!platform";
 
         // @ts-ignore
-        const clb = plt[type] as (str: string) => Promise<InputTrack | InputPlaylist | InputTrack[]>;
+        const clb = plt[type] as (str: string) => Promise<inTrack | inPlaylist | inTrack[]>;
 
         if (!clb) return "!callback";
 
@@ -274,7 +274,7 @@ export namespace SongFinder {
         if (callback === "!platform" || callback === "!callback") return null;
 
         //Выдаем ссылку
-        return callback(url).then((track: InputTrack) => track?.format?.url);
+        return callback(url).then((track: inTrack) => track?.format?.url);
     }
 }
 //====================== ====================== ====================== ======================
@@ -284,9 +284,9 @@ export namespace SongFinder {
  * @param duration {number} Длительность трека
  */
 function FindTrack(nameSong: string, duration: number): Promise<string> {
-    return YouTube.SearchVideos(nameSong, {limit: 7}).then((Tracks: InputTrack[]) => {
+    return YouTube.SearchVideos(nameSong, {limit: 7}).then((Tracks: inTrack[]) => {
         //Фильтруем треки оп времени
-        const FindTracks: InputTrack[] = Tracks.filter((track: InputTrack) => {
+        const FindTracks: inTrack[] = Tracks.filter((track: inTrack) => {
             const DurationSong = DurationUtils.ParsingTimeToNumber(track.duration.seconds);
 
             //Как надо фильтровать треки
@@ -297,7 +297,7 @@ function FindTrack(nameSong: string, duration: number): Promise<string> {
         if (FindTracks?.length < 1) return null;
 
         //Получаем данные о треке
-        return YouTube.getVideo(FindTracks[0].url).then((video: InputTrack) => video?.format?.url) as Promise<string>;
+        return YouTube.getVideo(FindTracks[0].url).then((video: inTrack) => video?.format?.url) as Promise<string>;
     });
 }
 
@@ -325,15 +325,22 @@ export namespace toPlayer {
         if (callback === "!platform") return UtilsMsg.createMessage({ text: `${author}, у меня нет поддержки такой платформы!\nПлатформа **${platform}**!`, color: "DarkRed", message });
         else if (callback === "!callback") return UtilsMsg.createMessage({ text: `${author}, у меня нет поддержки этого типа запроса!\nТип запроса **${type}**!\nПлатформа: **${platform}**`, color: "DarkRed", message });
 
-        const runCallback = callback(argument) as Promise<InputTrack | InputPlaylist | InputTrack[]>;
+        const runCallback = callback(argument) as Promise<inTrack | inPlaylist | inTrack[]>;
 
-        if (Music.showGettingData) UtilsMsg.createMessage({ text: `${author}, производится запрос в **${platform.toLowerCase()}.${type}**`, color: "Grey", message });
+        //Если включено показывать запросы
+        if (Music.showGettingData) {
+            //Отправляем сообщение о текущем запросе
+            UtilsMsg.createMessage({ text: `${author}, производится запрос в **${platform.toLowerCase()}.${type}**`, color: "Grey", message });
+
+            //Если у этой платформы нельзя получить исходный файл музыки, то сообщаем
+            if (PlatformsAudio.includes(platform) && APIs.showWarningAudio) UtilsMsg.createMessage({ text: `⚠️ Warning | [${platform}]\nЯ не могу получать исходные файлы музыки у этой платформы.\nЗапрос будет произведен в youtube.track`, color: "Yellow", codeBlock: "css", message });
+        }
 
         runCallback.catch(e => {
             if (e.length > 2e3) UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e.message}`, color: "DarkRed", codeBlock: "css", message });
             else UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e}`, color: "DarkRed", codeBlock: "css", message });
         });
-        runCallback.then((data: InputTrack | InputPlaylist | InputTrack[]): void => {
+        runCallback.then((data: inTrack | inPlaylist | inTrack[]): void => {
             if (!data) return UtilsMsg.createMessage({ text: `${author}, данные не были найдены!`, color: "Yellow", message });
 
             //Если пользователь ищет трек
@@ -347,11 +354,11 @@ export namespace toPlayer {
 //====================== ====================== ====================== ======================
 /**
  * @description Отправляем сообщение о том что удалось найти
- * @param results {InputTrack[]} Результаты поиска
+ * @param results {inTrack[]} Результаты поиска
  * @param options {Options}
  * @requires {Reaction, deleteMessage}
  */
-function toSend(results: InputTrack[], options: { platform?: platform, message: ClientMessage }): void {
+function toSend(results: inTrack[], options: { platform?: platform, message: ClientMessage }): void {
     const {message, platform} = options;
     const {author, client} = message;
 
@@ -359,7 +366,7 @@ function toSend(results: InputTrack[], options: { platform?: platform, message: 
 
     const choice = `Выбери от 1 до ${results.length}`;
     const requester = `[Платформа: ${platform} | Запросил: ${author.username}]`;
-    const songsList = ArraySort<InputTrack>(15, results, (track, index ) => {
+    const songsList = ArraySort<inTrack>(15, results, (track, index ) => {
         const Duration = platform === "YOUTUBE" ? track.duration.seconds : DurationUtils.ParsingTimeToString(parseInt(track.duration.seconds)); //Проверяем надо ли конвертировать время
         const NameTrack = `[${replacer.replaceText(track.title, 80, true)}]`; //Название трека
         const DurationTrack = `[${Duration ?? "LIVE"}]`; //Длительность трека

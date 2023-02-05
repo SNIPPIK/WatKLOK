@@ -3,7 +3,7 @@ import {existsSync, readFileSync, writeFile} from 'node:fs';
 /**
  * @description Получаем куки из json файла
  */
-export function getCookies(): null | string {
+export function getCookies(): string {
     try {
         if (!existsSync(`./DataBase/Cookie.json`)) return null;
         return JSON.parse(readFileSync(`./DataBase/Cookie.json`, "utf8")).cookie;

@@ -5,13 +5,13 @@ import {AudioPlayer} from "../AudioPlayer";
 import {consoleTime} from "@Client/Client";
 import {StageChannel} from "discord.js";
 import {Debug} from "@db/Config.json";
+import {OpusAudio} from "@OpusAudio";
 import {Voice} from "@VoiceManager";
 import {Song} from "./Song";
-import {OpusAudio} from "@OpusAudio";
 
-export type AudioFilters = Array<string> | Array<string | number>;
-
-//Музыкальная очередь
+/**
+ * @description Музыкальная очередь, создается для каждого сервера
+ */
 export class Queue {
     //====================== ====================== ====================== ======================
     /**

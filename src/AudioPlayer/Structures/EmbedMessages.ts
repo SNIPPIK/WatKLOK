@@ -1,7 +1,7 @@
 import {ClientMessage, EmbedConstructor} from "@Client/interactionCreate";
 import {DurationUtils} from "@Managers/DurationUtils";
 import {replacer} from "@Structures/Handle/Command";
-import {InputPlaylist, Song} from "@Queue/Song";
+import {inPlaylist, Song} from "@Queue/Song";
 import {WatKLOK} from "@Client/Client";
 import {Music} from "@db/Config.json";
 import {Queue} from "@Queue/Queue";
@@ -12,13 +12,13 @@ import {Colors} from "discord.js";
  * @description Выдаем иконку проверки автора музыки
  * @param isVer {boolean} Подтвержденный пользователь?
  */
-function checkVer(isVer: boolean): string {
+function choiceImage(isVer: boolean): string {
     if (isVer === undefined) return Music.images._found;
     else if (isVer) return Music.images.ver;
     return Music.images._ver;
 }
 
-//Здесь хранятся все EMBED данные о сообщениях (Используется в MessagePlayer)
+//Здесь хранятся все EMBED данные о сообщениях (Используется в Managers/Player/Messages)
 export namespace EmbedMessages {
     /**
     * @description Message сообщение о текущем треке
@@ -31,7 +31,7 @@ export namespace EmbedMessages {
         const AuthorSong = replacer.replaceText(author.title, 45, false);
 
         return { color, image, thumbnail: author?.image ?? {url: Music.images._image}, fields,
-            author: { name: AuthorSong, url: author.url, iconURL: checkVer(author.isVerified) },
+            author: { name: AuthorSong, url: author.url, iconURL: choiceImage(author.isVerified) },
             footer: { text: `${requester.username} | ${DurationUtils.getTimeQueue(queue)} | 🎶: ${queue.songs.length}`, iconURL: requester.avatarURL() }
         };
     }
@@ -59,10 +59,10 @@ export namespace EmbedMessages {
      * @description Создаем Message сообщение для отправки в чат
      * @param client {WatKLOK} Бот
      * @param DisAuthor {ClientMessage.author} Автор сообщения
-     * @param playlist {InputPlaylist} Плейлист
-     * @param author {InputPlaylist.author} Автор плейлиста
+     * @param playlist {inPlaylist} Плейлист
+     * @param author {inPlaylist.author} Автор плейлиста
      */
-    export function toPushPlaylist({client, author: DisAuthor}: ClientMessage, playlist: InputPlaylist): EmbedConstructor {
+    export function toPushPlaylist({client, author: DisAuthor}: ClientMessage, playlist: inPlaylist): EmbedConstructor {
         const { author, image, url, title, items } = playlist;
 
         return { color: Colors.Blue, timestamp: new Date(),
@@ -86,7 +86,7 @@ export namespace EmbedMessages {
 
         return { color, thumbnail: image ?? {url: Music.images._image}, timestamp: new Date(),
             description: `\n[${title}](${url})\n\`\`\`js\n${err}...\`\`\``,
-            author: { name: AuthorSong, url: author.url, iconURL: checkVer(author.isVerified) },
+            author: { name: AuthorSong, url: author.url, iconURL: choiceImage(author.isVerified) },
             footer: { text: `${requester.username} | ${DurationUtils.getTimeQueue(songs)} | 🎶: ${songs.length}`, iconURL: requester?.avatarURL() ?? client.user.displayAvatarURL() }
         };
     }

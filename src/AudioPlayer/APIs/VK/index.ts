@@ -1,4 +1,4 @@
-import {InputPlaylist, InputTrack} from "@Queue/Song";
+import {inPlaylist, inTrack} from "@Queue/Song";
 import {httpsClient} from "@httpsClient";
 import {env} from "@env";
 
@@ -10,8 +10,8 @@ type methodType = "audio" | "execute" | "catalog";
 
 //Получаем ID
 function getID(url: string): string {
-    if (url.match(/\/audio/)) return url.split("/audio")[1];
-    return url.split("playlist/")[1];
+    if (url.match(/\/audio/)) return url.split("/audio").at(- 1);
+    return url.split("playlist/").at(- 1);
 }
 
 //====================== ====================== ====================== ======================
@@ -73,7 +73,7 @@ namespace construct {
  * @description Какие запросы доступны (какие были добавлены)
  */
 export namespace VK {
-    export function getTrack(url: string): Promise<InputTrack> {
+    export function getTrack(url: string): Promise<inTrack> {
         const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
@@ -97,7 +97,7 @@ export namespace VK {
      * @param url {string} Ссылка
      * @param options {{limit: number}}
      */
-    export function getPlaylist(url: string, options = {limit: 20}): Promise<InputPlaylist> {
+    export function getPlaylist(url: string, options = {limit: 20}): Promise<inPlaylist> {
         const PlaylistFullID = getID(url).split("_");
         const playlist_id = PlaylistFullID[1];
         const owner_id = PlaylistFullID[0];
@@ -132,7 +132,7 @@ export namespace VK {
      * @param search {string} Что ищем
      * @param options {{limit: number}}
      */
-    export function SearchTracks(search: string, options: { limit: number } = {limit: 15}): Promise<null | InputTrack[]> {
+    export function SearchTracks(search: string, options: { limit: number } = {limit: 15}): Promise<null | inTrack[]> {
         return new Promise(async (resolve, reject) => {
             try {
                 //Создаем запрос

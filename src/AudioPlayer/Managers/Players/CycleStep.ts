@@ -144,7 +144,7 @@ function editMessage(message: ClientMessage): void {
     if (!queue || !queue?.song) return MessageCycle.toRemove(message.channelId);
 
     //Если у плеера статус при котором нельзя обновлять сообщение
-    if (queue.player.hasUpdate) return;
+    if (!queue.player.hasUpdate) return;
 
     setImmediate(() => {
         const CurrentPlayEmbed = EmbedMessages.toPlaying(client, queue);

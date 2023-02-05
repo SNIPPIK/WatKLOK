@@ -1,4 +1,4 @@
-import {InputTrack, Song} from "@Queue/Song";
+import {inTrack, Song} from "@Queue/Song";
 import {Queue} from "@Queue/Queue";
 
 export namespace DurationUtils {
@@ -6,7 +6,7 @@ export namespace DurationUtils {
      * @description Совмещаем время всех треков из очереди
      * @param queue {Queue | any[]} Очередь
      */
-    export function getTimeQueue(queue: Queue | Song[] | InputTrack[]): string {
+    export function getTimeQueue(queue: Queue | Song[] | inTrack[]): string {
         let Timer: number = 0;
 
         if (queue instanceof Queue) queue.songs.forEach((song: Song) => Timer += song.duration.seconds);

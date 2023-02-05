@@ -9,9 +9,9 @@ import {Music} from "@db/Config.json";
 export class Song {
     readonly #title: string;
     readonly #url: string;
-    readonly #author: InputAuthor;
+    readonly #author: inAuthor;
     readonly #duration: { seconds: number, full: string };
-    readonly #image: InputTrack["image"];
+    readonly #image: inTrack["image"];
     readonly #requester: SongRequester;
     readonly #isLive: boolean;
     readonly #color: number;
@@ -19,7 +19,7 @@ export class Song {
 
     #resLink: string;
 
-    public constructor(track: InputTrack, author: ClientMessage["author"]) {
+    public constructor(track: inTrack, author: ClientMessage["author"]) {
         const platform = platformSupporter.getPlatform(track.url);
         const {username, id, avatar} = author;
         const seconds = parseInt(track.duration.seconds);
@@ -103,7 +103,7 @@ interface SongRequester {
 }
 
 //Пример получаемого трека
-export interface InputTrack {
+export interface inTrack {
     title: string;
     url: string;
     duration: {
@@ -128,7 +128,7 @@ export interface InputTrack {
 }
 
 //Пример получаемого автора трека
-export interface InputAuthor {
+export interface inAuthor {
     title: string;
     url: string | undefined;
     image?: {
@@ -140,12 +140,12 @@ export interface InputAuthor {
 }
 
 //Пример получаемого плейлиста
-export interface InputPlaylist {
+export interface inPlaylist {
     url: string;
     title: string;
-    items: InputTrack[];
+    items: inTrack[];
     image: {
         url: string;
     };
-    author?: InputAuthor;
+    author?: inAuthor;
 }

@@ -1,11 +1,11 @@
 import {Music, Debug} from "@db/Config.json";
 import {consoleTime} from "@Client/Client";
-import {AudioFilters} from "@Queue/Queue";
 import {FFspace} from "@FFspace";
 import {opus} from "prism-media";
 import {Readable} from "stream";
 import fs from "fs";
 
+type AudioFilters = Array<string> | Array<string | number>;
 type FFmpegOptions = {seek?: number, filters?: AudioFilters};
 
 export class OpusAudio {

@@ -2,7 +2,7 @@ import {ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, Message, Us
 import {ClientMessage, UtilsMsg} from "@Client/interactionCreate";
 import {MessageCycle} from "@Managers/Players/CycleStep";
 import {EmbedMessages} from "@Structures/EmbedMessages";
-import {InputPlaylist, Song} from "@Queue/Song";
+import {inPlaylist, Song} from "@Queue/Song";
 import {consoleTime} from "@Client/Client";
 import {Music} from "@db/Config.json";
 import {Queue} from "@Queue/Queue";
@@ -95,9 +95,9 @@ export namespace MessagePlayer {
     /**
      * @description Отправляем сообщение о том что плейлист был добавлен в очередь
      * @param message {ClientMessage} Сообщение
-     * @param playlist {InputPlaylist} Сам плейлист
+     * @param playlist {inPlaylist} Сам плейлист
      */
-    export function toPushPlaylist(message: ClientMessage, playlist: InputPlaylist): void {
+    export function toPushPlaylist(message: ClientMessage, playlist: inPlaylist): void {
         const {channel} = message;
 
         setImmediate(() => {
