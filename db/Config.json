@@ -1,7 +1,9 @@
 {
   "APIs": {
     "showErrors": true,
-    "sendErrors": false
+    "sendErrors": false,
+    
+    "showWarningAudio": false
   },
   "Channels": {
     "sendErrors": "",
@@ -23,7 +25,7 @@
     "showGettingData": true,
 
     "AudioPlayer": {
-      "typeSenderPacket": "djs",
+      "methodSendPackets": "djs",
       "sendDuration": 20,
       "updateMessage": 15
     },
