@@ -21,8 +21,8 @@
     "github": "https://github.com/SNIPPIK/WatKLOK.git"
   },
   "scripts": {
-    "start": "tsc -p ./tsconfig.json && cd build && node -r tsconfig-paths/register ./src/Client/Client.js",
-    "sharder": "tsc -p ./tsconfig.json && cd build && node -r tsconfig-paths/register src/Client/ShardManager.js",
+    "start": "cd build && node -r tsconfig-paths/register src/Client/Client.js",
+    "sharder": "cd build && node -r tsconfig-paths/register src/Client/ShardManager.js",
     "build": "tsc --watch -p ./tsconfig.json"
   },
   "version": "2.4.2"

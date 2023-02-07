@@ -13,8 +13,9 @@
 ## Гайд по запуску
 1. [`Node.js`](https://nodejs.org/ru/) 18-19
 2. [`FFmpeg & FFprobe`](https://ffmpeg.org/) или npm install (ffmpeg-static и ffprobe-static)
-3. Указываем данные в [`build/.env`](build/.env) | `Ps если его нет, то надо создать`
-4. Варианты запуска | `Если возникли ошибки повторите шаги заново`
+3. Запускаем `npm run build`
+4. Указываем данные в [`build/.env`](build/.env) | `Ps если его нет, то надо создать`
+5. Варианты запуска | `Если возникли ошибки повторите шаги заново`
    - Если серверов не более 1к, то `npm run start`
    - Если серверов более 1к, то `npm run sharder`
 
@@ -42,7 +43,7 @@
     SOUNDCLOUD="" #Soundcloud client id
     VK_TOKEN="" #Vk auth token (user token, not a bot token)
    ```
-2. [`Cookie.json`](db/Cookie.json) | необходим для видео 18+ (**YouTube**)
+2. [`Cookie.json`](db/Cookie.json) | необходим для видео 18+ (**YouTube**) | Ps не работает, пока!
     ```json5
    {
       "Cookie": ""
@@ -130,7 +131,10 @@
             "next": "➡️", //Кнопка вперед
             "cancel": "❌" //Удаление меню
          }
-      }
+      },
+   
+      //Для голосования (по типу skip, remove, seek)
+      "Voting": ["✅", "❌"]
    }
    ```
 4. [`Filters.json`](db/Filters.json) | Можно добавлять свои фильтры в конфиг | [`FFmpeg Docs`](https://ffmpeg.org/ffmpeg.html)
