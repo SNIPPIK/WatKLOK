@@ -43,7 +43,7 @@
     SOUNDCLOUD="" #Soundcloud client id
     VK_TOKEN="" #Vk auth token (user token, not a bot token)
    ```
-2. [`Cookie.json`](db/Cookie.json) | необходим для видео 18+ (**YouTube**) | Ps не работает, пока!
+2. [`Cookie.json`](db/Cookie.json) | необходим для видео 18+ (**YouTube**)
     ```json5
    {
       "Cookie": ""
