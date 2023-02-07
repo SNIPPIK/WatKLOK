@@ -5,8 +5,8 @@ import {existsSync, readFileSync, writeFile} from 'node:fs';
  */
 export function getCookies(): string {
     try {
-        if (!existsSync(`./DataBase/Cookie.json`)) return null;
-        return JSON.parse(readFileSync(`./DataBase/Cookie.json`, "utf8")).cookie;
+        if (!existsSync(`db/Cookie.json`)) return null;
+        return JSON.parse(readFileSync(`db/Cookie.json`, "utf8")).cookie;
     } catch { return null; }
 }
 //====================== ====================== ====================== ======================
@@ -15,13 +15,13 @@ export function getCookies(): string {
  * @param Cookie {string | string[]} Что нужно добавить к текущему куки
  */
 export function uploadCookie(Cookie: string | string[]): void {
-    if (!existsSync(`./DataBase/Cookie.json`)) return null;
+    if (!existsSync(`db/Cookie.json`)) return null;
 
     try {
-        const CookieFile: {cookie: string} = JSON.parse(readFileSync(`./DataBase/Cookie.json`, "utf8"));
+        const CookieFile: {cookie: string} = JSON.parse(readFileSync(`db/Cookie.json`, "utf8"));
         const newCookie: string = ParsingCookieToString({...ParsingCookieToJson(CookieFile.cookie), ...ParsingCookieToJson(Cookie)});
 
-        writeFile('./db/Cookie.json', JSON.stringify({cookie: newCookie}, null, `\t`), () => null);
+        writeFile('db/Cookie.json', JSON.stringify({cookie: newCookie}, null, `\t`), () => null);
     } catch (err) { throw Error("[APIs]: Cookie file has damaged!"); }
 }
 //====================== ====================== ====================== ======================
@@ -39,7 +39,7 @@ function ParsingCookieToJson(headCookie: string[] | string): {} {
         //Если параметра нет, то не добавляем его
         if (arrayCookie.length <= 1) return;
 
-        const key: string = arrayCookie.shift()?.trim();
+        const key: string = arrayCookie.shift()?.trim().toUpperCase();
         const value: string = arrayCookie.join("=").trim();
 
         Json = {...Json, [key]: value};
