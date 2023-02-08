@@ -198,7 +198,7 @@ export namespace YandexMusic {
     export function getArtistTracks(url: string): Promise<inTrack[]> {
         const ID = url.split(/[^0-9]/g).find(str => str !== "");
 
-        return new Promise(async (resolve, reject) => {
+                return new Promise(async (resolve, reject) => {
             //Если ID автора не удалось извлечь из ссылки
             if (!ID) return reject(Error("[APIs]: Не удалось получить ID автора!"));
 
@@ -209,15 +209,14 @@ export namespace YandexMusic {
                 //Если запрос выдал ошибку то
                 if (api instanceof Error) return reject(api);
                 const tracks: inTrack[] = [];
-                let NumberTrack = 0;
 
-                for (const track of api.tracks) {
-                    if (NumberTrack === 5) break;
+                for (let i = 0; i < api.tracks.length; i++) {
+                    if (i >= 5) break;
 
-                    NumberTrack++;
-                    tracks.push(construct.track(track))
+                    const track = api.tracks[i];
+                    tracks.push(construct.track(track));
                 }
-
+                
                 return resolve(tracks);
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
