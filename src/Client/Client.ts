@@ -12,6 +12,7 @@ export function consoleTime(data: string) {
     const date = new Date();
     const reformatDate = [date.getHours(), date.getMinutes(), date.getSeconds()].map(DurationUtils.toFixed0);
 
+    if (client.ShardID) return console.log(`[ShardID: ${client.ShardID}]: [${reformatDate.join(":")}.${date.getMilliseconds()}] ${data}`);
     return console.log(`[${reformatDate.join(":")}.${date.getMilliseconds()}] ${data}`);
 }
 
