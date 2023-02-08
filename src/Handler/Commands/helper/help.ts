@@ -46,8 +46,8 @@ export class HelpCommand extends Command {
         const pages = ArraySort<Command>(5, Commands, (command) =>
             `┌Команда [**${command.name}**] | ${command.type}
              ├ **Сокращения:** (${command.aliases.join(", ") ?? `Нет`})
-             ├ **Описание:** (${command.description ?? `Нет`})
-             └ **Используется:** ${Bot.prefix}${command.name} ${command.usage}`
+             ├ **Используется:** ${Bot.prefix}${command.name} ${command.usage}
+             └ **Описание:** (${command.description ?? `Нет`})`
         );
         embed.description = pages[0];
         embed.footer = {text: `${author.username} | Лист 1 из ${pages.length}`, iconURL: author.avatarURL()};

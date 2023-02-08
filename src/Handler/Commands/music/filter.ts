@@ -95,9 +95,9 @@ export class FilterCommand extends Command {
         const pages = ArraySort<typeof Filters[0]>(5, filters, (filter, index) => {
             return `┌Номер в списке - [${index+1}]
                     ├ **Названия:** ${filter.names ? `(${filter.names})` : `Нет`}
-                    ├ **Описание:** ${filter.description ? `(${filter.description})` : `Нет`}
                     ├ **Аргументы:** ${filter.args ? `(${filter.args})` : `Нет`}
-                    └ **Модификатор скорости:** ${filter.speed ? `${filter.speed}` : `Нет`}`
+                    ├ **Модификатор скорости:** ${filter.speed ? `${filter.speed}` : `Нет`}
+                    └ **Описание:** ${filter.description ? `(${filter.description})` : `Нет`}`
         });
         embed.description = pages[0];
         embed.footer = { text: `${message.author.username} | Лист 1 из ${pages.length}`, iconURL: message.author.displayAvatarURL() }
