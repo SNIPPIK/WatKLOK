@@ -1,10 +1,12 @@
 import {Command, ResolveData} from "@Structures/Handle/Command";
 import {ClientMessage} from "@Client/interactionCreate";
 
-export class Deploy extends Command {
+export class DeployCommand extends Command {
     public constructor() {
         super({
             name: "deploy",
+            description: "Загрузка slashCommands",
+            aliases: ["load"],
 
             isEnable: true,
             isOwner: true,
@@ -22,7 +24,7 @@ export class Deploy extends Command {
             const SlashCommands = client.application.commands;
             let slashCommandData: any = { name: command.name, description: command.description };
 
-            if (command.options.length > 0) slashCommandData = {...slashCommandData, options: command.options};
+            if (command.options && command.options?.length > 0) slashCommandData = {...slashCommandData, options: command.options};
 
             const slashCommand = SlashCommands.cache.get(slashCommandData.name);
 
@@ -32,6 +34,6 @@ export class Deploy extends Command {
             TotalCommands++;
         });
 
-        return { text: `${author}, Load: [${TotalCommands}]` };
+        return { text: `${author}, всего найдено и загружено **${TotalCommands}**` };
     };
 }
