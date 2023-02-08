@@ -45,13 +45,14 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
         delete this._state;
         this._state = state;
 
-        //Заставляем ивенты работать
+        //Фильтруем статусы бота что в emit не попало что не надо
         if (oldStatus !== newStatus || oldStatus !== "idle" && newStatus === "read") {
             PlayerCycle.toRemove(this);
             this.sendPacket(SilenceFrame);
             this.emit(newStatus);
         }
 
+        //Добавляем плеер в CycleStep
         PlayerCycle.toPush(this);
     };
     //====================== ====================== ====================== ======================
@@ -141,9 +142,10 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
     protected preparePacket = (): void => {
         const state = this.state;
 
-        //Если статус (idle или pause) прекратить выполнение функции
+        //Если статус (idle или pause или его нет) прекратить выполнение функции
         if (state?.status === "pause" || state?.status === "idle" || !state?.status) return;
 
+        //Если вдруг нет голосового канала
         if (!this.voice) return void (this.state = {...state, status: "pause"});
 
         //Отправка музыкального пакета

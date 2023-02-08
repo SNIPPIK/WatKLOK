@@ -7,7 +7,7 @@ import {WatKLOK} from "@Client/Client";
 type TypeFileLoad = Command | Event<any, any> | Module;
 type FileCallback = (pull: TypeFileLoad, {}: { dir: string, file: string, reason: string }) => void;
 
-let FileBase = {
+const FileBase = {
     Commands: [] as string[],
     Events: [] as string[]
 };

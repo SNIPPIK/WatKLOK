@@ -65,7 +65,7 @@ export class interactionCreate extends Event<ClientInteraction, null> {
      */
     private static sendMessage = (message: ClientInteractive, command: ResolveData): void => {
         //Запускаем ReactionMenu
-        if ("callbacks" in command && command?.callbacks !== undefined) new ReactionMenu(command.embed, message, command.callbacks);
+        if ("callbacks" in command && command?.callbacks !== undefined) ReactionMenu.create(command.embed, message, command.callbacks);
 
         //Отправляем просто сообщение
         else if ("text" in command) UtilsMsg.createMessage({...command, message });
@@ -197,7 +197,11 @@ function sendArgs(options: messageUtilsOptions): { content: string } | { embeds:
 
     if (typeof text === "string") {
         const description = typeof codeBlock === "string" ? `\`\`\`${codeBlock}\n${text}\n\`\`\`` : text;
-        if (!notAttachEmbed) return { embeds: [{ color: typeof color === "number" ? color : Colors[color] ?? 258044, description }]};
+        if (!notAttachEmbed) {
+            const embed: EmbedConstructor = { color: typeof color === "number" ? color : Colors[color] ?? 258044, description };
+
+            return {embeds: [embed]};
+        }
         return {content: description};
     }
     return {embeds: [text]};

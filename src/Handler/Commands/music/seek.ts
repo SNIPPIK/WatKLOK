@@ -3,11 +3,11 @@ import {ClientMessage} from "@Client/interactionCreate";
 import {ApplicationCommandOptionType} from "discord.js";
 import {Queue} from "@Queue/Queue";
 
-export class Command_Seek extends Command {
+export class SeekCommand extends Command {
     public constructor() {
         super({
             name: "seek",
-            aliases: ['begin', 'sek', 'beg'],
+            aliases: ["begin", "sek", "beg"],
             description: "Пропуск времени в текущем треке!",
 
             usage: "00:00 | 20",

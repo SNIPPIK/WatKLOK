@@ -2,7 +2,7 @@ import {Command, ResolveData} from "@Structures/Handle/Command";
 import {ClientMessage} from "@Client/interactionCreate";
 import {Queue} from "@Queue/Queue";
 
-export class Command_Pause extends Command {
+export class PauseCommand extends Command {
     public constructor() {
         super({
             name: "pause",

@@ -1,12 +1,13 @@
-import {ClientMessage, EmbedConstructor} from "@Client/interactionCreate";
 import {Command, ResolveData} from "@Structures/Handle/Command";
-import {Colors, MessageReaction, User} from "discord.js";
+import {EmbedConstructor} from "@Client/interactionCreate";
+import {ReactionMenu} from "@Structures/ReactionMenu";
 import {ArraySort} from "@Structures/ArraySort";
 import {httpsClient} from "@httpsClient";
+import {Colors} from "discord.js";
 
 const TraderApi = "https://api.warframestat.us/pc/ru/voidTrader/";
 const VoidIcon = "https://cdn.discordapp.com/attachments/850775689107865641/996413936595378256/BaroBanner.webp";
-export class Trader extends Command {
+export class VoidTraderCommand extends Command {
     public constructor() {
         super({
             name: "baro",
@@ -53,51 +54,10 @@ export class Trader extends Command {
         if (pagesInventory.length >= 1) {
             EmbedVoidTrader.description = pagesInventory[0];
 
-            return {embed: EmbedVoidTrader, callbacks: this.Callbacks(1, pagesInventory, EmbedVoidTrader)}
+            return {embed: EmbedVoidTrader, callbacks: ReactionMenu.DefaultCallbacks(1, pagesInventory, EmbedVoidTrader)}
         }
         //Если инвентаря нет просто отправляем сообщение
         return {embed: EmbedVoidTrader};
-    };
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Функции для управления <CollectorSortReaction>
-     * @param page {number} С какой страницы начнем
-     * @param pages {Array<string>} страницы
-     * @param embed {EmbedConstructor} Json<Embed>
-     * @private
-     */
-    private Callbacks = (page: number, pages: string[], embed: EmbedConstructor) => {
-        return {
-            //При нажатии на 1 эмодзи, будет выполнена эта функция
-            back: ({users}: MessageReaction, user: User, message: ClientMessage, msg: ClientMessage) => {
-                setImmediate(() => {
-                    users.remove(user).catch((err) => console.log(err));
-
-                    if (page === 1) return null;
-                    page--;
-                    embed = {...embed, description: pages[page - 1]};
-                    return msg.edit({embeds: [embed]});
-                });
-            },
-            //При нажатии на 2 эмодзи, будет выполнена эта функция
-            cancel: ({users}: MessageReaction, user: User, message: ClientMessage, msg: ClientMessage) => {
-                setImmediate(() => {
-                    [msg, message].forEach((mes) => mes.deletable ? mes.delete().catch(() => null) : null);
-                });
-            },
-            //При нажатии на 3 эмодзи, будет выполнена эта функция
-            next: ({users}: MessageReaction, user: User, message: ClientMessage, msg: ClientMessage) => {
-                setImmediate(() => {
-                    users.remove(user).catch((err) => console.log(err));
-
-                    if (page === pages.length) return null;
-                    page++;
-
-                    embed = {...embed, description: pages[page - 1]};
-                    return msg.edit({embeds: [embed]});
-                });
-            }
-        };
     };
 }
 
@@ -113,7 +73,6 @@ interface voidTraderItem {
     ducats: number;
     credits: number;
 }
-
 interface voidTrader {
     id: string,
     activation: Date,

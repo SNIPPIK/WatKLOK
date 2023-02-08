@@ -35,7 +35,8 @@ export namespace httpsClient {
         //Добавляем куки
         if (options.options?.cookie) {
             const cookie = getCookies();
-            options.request.headers = {...options.request.headers, "cookie": cookie};
+
+            if (cookie) options.request.headers = {...options.request.headers, "cookie": cookie};
         }
 
         return new Promise((resolve) => {

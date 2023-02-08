@@ -2,7 +2,7 @@ import {ClientMessage, EmbedConstructor} from "@Client/interactionCreate";
 import {Command, ResolveData} from "@Structures/Handle/Command";
 import {Colors} from "discord.js";
 
-export class Eval extends Command {
+export class EvalCommand extends Command {
     public constructor() {
         super({
             name: "eval",

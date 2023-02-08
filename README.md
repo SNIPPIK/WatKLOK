@@ -22,14 +22,14 @@
 ## Поддерживаемые платформы
 [Можно добавить поддержку иных платформ](src/AudioPlayer/Structures/SongSupport.ts)
 
-| Платформы                                    | Что доступно                                 | Аудио       |
-|----------------------------------------------|----------------------------------------------|-------------|
-| [**YouTube**](https://www.youtube.com/)      | **видео, плейлисты, поиск, стримы, каналы**  | ✔           |
-| [**Spotify**](https://open.spotify.com/)     | **треки, плейлисты, поиск, альбомы, авторы** | ✖ (YouTube) |
-| [**Yandex Music**](https://music.yandex.ru/) | **треки, альбомы, поиск, авторы**            | ✖ (YouTube) |
-| [**VK**](https://vk.com/)                    | **треки, ~~плейлисты~~, поиск**              | ✔           |
-| [**SoundCloud**](https://soundcloud.com/)    | **треки, плейлисты, поиск, альбомы**         | ✔           |
-| [**Discord**](https://discord.com/)          | **ссылки, файлы**                            | ✔           |
+| Платформы                                    | Что доступно                                 | Аудио           |
+|----------------------------------------------|----------------------------------------------|-----------------|
+| [**YouTube**](https://www.youtube.com/)      | **видео, плейлисты, поиск, стримы, каналы**  | ✔               |
+| [**Spotify**](https://open.spotify.com/)     | **треки, плейлисты, поиск, альбомы, авторы** | ✔ (YandexMusic) |
+| [**Yandex Music**](https://music.yandex.ru/) | **треки, альбомы, поиск, авторы**            | ✔               |
+| [**VK**](https://vk.com/)                    | **треки, ~~плейлисты~~, поиск**              | ✔               |
+| [**SoundCloud**](https://soundcloud.com/)    | **треки, плейлисты, поиск, альбомы**         | ✔               |
+| [**Discord**](https://discord.com/)          | **ссылки, файлы**                            | ✔               |
 
 <details>
   <summary>Показать настройки</summary>
@@ -42,6 +42,7 @@
     SPOTIFY_SECRET="" #Spotify client secket
     SOUNDCLOUD="" #Soundcloud client id
     VK_TOKEN="" #Vk auth token (user token, not a bot token)
+    YANDEX="mail@yandex.ru:password" #Using api yandex music. Ps на почту буду приходить письма о том что был произведен вход в аккаунт
    ```
 2. [`Cookie.json`](db/Cookie.json) | необходим для видео 18+ (**YouTube**)
     ```json5

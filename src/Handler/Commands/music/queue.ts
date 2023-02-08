@@ -6,7 +6,7 @@ import {MessageReaction, User} from "discord.js";
 import {Queue} from "@Queue/Queue";
 import {Song} from "@Queue/Song";
 
-export class Command_Queue extends Command {
+export class QueueCommand extends Command {
     public constructor() {
         super({
             name: "queue",
@@ -28,7 +28,7 @@ export class Command_Queue extends Command {
         //Получаем то что надо было преобразовать в string[]
         const pages = ArraySort<Song>(10, queue.songs, (song, index) => {
             const Duration = song.duration.full;
-            const TitleSong = replacer.replaceText(song.title, 80, true).replace(/[\s",']/g, ' ');
+            const TitleSong = replacer.replaceText(song.title, 80, true);
 
             return `[${index + 1}] - [${Duration}] | ${TitleSong}`;
         });

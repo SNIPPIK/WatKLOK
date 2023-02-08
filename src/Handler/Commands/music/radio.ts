@@ -2,7 +2,7 @@ import {Command, ResolveData} from "@Structures/Handle/Command";
 import {ClientMessage} from "@Client/interactionCreate";
 import {Queue} from "@Queue/Queue";
 
-export class Command_Radio extends Command {
+export class RadioCommand extends Command {
     public constructor() {
         super({
             name: "radio",

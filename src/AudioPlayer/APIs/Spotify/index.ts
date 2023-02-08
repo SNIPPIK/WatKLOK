@@ -2,27 +2,23 @@ import {inAuthor, inPlaylist, inTrack} from "@Queue/Song";
 import {httpsClient} from "@httpsClient";
 import {env} from "@env";
 
-//Ссылка на авторизацию
-const AccountUrl = "https://accounts.spotify.com/api"; //token
-const ApiUrl = "https://api.spotify.com/v1"; //type/id/params
-const SpotifyUrl = 'https://open.spotify.com';
+//====================== ====================== ====================== ======================
+//                              Простая реализация API Spotify                             //
+//====================== ====================== ====================== ======================
+
 const aut = env.get("SPOTIFY_ID") + ":" + env.get("SPOTIFY_SECRET");
-
-const SpotifyRes = { token: "", time: 0 };
-
-//Получаем ID трека, плейлиста, альбома
-function getID(url: string): string {
-    if (typeof url !== "string") return undefined;
-
-    return url?.split('/')?.at(- 1);
+//Локальная база данных с данными для авторизации
+const data = {
+    api: "https://api.spotify.com/v1",
+    link: "https://open.spotify.com",
+    account: "https://accounts.spotify.com/api"
 }
 
-//====================== ====================== ====================== ======================
-/**
- * Простая реализация API Spotify
- * Работает даже в тех странах где Spotify не должен работать xD
- */
-//====================== ====================== ====================== ======================
+//Локальная база данных
+const db = {
+    token: "",
+    time: 0
+};
 
 /**
  * @description Система запросов
@@ -34,15 +30,15 @@ namespace API {
      */
     export function Request(method: string): Promise<SpotifyRes | Error> {
         return new Promise(async (resolve) => {
-            const isLoggedIn = SpotifyRes.token !== undefined && SpotifyRes.time > Date.now() + 2;
+            const isLoggedIn = db.token !== undefined && db.time > Date.now() + 2;
             if (!isLoggedIn) await getToken();
 
-            const api = await httpsClient.parseJson(`${ApiUrl}/${method}`, {
+            const api = await httpsClient.parseJson(`${data.api}/${method}`, {
                 request: {
                     headers: {
                         "Accept": "application/json",
                         "Content-Type": "application/x-www-form-urlencoded",
-                        "Authorization": "Bearer " + SpotifyRes.token,
+                        "Authorization": "Bearer " + db.token,
                         "accept-encoding": "gzip, deflate, br"
                     }
                 }
@@ -128,7 +124,7 @@ export namespace Spotify {
                 return resolve({
                     url, title: api.name, image: api.images[0],
                     items: await Promise.all(api.tracks.items.map(({track}) => construct.track(track))),
-                    author: (await Promise.all([getAuthor(`${SpotifyUrl}/artist/${api.owner.id}`, api?.owner?.type !== "artist")]))[0]
+                    author: (await Promise.all([getAuthor(`${data.link}/artist/${api.owner.id}`, api?.owner?.type !== "artist")]))[0]
                 });
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
@@ -156,7 +152,7 @@ export namespace Spotify {
                 return resolve({
                     url, title: api.name, image: api.images[0],
                     items: await Promise.all(api.tracks.items.map(construct.track)),
-                    author: (await Promise.all([getAuthor(`${SpotifyUrl}/artist/${api?.artists[0].id}`, api?.artists[0]?.type !== "artist")]))[0]
+                    author: (await Promise.all([getAuthor(`${data.link}/artist/${api?.artists[0].id}`, api?.artists[0]?.type !== "artist")]))[0]
                 });
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
@@ -235,7 +231,7 @@ function getAuthor(url: string, isUser: boolean = false): Promise<inAuthor> {
  * @description Получаем токен
  */
 function getToken(): Promise<void> {
-    return httpsClient.parseJson(`${AccountUrl}/token`, {
+    return httpsClient.parseJson(`${data.account}/token`, {
         request: {
             method: "POST",
             headers: {
@@ -247,11 +243,20 @@ function getToken(): Promise<void> {
             body: "grant_type=client_credentials"
         }
     }).then((result) => {
-        SpotifyRes.time = Date.now() + result.expires_in;
-        SpotifyRes.token = result.access_token;
+        db.time = Date.now() + result.expires_in;
+        db.token = result.access_token;
     });
 }
+//====================== ====================== ====================== ======================
+/**
+ * @description Получаем ID трека, плейлиста, альбома
+ * @param url {string} Ссылка на трек, плейлист, альбом
+ */
+function getID(url: string): string {
+    if (typeof url !== "string") return undefined;
 
+    return url?.split('/')?.at(-1);
+}
 //====================== ====================== ====================== ======================
 
 type SpotifyType = "track" | "playlist" | "album" | "artist" | "user";

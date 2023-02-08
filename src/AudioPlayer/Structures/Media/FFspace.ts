@@ -38,6 +38,7 @@ if (!FFprobeName) {
 
 export namespace FFspace {
     export type Arguments = Array<string | number> | Array<string>;
+    export type Filter = typeof AudioFilters[0];
 
     /**
      * ffmpeg is a very fast video and audio converter that can also grab from a live audio/video source. It can also convert between arbitrary sample rates and resize video on the fly with a high quality polyphase filter.
@@ -142,7 +143,7 @@ export namespace FFspace {
     }
 
     //Ищем Filter в Array<Filter>
-    export function getFilter(name: string): typeof AudioFilters[0] { return AudioFilters.find((fn) => fn.names.includes(name)); }
+    export function getFilter(name: string): Filter { return AudioFilters.find((fn) => fn.names.includes(name)); }
 }
 
 function runProcess(file: string, args: any[]): ChildProcessWithoutNullStreams & { stdout: { _readableState: Readable }, stdin: { _writableState: Writable } } {

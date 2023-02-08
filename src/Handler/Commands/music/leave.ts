@@ -3,7 +3,7 @@ import {ClientMessage} from "@Client/interactionCreate";
 import { Voice } from "@VoiceManager";
 import {Queue} from "@Queue/Queue";
 
-export class Command_Leave extends Command {
+export class LeaveCommand extends Command {
     public constructor() {
         super({
             name: "leave",

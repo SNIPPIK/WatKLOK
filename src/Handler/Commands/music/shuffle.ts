@@ -4,7 +4,7 @@ import {ApplicationCommandOptionType} from "discord.js";
 import {Queue} from "@Queue/Queue";
 import {Song} from "@Queue/Song";
 
-export class Command_Shuffle extends Command {
+export class ShuffleCommand extends Command {
     public constructor() {
         super({
             name: "shuffle",

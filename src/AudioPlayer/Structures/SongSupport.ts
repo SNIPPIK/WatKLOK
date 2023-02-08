@@ -32,12 +32,13 @@ const RegisterPlatform: platform[] = [];
 (() => {
     if (!env.get("SPOTIFY_ID") || !env.get("SPOTIFY_SECRET")) RegisterPlatform.push("SPOTIFY");
     if (!env.get("VK_TOKEN")) RegisterPlatform.push("VK");
+    if (!env.get("YANDEX")) RegisterPlatform.push("YANDEX");
 })();
 //====================== ====================== ====================== ======================
 /**
  * @description Платформы на которых недоступно получение музыки
 **/
-const PlatformsAudio: platform[] = ["SPOTIFY", "YANDEX"];
+const PlatformsAudio: platform[] = ["SPOTIFY"];
 //====================== ====================== ====================== ======================
 /**
  * @description Список всех доступных платформ
@@ -260,7 +261,7 @@ export namespace SongFinder {
         //Если для платформы нет поддержки перехвата аудио
         if (PlatformsAudio.includes(platform)) {
             //Ищем трек
-            let track = FindTrack(`${author.title} - ${title} (Lyrics)`, duration.seconds);
+            let track = FindTrack(`${author.title} ${title}`, duration.seconds);
 
             //Если трек не найден пробуем 2 вариант без автора
             if (!track) track = FindTrack(title, duration.seconds);
@@ -284,10 +285,10 @@ export namespace SongFinder {
  * @param duration {number} Длительность трека
  */
 function FindTrack(nameSong: string, duration: number): Promise<string> {
-    return YouTube.SearchVideos(nameSong, {limit: 7}).then((Tracks: inTrack[]) => {
+    return YandexMusic.SearchTracks(nameSong).then((Tracks: inTrack[]) => {
         //Фильтруем треки оп времени
         const FindTracks: inTrack[] = Tracks.filter((track: inTrack) => {
-            const DurationSong = DurationUtils.ParsingTimeToNumber(track.duration.seconds);
+            const DurationSong: number = parseInt(track.duration.seconds);
 
             //Как надо фильтровать треки
             return DurationSong === duration || DurationSong < duration + 7 && DurationSong > duration - 5 || DurationSong < duration + 27 && DurationSong > duration - 27;
@@ -297,7 +298,7 @@ function FindTrack(nameSong: string, duration: number): Promise<string> {
         if (FindTracks?.length < 1) return null;
 
         //Получаем данные о треке
-        return YouTube.getVideo(FindTracks[0].url).then((video: inTrack) => video?.format?.url) as Promise<string>;
+        return YandexMusic.getTrack(FindTracks[0].url).then((video: inTrack) => video?.format?.url) as Promise<string>;
     });
 }
 
@@ -333,7 +334,7 @@ export namespace toPlayer {
             UtilsMsg.createMessage({ text: `${author}, производится запрос в **${platform.toLowerCase()}.${type}**`, color: "Grey", message });
 
             //Если у этой платформы нельзя получить исходный файл музыки, то сообщаем
-            if (PlatformsAudio.includes(platform) && APIs.showWarningAudio) UtilsMsg.createMessage({ text: `⚠️ Warning | [${platform}]\nЯ не могу получать исходные файлы музыки у этой платформы.\nЗапрос будет произведен в youtube.track`, color: "Yellow", codeBlock: "css", message });
+            if (PlatformsAudio.includes(platform) && APIs.showWarningAudio) UtilsMsg.createMessage({ text: `⚠️ Warning | [${platform}]\n\nЯ не могу получать исходные файлы музыки у этой платформы.\nЗапрос будет произведен в youtube.track`, color: "Yellow", codeBlock: "css", message });
         }
 
         runCallback.catch(e => {

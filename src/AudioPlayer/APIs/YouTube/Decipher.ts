@@ -45,9 +45,6 @@ function extractSignature(formats: YouTubeFormat[], html5player: string): Promis
     const sortingQuality = formats.filter((format: YouTubeFormat) => (format.mimeType?.match(/opus/) || format?.mimeType?.match(/audio/)) && format.bitrate > 100 );
 
     return new Promise<YouTubeFormat>(async (resolve) => {
-        //Если YouTube уже дал готовую ссылку на исходный файл, то пропускаем расшифровку
-        if (sortingQuality?.length && sortingQuality[0]?.url) return resolve(sortingQuality[0]);
-
         //Пробуем 1 способ получения ссылки
         try {
             const functions = await extractFunctions(html5player);
@@ -140,16 +137,13 @@ function extractManipulations(caller: string, body: string) {
  * @param nTransformScript {vm.Script}
  */
 function setDownloadURL(format: YouTubeFormat, decipherScript?: vm.Script, nTransformScript?: vm.Script): string | void {
-    const url = format.signatureCipher || format.cipher;
+    const url = format.url || format.signatureCipher || format.cipher;
 
-   if (url && decipherScript && !format.url) {
-       const decipher = _decipher(url, decipherScript);
+    //Удаляем не нужные данные
+    delete format.signatureCipher;
+    delete format.cipher;
 
-       if (nTransformScript) return _ncode(decipher, nTransformScript);
-       return decipher;
-   } else {
-       if (nTransformScript) return _ncode(format.url, nTransformScript);
-   }
+    return !format.url ? _ncode(_decipher(url, decipherScript), nTransformScript) : _ncode(url, nTransformScript);
 }
 //====================== ====================== ====================== ======================
 /**
@@ -158,13 +152,12 @@ function setDownloadURL(format: YouTubeFormat, decipherScript?: vm.Script, nTran
  * @param decipherScript {vm.Script}
  */
 function _decipher(url: string, decipherScript: vm.Script): string {
-    const extractUrl = querystring.parse(url);
-    const decodeURL = decodeURIComponent(extractUrl.url as string);
-    const sig = extractUrl.sp ? extractUrl.sp : "signature";
+    const args = querystring.parse(url);
+    if (!args.s || !decipherScript) return args.url as string;
 
-    try {
-        return `${decodeURL}&${sig}=${decipherScript.runInNewContext({sig: decodeURIComponent(extractUrl.s as string)})}`;
-    } catch (e) { return decodeURL; }
+    const components = new URL(decodeURIComponent(args.url as string));
+    components.searchParams.set(args.sp as string ? args.sp as string : 'signature', decipherScript.runInNewContext({ sig: decodeURIComponent(args.s as string) }));
+    return components.toString();
 }
 //====================== ====================== ====================== ======================
 /**
@@ -173,15 +166,10 @@ function _decipher(url: string, decipherScript: vm.Script): string {
  * @param nTransformScript {vm.Script}
  */
 function _ncode(url: string, nTransformScript: vm.Script) {
-    const components = new URL(url);
+    const components = new URL(decodeURIComponent(url));
     const n = components.searchParams.get('n');
-
-    if (!n) return url;
-
-    try {
-        components.searchParams.set('n', nTransformScript.runInNewContext({ncode: n}));
-    } catch (e) { return components.toString(); }
-
+    if (!n || !nTransformScript) return url;
+    components.searchParams.set('n', nTransformScript.runInNewContext({ ncode: n }));
     return components.toString();
 }
 //====================== ====================== ====================== ======================

@@ -4,7 +4,7 @@ import {ApplicationCommandOptionType} from "discord.js";
 import {toPlayer} from "@Structures/SongSupport";
 import {Queue} from "@Queue/Queue";
 
-export class Command_Play extends Command {
+export class PlayCommand extends Command {
     public constructor() {
         super({
             name: "play",

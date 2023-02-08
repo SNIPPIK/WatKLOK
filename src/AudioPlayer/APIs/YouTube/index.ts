@@ -93,7 +93,8 @@ export namespace YouTube {
                 const jsonResult = JSON.parse(result);
 
                 //Если статус получения данные не OK
-                if (jsonResult.playabilityStatus?.status !== "OK") return reject(Error("[APIs]: Не удалось получить данные!"));
+                if (jsonResult.playabilityStatus?.status === "LOGIN_REQUIRED") return reject(Error(`[APIs]: Данное видео невозможно включить из-за проблем с авторизацией!`));
+                else if (jsonResult.playabilityStatus?.status !== "OK") return reject(Error(`[APIs]: Не удалось получить данные! Status: ${jsonResult?.playabilityStatus?.status}`));
 
                 const details = jsonResult.videoDetails;
                 let audios: YouTubeFormat;

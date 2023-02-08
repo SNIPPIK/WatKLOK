@@ -192,10 +192,7 @@ export class Queue {
         if (state === "start" && this.hasDestroying) {
             this.Timer = setTimeout(this.cleanup, 20e3);
             player.pause(); this.hasDestroying = true;
-        } else {
-            clearTimeout(this.Timer); this.hasDestroying = false;
-            player.resume();
-        }
+        } else clearTimeout(this.Timer); this.hasDestroying = false;
     };
 }
 

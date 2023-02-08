@@ -8,7 +8,7 @@ import os from "node:os";
 const cpu = os.cpus();
 const processor = cpu.length > 0 ? cpu[0] : "Невозможно определить";
 
-export class Command_Info extends Command {
+export class InfoCommand extends Command {
     public constructor() {
         super({
             name: "info",

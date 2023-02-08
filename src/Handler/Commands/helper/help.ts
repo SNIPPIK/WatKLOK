@@ -5,7 +5,7 @@ import {ArraySort} from "@Structures/ArraySort";
 import {ReactionMenu} from "@Structures/ReactionMenu";
 import {Bot} from "@db/Config.json";
 
-export class Command_Help extends Command {
+export class HelpCommand extends Command {
     public constructor() {
         super({
             name: "help",
@@ -40,7 +40,7 @@ export class Command_Help extends Command {
         }).toJSON();
 
         //Если пользователь хочет получить данные о не существующей команде
-        if (!Commands?.length) return {text: `${author}, у меня нет такой команды!`};
+        if (!Commands?.length) return {text: `${author}, у меня нет такой команды!`, color: "DarkRed"};
 
         const embed = this.CreateEmbedMessage(message);
         const pages = ArraySort<Command>(5, Commands, (command) =>
@@ -53,7 +53,7 @@ export class Command_Help extends Command {
         embed.footer = {text: `${author.username} | Лист 1 из ${pages.length}`, iconURL: author.avatarURL()};
 
         //Если есть еще страницы, то добавляем им кнопки взаимодействия
-        if (pages.length > 1) return {embed, callbacks: ReactionMenu.Callbacks(1, pages, embed)};
+        if (pages.length > 1) return {embed, callbacks: ReactionMenu.DefaultCallbacks(1, pages, embed)};
         return {embed};
     };
     //====================== ====================== ====================== ======================

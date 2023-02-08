@@ -3,7 +3,7 @@ import {ClientMessage} from "@Client/interactionCreate";
 import {ApplicationCommandOptionType} from "discord.js";
 import {Queue} from "@Queue/Queue";
 
-export class Command_Remove extends Command {
+export class RemoveCommand extends Command {
     public constructor() {
         super({
             name: "remove",

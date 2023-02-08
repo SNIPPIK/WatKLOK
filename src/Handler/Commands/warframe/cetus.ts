@@ -7,7 +7,7 @@ const CetusCycle = "https://api.warframestat.us/pc/cetusCycle";
 const CetusDay = "https://media.discordapp.net/attachments/850775689107865641/996406014192668712/CetusSplashScreen.webp";
 const CetusNight = "https://media.discordapp.net/attachments/850775689107865641/996406014498848828/Warframe.jpg";
 
-export class Cetus extends Command {
+export class CetusCommand extends Command {
     public constructor() {
         super({
             name: "cetus",
