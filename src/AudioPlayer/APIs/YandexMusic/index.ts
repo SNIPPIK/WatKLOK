@@ -175,12 +175,11 @@ export namespace YandexMusic {
                 const AlbumImage = construct.onImage(api?.ogImage ?? api?.coverUri);
                 const Author = await getAuthor(api.artists[0]?.id);
                 const tracks: inTrack[] = [];
-                let NumberTrack = 0;
 
-                for (const track of findTracks) {
-                    if (NumberTrack === 50) break;
+                for (let i = 0; i < findTracks.length; i++) {
+                    if (i >= options.limit) break;
 
-                    NumberTrack++;
+                    const track = findTracks[i];
                     tracks.push(construct.track(track));
                 }
 
