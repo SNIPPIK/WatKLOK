@@ -42,7 +42,7 @@
     SPOTIFY_SECRET="" #Spotify client secket
     SOUNDCLOUD="" #Soundcloud client id
     VK_TOKEN="" #Vk auth token (user token, not a bot token)
-    YANDEX="mail@yandex.ru:password" #Using api yandex music. Ps на почту буду приходить письма о том что был произведен вход в аккаунт
+    YANDEX="" #Ссылка для получения токена https://oauth.yandex.ru/authorize?response_type=token&client_id=23cabbbdc6cd418abb4b39c32c41195d
    ```
 2. [`Cookie.json`](db/Cookie.json) | необходим для видео 18+ (**YouTube**)
     ```json5

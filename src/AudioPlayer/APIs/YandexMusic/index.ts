@@ -1,5 +1,4 @@
 import {inPlaylist, inTrack} from "@Structures/Queue/Song";
-import * as querystring from "querystring";
 import {httpsClient} from "@httpsClient";
 import crypto from "node:crypto";
 import {env} from "@env";
@@ -8,25 +7,16 @@ import {env} from "@env";
 //                            Простая реализация API yandex music                          //
 //====================== ====================== ====================== ======================
 
-const aut = env.get("YANDEX")?.split(":") ?? [null, null];
+const aut = env.get("YANDEX");
 //Локальная база данных с данными для авторизации
 const data = {
     "api": "https://api.music.yandex.net",
-    "auth": "https://oauth.mobile.yandex.net",
-    "oauth": {
-        "CLIENT_ID": "23cabbbdc6cd418abb4b39c32c41195d",
-        "CLIENT_SECRET": "53bc75238f0c4d08a118e51fe9203300"
-    }
+    "auth": "https://oauth.mobile.yandex.net"
 };
 
 //Локальная база данных
 const db = {
-    password: aut[1],
-    username: aut[0],
-
-    token: "",
-    uid: 0,
-    time: 0
+    token: aut
 };
 
 /**
@@ -40,10 +30,6 @@ namespace API {
      */
     export function Request(method: string) {
         return new Promise<any | Error>(async (resolve) => {
-            if (!db.password || !db.username) return resolve(Error("[APIs]: Authorization has not found, need username:password"));
-
-            const isLoggedIn = db.token !== undefined && db.time > Date.now() + 2;
-            if (!isLoggedIn) await getAuthorization();
 
             const req = await httpsClient.parseJson(`${data.api}/${method}`, {
                 request: {
@@ -54,6 +40,7 @@ namespace API {
             });
 
             if (!req) return resolve(Error("[APIs]: Не удалось получить данные!"));
+            else if (!db.token) return resolve(Error("[APIs]: Не удалось залогинится!"));
 
             if (req?.result) return resolve(req?.result);
             return resolve(req);
@@ -107,8 +94,10 @@ namespace construct {
     export function getMp3(ID: string) {
         return new Promise<string | Error>(async (resolve) => {
             const api = await API.Request(`tracks/${ID}/download-info`);
-            const track = api.pop();
+            
+            if (!api || api instanceof Error) return resolve(Error("[APIs]: Not found links for track!"));
 
+            const track = api?.pop() ?? api;
             const body = await httpsClient.parseBody(track.downloadInfoUrl);
 
             if (body instanceof Error) return resolve(body);
@@ -120,7 +109,7 @@ namespace construct {
             const sign = crypto.createHash("md5").update("XGRlBW9FXlekgbPrRHuSiA" + path.slice(1) + s).digest("hex");
 
             return resolve(`https://${host}/get-mp3/${sign}/${ts}${path}`);
-        })
+        });
     }
 }
 //====================== ====================== ====================== ======================
@@ -279,26 +268,4 @@ function getAuthor(ID: string): Promise<inTrack["author"]> {
             return resolve({url: `https://music.yandex.ru/artist/${ID}`, title: author.name, image: {url: image}, isVerified: true });
         } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
     });
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Получаем данные для дальнейших запросов
- */
-function getAuthorization() {
-    return httpsClient.parseJson(`${data.auth}/1/token`, {
-        request: {
-            method: "POST",
-            body: querystring.stringify({
-                grant_type: "password",
-                username: db.username,
-                password: db.password,
-                client_id: data.oauth.CLIENT_ID,
-                client_secret: data.oauth.CLIENT_SECRET,
-            })
-        }
-    }).then(req => {
-        db.time = Date.now() + req.expires_in;
-        db.token = req.access_token;
-        db.uid = req.uid;
-    })
 }
