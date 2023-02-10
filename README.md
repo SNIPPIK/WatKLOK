@@ -56,7 +56,7 @@
       "APIs": {
          //Лимиты размеров (плейлиста, поиска, топ треков автора)
          "limits": {
-            "playlists": 50, //playlist, album
+            "playlist": 50, //playlist, album
             "search": 15,
             "author": 5
          },
