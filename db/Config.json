@@ -1,5 +1,10 @@
 {
   "APIs": {
+    "limits": {
+      "playlist": 50,
+      "search": 15,
+      "author": 5
+    },
     "showErrors": true,
     "sendErrors": false,
     
