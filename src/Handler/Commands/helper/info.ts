@@ -1,12 +1,12 @@
-import {ClientMessage} from "@Client/interactionCreate";
 import {Command, ResolveData} from "@Structures/Handle/Command";
+import {ClientMessage} from "@Client/interactionCreate";
 import {DurationUtils} from "@Managers/DurationUtils";
 import {Colors} from "discord.js";
 import pak from "package.json";
 import os from "node:os";
 
 const cpu = os.cpus();
-const processor = cpu.length > 0 ? cpu[0] : "Невозможно определить";
+const processor = cpu.length > 0 ? cpu[0]?.model : "Невозможно определить";
 
 export class InfoCommand extends Command {
     public constructor() {

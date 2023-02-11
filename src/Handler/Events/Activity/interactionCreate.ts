@@ -1,4 +1,4 @@
-import {ActionRow,ActionRowBuilder,BaseInteraction,BaseMessageOptions,ChannelType,Colors,CommandInteractionOption,DMChannel,EmbedData,GuildMember,Message,MessageEditOptions,MessagePayload,MessageReaction,NewsChannel,PartialDMChannel,TextChannel,ThreadChannel,User} from "discord.js";
+import {ActionRow,ActionRowBuilder,BaseInteraction,BaseMessageOptions,Colors,CommandInteractionOption,DMChannel,EmbedData,GuildMember,Message,MessageEditOptions,MessagePayload,MessageReaction,NewsChannel,PartialDMChannel,TextChannel,ThreadChannel,User} from "discord.js";
 import {Command, messageUtilsOptions, ResolveData} from "@Structures/Handle/Command";
 import {DurationUtils} from "@Managers/DurationUtils";
 import {ReactionMenu} from "@Structures/ReactionMenu";
@@ -33,29 +33,31 @@ export class interactionCreate extends Event<ClientInteraction, null> {
     public static runCommand = (message: ClientInteractive, command: Command, args: string[] = []): void => {
         const {author} = message;
 
-        //Если нет команды, которую требует пользователь сообщаем ему об этом
-        if (!command) return interactionCreate.sendMessage(message, { text: `${author}, я не нахожу такой команды!`, color: "DarkRed" });
-        //Если команду нельзя использовать все сервера
-        if (command.isGuild && !message.guild) return interactionCreate.sendMessage(message,{text: `${author}, эта команда не работает вне сервера!`, color: "DarkRed"});
+        setImmediate(() => {
+            //Если нет команды, которую требует пользователь сообщаем ему об этом
+            if (!command) return interactionCreate.sendMessage(message, { text: `${author}, я не нахожу такой команды!`, color: "DarkRed" });
+            //Если команду нельзя использовать все сервера
+            if (command.isGuild && !message.guild) return interactionCreate.sendMessage(message,{text: `${author}, эта команда не работает вне сервера!`, color: "DarkRed"});
 
-        //Проверяем пользователь состоит в списке разработчиков
-        const owner = interactionCreate.checkOwners(author, command);
-        //Если есть что сообщить пользователю
-        if (owner) return interactionCreate.sendMessage(message, owner);
+            //Проверяем пользователь состоит в списке разработчиков
+            const owner = interactionCreate.checkOwners(author, command);
+            //Если есть что сообщить пользователю
+            if (owner) return interactionCreate.sendMessage(message, owner);
 
-        //Проверяем права бота и пользователя
-        const permissions = interactionCreate.checkPermissions(command, message);
-        //Если прав недостаточно сообщаем пользователю
-        if (permissions) return interactionCreate.sendMessage(message, permissions);
+            //Проверяем права бота и пользователя
+            const permissions = interactionCreate.checkPermissions(command, message);
+            //Если прав недостаточно сообщаем пользователю
+            if (permissions) return interactionCreate.sendMessage(message, permissions);
 
-        //Передаем данные в команду
-        const runCommand = command.run(message, args ?? []);
+            //Передаем данные в команду
+            const runCommand = command.run(message, args ?? []);
 
-        //Если есть что отправить на канал
-        if (runCommand) {
-            if (!(runCommand instanceof Promise)) return interactionCreate.sendMessage(message, runCommand);
-            runCommand.then((data) => interactionCreate.sendMessage(message, data));
-        }
+            //Если есть что отправить на канал
+            if (runCommand) {
+                if (!(runCommand instanceof Promise)) return interactionCreate.sendMessage(message, runCommand);
+                runCommand.then((data) => interactionCreate.sendMessage(message, data));
+            }
+        });
     };
     //====================== ====================== ====================== ======================
     /**

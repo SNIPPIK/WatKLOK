@@ -1,23 +1,21 @@
 import {inAuthor, inPlaylist, inTrack} from "@Queue/Song";
 import {httpsClient} from "@httpsClient";
+import {APIs} from "@db/Config.json";
 import {env} from "@env";
 
 //====================== ====================== ====================== ======================
 //                              Простая реализация API Spotify                             //
 //====================== ====================== ====================== ======================
 
-const aut = env.get("SPOTIFY_ID") + ":" + env.get("SPOTIFY_SECRET");
-//Локальная база данных с данными для авторизации
-const data = {
-    api: "https://api.spotify.com/v1",
-    link: "https://open.spotify.com",
-    account: "https://accounts.spotify.com/api"
-}
-
 //Локальная база данных
 const db = {
     token: "",
-    time: 0
+    time: 0,
+
+    api: "https://api.spotify.com/v1",
+    link: "https://open.spotify.com",
+    account: "https://accounts.spotify.com/api",
+    aut: Buffer.from(env.get("SPOTIFY_ID") + ":" + env.get("SPOTIFY_SECRET")).toString("base64")
 };
 
 /**
@@ -33,7 +31,7 @@ namespace API {
             const isLoggedIn = db.token !== undefined && db.time > Date.now() + 2;
             if (!isLoggedIn) await getToken();
 
-            const api = await httpsClient.parseJson(`${data.api}/${method}`, {
+            const api = await httpsClient.parseJson(`${db.api}/${method}`, {
                 request: {
                     headers: {
                         "Accept": "application/json",
@@ -107,7 +105,7 @@ export namespace Spotify {
      * @param url {string} Ссылка на плейлист
      * @param options {limit: number} Настройки
      */
-    export function getPlaylist(url: string, options: { limit: number } = {limit: 50}): Promise<inPlaylist | null> {
+    export function getPlaylist(url: string, options = {limit: APIs.limits.playlist}): Promise<inPlaylist | null> {
         const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
@@ -124,7 +122,7 @@ export namespace Spotify {
                 return resolve({
                     url, title: api.name, image: api.images[0],
                     items: await Promise.all(api.tracks.items.map(({track}) => construct.track(track))),
-                    author: (await Promise.all([getAuthor(`${data.link}/artist/${api.owner.id}`, api?.owner?.type !== "artist")]))[0]
+                    author: (await Promise.all([getAuthor(`${db.link}/artist/${api.owner.id}`, api?.owner?.type !== "artist")]))[0]
                 });
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
@@ -135,7 +133,7 @@ export namespace Spotify {
      * @param url {string} Ссылка на альбом
      * @param options {limit: number} Настройки
      */
-    export function getAlbum(url: string, options: { limit: number } = {limit: 50}): Promise<inPlaylist | null> {
+    export function getAlbum(url: string, options = {limit: APIs.limits.playlist}): Promise<inPlaylist | null> {
         const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
@@ -152,7 +150,7 @@ export namespace Spotify {
                 return resolve({
                     url, title: api.name, image: api.images[0],
                     items: await Promise.all(api.tracks.items.map(construct.track)),
-                    author: (await Promise.all([getAuthor(`${data.link}/artist/${api?.artists[0].id}`, api?.artists[0]?.type !== "artist")]))[0]
+                    author: (await Promise.all([getAuthor(`${db.link}/artist/${api?.artists[0].id}`, api?.artists[0]?.type !== "artist")]))[0]
                 });
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
@@ -163,7 +161,7 @@ export namespace Spotify {
      * @param search {string} Что ищем
      * @param options {limit: number} Настройки поиска
      */
-    export function SearchTracks(search: string, options: { limit: number } = {limit: 15}): Promise<inTrack[] | null> {
+    export function SearchTracks(search: string, options = {limit: APIs.limits.search}): Promise<inTrack[] | null> {
         return new Promise(async (resolve, reject) => {
             try {
                 //Создаем запрос
@@ -181,7 +179,7 @@ export namespace Spotify {
      * @description Получаем 5 популярных треков автора
      * @param url {string} Ссылка на автора
      */
-    export function getAuthorTracks(url: string): any {
+    export function getAuthorTracks(url: string, options = {limit: APIs.limits.author}): any {
         const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
@@ -190,8 +188,8 @@ export namespace Spotify {
 
             try {
                 //Создаем запрос
-                const api = await API.Request(`artists/${ID}/top-tracks?market=ES&limit=5`) as SpotifyAlbumFull & FailResult;
-
+                const api = await API.Request(`artists/${ID}/top-tracks?market=ES&limit=${options.limit}`) as SpotifyAlbumFull & FailResult;
+                
                 //Если запрос выдал ошибку то
                 if (api instanceof Error) return reject(api);
 
@@ -231,12 +229,12 @@ function getAuthor(url: string, isUser: boolean = false): Promise<inAuthor> {
  * @description Получаем токен
  */
 function getToken(): Promise<void> {
-    return httpsClient.parseJson(`${data.account}/token`, {
+    return httpsClient.parseJson(`${db.account}/token`, {
         request: {
             method: "POST",
             headers: {
                 "Accept": "application/json",
-                "Authorization": `Basic ${Buffer.from(aut).toString("base64")}`,
+                "Authorization": `Basic ${db.aut}`,
                 "Content-Type": "application/x-www-form-urlencoded",
                 "accept-encoding": "gzip, deflate, br"
             },

@@ -6,7 +6,7 @@ import {OpusAudio} from "@OpusAudio";
 
 const SilenceFrame = Buffer.from([0xf8, 0xff, 0xfe, 0xfae]);
 const packetSender = Music.AudioPlayer.methodSendPackets;
-const NotSkippedStatuses = ["read", "pause"];
+const SkippedStatuses = ["read", "pause"];
 const UpdateMessage = ["read"];
 
 export class AudioPlayer extends TypedEmitter<PlayerEvents> {
@@ -33,14 +33,6 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
         const oldState = this._state;
         const oldStatus = oldState.status, newStatus = state.status;
 
-        //Проверяем на нужный статус, удаляем старый поток
-        if (isDestroy(oldState, state)) {
-            oldState.stream.opus.removeAllListeners();
-            oldState.stream.opus.destroy();
-            oldState.stream.opus.read(); //Устраняем утечку памяти
-            oldState.stream.destroy();
-        }
-
         //Перезаписываем state
         delete this._state;
         this._state = state;
@@ -48,8 +40,22 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
         //Фильтруем статусы бота что в emit не попало что не надо
         if (oldStatus !== newStatus || oldStatus !== "idle" && newStatus === "read") {
             PlayerCycle.toRemove(this);
-            this.sendPacket(SilenceFrame);
             this.emit(newStatus);
+        }
+
+        //Проверяем на нужный статус, удаляем старый поток
+        if (isDestroy(oldState, state)) {
+            //Отправляем фейковые пакеты
+            this.sendPacket(SilenceFrame);
+
+            //Очищаемся от прошлого потока
+            oldState.stream.opus.removeAllListeners();
+            oldState.stream.opus.destroy();
+            oldState.stream.opus.read(); //Устраняем утечку памяти
+            oldState.stream.destroy();
+
+            //Выключаем голос боту
+            this.sendPacket(null);
         }
 
         //Добавляем плеер в CycleStep
@@ -59,7 +65,7 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
     /**
      * @description Возможно ли сейчас пропустить трек
      */
-    public get hasSkipped() { return NotSkippedStatuses.includes(this.state.status); };
+    public get hasSkipped() { return SkippedStatuses.includes(this.state.status); };
     //====================== ====================== ====================== ======================
     /**
      * @description Можно ли обновить сообщение

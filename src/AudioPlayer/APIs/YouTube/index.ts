@@ -1,7 +1,8 @@
-import {inAuthor, inPlaylist, inTrack} from "@Queue/Song";
 import {httpsClient, httpsClientOptions} from "@httpsClient";
+import {inAuthor, inPlaylist, inTrack} from "@Queue/Song";
 import {YouTubeFormat} from "./Decipher";
 import {Worker} from "worker_threads";
+import {APIs} from "@db/Config.json";
 
 //====================== ====================== ====================== ======================
 /**
@@ -10,6 +11,11 @@ import {Worker} from "worker_threads";
  */
 //====================== ====================== ====================== ======================
 
+//Локальная база данных
+const db = {
+    link: "https://www.youtube.com"
+};
+
 /**
  * @description Система запросов
  */
@@ -17,12 +23,12 @@ namespace API {
     /**
      * @description Создаем парсер по зависимости <type>
      * @param type {"JSON" | "STRING"} Тип запроса
-     * @param url {string} Ссылка
+     * @param method {string} Путь
      * @param options {httpsClientOptions} Аргументы запроса
      */
-    export function Request(type: "JSON" | "STRING", url: string, options: httpsClientOptions = {options: {}, request: {}}): string | {} {
-        if (type === "JSON") return httpsClient.parseJson(url, options);
-        return httpsClient.parseBody(url, {
+    export function Request(type: "JSON" | "STRING", method: string, options: httpsClientOptions = {options: {}, request: {}}): string | {} {
+        if (type === "JSON") return httpsClient.parseJson(`${db.link}/${method}`, options);
+        return httpsClient.parseBody(`${db.link}/${method}`, {
             options: {userAgent: true, cookie: true}, request: {
                 headers: {
                     "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7",
@@ -50,11 +56,11 @@ namespace construct {
     }
     export function playlist(video: any): inTrack {
         return {
-            url: `https://www.youtube.com/watch?v=${video.videoId}`,
+            url: `${db.link}/watch?v=${video.videoId}`,
             title: video.title.runs[0].text,
             author: {
                 title: video.shortBylineText.runs[0].text || undefined,
-                url: `https://www.youtube.com${video.shortBylineText.runs[0].navigationEndpoint.browseEndpoint.canonicalBaseUrl || video.shortBylineText.runs[0].navigationEndpoint.commandMetadata.webCommandMetadata.url}`
+                url: `${db.link}${video.shortBylineText.runs[0].navigationEndpoint.browseEndpoint.canonicalBaseUrl || video.shortBylineText.runs[0].navigationEndpoint.commandMetadata.webCommandMetadata.url}`
             },
             duration: {seconds: video.lengthSeconds ?? video.lengthText?.simpleText ?? 0},
             image: {
@@ -85,7 +91,7 @@ export namespace YouTube {
 
             try {
                 //Создаем запрос
-                const page = await API.Request("STRING", `https://www.youtube.com/watch?v=${ID}&has_verified=1`) as string;
+                const page = await API.Request("STRING", `watch?v=${ID}&has_verified=1`) as string;
                 const result = page.split("var ytInitialPlayerResponse = ")?.[1]?.split(";</script>")[0].split(/(?<=}}});\s*(var|const|let)\s/)[0];
 
                 //Если нет данных на странице
@@ -102,7 +108,7 @@ export namespace YouTube {
                 //Выбираем какой формат у видео из <VideoDetails>.isLiveContent
                 if (details.isLiveContent) audios = {url: details.streamingData?.dashManifestUrl ?? null}; //dashManifestUrl, hlsManifestUrl
                 else {
-                    const html5player = `https://www.youtube.com${page.split('"jsUrl":"')[1].split('"')[0]}`;
+                    const html5player = `${db.link}${page.split('"jsUrl":"')[1].split('"')[0]}`;
                     const format = await runWorkerSignature({
                         formats: [...jsonResult.streamingData?.formats ?? [], ...jsonResult.streamingData?.adaptiveFormats ?? []],
                         html: html5player
@@ -123,7 +129,7 @@ export namespace YouTube {
      * @description Получаем данные о плейлисте
      * @param url {string} Ссылка на плейлист
      */
-    export function getPlaylist(url: string): Promise<inPlaylist> {
+    export function getPlaylist(url: string, options = {limit: APIs.limits.playlist}): Promise<inPlaylist> {
         const ID = getID(url, true);
 
         return new Promise(async (resolve, reject) => {
@@ -132,7 +138,7 @@ export namespace YouTube {
 
             try {
                 //Создаем запрос
-                const page = await API.Request("STRING", `https://www.youtube.com/playlist?list=${ID}`) as string;
+                const page = await API.Request("STRING", `playlist?list=${ID}`) as string;
                 const result = page.split('var ytInitialData = ')[1].split(';</script>')[0].split(/;\s*(var|const|let)\s/)[0];
 
                 //Если нет данных на странице
@@ -142,7 +148,7 @@ export namespace YouTube {
                 const info = jsonResult.sidebar.playlistSidebarRenderer.items[0].playlistSidebarPrimaryInfoRenderer;
                 const author = jsonResult.sidebar.playlistSidebarRenderer.items[1].playlistSidebarSecondaryInfoRenderer.videoOwner.videoOwnerRenderer;
                 const videos: any[] = jsonResult.contents.twoColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents[0]
-                    .itemSectionRenderer.contents[0].playlistVideoListRenderer.contents;
+                    .itemSectionRenderer.contents[0].playlistVideoListRenderer.contents.splice(0, options.limit);
 
                 return resolve({
                     title: info.title.runs[0].text, url,
@@ -159,11 +165,11 @@ export namespace YouTube {
     * @param search {string} что ищем
     * @param options {limit} Настройки
     */
-    export function SearchVideos(search: string, options = {limit: 15}): Promise<inTrack[]> {
+    export function SearchVideos(search: string, options = {limit: APIs.limits.search}): Promise<inTrack[]> {
         return new Promise(async (resolve, reject) => {
             try {
                 //Создаем запрос
-                const page = await API.Request("STRING", `https://www.youtube.com/results?search_query=${search.replaceAll(' ', '+')}`) as string;
+                const page = await API.Request("STRING", `results?search_query=${search.replaceAll(' ', '+')}`) as string;
                 const result = (page.split("var ytInitialData = ")[1].split("}};")[0] + '}}').split(';</script><script')[0];
 
                 //Если нет данных на странице
@@ -173,15 +179,21 @@ export namespace YouTube {
 
                 //Если нет данных на странице (если нет результатов поиска)
                 if (!details) return reject(Error(`[APIs]: Не удалось найти: ${search}`));
-
                 const videos: inTrack[] = [];
+
                 for (let i = 0; i < details.length; i++) {
+                    //Если достигнут лимит, завершаем сбор видео
                     if (i >= options.limit) break;
 
-                    if (!details[i] || !details[i].videoRenderer) continue;
+                    //Если это не видео, пропускаем!
+                    if (!details[i] || !details[i]?.videoRenderer) {
+                        i--;
+                        continue;
+                    }
 
                     const video = details[i].videoRenderer;
 
+                    //Если нет ID видео, чкорее всего это не видео
                     if (!video.videoId) continue;
 
                     videos.push(construct.playlist(video));
@@ -196,7 +208,7 @@ export namespace YouTube {
      * @description Получаем 5 последних треков автора
      * @param url {string} Ссылка на автора
      */
-    export function getChannelVideos(url: string) {
+    export function getChannelVideos(url: string, options = {limit: APIs.limits.author}) {
         return new Promise(async (resolve, reject) => {
             try {
                 let ID: string;
@@ -206,7 +218,7 @@ export namespace YouTube {
 
 
                 //Создаем запрос
-                const channel: any[] | any = await API.Request("STRING", `https://www.youtube.com/${ID}/videos`);
+                const channel: any[] | any = await API.Request("STRING", `${ID}/videos`);
                 const info = channel.split("var ytInitialData = ")[1]?.split(";</script><script nonce=")[0];
 
                 //Если нет данных на странице
@@ -219,7 +231,7 @@ export namespace YouTube {
 
                 const endVideos: inTrack[] = [];
                 for (let i = 0; i < videos.length; i++) {
-                    if (i >= 5) break;
+                    if (i >= options.limit) break;
 
                     const video = videos[i]?.richItemRenderer?.content?.videoRenderer;
 
@@ -227,7 +239,7 @@ export namespace YouTube {
                     if (!video) return;
 
                     endVideos.push({ url: `https://youtu.be/${video.videoId}`, title: video.title.runs[0].text, duration: {seconds: video.lengthText.simpleText},
-                        author: { url: `https://www.youtube.com/${ID}`, title: author.title }
+                        author: { url: `${db.link}${ID}`, title: author.title }
                     });
                 }
 
@@ -245,7 +257,7 @@ export namespace YouTube {
 function getChannel({id, name}: { id: string, name?: string }): Promise<inAuthor> {
     return new Promise(async (resolve) => {
         //Создаем запрос
-        const channel: any[] | any = await API.Request("JSON", `https://www.youtube.com/channel/${id}/channels?flow=grid&view=0&pbj=1`, {
+        const channel: any[] | any = await API.Request("JSON", `channel/${id}/channels?flow=grid&view=0&pbj=1`, {
             request: {
                 headers: {
                     "x-youtube-client-name": "1",
@@ -261,7 +273,7 @@ function getChannel({id, name}: { id: string, name?: string }): Promise<inAuthor
 
         return resolve({
             title: Channel?.title ?? name ?? "Not found name",
-            url: `https://www.youtube.com/channel/${id}`,
+            url: `${db.link}/channel/${id}`,
             image: avatar?.thumbnails.pop() ?? null,
             isVerified: !!badges?.find((badge: any) => ["Verified", "Official Artist Channel"].includes(badge?.metadataBadgeRenderer?.tooltip))
         });

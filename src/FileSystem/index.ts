@@ -15,7 +15,7 @@ const FileBase = {
 export namespace FileSystem {
     /**
      * @description Создаем полноценный путь
-     * @param dir {string} dir/dir/dri
+     * @param dir {string} dir/dir/dir
      */
     export function createDirs(dir: string) {
         let dirs = dir.split("/"), currentDir = "";

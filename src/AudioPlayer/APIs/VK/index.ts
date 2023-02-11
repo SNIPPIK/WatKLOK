@@ -1,18 +1,7 @@
 import {inPlaylist, inTrack} from "@Queue/Song";
 import {httpsClient} from "@httpsClient";
+import {APIs} from "@db/Config.json";
 import {env} from "@env";
-
-const vkApiLink = "https://api.vk.com/method/";
-const connectString = `?access_token=${env.get("VK_TOKEN")}`;
-
-type requestType = "get" | "getById" | "search" | "getPlaylistById" | "getPlaylist";
-type methodType = "audio" | "execute" | "catalog";
-
-//Получаем ID
-function getID(url: string): string {
-    if (url.match(/\/audio/)) return url.split("/audio").at(- 1);
-    return url.split("playlist/").at(- 1);
-}
 
 //====================== ====================== ====================== ======================
 /**
@@ -21,6 +10,14 @@ function getID(url: string): string {
  * Проверены токены из офф приложения vk, vk admins (токены из kate mobile не работают)
  */
 //====================== ====================== ====================== ======================
+
+//Локальная база данных
+const db = {
+    api: "https://api.vk.com/method",
+    link: "https://vk.com",
+
+    token: `?access_token=${env.get("VK_TOKEN")}`
+};
 
 /**
  * @description Система запросов
@@ -34,7 +31,7 @@ namespace API {
      */
     export function Request(method: methodType, type: requestType, options: string): Promise<any | Error> {
         return new Promise(async (resolve) => {
-            const url = `${vkApiLink}${method}.${type}${connectString}${options}&v=5.131`;
+            const url = `${db.api}/${method}.${type}${db.token}${options}&v=5.131`;
             const api = await httpsClient.parseJson(url, { request: {headers: {"accept-encoding": "gzip, deflate, br"}}});
 
             if (!api || !api?.response) return resolve(Error("[APIs]: Невозможно найти данные!"));
@@ -54,7 +51,7 @@ namespace construct {
         const image = track?.album?.thumb;
 
         return {
-            url: `https://vk.com/audio${track.owner_id}_${track.id}`,
+            url: `${db.link}/audio${track.owner_id}_${track.id}`,
             title: track.title,
             author: author(track),
             image: {url: image?.photo_1200 ?? image?.photo_600 ?? image?.photo_300 ?? image?.photo_270 ?? undefined},
@@ -63,7 +60,7 @@ namespace construct {
         };
     }
     export function author(user: any) {
-        const url = `https://vk.com/audio&q=${user.artist.replaceAll(" ", "").toLowerCase()}`;
+        const url = `${db.link}/audio&q=${user.artist.replaceAll(" ", "").toLowerCase()}`;
 
         return { url, title: user.artist, isVerified: user.is_licensed };
     }
@@ -97,7 +94,7 @@ export namespace VK {
      * @param url {string} Ссылка
      * @param options {{limit: number}}
      */
-    export function getPlaylist(url: string, options = {limit: 20}): Promise<inPlaylist> {
+    export function getPlaylist(url: string, options = {limit: APIs.limits.playlist}): Promise<inPlaylist> {
         const PlaylistFullID = getID(url).split("_");
         const playlist_id = PlaylistFullID[1];
         const owner_id = PlaylistFullID[0];
@@ -110,17 +107,18 @@ export namespace VK {
             try {
                 //Создаем запрос и получаем треки из этого плейлиста
                 const api = await API.Request("audio", "getPlaylistById", `&owner_id=${owner_id}&playlist_id=${playlist_id}&access_key=${key}`) as Playlist & rateLimit;
-                const items = await API.Request("audio", "get", `&owner_id=${owner_id}&album_id=${playlist_id}&count=${options.limit}&access_key=${key}`) as SearchTracks;
+                const items = await API.Request("audio", "get", `&owner_id=${owner_id}&album_id=${playlist_id}&access_key=${key}`) as SearchTracks;
 
                 //Если запрос выдал ошибку то
                 if (api instanceof Error || items instanceof Error) return reject(api);
 
                 const playlist = api.response;
                 const image = playlist?.thumbs?.length > 0 ? playlist?.thumbs[0] : null;
+                const tracks = items?.response?.items?.splice(0, options.limit);
 
                 return resolve({
                     url, title: playlist.title,
-                    items: items.response.items.map(construct.track),
+                    items: tracks.map(construct.track),
                     image: {url: image?.photo_1200 ?? image?.photo_600 ?? image?.photo_300 ?? image?.photo_270 ?? undefined}
                 });
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
@@ -132,7 +130,7 @@ export namespace VK {
      * @param search {string} Что ищем
      * @param options {{limit: number}}
      */
-    export function SearchTracks(search: string, options: { limit: number } = {limit: 15}): Promise<null | inTrack[]> {
+    export function SearchTracks(search: string, options = {limit: APIs.limits.search}): Promise<null | inTrack[]> {
         return new Promise(async (resolve, reject) => {
             try {
                 //Создаем запрос
@@ -140,17 +138,22 @@ export namespace VK {
 
                 //Если запрос выдал ошибку то
                 if (api instanceof Error) return reject(api);
+                const tracks = api.response.items.splice(0, options.limit);
 
-                const trackConst = api.response.items.length;
-                if (trackConst > options.limit) api.response.items.splice(options.limit - 1, trackConst - options.limit - 1);
-
-                return resolve(api.response.items.map(construct.track));
+                return resolve(tracks.map(construct.track));
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
 }
-
+//Получаем ID
+function getID(url: string): string {
+    if (url.match(/\/audio/)) return url.split("/audio").at(- 1);
+    return url.split("playlist/").at(- 1);
+}
 //====================== ====================== ====================== ======================
+type requestType = "get" | "getById" | "search" | "getPlaylistById" | "getPlaylist";
+type methodType = "audio" | "execute" | "catalog";
+
 interface SearchTracks {
     response: {
         count: number,

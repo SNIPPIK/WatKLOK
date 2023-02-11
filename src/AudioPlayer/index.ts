@@ -279,12 +279,11 @@ function Vote(message: ClientMessage, queue: Queue, callback: (win: boolean) => 
 
     setImmediate(() => {
         const voiceConnection: VoiceState[] = Voice.Members(guild) as VoiceState[];
+        const song = queue && arg ? queue?.songs[arg - 1] : null;
 
-        //Если пользователь сидит один или он является владельцем сервера пропускаем голосование
-        if (voiceConnection.length === 1 || member.permissions.has("Administrator")) return callback(true);
-
+        //Если пользователь сидит один или он является владельцем сервера или пользователь включил этот трек, то пропускаем голосование
+        if (voiceConnection.length === 1 || member.permissions.has("Administrator") || song.requester.id === message.author.id) return callback(true);
         if (!queue || !queue?.song) return UtilsMsg.createMessage({ text: `${author.username}, музыка уже не играет!`, message, codeBlock: "css", color: "DarkRed" });
-        const song = arg ? queue.songs[arg - 1] : null;
 
         //Пользователи, которые проголосовали за, против
         let Yes: number = 0, No: number = 0;
@@ -301,7 +300,7 @@ function Vote(message: ClientMessage, queue: Queue, callback: (win: boolean) => 
                 (reaction) => No = reaction.count - 1, 5e3
             );
 
-            //Что делаем по истечению времени (15 сек)
+            //Что делаем по истечению времени (5 сек)
             setTimeout(() => callback(Yes >= No), 5e3);
         });
     });

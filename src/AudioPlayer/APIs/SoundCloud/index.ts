@@ -1,21 +1,7 @@
 import {inPlaylist, inTrack} from "@Queue/Song";
 import {httpsClient} from "@httpsClient";
+import {APIs} from "@db/Config.json";
 import {env} from "@env";
-
-const APiLink = "https://api-v2.soundcloud.com";
-const clientID = env.get("SOUNDCLOUD");
-
-interface SoundCloudFormat {
-    url: string,
-    preset: "mp3_0_0" | "opus_0_0",
-    duration: number,
-    snipped: boolean,
-    format: {
-        protocol: "hls" | "progressive",
-        mime_type: "audio/mpeg"
-    },
-    quality: "sq"
-}
 
 //====================== ====================== ====================== ======================
 /**
@@ -23,6 +9,13 @@ interface SoundCloudFormat {
  * ClientID не обязателен его можно просто так получить
  */
 //====================== ====================== ====================== ======================
+
+//Локальная база данных
+const db = {
+    api: "https://api-v2.soundcloud.com",
+
+    clientID: env.get("SOUNDCLOUD")
+};
 
 /**
  * @description Система запросов
@@ -36,9 +29,9 @@ namespace API {
         return new Promise(async (resolve) => {
             const ClientID = await getClientID();
 
-            if (!ClientID) return resolve(Error("[APIs]: Невозможно получить ID клиента!"));
+            if (ClientID instanceof Error || !ClientID) return resolve(Error("[APIs]: Невозможно получить ID клиента!"));
 
-            const result = await httpsClient.parseJson(`${APiLink}/${method}&client_id=${ClientID}`);
+            const result = await httpsClient.parseJson(`${db.api}/${method}&client_id=${ClientID}`);
 
             if (!result) return resolve(Error("[APIs]: Невозможно найти данные!"));
 
@@ -144,7 +137,7 @@ export namespace SoundCloud {
      * @description Получаем плейлист
      * @param url {string} Ссылка на плейлист
      */
-    export function getPlaylist(url: string): Promise<inTrack | inPlaylist> {
+    export function getPlaylist(url: string, options = {limit: APIs.limits.playlist}): Promise<inTrack | inPlaylist> {
         return new Promise<inPlaylist | inTrack>(async (resolve, reject) => {
             try {
                 //Создаем запрос
@@ -157,11 +150,12 @@ export namespace SoundCloud {
 
                 //Если треков нет значит, это ссылка на трек, а не на плейлист
                 if (result.tracks === undefined) return getTrack(url).then(resolve);
+                const tracks = result.tracks.splice(0, options.limit);
 
                 return resolve({ url, title: result.title,
                     author: construct.author(result.user),
                     image: construct.parseImage(result.artwork_url),
-                    items: result.tracks.map(construct.track)
+                    items: tracks.map(construct.track)
                 });
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
@@ -173,7 +167,7 @@ export namespace SoundCloud {
      * @param options {limit: number} Кол-во выдаваемых треков
      * @constructor
      */
-    export function SearchTracks(search: string, options = {limit: 15}): Promise<inTrack[]> {
+    export function SearchTracks(search: string, options = {limit: APIs.limits.search}): Promise<inTrack[]> {
         return new Promise<inTrack[]>(async (resolve, reject) => {
             try {
                 //Создаем запрос
@@ -193,10 +187,10 @@ export namespace SoundCloud {
  * @description Если нет ClientID то получаем его как неавторизованный пользователь
  * @private
  */
-function getClientID(): Promise<string> | string {
-    if (clientID) return clientID;
+function getClientID(): Promise<string | Error> | string {
+    if (db.clientID) return db.clientID;
 
-    return new Promise<string>(async (resolve) => {
+    return new Promise(async (resolve) => {
         const parsedPage = await httpsClient.parseBody("https://soundcloud.com/", {
             options: { userAgent: true },
             request: {
@@ -207,7 +201,7 @@ function getClientID(): Promise<string> | string {
             }
         });
 
-        if (!parsedPage || parsedPage instanceof Error) return resolve(null);
+        if (!parsedPage || parsedPage instanceof Error) return resolve(Error("[APIs]: Не удалось получить ClientID!"));
 
         const split = parsedPage.split("<script crossorigin src=\"");
         const urls: string[] = [];
@@ -216,7 +210,19 @@ function getClientID(): Promise<string> | string {
 
         const parsedPage2 = await httpsClient.parseBody(urls.pop());
 
-        if (parsedPage2 instanceof Error) return resolve(null);
+        if (parsedPage2 instanceof Error) return resolve(Error("[APIs]: Не удалось получить ClientID!"));
         return resolve(parsedPage2.split(",client_id:\"")[1].split("\"")[0]);
     });
+}
+
+interface SoundCloudFormat {
+    url: string,
+    preset: "mp3_0_0" | "opus_0_0",
+    duration: number,
+    snipped: boolean,
+    format: {
+        protocol: "hls" | "progressive",
+        mime_type: "audio/mpeg"
+    },
+    quality: "sq"
 }

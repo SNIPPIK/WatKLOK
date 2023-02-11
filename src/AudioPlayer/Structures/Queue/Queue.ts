@@ -115,13 +115,13 @@ export class Queue {
         //Если треков в очереди больше нет
         if (!this.song) return this.cleanup();
 
-        //Отправляем сообщение с авто обновлением
-        if (!seek) MessagePlayer.toPlay(this.message);
+        setImmediate(() => {
+            //Отправляем сообщение с авто обновлением
+            if (!seek) MessagePlayer.toPlay(this.message);
 
-        //Если включен режим отладки показывает что сейчас играет и где
-        if (Debug) consoleTime(`[Debug] -> Play: ${this.guild.id}: ${this.song.title}`);
+            //Если включен режим отладки показывает что сейчас играет и где
+            if (Debug) consoleTime(`[Debug] -> Play: ${this.guild.id}: ${this.song.title}`);
 
-        return new Promise<void>((resolve) => {
             const resource = this.song.resource(seek);
 
             resource.then((url: string) => {
@@ -136,8 +136,6 @@ export class Queue {
             });
             //Если получение ссылки вызывает ошибку
             resource.catch((err) => this.player.emit("error", Error(err), true));
-
-            return resolve(null)
         });
     };
     //====================== ====================== ====================== ======================
@@ -195,7 +193,7 @@ export class Queue {
         } else clearTimeout(this.Timer); this.hasDestroying = false;
     };
 }
-
+//====================== ====================== ====================== ======================
 /**
  * @description Смена позиции в Array
  * @param array {Array<any>} Array
