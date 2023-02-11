@@ -169,7 +169,7 @@ export namespace YouTube {
         return new Promise(async (resolve, reject) => {
             try {
                 //Создаем запрос
-                const page = await API.Request("STRING", `results?search_query=${search.replaceAll(' ', '+')}`) as string;
+                const page = await API.Request("STRING", `results?search_query=${search.split(" ").join("+")}`) as string;
                 const result = (page.split("var ytInitialData = ")[1].split("}};")[0] + '}}').split(';</script><script')[0];
 
                 //Если нет данных на странице
@@ -179,27 +179,11 @@ export namespace YouTube {
 
                 //Если нет данных на странице (если нет результатов поиска)
                 if (!details) return reject(Error(`[APIs]: Не удалось найти: ${search}`));
-                const videos: inTrack[] = [];
+                const videos = details?.filter((video: any) => video && video?.videoRenderer && video?.videoRenderer?.videoId)?.splice(0, options.limit);
 
-                for (let i = 0; i < details.length; i++) {
-                    //Если достигнут лимит, завершаем сбор видео
-                    if (i >= options.limit) break;
+                if (videos.length < 1) return reject(Error(`[APIs]: Не удалось найти: ${search}`));
 
-                    //Если это не видео, пропускаем!
-                    if (!details[i] || !details[i]?.videoRenderer) {
-                        i--;
-                        continue;
-                    }
-
-                    const video = details[i].videoRenderer;
-
-                    //Если нет ID видео, чкорее всего это не видео
-                    if (!video.videoId) continue;
-
-                    videos.push(construct.playlist(video));
-                }
-
-                return resolve(videos);
+                return resolve(videos.map(({videoRenderer}: any) => construct.playlist(videoRenderer)));
             } catch (e) { return reject(Error(e)) }
         });
     }
@@ -228,20 +212,13 @@ export namespace YouTube {
                 const tabs: any[] = details?.contents?.twoColumnBrowseResultsRenderer?.tabs;
                 const videos = (tabs[1] ?? tabs[2]).tabRenderer?.content?.richGridRenderer?.contents;
                 const author = details.microformat.microformatDataRenderer;
+                const endVideos = videos?.filter((video: any) => video?.richItemRenderer?.content?.videoRenderer)?.splice(0, options.limit);
 
-                const endVideos: inTrack[] = [];
-                for (let i = 0; i < videos.length; i++) {
-                    if (i >= options.limit) break;
-
-                    const video = videos[i]?.richItemRenderer?.content?.videoRenderer;
-
-                    //Если нет <video>, то не добавляем его
-                    if (!video) return;
-
-                    endVideos.push({ url: `https://youtu.be/${video.videoId}`, title: video.title.runs[0].text, duration: {seconds: video.lengthText.simpleText},
+                endVideos.map((video: any) => {
+                    return { url: `https://youtu.be/${video.videoId}`, title: video.title.runs[0].text, duration: {seconds: video.lengthText.simpleText},
                         author: { url: `${db.link}${ID}`, title: author.title }
-                    });
-                }
+                    }
+                });
 
                 return resolve(endVideos);
             } catch (e) { return reject(Error(e)) }

@@ -227,22 +227,20 @@ export namespace platformSupporter {
      */
     export function getArg(str: string, platform: platform) {
         //Если нет search, значит пользователь прикрепил файл
-        if (!str) return str;
+        if (!str || str.match(/^(https?:\/\/)/gi)) return str;
 
-        //Если пользователь ищет трек по ссылке
-        if (str.match(/^(https?:\/\/)/gi)) return str;
-
-        //Если пользователь ищет трек по названию
-        const spSearch = str.split(' '), pl = spSearch[0].toLowerCase();
+        const arrayStr = str.split(' ');
+        const Platform = arrayStr[0].toLowerCase();
         // @ts-ignore
-        const aliases = pl === platform.toLowerCase() || Platforms[platform].prefix?.includes(pl);
+        const findPlatform = Platform === platform || Platforms[platform].prefix.includes(Platform);
 
         //Если пользователь ищет трек с префиксом платформы
-        if (aliases) {
-            spSearch.splice(0, 1);
+        if (findPlatform && arrayStr.length > 1) {
+            arrayStr.splice(0, 1);
 
-            return spSearch.join(" ");
+            return arrayStr.join(" ");
         }
+
         return str;
     }
 }
@@ -284,7 +282,7 @@ export namespace toPlayer {
                 if (PlatformsAudio.includes(platform) && APIs.showWarningAudio) UtilsMsg.createMessage({ text: `⚠️ Warning | [${platform}]\n\nЯ не могу получать исходные файлы музыки у этой платформы.\nЗапрос будет произведен в youtube.track`, color: "Yellow", codeBlock: "css", message });
             }
 
-            runCallback.catch(e => {
+            runCallback.catch((e) => {
                 if (e.length > 2e3) UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e.message}`, color: "DarkRed", codeBlock: "css", message });
                 else UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e}`, color: "DarkRed", codeBlock: "css", message });
             });
@@ -295,7 +293,7 @@ export namespace toPlayer {
                 if (data instanceof Array) return toSend(data, {message, platform});
 
                 //Загружаем трек или плейлист в GuildQueue
-                return client.player.play(message as any, voiceChannel.channel, data);
+                return client.player.play(message, voiceChannel.channel, data);
             });
         });
     }
