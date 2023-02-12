@@ -76,12 +76,12 @@ namespace construct {
      * @param image {string} Ссылка на картинку
      * @param size {number} Размер картинки
      */
-    export function onImage(image: string, size = 400) {
+    export function onImage(image: string, size = 1e3) {
         if (!image) return "";
 
         let img = image.split("%%")[0];
 
-        return `https://${img}${size}x${size}`;
+        return `https://${img}m${size}x${size}`;
     }
     //====================== ====================== ====================== ======================
     /**
