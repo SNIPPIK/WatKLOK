@@ -4,7 +4,7 @@ import {TypedEmitter} from "tiny-typed-emitter";
 import {Music} from "@db/Config.json";
 import {OpusAudio} from "@OpusAudio";
 
-const SilenceFrame = Buffer.from([0xf8, 0xff, 0xfe, 0xfae]);
+//const SilenceFrame = Buffer.from([0xf8, 0xff, 0xfe, 0xfae]);
 const packetSender = Music.AudioPlayer.methodSendPackets;
 const SkippedStatuses = ["read", "pause"];
 const UpdateMessage = ["read"];
@@ -39,8 +39,6 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
 
         //Проверяем на нужный статус, удаляем старый поток
         if (isDestroy(oldState, state)) {
-            //this.stopSpeak();
-
             //Очищаемся от прошлого потока
             oldState.stream.opus.removeAllListeners();
             oldState.stream.opus.destroy();
@@ -51,7 +49,6 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
         //Фильтруем статусы бота что в emit не попало что не надо
         if (oldStatus !== newStatus || oldStatus !== "idle" && newStatus === "read") {
             PlayerCycle.toRemove(this);
-            //this.sendPacket(SilenceFrame);
             this.emit(newStatus);
         }        
 
@@ -135,9 +132,6 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
             }
         }
     };
-    public stopSpeak = () => {
-        this.voice.setSpeaking(false);
-    }
     //====================== ====================== ====================== ======================
     /**
      * @description Проверяем можно ли отправить пакет в голосовой канал
@@ -156,8 +150,7 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
             const packet: Buffer | null = state.stream?.read();
 
             if (packet) return this.sendPacket(packet);
-            this.stopSpeak();
-
+            this.voice.setSpeaking(false);
             this.stop();
         }
     };

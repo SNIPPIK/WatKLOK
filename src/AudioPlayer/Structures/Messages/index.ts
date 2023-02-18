@@ -36,7 +36,7 @@ export namespace MessagePlayer {
         if (!queue?.song) return;
 
         Balancer.push(() => {
-            const embedCurrentPlaying = EmbedMessages.toPlaying(message.client, queue);
+            const embedCurrentPlaying = EmbedMessages.toPlaying(queue);
             const msg = message.channel.send({embeds: [embedCurrentPlaying as any], components: [Buttons as any]});
 
             msg.catch((e) => console.log(`[MessagePlayer]: [function: toPlay]: ${e.message}`));
@@ -79,11 +79,11 @@ export namespace MessagePlayer {
      * @param song {Song} Трек
      */
     export function toPushSong(queue: Queue, song: Song): void {
-        const {client, channel} = queue.message;
+        const {channel} = queue.message;
 
         Balancer.push(() => {
             try {
-                const EmbedPushedSong = EmbedMessages.toPushSong(client, song, queue);
+                const EmbedPushedSong = EmbedMessages.toPushSong(song, queue);
                 const PushChannel = channel.send({embeds: [EmbedPushedSong]});
 
                 PushChannel.then(UtilsMsg.deleteMessage);

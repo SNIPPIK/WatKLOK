@@ -25,13 +25,13 @@ export namespace EmbedMessages {
     * @param client {WatKLOK} Клиент
     * @param queue {Queue} Очередь
     */
-    export function toPlaying(client: WatKLOK, queue: Queue): EmbedConstructor {
+    export function toPlaying(queue: Queue): EmbedConstructor {
         const { color, author, image, requester } = queue.song;
-        const fields = getFields(queue, client);
+        const fields = getFields(queue);
         const AuthorSong = replacer.replaceText(author.title, 45, false);
 
         return { color, image, thumbnail: author?.image ?? {url: Music.images._image}, fields,
-            author: { name: AuthorSong, url: author.url, iconURL: choiceImage(author.isVerified) },
+            author: { name: AuthorSong, url: author.url, iconURL: choiceImage(author?.isVerified) },
             footer: { text: `${requester.username} | ${DurationUtils.getTimeQueue(queue)} | 🎶: ${queue.songs.length}`, iconURL: requester.avatarURL() }
         };
     }
@@ -43,13 +43,13 @@ export namespace EmbedMessages {
      * @param song {Song} Трек который был добавлен
      * @param songs {Queue<songs>} Все треки
      */
-    export function toPushSong(client: WatKLOK, song: Song, {songs}: Queue): EmbedConstructor {
+    export function toPushSong(song: Song, {songs}: Queue): EmbedConstructor {
         const { color, author, image, title, url, duration, requester } = song;
         const AuthorSong = replacer.replaceText(author.title, 45, false);
         const fields = [{ name: "**Добавлено в очередь**", value: `**❯** **[${replacer.replaceText(title, 40, true)}](${url}})\n**❯** \`\`[${duration.full}]\`\`**` }];
 
         return { color, fields,
-            author: { name: AuthorSong, iconURL: author?.image?.url ?? Music.images._image, url: author.url },
+            author: { name: AuthorSong, iconURL: author?.image?.url, url: author.url },
             thumbnail: !image?.url ? author?.image : image ?? {url: Music.images._image},
             footer: { text: `${requester.username} | ${DurationUtils.getTimeQueue(songs)} | 🎶: ${songs.length}`, iconURL: requester.avatarURL() }
         };
@@ -62,11 +62,11 @@ export namespace EmbedMessages {
      * @param playlist {inPlaylist} Плейлист
      * @param author {inPlaylist.author} Автор плейлиста
      */
-    export function toPushPlaylist({client, author: DisAuthor}: ClientMessage, playlist: inPlaylist): EmbedConstructor {
+    export function toPushPlaylist({author: DisAuthor}: ClientMessage, playlist: inPlaylist): EmbedConstructor {
         const { author, image, url, title, items } = playlist;
 
         return { color: Colors.Blue, timestamp: new Date(),
-            author: { name: author?.title, iconURL: author?.image?.url ?? Music.images._image, url: author?.url },
+            author: { name: author?.title, iconURL: author?.image?.url, url: author?.url },
             thumbnail: typeof image === "string" ? {url: image} : image ?? {url: Music.images._image},
             description: `Найден плейлист **[${title}](${url})**`,
             footer: { text: `${DisAuthor.username} | ${DurationUtils.getTimeQueue(items)} | 🎶: ${items?.length}`, iconURL: DisAuthor.displayAvatarURL({}) }
@@ -99,7 +99,7 @@ export namespace EmbedMessages {
  * @param queue {Queue} Очередь
  * @param client {WatKLOK} Клиент
  */
-function getFields(queue: Queue, client: WatKLOK): EmbedConstructor["fields"] {
+function getFields(queue: Queue): EmbedConstructor["fields"] {
     const {songs, song, player} = queue;
     const VisualDuration = toString(song.duration, player.streamDuration);
 

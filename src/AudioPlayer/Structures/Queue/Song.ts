@@ -27,7 +27,7 @@ export class Song {
         this.#title = track.title;
         this.#url = track.url;
         this.#author = {
-            url: !track.author?.url || track.author?.url === "" ? "Not found url" : track.author.url,
+            url: !track.author?.url || track.author?.url === "" ? Music.images._image : track.author.url,
             title: !track.author?.title || track.author?.title === "" ? "Not found track name" : track.author.title,
             image: !track.author?.image || track.author?.image?.url === "" ? {url: Music.images._image} : track.author.image,
             isVerified: track.author?.isVerified ?? undefined

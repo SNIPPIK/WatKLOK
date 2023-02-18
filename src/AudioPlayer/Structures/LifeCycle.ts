@@ -139,7 +139,7 @@ function editMessage(message: ClientMessage): void {
     if (!queue.player.hasUpdate) return;
 
     setImmediate(() => {
-        const CurrentPlayEmbed = EmbedMessages.toPlaying(client, queue);
+        const CurrentPlayEmbed = EmbedMessages.toPlaying(queue);
 
         //Обновляем сообщение
         return message.edit({embeds: [CurrentPlayEmbed]}).catch((e) => {
