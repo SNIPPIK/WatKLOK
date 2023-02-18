@@ -1,6 +1,6 @@
 import {Command, ResolveData} from "@Structures/Handle/Command";
 import {ClientMessage} from "@Client/interactionCreate";
-import {DurationUtils} from "@Managers/DurationUtils";
+import {DurationUtils} from "@Structures/Durations";
 import {Colors} from "discord.js";
 import pak from "package.json";
 import os from "node:os";

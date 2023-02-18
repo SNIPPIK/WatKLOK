@@ -1,6 +1,6 @@
 import {ActivityType, Client, IntentsBitField, Options, Collection} from "discord.js";
 import {ClientMessage} from "@Client/interactionCreate";
-import {DurationUtils} from "@Managers/DurationUtils";
+import {DurationUtils} from "@Structures/Durations";
 import {Bot, Channels, APIs} from "@db/Config.json";
 import {Command} from "@Structures/Handle/Command";
 import {Player} from "@AudioPlayer/index";

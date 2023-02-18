@@ -1,7 +1,7 @@
 import {Command, replacer, ResolveData} from "@Structures/Handle/Command";
 import {ArraySort} from "@Structures/ArraySort";
 import {ClientMessage} from "@Client/interactionCreate";
-import {DurationUtils} from "@Managers/DurationUtils";
+import {DurationUtils} from "@Structures/Durations";
 import {MessageReaction, User} from "discord.js";
 import {Queue} from "@Queue/Queue";
 import {Song} from "@Queue/Song";

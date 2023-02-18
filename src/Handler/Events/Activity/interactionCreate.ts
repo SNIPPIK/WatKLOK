@@ -1,6 +1,6 @@
 import {ActionRow,ActionRowBuilder,BaseInteraction,BaseMessageOptions,Colors,CommandInteractionOption,DMChannel,EmbedData,GuildMember,Message,MessageEditOptions,MessagePayload,MessageReaction,NewsChannel,PartialDMChannel,TextChannel,ThreadChannel,User} from "discord.js";
 import {Command, messageUtilsOptions, ResolveData} from "@Structures/Handle/Command";
-import {DurationUtils} from "@Managers/DurationUtils";
+import {DurationUtils} from "@Structures/Durations";
 import {ReactionMenu} from "@Structures/ReactionMenu";
 import {Event} from "@Structures/Handle/Event";
 import {Balancer} from "@Structures/Balancer";
