@@ -22,7 +22,7 @@
     "TypingMessage": true
   },
   "Debug": false,
-  "QueueCallbacks": true,
+  "QueueCallbacks": false,
 
   "Music": {
     "CacheMusic": false,
