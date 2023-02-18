@@ -39,23 +39,23 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
 
         //Фильтруем статусы бота что в emit не попало что не надо
         if (oldStatus !== newStatus || oldStatus !== "idle" && newStatus === "read") {
+            //Отправляем фейковые пакеты
+            this.sendPacket(SilenceFrame);
+
+            //Выключаем голос боту
+            this.sendPacket(null);
+
             PlayerCycle.toRemove(this);
             this.emit(newStatus);
         }
 
         //Проверяем на нужный статус, удаляем старый поток
         if (isDestroy(oldState, state)) {
-            //Отправляем фейковые пакеты
-            this.sendPacket(SilenceFrame);
-
             //Очищаемся от прошлого потока
             oldState.stream.opus.removeAllListeners();
             oldState.stream.opus.destroy();
             oldState.stream.opus.read(); //Устраняем утечку памяти
             oldState.stream.destroy();
-
-            //Выключаем голос боту
-            this.sendPacket(null);
         }
 
         //Добавляем плеер в CycleStep

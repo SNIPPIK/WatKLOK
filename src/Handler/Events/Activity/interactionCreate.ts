@@ -3,6 +3,7 @@ import {Command, messageUtilsOptions, ResolveData} from "@Structures/Handle/Comm
 import {DurationUtils} from "@Managers/DurationUtils";
 import {ReactionMenu} from "@Structures/ReactionMenu";
 import {Event} from "@Structures/Handle/Event";
+import {Balancer} from "@Structures/Balancer";
 import {WatKLOK} from "@Client/Client";
 import {Bot} from '@db/Config.json';
 
@@ -33,7 +34,7 @@ export class interactionCreate extends Event<ClientInteraction, null> {
     public static runCommand = (message: ClientInteractive, command: Command, args: string[] = []): void => {
         const {author} = message;
 
-        setImmediate(() => {
+        Balancer.push(() => {
             //Если нет команды, которую требует пользователь сообщаем ему об этом
             if (!command) return interactionCreate.sendMessage(message, { text: `${author}, я не нахожу такой команды!`, color: "DarkRed" });
             //Если команду нельзя использовать все сервера

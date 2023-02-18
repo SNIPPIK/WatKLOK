@@ -8,6 +8,7 @@ import {ArraySort} from "@Structures/ArraySort";
 import {Colors} from "discord.js";
 import {FFspace} from "@FFspace";
 import {env} from "@env";
+import { Balancer } from "@Structures/Balancer";
 
 //Поддерживаемые платформы
 export type platform = "YOUTUBE" | "SPOTIFY" | "VK" | "SOUNDCLOUD" | "DISCORD" | "YANDEX";
@@ -258,7 +259,7 @@ export namespace toPlayer {
         const {author, client} = message;
         const voiceChannel = message.member.voice;
 
-        setImmediate(() => {
+        Balancer.push(() => {
             const type = platformSupporter.getTypeSong(arg); //Тип запроса
             const platform = platformSupporter.getPlatform(arg); //Платформа с которой будем взаимодействовать
             const argument = platformSupporter.getArg(arg, platform);

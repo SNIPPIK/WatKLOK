@@ -14,7 +14,7 @@ const decoderBase = {
 const protocols = {
     "http": httpRequest,  //http запрос
     "https": httpsRequest //https запрос
-}
+};
 
 export namespace httpsClient {
     /**

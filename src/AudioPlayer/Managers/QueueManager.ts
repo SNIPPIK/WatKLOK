@@ -1,9 +1,9 @@
 import {MessagePlayer} from "@Managers/Players/Messages";
 import {ClientMessage} from "@Client/interactionCreate";
 import {inPlaylist, inTrack, Song} from "@Queue/Song";
+import { Balancer } from "@Structures/Balancer";
 import {Voice} from "@VoiceManager";
 import {Queue} from "@Queue/Queue";
-
 /**
  * @description Добавляем плейлист или трек в очередь
  * @param message {ClientMessage} Сообщение с сервера
@@ -20,7 +20,7 @@ export function toQueue(message: ClientMessage, VoiceChannel: Voice.VoiceChannel
         if ("items" in info) {
             MessagePlayer.toPushPlaylist(message, info);
             //Добавляем треки в очередь
-            info.items.forEach((track: inTrack) => queue.push(new Song(track, requester)));
+            info.items.forEach((track: inTrack) => Balancer.push(() => queue.push(new Song(track, requester))));
         } else queue.push(new Song(info, requester), queue.songs.length >= 1); //Добавляем трек в очередь
 
         //Запускаем callback плеера, если очередь была создана, а не загружена!

@@ -22,14 +22,16 @@ function CheckFile(paths: string[], error: string) {
 
 //Проверяем есть ли FFmpeg в системе
 if (!FFmpegName) {
-    try { if (Object.keys(dependencies).includes("ffmpeg-static")) paths.ffmpeg.push(require("ffmpeg-static")); } catch (e) {/* Null */}
+    //@ts-ignore
+    try { if (dependencies["ffmpeg-static"]) paths.ffmpeg.push(require("ffmpeg-static")); } catch (e) {/* Null */}
 
     FFmpegName = CheckFile(paths.ffmpeg, "FFmpeg not found!");
     delete paths.ffmpeg;
 }
 //Проверяем есть ли FFprobe в системе
 if (!FFprobeName) {
-    try { if (Object.keys(dependencies).includes("ffprobe-static")) paths.ffprobe.push(require("ffprobe-static").path); } catch (e) {/* Null */}
+    //@ts-ignore
+    try { if (dependencies["ffprobe-static"]) paths.ffprobe.push(require("ffprobe-static").path); } catch (e) {/* Null */}
 
     FFprobeName = CheckFile(paths.ffprobe, "FFprobe not found!");
     delete paths.ffprobe;

@@ -1,5 +1,6 @@
 import {existsSync, createWriteStream, rename} from "fs";
 import {httpsClient} from "@httpsClient";
+import { Balancer } from "@Structures/Balancer";
 import {FileSystem} from "@FileSystem";
 import {Music} from "@db/Config.json";
 import {Song} from "@Queue/Song";
@@ -27,7 +28,7 @@ export namespace DownloadManager {
 
         //Добавляем трек в очередь для скачивания
          QueueSongs.push({title: track.title, author: track.author.title, duration: track.duration.seconds, resource});
-        if (QueueSongs.length === 1) cycleStep();
+        if (QueueSongs.length === 1) Balancer.push(cycleStep);
     }
     //====================== ====================== ====================== ======================
     /**

@@ -1,6 +1,6 @@
 import {ActivityType, Client, IntentsBitField, Options, Collection} from "discord.js";
-import {DurationUtils} from "@Managers/DurationUtils";
 import {ClientMessage} from "@Client/interactionCreate";
+import {DurationUtils} from "@Managers/DurationUtils";
 import {Bot, Channels, APIs} from "@db/Config.json";
 import {Command} from "@Structures/Handle/Command";
 import {Player} from "@AudioPlayer/index";
@@ -130,7 +130,14 @@ client.login().then(() => {
         //Если выключено APIs.showErrors, то ошибки не будут отображаться
         if (!APIs.showErrors && err?.message?.match(/APIs/)) return;
 
-        consoleTime(`[IgnoreError]: ${err.name} | ${err.message}\n${err.stack}`);
+        consoleTime(`
+        ┌ <uncaughtException>
+        ├ Name:    ${err.name} 
+        ├ Message: ${err.message}
+        |
+        ├ Stack:   ${err.stack}
+        └ <uncaughtException>
+        `);
 
         //Если выключено APIs.sendErrors, то ошибки не буду отправляться в текстовый канал
         if (!APIs.sendErrors && err?.message?.match(/APIs/)) return;
@@ -138,7 +145,15 @@ client.login().then(() => {
         try {
             const channel = client.channels.cache.get(Channels.sendErrors) as ClientMessage["channel"];
 
-            if (channel) channel.send({content: `\`\`\`ts\nError: ${err.message}\nType: ${err.name}\n\nFull Error: ${err.stack}\n\`\`\``}).catch(() => null);
+            if (channel) channel.send(
+                { content: `\`\`\`ts
+                ┌uncaughtException
+                ├ Name:    ${err.name} 
+                ├ Message: ${err.message}
+                |
+                └ Stack:   ${err.stack}        
+                \`\`\``
+            }).catch(() => null);
         } catch {/* Continue */}
     });
 });

@@ -4,7 +4,7 @@ import {AudioPlayer} from "@Structures/AudioPlayer";
 import {consoleTime} from "@Client/Client";
 import {Music} from "@db/Config.json";
 import {Queue} from "@Queue/Queue";
-import {Message} from "discord.js";
+import { Balancer } from "@Structures/Balancer";
 
 //База данных
 const db = {
@@ -93,7 +93,7 @@ export namespace MessageCycle {
         db.msg.push(message); //Добавляем сообщение в базу
 
         //Если в базе есть хоть одно сообщение, то запускаем таймер
-        if (db.msg.length === 1) setImmediate(messageCycleStep);
+        if (db.msg.length === 1) Balancer.push(messageCycleStep);
     }
     //====================== ====================== ====================== ======================
     /**
@@ -128,7 +128,7 @@ export namespace MessageCycle {
 function messageCycleStep() {
     setImmediate(() => {
         try {
-            setTimeout(() => db.msg.forEach(editMessage), 1e3);
+            setTimeout(() => db.msg.forEach((message) => Balancer.push(() => editMessage(message))), 1e3);
         } finally { db.timeout_m = setTimeout(messageCycleStep, Music.AudioPlayer.updateMessage < 10 ? 15e3 : Music.AudioPlayer.updateMessage * 1e3); }
     });
 }

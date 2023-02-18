@@ -6,6 +6,7 @@ import {inPlaylist, Song} from "@Queue/Song";
 import {consoleTime} from "@Client/Client";
 import {Music} from "@db/Config.json";
 import {Queue} from "@Queue/Queue";
+import { Balancer } from "@Structures/Balancer";
 
 if (Music.Buttons.length < 4) Error(`[Config]: Buttons has not found, find ${Music.Buttons.length}, need 4`);
 
@@ -34,7 +35,7 @@ export namespace MessagePlayer {
 
         if (!queue?.song) return;
 
-        setImmediate(() => {
+        Balancer.push(() => {
             const embedCurrentPlaying = EmbedMessages.toPlaying(message.client, queue);
             const msg = message.channel.send({embeds: [embedCurrentPlaying as any], components: [Buttons as any]});
 
@@ -60,7 +61,7 @@ export namespace MessagePlayer {
     export function toError(queue: Queue, err: Error | string = null): void {
         const {client, channel} = queue.message;
 
-        setImmediate(() => {
+        Balancer.push(() => {
             try {
                 const Embed = EmbedMessages.toError(client, queue, err);
                 const WarningChannelSend = channel.send({embeds: [Embed]});
@@ -80,7 +81,7 @@ export namespace MessagePlayer {
     export function toPushSong(queue: Queue, song: Song): void {
         const {client, channel} = queue.message;
 
-        setImmediate(() => {
+        Balancer.push(() => {
             try {
                 const EmbedPushedSong = EmbedMessages.toPushSong(client, song, queue);
                 const PushChannel = channel.send({embeds: [EmbedPushedSong]});
@@ -100,7 +101,7 @@ export namespace MessagePlayer {
     export function toPushPlaylist(message: ClientMessage, playlist: inPlaylist): void {
         const {channel} = message;
 
-        setImmediate(() => {
+        Balancer.push(() => {
             try {
                 const EmbedPushPlaylist = EmbedMessages.toPushPlaylist(message, playlist);
                 const PushChannel = channel.send({embeds: [EmbedPushPlaylist]});
