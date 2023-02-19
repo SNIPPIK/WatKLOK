@@ -10,7 +10,7 @@
 
       "@Structures/*": ["src/Structures/*", "src/AudioPlayer/Structures/*"],
       "@Managers/*": ["src/AudioPlayer/Managers/*"],
-      "@httpsClient": ["src/Client/httpsClient/index"],
+      "@httpsClient": ["src/httpsClient/index"],
 
       "@FFspace": ["src/AudioPlayer/Structures/Media/FFspace"],
       "@AudioPlayer/*": ["src/AudioPlayer/*"],
