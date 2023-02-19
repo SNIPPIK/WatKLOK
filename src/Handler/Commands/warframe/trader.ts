@@ -21,7 +21,7 @@ export class VoidTraderCommand extends Command {
     }
 
     public readonly run = async (_: any): Promise<ResolveData> => {
-        const result = await httpsClient.parseJson(TraderApi);
+        const result = await httpsClient.get(TraderApi, {resolve: "json"});
         const pagesInventory = ArraySort<voidTraderItem>(5, result.inventory, (item, index = 1) =>
             `┌Предмет [**${item.item}**]
              ├ **Номер  :** ${index++}

@@ -20,7 +20,7 @@ export class CetusCommand extends Command {
     };
 
     public readonly run = async (_: any): Promise<ResolveData> => {
-        const result = await httpsClient.parseJson(CetusCycle);
+        const result = await httpsClient.get(CetusCycle, {resolve: "json"});
         return {embed: this.EmbedChange(result)};
     };
     //====================== ====================== ====================== ======================

@@ -1,4 +1,4 @@
-import {httpsClient, httpsClientOptions} from "@httpsClient";
+import {httpsClient} from "@httpsClient";
 import {inAuthor, inPlaylist, inTrack} from "@Queue/Song";
 import {YouTubeFormat} from "./Decipher";
 import {Worker} from "worker_threads";
@@ -15,30 +15,6 @@ import {APIs} from "@db/Config.json";
 const db = {
     link: "https://www.youtube.com"
 };
-
-/**
- * @description Система запросов
- */
-namespace API {
-    /**
-     * @description Создаем парсер по зависимости <type>
-     * @param type {"JSON" | "STRING"} Тип запроса
-     * @param method {string} Путь
-     * @param options {httpsClientOptions} Аргументы запроса
-     */
-    export function Request(type: "JSON" | "STRING", method: string, options: httpsClientOptions = {options: {}, request: {}}): string | {} {
-        if (type === "JSON") return httpsClient.parseJson(`${db.link}/${method}`, options);
-        return httpsClient.parseBody(`${db.link}/${method}`, {
-            options: {userAgent: true, cookie: true}, request: {
-                headers: {
-                    "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7",
-                    "accept-encoding": "gzip, deflate, br"
-                }
-            }
-        });
-    }
-}
-//====================== ====================== ====================== ======================
 
 /**
  * @description Формирование общих данных
@@ -91,7 +67,16 @@ export namespace YouTube {
 
             try {
                 //Создаем запрос
-                const page = await API.Request("STRING", `watch?v=${ID}&has_verified=1`) as string;
+                const page = await httpsClient.get(`${db.link}/watch?v=${ID}&has_verified=1`, {
+                    resolve: "body", cookie: true, useragent: true,
+                    headers: {
+                        "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7",
+                        "accept-encoding": "gzip, deflate, br"
+                    }
+                }) as string | Error;
+
+                if (page instanceof Error) return reject(Error("[APIs]: Не удалось получить данные!"));
+
                 const result = page.split("var ytInitialPlayerResponse = ")?.[1]?.split(";</script>")[0].split(/(?<=}}});\s*(var|const|let)\s/)[0];
 
                 //Если нет данных на странице
@@ -138,7 +123,16 @@ export namespace YouTube {
 
             try {
                 //Создаем запрос
-                const page = await API.Request("STRING", `playlist?list=${ID}`) as string;
+                const page = await httpsClient.get(`${db.link}/playlist?list=${ID}`, {
+                    resolve: "body", cookie: true, useragent: true,
+                    headers: {
+                        "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7",
+                        "accept-encoding": "gzip, deflate, br"
+                    }
+                }) as string | Error;
+
+                if (page instanceof Error) return reject(Error("[APIs]: Не удалось получить данные!"));
+
                 const result = page.split('var ytInitialData = ')[1].split(';</script>')[0].split(/;\s*(var|const|let)\s/)[0];
 
                 //Если нет данных на странице
@@ -169,7 +163,16 @@ export namespace YouTube {
         return new Promise(async (resolve, reject) => {
             try {
                 //Создаем запрос
-                const page = await API.Request("STRING", `results?search_query=${search.split(" ").join("+")}`) as string;
+                const page = await httpsClient.get(`${db.link}/results?search_query=${search.split(" ").join("+")}`, {
+                    resolve: "body", cookie: true, useragent: true,
+                    headers: {
+                        "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7",
+                        "accept-encoding": "gzip, deflate, br"
+                    }
+                }) as string | Error;
+
+                if (page instanceof Error) return reject(Error("[APIs]: Не удалось получить данные!"));
+
                 const result = (page.split("var ytInitialData = ")[1].split("}};")[0] + '}}').split(';</script><script')[0];
 
                 //Если нет данных на странице
@@ -200,9 +203,17 @@ export namespace YouTube {
                 if (url.match(/@/)) ID = `@${url.split("@")[1]}`;
                 else ID = `channel/${url.split("channel/")[1]}`;
 
-
                 //Создаем запрос
-                const channel: any[] | any = await API.Request("STRING", `${ID}/videos`);
+                const channel = await httpsClient.get(`${db.link}/${ID}/videos`, {
+                    resolve: "body", cookie: true, useragent: true,
+                    headers: {
+                        "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7",
+                        "accept-encoding": "gzip, deflate, br"
+                    }
+                }) as string | Error;
+
+                if (channel instanceof Error) return reject(Error("[APIs]: Не удалось получить данные!"));
+
                 const info = channel.split("var ytInitialData = ")[1]?.split(";</script><script nonce=")[0];
 
                 //Если нет данных на странице
@@ -234,16 +245,18 @@ export namespace YouTube {
 function getChannel({id, name}: { id: string, name?: string }): Promise<inAuthor> {
     return new Promise(async (resolve) => {
         //Создаем запрос
-        const channel: any[] | any = await API.Request("JSON", `channel/${id}/channels?flow=grid&view=0&pbj=1`, {
-            request: {
-                headers: {
-                    "x-youtube-client-name": "1",
-                    "x-youtube-client-version": "2.20201021.03.00",
-                    "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7",
-                    "accept-encoding": "gzip, deflate, br"
-                }
+        const channel = await httpsClient.get(`${db.link}/channel/${id}/channels?flow=grid&view=0&pbj=1`, {
+            resolve: "json",
+            headers: {
+                "x-youtube-client-name": "1",
+                "x-youtube-client-version": "2.20201021.03.00",
+                "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7",
+                "accept-encoding": "gzip, deflate, br"
             }
-        });
+        }) as any | Error;
+
+        if (channel instanceof Error) return resolve(null);
+
         const data = channel[1]?.response ?? channel?.response ?? null as any;
         const info = data?.header?.c4TabbedHeaderRenderer, Channel = data?.metadata?.channelMetadataRenderer,
             avatar = info?.avatar, badges = info?.badges;

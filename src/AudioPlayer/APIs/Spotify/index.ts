@@ -31,14 +31,12 @@ namespace API {
             const isLoggedIn = db.token !== undefined && db.time > Date.now() + 2;
             if (!isLoggedIn) await getToken();
 
-            const api = await httpsClient.parseJson(`${db.api}/${method}`, {
-                request: {
-                    headers: {
-                        "Accept": "application/json",
-                        "Content-Type": "application/x-www-form-urlencoded",
-                        "Authorization": "Bearer " + db.token,
-                        "accept-encoding": "gzip, deflate, br"
-                    }
+            const api = await httpsClient.get(`${db.api}/${method}`, {
+                resolve: "json", headers: {
+                    "Accept": "application/json",
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Authorization": "Bearer " + db.token,
+                    "accept-encoding": "gzip, deflate, br"
                 }
             }) as SpotifyRes;
 
@@ -229,17 +227,14 @@ function getAuthor(url: string, isUser: boolean = false): Promise<inAuthor> {
  * @description Получаем токен
  */
 function getToken(): Promise<void> {
-    return httpsClient.parseJson(`${db.account}/token`, {
-        request: {
-            method: "POST",
-            headers: {
-                "Accept": "application/json",
-                "Authorization": `Basic ${db.aut}`,
-                "Content-Type": "application/x-www-form-urlencoded",
-                "accept-encoding": "gzip, deflate, br"
-            },
-            body: "grant_type=client_credentials"
-        }
+    return httpsClient.post(`${db.account}/token`, { resolve: "json",
+        headers: {
+            "Accept": "application/json",
+            "Authorization": `Basic ${db.aut}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+            "accept-encoding": "gzip, deflate, br"
+        },
+        body: "grant_type=client_credentials"
     }).then((result) => {
         db.time = Date.now() + result.expires_in;
         db.token = result.access_token;

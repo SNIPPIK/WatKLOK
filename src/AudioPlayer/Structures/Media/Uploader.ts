@@ -61,7 +61,7 @@ function cycleStep(): void {
 
     setImmediate(() => {
         //Скачиваем трек
-        httpsClient.Request(song.resource, {options: {keepAlive: true, userAgent: true}, request: {method: "GET"}}).then((req) => {
+        httpsClient.head(song.resource, {resolve: "body", useragent: true}).then((req) => {
             if (req instanceof Error) return;
 
             if (req.pipe) {

@@ -32,7 +32,7 @@ namespace API {
     export function Request(method: methodType, type: requestType, options: string): Promise<any | Error> {
         return new Promise(async (resolve) => {
             const url = `${db.api}/${method}.${type}${db.token}${options}&v=5.131`;
-            const api = await httpsClient.parseJson(url, { request: {headers: {"accept-encoding": "gzip, deflate, br"}}});
+            const api = await httpsClient.get(url, { resolve: "json", headers: {"accept-encoding": "gzip, deflate, br"}});
 
             if (!api || !api?.response) return resolve(Error("[APIs]: Невозможно найти данные!"));
             else if (api?.error) return resolve(Error(`[APIs]: ${api.error_msg}`));

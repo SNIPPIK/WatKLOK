@@ -31,7 +31,7 @@ namespace API {
 
             if (ClientID instanceof Error || !ClientID) return resolve(Error("[APIs]: Невозможно получить ID клиента!"));
 
-            const result = await httpsClient.parseJson(`${db.api}/${method}&client_id=${ClientID}`);
+            const result = await httpsClient.get(`${db.api}/${method}&client_id=${ClientID}`, {resolve: "json"});
 
             if (!result) return resolve(Error("[APIs]: Невозможно найти данные!"));
 
@@ -48,7 +48,7 @@ namespace API {
         const filterFormats = formats.filter((d) => d.format.protocol === "progressive").pop() ?? formats[0];
 
         return new Promise(async (resolve) => {
-            const EndFormat = await httpsClient.parseJson(`${filterFormats.url}?client_id=${ClientID}`);
+            const EndFormat = await httpsClient.get(`${filterFormats.url}?client_id=${ClientID}`, {resolve: "json"});
 
             return resolve(EndFormat.url);
         });
@@ -191,13 +191,10 @@ function getClientID(): Promise<string | Error> | string {
     if (db.clientID) return db.clientID;
 
     return new Promise(async (resolve) => {
-        const parsedPage = await httpsClient.parseBody("https://soundcloud.com/", {
-            options: { userAgent: true },
-            request: {
-                headers: {
-                    "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7",
-                    "accept-encoding": "gzip, deflate, br"
-                }
+        const parsedPage = await httpsClient.get("https://soundcloud.com/", {
+            resolve: "body", useragent: true, headers: {
+                "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7",
+                "accept-encoding": "gzip, deflate, br"
             }
         });
 
@@ -206,9 +203,9 @@ function getClientID(): Promise<string | Error> | string {
         const split = parsedPage.split("<script crossorigin src=\"");
         const urls: string[] = [];
 
-        split.forEach((r) => r.startsWith("https") ? urls.push(r.split("\"")[0]) : null);
+        split.forEach((r: any) => r.startsWith("https") ? urls.push(r.split("\"")[0]) : null);
 
-        const parsedPage2 = await httpsClient.parseBody(urls.pop());
+        const parsedPage2 = await httpsClient.get(urls.pop(), {resolve: "body"});
 
         if (parsedPage2 instanceof Error) return resolve(Error("[APIs]: Не удалось получить ClientID!"));
         return resolve(parsedPage2.split(",client_id:\"")[1].split("\"")[0]);

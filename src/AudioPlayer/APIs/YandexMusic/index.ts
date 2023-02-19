@@ -28,11 +28,10 @@ namespace API {
     export function Request(method: string) {
         return new Promise<any | Error>(async (resolve) => {
 
-            const req = await httpsClient.parseJson(`${db.api}/${method}`, {
-                request: {
-                    headers: {
-                        "Authorization": "OAuth " + db.token
-                    }
+            const req = await httpsClient.get(`${db.api}/${method}`, {
+                resolve: "json",
+                headers: {
+                    "Authorization": "OAuth " + db.token
                 }
             });
 
@@ -96,7 +95,7 @@ namespace construct {
                 if (!api || api instanceof Error) return resolve(Error("[APIs]: Not found links for track!"));
 
                 const track = api?.pop() ?? api;
-                const body = await httpsClient.parseBody(track.downloadInfoUrl);
+                const body = await httpsClient.get(track.downloadInfoUrl, {resolve: "body"});
 
                 if (body instanceof Error) return resolve(body);
 
