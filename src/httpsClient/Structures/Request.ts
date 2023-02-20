@@ -36,8 +36,7 @@ export namespace Request {
             });
             //Если запрос получил ошибку
             request.once("error", resolve);
-            request.once("timeout", () => resolve(Error(`[APIs]: Timeout socket connection on ${options?.hostname}:${options?.port ?? 443}`)));
-            //request.once("socket", () => resolve(Error(`[APIs]: Socket hand up on ${options?.hostname}:${options?.port ?? 443}`)))
+            request.once("timeout", () => resolve(Error(`[APIs]: Connection Timeout Exceeded ${options?.hostname}:${options?.port ?? 443}`)));
 
             //Если запрос POST, отправляем ответ на сервер
             if (options.method === "POST" && options.body) request.write(options.body);
