@@ -28,14 +28,14 @@ export class JoinCommand extends Command {
         const queue: Queue = message.client.queue.get(guild.id);
 
         //Если пользователь не подключен к голосовым каналам
-        if (!member?.voice?.channel || !member?.voice) return { text: `${author}, Подключись к голосовому каналу!`, color: "DarkRed" };
+        if (!member?.voice?.channel || !member?.voice) return { text: `${author}, Подключись к голосовому каналу!`, color: "Yellow" };
 
         //Если пользователь пытается подключить бота к тому же каналу
-        if (voiceChannel.id === guild.members.me.voice.id) return { text: `${author}, Я уже в этом канале <#${queue.voice.id}>.`, color: "DarkRed" };
+        if (voiceChannel.id === guild.members.me.voice.id) return { text: `${author}, Я уже в этом канале <#${queue.voice.id}>.`, color: "Yellow" };
 
         if (queue) { //Если есть очередь, то
             //Если включен режим радио
-            if (queue.options.radioMode) return { text: `${author}, Невозможно из-за включенного режима радио!`, color: "DarkRed" };
+            if (queue.options.radioMode) return { text: `${author}, Невозможно из-за включенного режима радио!`, color: "Yellow" };
 
             const connection = Voice.Join(voiceChannel); //Подключаемся к голосовому каналу
 

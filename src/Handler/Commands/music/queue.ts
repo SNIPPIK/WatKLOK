@@ -23,7 +23,7 @@ export class QueueCommand extends Command {
         const queue: Queue = client.queue.get(guild.id);
 
         //Если нет очереди
-        if (!queue) return { text: `${author}, ⚠ | Музыка щас не играет.`, color: "DarkRed" };
+        if (!queue) return { text: `${author}, ⚠ | Музыка щас не играет.`, color: "Yellow" };
 
         //Получаем то что надо было преобразовать в string[]
         const pages = ArraySort<Song>(10, queue.songs, (song, index) => {

@@ -19,15 +19,15 @@ export class StopCommand extends Command {
         const queue: Queue = message.client.queue.get(guild.id);
 
         //Если нет очереди
-        if (!queue) return { text: `${author}, ⚠ | Музыка щас не играет.`, color: "DarkRed" };
+        if (!queue) return { text: `${author}, ⚠ | Музыка щас не играет.`, color: "Yellow" };
 
         //Если есть очередь и пользователь не подключен к тому же голосовому каналу
         if (queue.voice && member?.voice?.channel?.id !== queue.voice.id) return {
-            text: `${author}, Музыка уже играет в другом голосовом канале!\nМузыка включена тут <#${queue.voice.id}>`, color: "DarkRed"
+            text: `${author}, Музыка уже играет в другом голосовом канале!\nМузыка включена тут <#${queue.voice.id}>`, color: "Yellow"
         };
 
         //Если включен режим радио
-        if (queue.options.radioMode) return { text: `${author}, Невозможно из-за включенного режима радио!`, color: "DarkRed" };
+        if (queue.options.radioMode) return { text: `${author}, Невозможно из-за включенного режима радио!`, color: "Yellow" };
 
         queue.cleanup();
         return {text: `${author}, музыкальная очередь удалена!`};

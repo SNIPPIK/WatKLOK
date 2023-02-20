@@ -42,16 +42,16 @@ export class PlayCommand extends Command {
         const voiceChannel = member?.voice;
 
         //Если пользователь не подключен к голосовым каналам
-        if (!voiceChannel?.channel || !voiceChannel) return { text: `${author}, Подключись к голосовому каналу!`, color: "DarkRed" };
+        if (!voiceChannel?.channel || !voiceChannel) return { text: `${author}, Подключись к голосовому каналу!`, color: "Yellow" };
 
         //Если есть очередь и пользователь не подключен к тому же голосовому каналу
         if (queue && queue.voice && voiceChannel?.channel?.id !== queue.voice.id) return {
             text: `${author}, Музыка уже играет в другом голосовом канале!\nМузыка включена тут <#${queue.voice.id}>`,
-            color: "DarkRed"
+            color: "Yellow"
         };
 
         //Если пользователь не указал аргумент
-        if (!search) return { text: `${author}, Укажи ссылку, название или прикрепи файл!`, color: "DarkRed" };
+        if (!search) return { text: `${author}, Укажи ссылку, название или прикрепи файл!`, color: "Yellow" };
 
         try {
             toPlayer.play(message, search);

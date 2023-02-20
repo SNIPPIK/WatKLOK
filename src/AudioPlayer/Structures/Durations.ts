@@ -21,10 +21,10 @@ export namespace DurationUtils {
      * @requires {toString}
      */
     export function ParsingTimeToString(duration: number): string {
-        const days = toFixed0(duration / ((60 * 60) * 24) % 24);
-        const hours = toFixed0(duration / (60 * 60) % 24);
-        const minutes = toFixed0((duration / 60) % 60);
-        const seconds = toFixed0(duration % 60);
+        const days = toFixed0(duration / ((60 * 60) * 24) % 24) as number;
+        const hours = toFixed0(duration / (60 * 60) % 24) as number;
+        const minutes = toFixed0((duration / 60) % 60) as number;
+        const seconds = toFixed0(duration % 60) as number;
 
         //Получаем дни, часы, минуты, секунды в формате 00:00
         return (days > 0 ? `${days}:` : "") + (hours > 0 || days > 0 ? `${hours}:` : "") + (minutes > 0 ? `${minutes}:` : "00:") + (seconds > 0 ? `${seconds}` : "00");

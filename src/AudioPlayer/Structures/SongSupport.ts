@@ -12,7 +12,7 @@ import {env} from "@env";
 
 //Поддерживаемые платформы
 export type platform = "YOUTUBE" | "SPOTIFY" | "VK" | "SOUNDCLOUD" | "DISCORD" | "YANDEX";
-//Поддерживаемые тип для этих платформ
+//Поддерживаемые типы для этих платформ
 export type callback = "track" | "playlist" | "search" | "album" | "artist";
 
 const emoji: string = ReactionMenuSettings.emojis.cancel;
@@ -48,7 +48,7 @@ const PlatformsAudio: platform[] = ["SPOTIFY"];
 const Platforms = {
     //Какие данные можно взять с YouTube
     "YOUTUBE": {
-        "color": 0xed4245, //Цвет трека
+        "color": 16711680, //Цвет трека
         "prefix": ["yt", "ytb"], //Префиксы для поиска
         "reg": /^(https?:\/\/)?(www\.)?(m\.)?(music\.)?( )?(youtube\.com|youtu\.?be)\/.+$/gi, //Как фильтровать ссылки
 
@@ -265,12 +265,12 @@ export namespace toPlayer {
             const argument = platformSupporter.getArg(arg, platform);
 
             //Если нельзя получить данные с определенной платформы
-            if (platformSupporter.getFailPlatform(platform)) return UtilsMsg.createMessage({ text: `${author}, я не могу взять данные с этой платформы **${platform}**\n Причина: [**Authorization data not found**]`, color: "DarkRed", message });
+            if (platformSupporter.getFailPlatform(platform)) return UtilsMsg.createMessage({ text: `${author}, я не могу взять данные с этой платформы **${platform}**\n Причина: [**Authorization data not found**]`, color: "Yellow", message });
 
             const callback = platformSupporter.getCallback(platform, type); //Ищем в списке платформу
 
-            if (callback === "!platform") return UtilsMsg.createMessage({ text: `${author}, у меня нет поддержки такой платформы!\nПлатформа **${platform}**!`, color: "DarkRed", message });
-            else if (callback === "!callback") return UtilsMsg.createMessage({ text: `${author}, у меня нет поддержки этого типа запроса!\nТип запроса **${type}**!\nПлатформа: **${platform}**`, color: "DarkRed", message });
+            if (callback === "!platform") return UtilsMsg.createMessage({ text: `${author}, у меня нет поддержки такой платформы!\nПлатформа **${platform}**!`, color: "Yellow", message });
+            else if (callback === "!callback") return UtilsMsg.createMessage({ text: `${author}, у меня нет поддержки этого типа запроса!\nТип запроса **${type}**!\nПлатформа: **${platform}**`, color: "Yellow", message });
 
             const runCallback = callback(argument) as Promise<inTrack | inPlaylist | inTrack[]>;
 
@@ -280,7 +280,11 @@ export namespace toPlayer {
                 UtilsMsg.createMessage({ text: `${author}, производится запрос в **${platform.toLowerCase()}.${type}**`, color: "Grey", message });
 
                 //Если у этой платформы нельзя получить исходный файл музыки, то сообщаем
-                if (PlatformsAudio.includes(platform) && APIs.showWarningAudio) UtilsMsg.createMessage({ text: `⚠️ Warning | [${platform}]\n\nЯ не могу получать исходные файлы музыки у этой платформы.\nЗапрос будет произведен в youtube.track`, color: "Yellow", codeBlock: "css", message });
+                if (PlatformsAudio.includes(platform) && APIs.showWarningAudio) {
+                    const workPlatform = RegisterPlatform.includes("YANDEX") ? "youtube.track" : "yandex.track";
+
+                    UtilsMsg.createMessage({ text: `⚠️ Warning | [${platform}]\n\nЯ не могу получать исходные файлы музыки у этой платформы.\nЗапрос будет произведен в ${workPlatform}`, color: "Yellow", codeBlock: "css", message });
+                }
             }
 
             runCallback.catch((e) => {
@@ -288,7 +292,7 @@ export namespace toPlayer {
                 else UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e}`, color: "DarkRed", codeBlock: "css", message });
             });
             runCallback.then((data: inTrack | inPlaylist | inTrack[]): void => {
-                if (!data) return UtilsMsg.createMessage({ text: `${author}, данные не были найдены!`, color: "Yellow", message });
+                if (!data) return UtilsMsg.createMessage({ text: `${author}, данные не были найдены!`, color: "DarkRed", message });
 
                 //Если пользователь ищет трек, но найден всего один
                 if (data instanceof Array && data.length === 1) return client.player.play(message, voiceChannel.channel, data[0]);
@@ -312,15 +316,16 @@ export namespace SongFinder {
      * @param song {Song} Трек который надо найти по новой
      */
     export function getLinkResource(song: Song): Promise<string> {
-        const {platform, url, author, title, duration} = song;
+        const {url, author, title, duration} = song;
+        const platform = RegisterPlatform.includes("YANDEX") ? "YOUTUBE" : "YANDEX";
 
         //Если для платформы нет поддержки перехвата аудио
         if (PlatformsAudio.includes(platform)) {
             //Ищем трек
             let track = FindTrack(`${author.title} ${title}`, duration.seconds, platform);
 
-            //Если трек не найден пробуем 2 вариант без автора
-            if (!track) track = FindTrack(title, duration.seconds, platform);
+            //Если не удалось найти трек с первого раза
+            if (!track) track = FindTrack(`${author.title} ${title} (Lyrics)`, duration.seconds, "YOUTUBE");
 
             return track;
         }
@@ -342,23 +347,23 @@ export namespace SongFinder {
  * @param platform {platform} Платформа
  */
 function FindTrack(nameSong: string, duration: number, platform: platform): Promise<string> {
-    //Если поиск недоступен на Yandex или если не получена ссылки с yandex
-    const isYouTube = RegisterPlatform.includes("YANDEX") || platform === "YANDEX";
-
-    return (isYouTube ? Platforms["YOUTUBE"] : Platforms["YANDEX"])["callbacks"]["search"](nameSong).then((Tracks: inTrack[]) => {
-        //Фильтруем треки оп времени
-        const FindTracks: inTrack[] = Tracks.filter((track: inTrack) => {
-            const DurationSong: number = (isYouTube ? DurationUtils.ParsingTimeToNumber : parseInt)(track.duration.seconds);
-
-            //Как надо фильтровать треки
-            return DurationSong === duration || DurationSong < duration + 7 && DurationSong > duration - 5 || DurationSong < duration + 27 && DurationSong > duration - 27;
-        });
-
-        //Если треков нет
-        if (FindTracks?.length < 1) return null;
-
-        //Получаем данные о треке
-        return (isYouTube ? Platforms["YOUTUBE"] : Platforms["YANDEX"])["callbacks"]["track"](FindTracks[0].url).then((video: inTrack) => video?.format?.url) as Promise<string>;
+    return new Promise(async (resolve) => {
+        //@ts-ignore
+        return Platforms[platform]["callbacks"]["search"](nameSong).then((Tracks: inTrack[]) => {
+            //Фильтруем треки оп времени
+            const FindTracks: inTrack[] = Tracks?.filter((track: inTrack) => {
+                const DurationSong: number = (platform === "YOUTUBE" ? DurationUtils.ParsingTimeToNumber : parseInt)(track?.duration?.seconds);
+    
+                //Как надо фильтровать треки
+                return DurationSong === duration || DurationSong < duration + 7 && DurationSong > duration - 5 || DurationSong < duration + 27 && DurationSong > duration - 27;
+            });
+    
+            //Если треков нет
+            if (FindTracks?.length < 1) return resolve(null);
+    
+            //Получаем данные о треке
+            return resolve((Platforms[platform])["callbacks"]["track"](FindTracks[0].url).then((video: inTrack) => video?.format?.url) as Promise<string>);
+        }).catch(() => resolve(null));
     });
 }
 //====================== ====================== ====================== ======================

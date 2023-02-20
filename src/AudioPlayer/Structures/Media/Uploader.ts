@@ -2,7 +2,8 @@ import {existsSync, createWriteStream, rename} from "fs";
 import {httpsClient} from "@httpsClient";
 import { Balancer } from "@Structures/Balancer";
 import {FileSystem} from "@FileSystem";
-import {Music} from "@db/Config.json";
+import { Music } from "@db/Config.json";
+import { IncomingMessage } from "http";
 import {Song} from "@Queue/Song";
 
 type DownloadSong = {title: string, author: string, duration: number, resource: string};
@@ -61,7 +62,7 @@ function cycleStep(): void {
 
     setImmediate(() => {
         //Скачиваем трек
-        httpsClient.head(song.resource, {resolve: "string", useragent: true}).then((req) => {
+        httpsClient.get(song.resource, { resolve: "full", useragent: true }).then((req: IncomingMessage) => {
             if (req instanceof Error) return;
 
             if (req.pipe) {

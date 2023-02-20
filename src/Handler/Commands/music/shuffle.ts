@@ -27,25 +27,25 @@ export class ShuffleCommand extends Command {
         const queue: Queue = client.queue.get(guild.id);
 
         //Если нет очереди
-        if (!queue) return { text: `${author}, ⚠ | Музыка щас не играет.`, color: "DarkRed" };
+        if (!queue) return { text: `${author}, ⚠ | Музыка щас не играет.`, color: "Yellow" };
 
         //Если пользователь не подключен к голосовым каналам
-        if (!member?.voice?.channel || !member?.voice) return { text: `${author}, Подключись к голосовому каналу!`, color: "DarkRed" };
+        if (!member?.voice?.channel || !member?.voice) return { text: `${author}, Подключись к голосовому каналу!`, color: "Yellow" };
 
         //Если есть очередь и пользователь не подключен к тому же голосовому каналу
         if (queue && queue.voice && member?.voice?.channel?.id !== queue.voice.id) return {
             text: `${author}, Музыка уже играет в другом голосовом канале!\nМузыка включена тут <#${queue.voice.id}>`,
-            color: "DarkRed"
+            color: "Yellow"
         };
 
         //Если включен режим радио
-        if (queue.options.radioMode) return { text: `${author}, Невозможно из-за включенного режима радио!`, color: "DarkRed" };
+        if (queue.options.radioMode) return { text: `${author}, Невозможно из-за включенного режима радио!`, color: "Yellow" };
 
         //Если нет треков в очереди
-        if (!queue.songs) return { text: `${author}, Нет музыки в очереди!`, color: "DarkRed" };
+        if (!queue.songs) return { text: `${author}, Нет музыки в очереди!`, color: "Yellow" };
 
         //Если треков меньше 3
-        if (queue.songs.length < 3) return { text: `${author}, Очень мало музыки, нужно более 3`, color: "DarkRed" };
+        if (queue.songs.length < 3) return { text: `${author}, Очень мало музыки, нужно более 3`, color: "Yellow" };
 
         this.shuffleSongs(queue.songs);
         return {text: `🔀 | Shuffle total [${queue.songs.length}]`, codeBlock: "css"};

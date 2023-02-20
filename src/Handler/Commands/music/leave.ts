@@ -21,11 +21,11 @@ export class LeaveCommand extends Command {
         const actVoice = Voice.getVoice(guild.id);
 
         //Если бот не подключен к голосовому каналу
-        if (!actVoice) return {text: `${author}, я не подключен к голосовому каналу!`, color: "DarkRed"};
+        if (!actVoice) return {text: `${author}, я не подключен к голосовому каналу!`, color: "Yellow"};
 
         //Если есть очередь и пользователь не подключен к тому же голосовому каналу
         if (queue && queue.voice && member?.voice?.channel?.id !== queue.voice.id) return {
-            text: `${author}, Музыка уже играет в другом голосовом канале!\nМузыка включена тут <#${queue.voice.id}>`, color: "DarkRed"
+            text: `${author}, Музыка уже играет в другом голосовом канале!\nМузыка включена тут <#${queue.voice.id}>`, color: "Yellow"
         };
 
         //Если включен режим радио

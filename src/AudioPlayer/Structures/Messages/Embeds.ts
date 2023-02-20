@@ -7,17 +7,6 @@ import {Music} from "@db/Config.json";
 import {Queue} from "@Queue/Queue";
 import {Colors} from "discord.js";
 
-//====================== ====================== ====================== ======================
-/**
- * @description Выдаем иконку проверки автора музыки
- * @param isVer {boolean} Подтвержденный пользователь?
- */
-function choiceImage(isVer: boolean): string {
-    if (isVer === undefined) return Music.images._found;
-    else if (isVer) return Music.images.ver;
-    return Music.images._ver;
-}
-
 //Здесь хранятся все EMBED данные о сообщениях (Используется в Managers/Player/Messages)
 export namespace EmbedMessages {
     /**
@@ -144,4 +133,14 @@ function matchBar(currentTime: number, maxTime: number, size: number = 15): stri
         if (err === "RangeError: Invalid count value") return "**❯** \`\`[Error value]\`\`";
         return "**❯** \`\`[Loading]\`\`";
     }
+}
+//====================== ====================== ====================== ======================
+/**
+ * @description Выдаем иконку проверки автора музыки
+ * @param isVer {boolean} Подтвержденный пользователь?
+ */
+function choiceImage(isVer: boolean): string {
+    if (isVer === undefined) return Music.images._found;
+    else if (isVer) return Music.images.ver;
+    return Music.images._ver;
 }

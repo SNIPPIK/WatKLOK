@@ -209,6 +209,10 @@ export namespace YandexMusic {
 
                 //Если запрос выдал ошибку то
                 if (api instanceof Error) return reject(api);
+
+                //Если нет треков с таким названием
+                if (!api.tracks) return reject(Error(`[APIs]: На Yandex music нет такого трека!`));
+
                 const tracks = api.tracks.results.splice(0, options.limit);
 
                 return resolve(tracks.map(construct.track));

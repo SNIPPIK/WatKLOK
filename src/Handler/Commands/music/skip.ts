@@ -28,15 +28,15 @@ export class SkipCommand extends Command {
         const argsNum = parseInt(args[0]);
 
         //Если нет очереди
-        if (!queue) return { text: `${author}, ⚠ | Музыка щас не играет.`, color: "DarkRed" };
+        if (!queue) return { text: `${author}, ⚠ | Музыка щас не играет.`, color: "Yellow" };
 
         //Если пользователь не подключен к голосовым каналам
-        if (!member?.voice?.channel || !member?.voice) return { text: `${author}, Подключись к голосовому каналу!`, color: "DarkRed" };
+        if (!member?.voice?.channel || !member?.voice) return { text: `${author}, Подключись к голосовому каналу!`, color: "Yellow" };
 
         //Если есть очередь и пользователь не подключен к тому же голосовому каналу
         if (queue && queue.voice && member?.voice?.channel?.id !== queue.voice.id) return {
             text: `${author}, Музыка уже играет в другом голосовом канале!\nМузыка включена тут <#${queue.voice.id}>`,
-            color: "DarkRed"
+            color: "Yellow"
         };
 
         try {

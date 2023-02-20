@@ -24,7 +24,7 @@ export class RadioCommand extends Command {
         const queue: Queue = client.queue.get(guild.id);
 
         //Если нет очереди
-        if (!queue) return { text: `${author}, ⚠ | Музыка щас не играет.`, color: "DarkRed" };
+        if (!queue) return { text: `${author}, ⚠ | Музыка щас не играет.`, color: "Yellow" };
 
         queue.options.radioMode = !queue.options.radioMode;
 

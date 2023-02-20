@@ -1,13 +1,14 @@
 import {RequestOptions, Request} from "./Structures/Request";
-import {GetUserAgent} from "./Structures/Utils";
+import {GetUserAgent as getUserAgent} from "./Structures/Utils";
 import {getCookies} from "./Structures/Cookie";
 import {IncomingMessage} from "http";
 
+type RequestType = "string" | "json" | "full";
 //Как можно получить данные
 const RequestType = {
     "string": Request.parseBody,
     "json": Request.parseJson,
-    "all": Request.Request
+    "full": Request.Request
 };
 
 type resolveClient = any | Error;
@@ -37,7 +38,7 @@ export namespace httpsClient {
      * @param options {httpsClientOptions} Доп настройки
      */
     export function head(url: string, options: httpsClientOptions): Promise<resolveClient> {
-        return runRequest(url, "HEAD", "all", options);
+        return runRequest(url, "HEAD", options.resolve, options);
     }
     //====================== ====================== ====================== ======================
     /**
@@ -48,7 +49,7 @@ export namespace httpsClient {
     export function checkLink(url: string): Promise<"OK" | "Fail"> | "Fail" {
         if (!url) return "Fail";
 
-        return head(url, {resolve: "string", useragent: true}).then((resource: IncomingMessage) => {
+        return head(url, {resolve: "full", useragent: true}).then((resource: IncomingMessage) => {
             if (resource instanceof Error) return "Fail"; //Если есть ошибка
             if (resource.statusCode >= 200 && resource.statusCode < 400) return "OK"; //Если возможно скачивать ресурс
             return "Fail"; //Если прошлые варианты не подходят, то эта ссылка не рабочая
@@ -63,14 +64,14 @@ export namespace httpsClient {
  * @param type {string} Тип выдачи данных
  * @param options {httpsClientOptions} Доп настройки
  */
-function runRequest(url: string, method: "GET" | "POST" | "HEAD", type: "all" | "string" | "json", options: httpsClientOptions) {
+function runRequest(url: string, method: "GET" | "POST" | "HEAD", type: RequestType, options: httpsClientOptions) {
     const {hostname, pathname, search, port, protocol} = new URL(url);
     let headers = options.headers ?? {};
     let reqOptions: RequestOptions = {method, hostname, path: pathname + search, port, headers, body: options?.body, protocol: protocol}
 
     //Добавляем User-Agent
     if (options.useragent) {
-        const {Agent, Version} = GetUserAgent();
+        const {Agent, Version} = getUserAgent();
 
         if (Agent) headers = {...headers, "user-agent": Agent};
         if (Version) headers = {...headers, "sec-ch-ua-full-version": Version};
@@ -88,7 +89,7 @@ function runRequest(url: string, method: "GET" | "POST" | "HEAD", type: "all" | 
 
 interface httpsClientOptions {
     //Тип выдаваемых данных
-    resolve: "string" | "json";
+    resolve: RequestType;
 
     //Headers запроса
     headers?: RequestOptions["headers"];

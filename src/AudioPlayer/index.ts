@@ -19,11 +19,11 @@ export namespace Player {
     export function resume(message: ClientMessage): void {
         const {client, guild} = message;
         const {player, song}: Queue = client.queue.get(guild.id);
-        const {title, color}: Song = song;
+        const {title}: Song = song;
 
         //Продолжаем воспроизведение музыки если она на паузе
         player.resume();
-        return UtilsMsg.createMessage({text: `▶️ | Resume song | ${title}`, message, codeBlock: "css", color});
+        return UtilsMsg.createMessage({text: `▶️ | Resume song | ${title}`, message, codeBlock: "css", color: "Green"});
     }
     //====================== ====================== ====================== ======================
     /**
@@ -33,11 +33,11 @@ export namespace Player {
     export function pause(message: ClientMessage): void {
         const {client, guild} = message;
         const {player, song}: Queue = client.queue.get(guild.id);
-        const {title, color}: Song = song;
+        const {title}: Song = song;
 
         //Приостанавливаем музыку если она играет
         player.pause();
-        return UtilsMsg.createMessage({text: `⏸ | Pause song | ${title}`, message, codeBlock: "css", color});
+        return UtilsMsg.createMessage({text: `⏸ | Pause song | ${title}`, message, codeBlock: "css", color: "Green"});
     }
     //====================== ====================== ====================== ======================
     /**
@@ -50,11 +50,11 @@ export namespace Player {
         const {client, guild, author} = message;
         const queue: Queue = client.queue.get(guild.id);
         const {player, songs} = queue;
-        const {title, color, url}: Song = songs[arg - 1];
+        const {title, url}: Song = songs[arg - 1];
 
         setImmediate(() => {
             //Если музыку нельзя пропустить из-за плеера
-            if (!player.hasSkipped) return UtilsMsg.createMessage({ text: `${author}, ⚠ Музыка еще не играет!`, message, color: "DarkRed" });
+            if (!player.hasSkipped) return UtilsMsg.createMessage({ text: `${author}, ⚠ Музыка еще не играет!`, message, color: "Yellow" });
 
             //Запускаем голосование
             Vote(message, queue, (win) => {
@@ -66,10 +66,10 @@ export namespace Player {
                     if (arg === 1) toStop(message);
 
                     //Сообщаем какой трек был убран
-                    return UtilsMsg.createMessage({text: `⏭️ | Remove song | ${title}`, message, codeBlock: "css", color});
+                    return UtilsMsg.createMessage({text: `⏭️ | Remove song | ${title}`, message, codeBlock: "css", color: "Green"});
                 } else {
                     //Если пользователю нельзя это сделать
-                    return UtilsMsg.createMessage({ text: `${author}, убрать этот трек [${title}](${url}) не вышло!`, message, color: "DarkRed" });
+                    return UtilsMsg.createMessage({ text: `${author}, убрать этот трек [${title}](${url}) не вышло!`, message, color: "Yellow" });
                 }
             }, "удаление из очереди", arg);
         });
@@ -85,10 +85,10 @@ export namespace Player {
         const {client, guild, author} = message;
         const queue: Queue = client.queue.get(guild.id);
         const {song, play, player} = queue;
-        const {title, color}: Song = song;
+        const {title}: Song = song;
 
         //Если музыку нельзя пропустить из-за плеера
-        if (!player.hasSkipped) return UtilsMsg.createMessage({ text: `${author}, ⚠ Музыка еще не играет!`, message, color: "DarkRed" });
+        if (!player.hasSkipped) return UtilsMsg.createMessage({ text: `${author}, ⚠ Музыка еще не играет!`, message, color: "Yellow" });
 
         //Запускаем голосование
         Vote(message, queue, (win) => {
@@ -96,8 +96,8 @@ export namespace Player {
                 play(seek); //Начинаем проигрывание трека с <пользователем указанного тайм кода>
 
                 //Отправляем сообщение о пропуске времени
-                return UtilsMsg.createMessage({ text: `⏭️ | Seeking to [${DurationUtils.ParsingTimeToString(seek)}] song | ${title}`, message, codeBlock: "css", color });
-            } else return UtilsMsg.createMessage({ text: `${author}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color });
+                return UtilsMsg.createMessage({ text: `⏭️ | Seeking to [${DurationUtils.ParsingTimeToString(seek)}] song | ${title}`, message, codeBlock: "css", color: "Green" });
+            } else return UtilsMsg.createMessage({ text: `${author}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color: "Yellow" });
         }, "пропуск времени в треке", 1);
     }
     //====================== ====================== ====================== ======================
@@ -119,7 +119,7 @@ export namespace Player {
         const {client, guild, author} = message;
         const queue: Queue = client.queue.get(guild.id);
         const {song, play} = queue;
-        const {title, color}: Song = song;
+        const {title}: Song = song;
 
         //Запускаем голосование
         Vote(message, queue, (win) => {
@@ -127,8 +127,8 @@ export namespace Player {
                 play();
 
                 //Сообщаем о том что музыка начата с начала
-                return UtilsMsg.createMessage({text: `🔂 | Replay | ${title}`, message, color, codeBlock: "css"});
-            } else return UtilsMsg.createMessage({ text: `${author}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color });
+                return UtilsMsg.createMessage({text: `🔂 | Replay | ${title}`, message, color: "Green", codeBlock: "css"});
+            } else return UtilsMsg.createMessage({ text: `${author}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color: "Yellow" });
         }, "повторное проигрывание трека", 1);
     }
     //====================== ====================== ====================== ======================
@@ -141,8 +141,7 @@ export namespace Player {
     export function filter(message: ClientMessage, filter: FFspace.Filter, arg: number): Promise<void> | void {
         const {client, guild, author} = message;
         const queue: Queue = client.queue.get(guild.id);
-        const {player, play, song}: Queue = queue;
-        const {color} = song;
+        const {player, play}: Queue = queue;
         const seek: number = player.streamDuration;
 
         const isFilter = !!queue.filters.find((Filter) => typeof Filter === "number" ? null : filter.names.includes(Filter));
@@ -157,7 +156,7 @@ export namespace Player {
                 const isOkArgs = arg >= (filter.args as number[])[0] && arg <= (filter.args as number[])[1];
 
                 //Если аргументы не подходят
-                if (!isOkArgs) return UtilsMsg.createMessage({text: `${author.username} | Filter: ${name} не изменен из-за несоответствия аргументов!`, message, color, codeBlock: "css" });
+                if (!isOkArgs) return UtilsMsg.createMessage({text: `${author.username} | Filter: ${name} не изменен из-за несоответствия аргументов!`, message, color: "Yellow", codeBlock: "css" });
 
                 //Запускаем голосование
                 Vote(message, queue, (win) => {
@@ -167,8 +166,8 @@ export namespace Player {
 
                         play(seek);
 
-                        return UtilsMsg.createMessage({ text: `${author.username} | Filter: ${name} был изменен аргумент на ${arg}!`, message, codeBlock: "css", color });
-                    } else return UtilsMsg.createMessage({ text: `${author.username}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color });
+                        return UtilsMsg.createMessage({ text: `${author.username} | Filter: ${name} был изменен аргумент на ${arg}!`, message, codeBlock: "css", color: "Green" });
+                    } else return UtilsMsg.createMessage({ text: `${author.username}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color: "Yellow" });
                 }, "изменение фильтра");
                 //Если пользователь не указал аргумент, значит его надо удалить
             } else {
@@ -181,8 +180,8 @@ export namespace Player {
 
                         play(seek);
 
-                        return UtilsMsg.createMessage({text: `${author.username} | Filter: ${name} отключен!`, color, message, codeBlock: "css"});
-                    } else return UtilsMsg.createMessage({ text: `${author.username}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color });
+                        return UtilsMsg.createMessage({text: `${author.username} | Filter: ${name} отключен!`, color: "Green", message, codeBlock: "css"});
+                    } else return UtilsMsg.createMessage({ text: `${author.username}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color: "Yellow" });
                 }, "отключение фильтра");
             }
             //Если фильтра нет в очереди, значит его надо добавить
@@ -197,8 +196,8 @@ export namespace Player {
 
                         play(seek);
 
-                        return UtilsMsg.createMessage({text: `${author.username} | Filter: ${name}:${arg} включен!`, color, message, codeBlock: "css"});
-                    } else return UtilsMsg.createMessage({ text: `${author.username}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color });
+                        return UtilsMsg.createMessage({text: `${author.username} | Filter: ${name}:${arg} включен!`, color: "Green", message, codeBlock: "css"});
+                    } else return UtilsMsg.createMessage({ text: `${author.username}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color: "Yellow" });
                 }, "добавление фильтра");
             //Если нет аргумента
             } else {
@@ -209,8 +208,8 @@ export namespace Player {
 
                         play(seek);
 
-                        return UtilsMsg.createMessage({text: `${author.username} | Filter: ${name} включен!`, color, message, codeBlock: "css"});
-                    } else return UtilsMsg.createMessage({ text: `${author.username}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color });
+                        return UtilsMsg.createMessage({text: `${author.username} | Filter: ${name} включен!`, color: "Green", message, codeBlock: "css"});
+                    } else return UtilsMsg.createMessage({ text: `${author.username}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color: "Yellow" });
                 }, "добавление фильтра");
             }
         }
@@ -241,10 +240,10 @@ function skipSong(message: ClientMessage, args: number = 1) {
 
     setImmediate(() => {
         //Если музыку нельзя пропустить из-за плеера
-        if (!player.hasSkipped) return UtilsMsg.createMessage({ text: `${author}, ⚠ Музыка еще не играет!`, message, color: "DarkRed" });
+        if (!player.hasSkipped) return UtilsMsg.createMessage({ text: `${author}, ⚠ Музыка еще не играет!`, message, color: "Yellow" });
 
         //Если пользователь укажет больше чем есть в очереди
-        if (args > songs.length) return UtilsMsg.createMessage({ text: `${author}, В очереди ${songs.length}!`, message, color: "DarkRed" });
+        if (args > songs.length) return UtilsMsg.createMessage({ text: `${author}, В очереди ${songs.length}!`, message, color: "Yellow" });
 
         //Голосование за пропуск
         Vote(message, queue, (win): void => {
@@ -253,13 +252,13 @@ function skipSong(message: ClientMessage, args: number = 1) {
                     if (options.loop === "songs") for (let i = 0; i < args - 2; i++) songs.push(songs.shift());
                     else queue.songs = songs.slice(args - 2);
 
-                    UtilsMsg.createMessage({ text: `⏭️ | Skip to song [${args}] | ${title}`, message, codeBlock: "css", color });
-                } else UtilsMsg.createMessage({text: `⏭️ | Skip song | ${title}`, message, codeBlock: "css", color});
+                    UtilsMsg.createMessage({ text: `⏭️ | Skip to song [${args}] | ${title}`, message, codeBlock: "css", color: "Green" });
+                } else UtilsMsg.createMessage({text: `⏭️ | Skip song | ${title}`, message, codeBlock: "css", color: "Green"});
 
                 return Player.toStop(message);
             } else {
                 //Если пользователю нельзя пропустить трек сделать
-                return UtilsMsg.createMessage({ text: `${author}, пропустить этот трек [${title}](${url}) не вышло!`, message, color: "DarkRed" });
+                return UtilsMsg.createMessage({ text: `${author}, пропустить этот трек [${title}](${url}) не вышло!`, message, color: "Yellow" });
             }
         }, "пропуск трека", args);
     });
@@ -283,7 +282,7 @@ function Vote(message: ClientMessage, queue: Queue, callback: (win: boolean) => 
 
         //Если пользователь сидит один или он является владельцем сервера или пользователь включил этот трек, то пропускаем голосование
         if (voiceConnection.length === 1 || member.permissions.has("Administrator") || song.requester.id === message.author.id) return callback(true);
-        if (!queue || !queue?.song) return UtilsMsg.createMessage({ text: `${author.username}, музыка уже не играет!`, message, codeBlock: "css", color: "DarkRed" });
+        if (!queue || !queue?.song) return UtilsMsg.createMessage({ text: `${author.username}, музыка уже не играет!`, message, codeBlock: "css", color: "Yellow" });
 
         //Пользователи, которые проголосовали за, против
         let Yes: number = 0, No: number = 0;

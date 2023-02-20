@@ -99,7 +99,7 @@ export class WatKLOK extends Client {
                 IntentsBitField.Flags.GuildVoiceStates,
 
                 //Guild (Бот может получить данные о серверах)
-                IntentsBitField.Flags.Guilds,
+                IntentsBitField.Flags.Guilds
                 //IntentsBitField.Flags.GuildMembers,
 
             ],
@@ -130,7 +130,7 @@ client.login().then(() => {
         //Если выключено APIs.showErrors, то ошибки не будут отображаться
         if (!APIs.showErrors && err?.message?.match(/APIs/)) return;
 
-        consoleTime(`┌ <uncaughtException>\n├ Name:    ${err.name}\n├ Message: ${err.message}\n|\n├ Stack:   ${err.stack}\n└ <uncaughtException>`);
+        consoleTime(`| uncaughtException |\n┌ Name:    ${err.name}\n├ Message: ${err.message}\n|\n└ Stack:   ${err.stack}`);
 
         //Если выключено APIs.sendErrors, то ошибки не буду отправляться в текстовый канал
         if (!APIs.sendErrors && err?.message?.match(/APIs/)) return;

@@ -40,7 +40,7 @@ export class HelpCommand extends Command {
         }).toJSON();
 
         //Если пользователь хочет получить данные о не существующей команде
-        if (!Commands?.length) return {text: `${author}, у меня нет такой команды!`, color: "DarkRed"};
+        if (!Commands?.length) return {text: `${author}, у меня нет такой команды!`, color: "Yellow"};
 
         const embed = this.CreateEmbedMessage(message);
         const pages = ArraySort<Command>(5, Commands, (command) =>
