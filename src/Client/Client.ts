@@ -130,14 +130,7 @@ client.login().then(() => {
         //Если выключено APIs.showErrors, то ошибки не будут отображаться
         if (!APIs.showErrors && err?.message?.match(/APIs/)) return;
 
-        consoleTime(`
-        ┌ <uncaughtException>
-        ├ Name:    ${err.name} 
-        ├ Message: ${err.message}
-        |
-        ├ Stack:   ${err.stack}
-        └ <uncaughtException>
-        `);
+        consoleTime(`┌ <uncaughtException>\n├ Name:    ${err.name}\n├ Message: ${err.message}\n|\n├ Stack:   ${err.stack}\n└ <uncaughtException>`);
 
         //Если выключено APIs.sendErrors, то ошибки не буду отправляться в текстовый канал
         if (!APIs.sendErrors && err?.message?.match(/APIs/)) return;
@@ -146,13 +139,7 @@ client.login().then(() => {
             const channel = client.channels.cache.get(Channels.sendErrors) as ClientMessage["channel"];
 
             if (channel) channel.send(
-                { content: `\`\`\`ts
-                ┌uncaughtException
-                ├ Name:    ${err.name} 
-                ├ Message: ${err.message}
-                |
-                └ Stack:   ${err.stack}        
-                \`\`\``
+                { content: `\`\`\`ts\n┌uncaughtException\n├ Name:    ${err.name}\n├ Message: ${err.message}\n|\n└ Stack:   ${err.stack}\n\`\`\``
             }).catch(() => null);
         } catch {/* Continue */}
     });

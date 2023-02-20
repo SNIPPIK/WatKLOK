@@ -1,5 +1,5 @@
 import {BrotliDecompress, createBrotliDecompress, createDeflate, createGunzip, Deflate, Gunzip} from "node:zlib";
-import {request as httpsRequest, RequestOptions} from "https";
+import {request as httpsRequest, RequestOptions as ReqOptions} from "https";
 import {IncomingMessage, request as httpRequest} from "http";
 import {uploadCookie} from "./Cookie";
 
@@ -21,11 +21,11 @@ export namespace Request {
      * @param options {httpsClientOptions} Настройки запроса
      * @requires {uploadCookie, getCookies}
      */
-    export function Request(options: ReqOptions): Promise<IncomingMessage | Error> {
+    export function Request(options: RequestOptions): Promise<IncomingMessage | Error> {
         const protocol = options.protocol?.split(":")[0] as "http" | "https";
 
         return new Promise((resolve) => {
-            const request = protocols[protocol](options, (res) => {
+            const request = protocols[protocol](options, (res: IncomingMessage) => {
                 //Автоматическое перенаправление
                 if ((res.statusCode >= 300 && res.statusCode < 400) && res.headers?.location) return resolve(Request({...options, path: res.headers.location }));
 
@@ -36,21 +36,13 @@ export namespace Request {
             });
             //Если запрос получил ошибку
             request.once("error", resolve);
+            request.once("timeout", () => resolve(Error(`[APIs]: Timeout socket connection on ${options?.hostname}:${options?.port ?? 443}`)));
+            //request.once("socket", () => resolve(Error(`[APIs]: Socket hand up on ${options?.hostname}:${options?.port ?? 443}`)))
 
             //Если запрос POST, отправляем ответ на сервер
             if (options.method === "POST" && options.body) request.write(options.body);
 
             request.end();
-
-            /*
-            //Через 5 секунд после запроса уничтожаем запрос
-            setTimeout(() => {
-                if (!request.destroyed) {
-                    request.removeAllListeners();
-                    request.destroy();
-                }
-            }, 5e3);
-            */
         });
     }
     //====================== ====================== ====================== ======================
@@ -60,7 +52,7 @@ export namespace Request {
      * @param options {httpsClientOptions} Настройки запроса
      * @requires {Request}
      */
-    export function parseBody(options?: ReqOptions): Promise<string | Error> {
+    export function parseBody(options?: RequestOptions): Promise<string | Error> {
         return new Promise(async (resolve) => {
             const request = await Request(options);
 
@@ -80,7 +72,7 @@ export namespace Request {
      * @param options {httpsClientOptions} Настройки запроса
      * @requires {parseBody}
      */
-    export function parseJson(options?: ReqOptions): Promise<null | any> {
+    export function parseJson(options?: RequestOptions): Promise<null | any> {
         return new Promise(async (resolve) => {
             const body = await parseBody(options);
 
@@ -113,7 +105,7 @@ function extractPage(decoder: Decoder | IncomingMessage) {
 }
 
 type Decoder = BrotliDecompress | Gunzip | Deflate;
-export interface ReqOptions extends RequestOptions {
+export interface RequestOptions extends ReqOptions {
     body?: string;
     method?: "POST" | "GET" | "HEAD";
 }

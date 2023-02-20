@@ -1,8 +1,9 @@
-import {ReqOptions, Request} from "./Structures/Request";
+import {RequestOptions, Request} from "./Structures/Request";
 import {GetUserAgent} from "./Structures/Utils";
 import {getCookies} from "./Structures/Cookie";
 import {IncomingMessage} from "http";
 
+//Как можно получить данные
 const RequestType = {
     "string": Request.parseBody,
     "json": Request.parseJson,
@@ -65,6 +66,7 @@ export namespace httpsClient {
 function runRequest(url: string, method: "GET" | "POST" | "HEAD", type: "all" | "string" | "json", options: httpsClientOptions) {
     const {hostname, pathname, search, port, protocol} = new URL(url);
     let headers = options.headers ?? {};
+    let reqOptions: RequestOptions = {method, hostname, path: pathname + search, port, headers, body: options?.body, protocol: protocol}
 
     //Добавляем User-Agent
     if (options.useragent) {
@@ -81,7 +83,7 @@ function runRequest(url: string, method: "GET" | "POST" | "HEAD", type: "all" | 
         if (cookie) headers = {...headers, "cookie": cookie};
     }
 
-    return RequestType[type]({method, hostname, path: pathname + search, port, headers, body: options?.body, protocol: protocol});
+    return RequestType[type](reqOptions);
 }
 
 interface httpsClientOptions {
@@ -89,7 +91,7 @@ interface httpsClientOptions {
     resolve: "string" | "json";
 
     //Headers запроса
-    headers?: ReqOptions["headers"];
+    headers?: RequestOptions["headers"];
 
     //Если мы хотим что-то отправить серверу
     body?: string;
@@ -99,7 +101,4 @@ interface httpsClientOptions {
 
     //Использовать Cookie
     cookie?: boolean;
-
-    //Использовать прокси (Пока не работает)
-    proxy?: boolean;
 }
