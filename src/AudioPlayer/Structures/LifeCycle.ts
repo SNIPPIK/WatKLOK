@@ -1,10 +1,10 @@
 import {EmbedMessages} from "@Structures/Messages/Embeds";
 import {ClientMessage} from "@Client/interactionCreate";
 import {AudioPlayer} from "@Structures/Player";
+import {Balancer} from "@Structures/Balancer";
 import {consoleTime} from "@Client/Client";
 import {Music} from "@db/Config.json";
 import {Queue} from "@Queue/Queue";
-import { Balancer } from "@Structures/Balancer";
 
 //База данных
 const db = {

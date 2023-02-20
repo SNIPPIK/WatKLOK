@@ -5,10 +5,10 @@ import {inPlaylist, inTrack, Song} from "@Queue/Song";
 import {DurationUtils} from "@Structures/Durations";
 import {replacer} from "@Structures/Handle/Command";
 import {ArraySort} from "@Structures/ArraySort";
+import {Balancer} from "@Structures/Balancer";
 import {Colors} from "discord.js";
 import {FFspace} from "@FFspace";
 import {env} from "@env";
-import { Balancer } from "@Structures/Balancer";
 
 //Поддерживаемые платформы
 export type platform = "YOUTUBE" | "SPOTIFY" | "VK" | "SOUNDCLOUD" | "DISCORD" | "YANDEX";
@@ -290,8 +290,11 @@ export namespace toPlayer {
             runCallback.then((data: inTrack | inPlaylist | inTrack[]): void => {
                 if (!data) return UtilsMsg.createMessage({ text: `${author}, данные не были найдены!`, color: "Yellow", message });
 
+                //Если пользователь ищет трек, но найден всего один
+                if (data instanceof Array && data.length === 1) return client.player.play(message, voiceChannel.channel, data[0]);
+                
                 //Если пользователь ищет трек
-                if (data instanceof Array) return toSend(data, {message, platform});
+                else if (data instanceof Array) return toSend(data, {message, platform});
 
                 //Загружаем трек или плейлист в GuildQueue
                 return client.player.play(message, voiceChannel.channel, data);

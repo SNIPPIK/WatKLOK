@@ -4,7 +4,7 @@ import {TypedEmitter} from "tiny-typed-emitter";
 import {Music} from "@db/Config.json";
 import {OpusAudio} from "@OpusAudio";
 
-//const SilenceFrame = Buffer.from([0xf8, 0xff, 0xfe, 0xfae]);
+const SilenceFrame = Buffer.from([0xf8, 0xff, 0xfe, 0xfae]);
 const packetSender = Music.AudioPlayer.methodSendPackets;
 const SkippedStatuses = ["read", "pause"];
 const UpdateMessage = ["read"];
@@ -48,6 +48,9 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
         
         //Фильтруем статусы бота что в emit не попало что не надо
         if (oldStatus !== newStatus || oldStatus !== "idle" && newStatus === "read") {
+            //Устраняем фриз после смены потока
+            this.sendPacket(SilenceFrame);
+
             PlayerCycle.toRemove(this);
             this.emit(newStatus);
         }        

@@ -1,13 +1,12 @@
-import {ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, Message, User} from "discord.js";
+import {ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, User} from "discord.js";
 import {ClientMessage, UtilsMsg} from "@Client/interactionCreate";
 import {MessageCycle} from "@Structures/LifeCycle";
-import {EmbedMessages} from "@Structures/Messages/Embeds";
+import {Balancer} from "@Structures/Balancer";
 import {inPlaylist, Song} from "@Queue/Song";
 import {consoleTime} from "@Client/Client";
+import {EmbedMessages} from "./Embeds";
 import {Music} from "@db/Config.json";
 import {Queue} from "@Queue/Queue";
-import { Balancer } from "@Structures/Balancer";
-
 if (Music.Buttons.length < 4) Error(`[Config]: Buttons has not found, find ${Music.Buttons.length}, need 4`);
 
 //Кнопки с которыми можно взаимодействовать

@@ -95,7 +95,7 @@ namespace construct {
                 if (!api || api instanceof Error) return resolve(Error("[APIs]: Not found links for track!"));
 
                 const track = api?.pop() ?? api;
-                const body = await httpsClient.get(track.downloadInfoUrl, {resolve: "body"});
+                const body = await httpsClient.get(track.downloadInfoUrl, {resolve: "string"});
 
                 if (body instanceof Error) return resolve(body);
 

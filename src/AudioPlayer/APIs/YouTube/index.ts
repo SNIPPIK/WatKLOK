@@ -68,7 +68,7 @@ export namespace YouTube {
             try {
                 //Создаем запрос
                 const page = await httpsClient.get(`${db.link}/watch?v=${ID}&has_verified=1`, {
-                    resolve: "body", cookie: true, useragent: true,
+                    resolve: "string", cookie: true, useragent: true,
                     headers: {
                         "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7",
                         "accept-encoding": "gzip, deflate, br"
@@ -124,7 +124,7 @@ export namespace YouTube {
             try {
                 //Создаем запрос
                 const page = await httpsClient.get(`${db.link}/playlist?list=${ID}`, {
-                    resolve: "body", cookie: true, useragent: true,
+                    resolve: "string", cookie: true, useragent: true,
                     headers: {
                         "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7",
                         "accept-encoding": "gzip, deflate, br"
@@ -164,7 +164,7 @@ export namespace YouTube {
             try {
                 //Создаем запрос
                 const page = await httpsClient.get(`${db.link}/results?search_query=${search.split(" ").join("+")}`, {
-                    resolve: "body", cookie: true, useragent: true,
+                    resolve: "string", cookie: true, useragent: true,
                     headers: {
                         "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7",
                         "accept-encoding": "gzip, deflate, br"
@@ -205,7 +205,7 @@ export namespace YouTube {
 
                 //Создаем запрос
                 const channel = await httpsClient.get(`${db.link}/${ID}/videos`, {
-                    resolve: "body", cookie: true, useragent: true,
+                    resolve: "string", cookie: true, useragent: true,
                     headers: {
                         "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7",
                         "accept-encoding": "gzip, deflate, br"

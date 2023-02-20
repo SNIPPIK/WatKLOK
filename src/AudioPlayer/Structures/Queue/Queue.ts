@@ -2,13 +2,14 @@ import {ClientMessage} from "@Client/interactionCreate";
 import {PlayerEvents} from "@Structures/Player/Events";
 import {MessagePlayer} from "@Structures/Messages";
 import {inPlaylist, inTrack, Song} from "./Song";
-import { Balancer } from "@Structures/Balancer";
-import {AudioPlayer} from "../Player";
+import {Balancer} from "@Structures/Balancer";
 import {consoleTime} from "@Client/Client";
 import {StageChannel} from "discord.js";
 import {Debug} from "@db/Config.json";
+import {AudioPlayer} from "../Player";
 import {OpusAudio} from "@OpusAudio";
 import {Voice} from "@VoiceManager";
+
 
 /**
  * @description Добавляем плейлист или трек в очередь

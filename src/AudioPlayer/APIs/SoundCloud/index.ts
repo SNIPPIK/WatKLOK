@@ -192,7 +192,7 @@ function getClientID(): Promise<string | Error> | string {
 
     return new Promise(async (resolve) => {
         const parsedPage = await httpsClient.get("https://soundcloud.com/", {
-            resolve: "body", useragent: true, headers: {
+            resolve: "string", useragent: true, headers: {
                 "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7",
                 "accept-encoding": "gzip, deflate, br"
             }
@@ -205,7 +205,7 @@ function getClientID(): Promise<string | Error> | string {
 
         split.forEach((r: any) => r.startsWith("https") ? urls.push(r.split("\"")[0]) : null);
 
-        const parsedPage2 = await httpsClient.get(urls.pop(), {resolve: "body"});
+        const parsedPage2 = await httpsClient.get(urls.pop(), {resolve: "string"});
 
         if (parsedPage2 instanceof Error) return resolve(Error("[APIs]: Не удалось получить ClientID!"));
         return resolve(parsedPage2.split(",client_id:\"")[1].split("\"")[0]);

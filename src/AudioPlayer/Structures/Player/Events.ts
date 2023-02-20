@@ -1,5 +1,5 @@
-import {Queue} from "@Queue/Queue";
 import {MessagePlayer} from "@Structures/Messages";
+import {Queue} from "@Queue/Queue";
 
 //Ивенты плеера для всех серверов
 export namespace PlayerEvents {

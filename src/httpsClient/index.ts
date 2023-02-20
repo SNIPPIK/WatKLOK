@@ -4,7 +4,7 @@ import {getCookies} from "./Structures/Cookie";
 import {IncomingMessage} from "http";
 
 const RequestType = {
-    "body": Request.parseBody,
+    "string": Request.parseBody,
     "json": Request.parseJson,
     "all": Request.Request
 };
@@ -47,7 +47,7 @@ export namespace httpsClient {
     export function checkLink(url: string): Promise<"OK" | "Fail"> | "Fail" {
         if (!url) return "Fail";
 
-        return head(url, {resolve: "body", useragent: true}).then((resource: IncomingMessage) => {
+        return head(url, {resolve: "string", useragent: true}).then((resource: IncomingMessage) => {
             if (resource instanceof Error) return "Fail"; //Если есть ошибка
             if (resource.statusCode >= 200 && resource.statusCode < 400) return "OK"; //Если возможно скачивать ресурс
             return "Fail"; //Если прошлые варианты не подходят, то эта ссылка не рабочая
@@ -62,7 +62,7 @@ export namespace httpsClient {
  * @param type {string} Тип выдачи данных
  * @param options {httpsClientOptions} Доп настройки
  */
-function runRequest(url: string, method: "GET" | "POST" | "HEAD", type: "all" | "body" | "json", options: httpsClientOptions) {
+function runRequest(url: string, method: "GET" | "POST" | "HEAD", type: "all" | "string" | "json", options: httpsClientOptions) {
     const {hostname, pathname, search, port, protocol} = new URL(url);
     let headers = options.headers ?? {};
 
@@ -86,7 +86,7 @@ function runRequest(url: string, method: "GET" | "POST" | "HEAD", type: "all" | 
 
 interface httpsClientOptions {
     //Тип выдаваемых данных
-    resolve: "body" | "json";
+    resolve: "string" | "json";
 
     //Headers запроса
     headers?: ReqOptions["headers"];
