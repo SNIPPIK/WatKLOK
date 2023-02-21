@@ -146,7 +146,7 @@ export namespace platformSupporter {
      * @description Получаем цвет трека
      * @param platform {platform} Платформа
      */
-    export function getColor(platform: platform) { return Platforms[platform].color; }
+    export function getColor(platform: platform): number { return Platforms[platform].color; }
     //====================== ====================== ====================== ======================
     /**
      * @description Получаем платформы с которых невозможно включить треки
@@ -226,7 +226,7 @@ export namespace platformSupporter {
      * @param str {string} Строка или ссылка
      * @param platform {platform} Платформа
      */
-    export function getArg(str: string, platform: platform) {
+    export function getArg(str: string, platform: platform): string {
         //Если нет search, значит пользователь прикрепил файл
         if (!str || str.match(/^(https?:\/\/)/gi)) return str;
 
@@ -316,16 +316,15 @@ export namespace SongFinder {
      * @param song {Song} Трек который надо найти по новой
      */
     export function getLinkResource(song: Song): Promise<string> {
-        const {url, author, title, duration} = song;
-        const platform = RegisterPlatform.includes("YANDEX") ? "YOUTUBE" : "YANDEX";
+        const {platform, url, author, title, duration} = song;
 
         //Если для платформы нет поддержки перехвата аудио
         if (PlatformsAudio.includes(platform)) {
             //Ищем трек
             let track = FindTrack(`${author.title} ${title}`, duration.seconds, platform);
 
-            //Если не удалось найти трек с первого раза
-            if (!track) track = FindTrack(`${author.title} ${title} (Lyrics)`, duration.seconds, "YOUTUBE");
+            //Если трек не найден пробуем 2 вариант без автора
+            if (!track) track = FindTrack(title, duration.seconds, platform);
 
             return track;
         }
@@ -347,23 +346,23 @@ export namespace SongFinder {
  * @param platform {platform} Платформа
  */
 function FindTrack(nameSong: string, duration: number, platform: platform): Promise<string> {
-    return new Promise(async (resolve) => {
-        //@ts-ignore
-        return Platforms[platform]["callbacks"]["search"](nameSong).then((Tracks: inTrack[]) => {
-            //Фильтруем треки оп времени
-            const FindTracks: inTrack[] = Tracks?.filter((track: inTrack) => {
-                const DurationSong: number = (platform === "YOUTUBE" ? DurationUtils.ParsingTimeToNumber : parseInt)(track?.duration?.seconds);
-    
-                //Как надо фильтровать треки
-                return DurationSong === duration || DurationSong < duration + 7 && DurationSong > duration - 5 || DurationSong < duration + 27 && DurationSong > duration - 27;
-            });
-    
-            //Если треков нет
-            if (FindTracks?.length < 1) return resolve(null);
-    
-            //Получаем данные о треке
-            return resolve((Platforms[platform])["callbacks"]["track"](FindTracks[0].url).then((video: inTrack) => video?.format?.url) as Promise<string>);
-        }).catch(() => resolve(null));
+    //Если поиск недоступен на Yandex или если не получена ссылки с yandex
+    const isYouTube = RegisterPlatform.includes("YANDEX") || platform === "YANDEX";
+
+    return (isYouTube ? Platforms["YOUTUBE"] : Platforms["YANDEX"])["callbacks"]["search"](nameSong).then((Tracks: inTrack[]) => {
+        //Фильтруем треки оп времени
+        const FindTracks: inTrack[] = Tracks.filter((track: inTrack) => {
+            const DurationSong: number = (isYouTube ? DurationUtils.ParsingTimeToNumber : parseInt)(track.duration.seconds);
+
+            //Как надо фильтровать треки
+            return DurationSong === duration || DurationSong < duration + 7 && DurationSong > duration - 5 || DurationSong < duration + 27 && DurationSong > duration - 27;
+        });
+
+        //Если треков нет
+        if (FindTracks?.length < 1) return null;
+
+        //Получаем данные о треке
+        return (isYouTube ? Platforms["YOUTUBE"] : Platforms["YANDEX"])["callbacks"]["track"](FindTracks[0].url).then((video: inTrack) => video?.format?.url) as Promise<string>;
     });
 }
 //====================== ====================== ====================== ======================
