@@ -1,7 +1,7 @@
-import {RequestOptions, Request} from "./Structures/Request";
-import {GetUserAgent as getUserAgent} from "./Structures/Utils";
-import {getCookies} from "./Structures/Cookie";
-import {IncomingMessage} from "http";
+import { RequestOptions, Request } from "./Structures/Request";
+import { getUserAgent } from "./Structures/Utils";
+import { getCookies } from "./Structures/Cookie";
+import { IncomingMessage } from "http";
 
 type RequestType = "string" | "json" | "full";
 //Как можно получить данные
@@ -49,7 +49,7 @@ export namespace httpsClient {
     export function checkLink(url: string): Promise<"OK" | "Fail"> | "Fail" {
         if (!url) return "Fail";
 
-        return head(url, {resolve: "full", useragent: true}).then((resource: IncomingMessage) => {
+        return head(url, { resolve: "full", useragent: true }).then((resource: IncomingMessage) => {
             if (resource instanceof Error) return "Fail"; //Если есть ошибка
             if (resource.statusCode >= 200 && resource.statusCode < 400) return "OK"; //Если возможно скачивать ресурс
             return "Fail"; //Если прошлые варианты не подходят, то эта ссылка не рабочая
@@ -64,24 +64,24 @@ export namespace httpsClient {
  * @param type {string} Тип выдачи данных
  * @param options {httpsClientOptions} Доп настройки
  */
-function runRequest(url: string, method: "GET" | "POST" | "HEAD", type: RequestType, options: httpsClientOptions) {
-    const {hostname, pathname, search, port, protocol} = new URL(url);
+function runRequest(url: string, method: "GET" | "POST" | "HEAD", type: RequestType, options: httpsClientOptions): Promise<any> {
+    const { hostname, pathname, search, port, protocol } = new URL(url);
     let headers = options.headers ?? {};
-    let reqOptions: RequestOptions = {method, hostname, path: pathname + search, port, headers, body: options?.body, protocol: protocol}
+    let reqOptions: RequestOptions = { method, hostname, path: pathname + search, port, headers, body: options?.body, protocol: protocol }
 
     //Добавляем User-Agent
     if (options.useragent) {
-        const {Agent, Version} = getUserAgent();
+        const { Agent, Version } = getUserAgent();
 
-        if (Agent) headers = {...headers, "user-agent": Agent};
-        if (Version) headers = {...headers, "sec-ch-ua-full-version": Version};
+        if (Agent) headers = { ...headers, "user-agent": Agent };
+        if (Version) headers = { ...headers, "sec-ch-ua-full-version": Version };
     }
 
     //Добавляем куки
     if (options?.cookie) {
         const cookie = getCookies();
 
-        if (cookie) headers = {...headers, "cookie": cookie};
+        if (cookie) headers = { ...headers, "cookie": cookie };
     }
 
     return RequestType[type](reqOptions);

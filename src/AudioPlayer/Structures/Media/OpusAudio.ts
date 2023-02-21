@@ -193,7 +193,7 @@ function getDurationFilters(AudioFilters: AudioFilters): number {
  * @description Создаем фильтры для FFmpeg
  * @param AudioFilters {AudioFilters} Аудио фильтры которые включил пользователь
  */
-function getFilters(AudioFilters: AudioFilters) {
+function getFilters(AudioFilters: AudioFilters): string {
     const response: Array<string> = [];
 
     //Включать более плавное включение музыки

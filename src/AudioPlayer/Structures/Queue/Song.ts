@@ -94,15 +94,21 @@ export class Song {
         return resolve(this.resource(seek, req));
     });
 }
-
-//Какие данные доступны в <song>.requester
+//====================== ====================== ====================== ======================
+/**
+ * @description Какие данные доступны в <song>.requester
+ * @type interface
+ */
 interface SongRequester {
     id: string;
     username: string;
     avatarURL: () => string | null;
 }
-
-//Пример получаемого трека
+//====================== ====================== ====================== ======================
+/**
+ * @description Пример получаемого трека
+ * @type interface
+ */
 export interface inTrack {
     title: string;
     url: string;
@@ -126,8 +132,11 @@ export interface inTrack {
     isValid?: boolean;
     PrevFile?: string;
 }
-
-//Пример получаемого автора трека
+//====================== ====================== ====================== ======================
+/**
+ * @description Пример получаемого автора трека
+ * @type interface
+ */
 export interface inAuthor {
     title: string;
     url: string | undefined;
@@ -138,8 +147,11 @@ export interface inAuthor {
     };
     isVerified?: boolean;
 }
-
-//Пример получаемого плейлиста
+//====================== ====================== ====================== ======================
+/**
+ * @description Пример получаемого плейлиста
+ * @type interface
+ */
 export interface inPlaylist {
     url: string;
     title: string;

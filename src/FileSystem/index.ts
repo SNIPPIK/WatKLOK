@@ -17,7 +17,7 @@ export namespace FileSystem {
      * @description Создаем полноценный путь
      * @param dir {string} dir/dir/dir
      */
-    export function createDirs(dir: string) {
+    export function createDirs(dir: string): void {
         let dirs = dir.split("/"), currentDir = "";
 
         if (!dir.endsWith("/")) dirs.splice(dirs.length - 1);
@@ -29,7 +29,7 @@ export namespace FileSystem {
      * @description Загружаем файлы в FileBase<type>
      * @param client {WatKLOK} Бот
      */
-    export function initFileSystem(client: WatKLOK) {
+    export function initFileSystem(client: WatKLOK): void {
         const loadCallbacks: FileCallback[] = [ //Каким способом их обработать
             (pull: Command, {file, reason, dir}) => {
                 if (reason) return log("Commands", dir, file, reason);
@@ -48,10 +48,10 @@ export namespace FileSystem {
         ];
 
         //Загружаем путь, а затем действие
-        ["Handler/Commands", "Handler/Events"].forEach((path, index) => {
+        ["Handler/Commands", "Handler/Events"].forEach((path, index): void => {
             new FileLoader({path, callback: loadCallbacks[index]});
 
-            setImmediate(() => {
+            setImmediate((): void => {
                 if (client.ShardID === undefined) Object.entries(FileBase).forEach(([key, value]) => console.log(`| FileSystem... Loaded ${key} | ${value.length}\n${value.join("\n")}\n`));
                 //После вывода в консоль удаляем
                 Object.entries(FileBase).forEach(([key,]) => delete FileBase[key as "Commands" | "Events"]);
@@ -77,7 +77,7 @@ class FileLoader {
 
         this.readDir();
     };
-    private readonly readDir = () => {
+    private readonly readDir = (): void => {
         //Смотрим что находится в папке
         readdirSync(`./src/${this.path}`).forEach(async (dir: string) => {
             if (dir.endsWith(".js") || dir.endsWith(".ts")) return;
@@ -127,7 +127,7 @@ class FileLoader {
  * @param file {string} Файл
  * @param reason {string} Если загрузка прервана из-за ошибки
  */
-function log(type: "Commands" | "Events", dir: string, file: string, reason?: string) {
+function log(type: "Commands" | "Events", dir: string, file: string, reason?: string): number {
     const Status = `Status: [${reason ? "🟥" : "🟩"}]`;
     const File = `File: [src/Handler/${type}/${dir}/${file}]`;
     let EndStr = `${Status} | ${File}`;

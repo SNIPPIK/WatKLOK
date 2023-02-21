@@ -57,18 +57,19 @@ export namespace PlayerCycle {
             db.timeout = null;
         }
     }
-
-    //Жизненный цикл плееров
-    function playerCycleStep(): void {
+}
+//Жизненный цикл плееров
+function playerCycleStep(): void {
+    setImmediate((): void => {
         const players = db.pls.filter((player) => player.state.status === "read");
-    
+
         try {
             db.time += 20;
             for (const player of players) player["preparePacket"]();
         } finally {
             db.timeout = setTimeout(playerCycleStep, db.time - Date.now());
         }
-    }
+    })
 }
 
 //====================== ====================== ====================== ======================
@@ -80,7 +81,7 @@ export namespace MessageCycle {
      * @param message {message} Сообщение
      * @requires {messageCycleStep}
      */
-    export function toPush(message: ClientMessage) {
+    export function toPush(message: ClientMessage): void {
         if (db.msg.find(msg => message.channelId === msg.channelId)) return; //Если сообщение уже есть в базе, то ничего не делаем
         db.msg.push(message); //Добавляем сообщение в базу
 
@@ -93,7 +94,7 @@ export namespace MessageCycle {
      * @param ChannelID {string} ID канала
      * @requires {Message}
      */
-    export function toRemove(ChannelID: string) {
+    export function toRemove(ChannelID: string): void {
         const Find = db.msg.find(msg => msg.channelId === ChannelID); //Ищем сообщение е базе
         if (!Find) return; //Если его нет ничего не делаем
 
@@ -112,15 +113,14 @@ export namespace MessageCycle {
             }
         }
     }
-
-    //Жизненый цикл сообщений
-    function messageCycleStep() {
-        setImmediate(() => {
-            try {
-                setTimeout(() => db.msg.forEach((message) => Balancer.push(() => editMessage(message))), 1e3);
-            } finally { db.timeout_m = setTimeout(messageCycleStep, Music.AudioPlayer.updateMessage < 10 ? 15e3 : Music.AudioPlayer.updateMessage * 1e3); }
-        });
-    }
+}
+//Жизненый цикл сообщений
+function messageCycleStep(): void {
+    setImmediate((): void => {
+        try {
+            setTimeout(() => db.msg.forEach((message) => Balancer.push(() => editMessage(message))), 1e3);
+        } finally { db.timeout_m = setTimeout(messageCycleStep, Music.AudioPlayer.updateMessage < 10 ? 15e3 : Music.AudioPlayer.updateMessage * 1e3); }
+    });
 }
 //====================== ====================== ====================== ======================
 /**

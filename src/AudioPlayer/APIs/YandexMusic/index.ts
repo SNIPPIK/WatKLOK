@@ -1,4 +1,4 @@
-import {inPlaylist, inTrack} from "@Structures/Queue/Song";
+import {inAuthor, inPlaylist, inTrack} from "@Structures/Queue/Song";
 import {httpsClient} from "@httpsClient";
 import {APIs} from "@db/Config.json"
 import crypto from "node:crypto";
@@ -25,7 +25,7 @@ namespace API {
      * @param method {string} Путь
      * @constructor
      */
-    export function Request(method: string) {
+    export function Request(method: string): Promise<any> {
         return new Promise<any | Error>(async (resolve) => {
 
             const req = await httpsClient.get(`${db.api}/${method}`, {
@@ -75,7 +75,7 @@ namespace construct {
      * @param image {string} Ссылка на картинку
      * @param size {number} Размер картинки
      */
-    export function onImage(image: string, size = 1e3) {
+    export function onImage(image: string, size = 1e3): string {
         if (!image) return "";
 
         let img = image.split("%%")[0];
@@ -87,7 +87,7 @@ namespace construct {
      * @description Получаем исходный файл трека
      * @param ID {string} ID трека
      */
-    export function getMp3(ID: string) {
+    export function getMp3(ID: string): Promise<string | Error> {
         return new Promise<string | Error>(async (resolve) => {
             try {
                 const api = await API.Request(`tracks/${ID}/download-info`);
@@ -225,7 +225,7 @@ export namespace YandexMusic {
  * @description Получаем данные об авторе трека
  * @param ID {string} ID автора
  */
-function getAuthor(ID: string): Promise<inTrack["author"]> {
+function getAuthor(ID: string): Promise<inAuthor> {
     return new Promise(async (resolve, reject) => {
         if (!ID) return resolve(null);
 

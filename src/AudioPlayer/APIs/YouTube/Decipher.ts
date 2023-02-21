@@ -8,7 +8,7 @@ import * as vm from "vm";
  * Запускаем расшифровку в другом потоке, поскольку из-за <vm>.Script возникают утечки памяти
  * После получения данных удаляем поток и устраняем утечку
  */
-if (!isMainThread) (async () => {
+if (!isMainThread) (async (): Promise<void> => {
     const formats = await extractSignature(workerData.formats, workerData.html);
 
     delete workerData.formats;
@@ -80,7 +80,7 @@ function extractSignature(formats: YouTubeFormat[], html5player: string): Promis
  * @param {string} html5Link
  * @returns {Promise<Array.<string>>}
  */
-async function extractFunctions (html5Link: string) {
+async function extractFunctions(html5Link: string): Promise<string[]> {
     const body = await httpsClient.get(html5Link, {resolve: "string"}) as string, functions: string[] = [];
 
     if (!body) return;
@@ -119,7 +119,7 @@ async function extractFunctions (html5Link: string) {
  * @param caller {string}
  * @param body {string}
  */
-function extractManipulations(caller: string, body: string) {
+function extractManipulations(caller: string, body: string): string {
     const functionName = caller.split(`a=a.split("");`)[1].split(".")[0];
     if (!functionName) return '';
 
@@ -165,7 +165,7 @@ function _decipher(url: string, decipherScript: vm.Script): string {
  * @param url {string} Ссылка которая работает
  * @param nTransformScript {vm.Script}
  */
-function _ncode(url: string, nTransformScript: vm.Script) {
+function _ncode(url: string, nTransformScript: vm.Script): string {
     const components = new URL(decodeURIComponent(url));
     const n = components.searchParams.get('n');
     if (!n || !nTransformScript) return url;
@@ -334,7 +334,7 @@ function parseTokens(page: string): string[] {
  * @description Уменьшаем кол-во кода
  * @param res {RegExpExecArray}
  */
-function replacer(res: RegExpExecArray):string {
+function replacer(res: RegExpExecArray): string {
     return res && res[1].replace(/\$/g, '\\$').replace(/\$|^'|^"|'$|"$/g, '');
 }
 //====================== ====================== ====================== ======================

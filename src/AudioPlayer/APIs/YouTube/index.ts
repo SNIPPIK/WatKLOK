@@ -195,7 +195,7 @@ export namespace YouTube {
      * @description Получаем 5 последних треков автора
      * @param url {string} Ссылка на автора
      */
-    export function getChannelVideos(url: string, options = {limit: APIs.limits.author}) {
+    export function getChannelVideos(url: string, options = {limit: APIs.limits.author}): Promise<inTrack[]> {
         return new Promise(async (resolve, reject) => {
             try {
                 let ID: string;
@@ -275,7 +275,7 @@ function getChannel({id, name}: { id: string, name?: string }): Promise<inAuthor
  * @param url {string} Ссылка
  * @param isPlaylist
  */
-function getID(url: string, isPlaylist: boolean = false) {
+function getID(url: string, isPlaylist: boolean = false): string {
     try {
         if (typeof url !== "string") return null;
         const parsedLink = new URL(url);

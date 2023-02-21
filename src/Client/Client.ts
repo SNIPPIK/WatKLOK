@@ -8,7 +8,7 @@ import {FileSystem} from "@FileSystem";
 import {Queue} from "@Queue/Queue";
 import {env} from "@env";
 
-export function consoleTime(data: string) {
+export function consoleTime(data: string): void {
     const date = new Date();
     const reformatDate = [date.getHours(), date.getMinutes(), date.getSeconds()].map(DurationUtils.toFixed0);
 
@@ -125,7 +125,7 @@ export class WatKLOK extends Client {
 }
 const client = new WatKLOK();
 
-client.login().then(() => {
+client.login().then((): void => {
     if (Bot.ignoreErrors) process.on("uncaughtException", (err) => {
         //Если выключено APIs.showErrors, то ошибки не будут отображаться
         if (!APIs.showErrors && err?.message?.match(/APIs/)) return;

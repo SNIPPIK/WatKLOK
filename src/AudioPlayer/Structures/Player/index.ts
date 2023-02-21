@@ -44,13 +44,13 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
             oldState.stream.opus.destroy();
             oldState.stream.opus.read(); //Устраняем утечку памяти
             oldState.stream.destroy();
+
+            //Устраняем фриз после смены потока
+            this.sendPacket(SilenceFrame);
         }    
         
         //Фильтруем статусы бота что в emit не попало что не надо
         if (oldStatus !== newStatus || oldStatus !== "idle" && newStatus === "read") {
-            //Устраняем фриз после смены потока
-            this.sendPacket(SilenceFrame);
-
             PlayerCycle.toRemove(this);
             this.emit(newStatus);
         }        
@@ -161,7 +161,7 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
     /**
      * @description Удаление неиспользованных данных
      */
-    public destroy = () => {
+    public destroy = (): void => {
         this.removeAllListeners();
 
         //Выключаем плеер если сейчас играет трек

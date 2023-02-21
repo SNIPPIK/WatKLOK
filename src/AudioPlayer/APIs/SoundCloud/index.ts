@@ -1,7 +1,7 @@
-import {inPlaylist, inTrack} from "@Queue/Song";
-import {httpsClient} from "@httpsClient";
-import {APIs} from "@db/Config.json";
-import {env} from "@env";
+import { inAuthor, inPlaylist, inTrack } from "@Queue/Song";
+import { httpsClient } from "@httpsClient";
+import { APIs } from "@db/Config.json";
+import { env } from "@env";
 
 //====================== ====================== ====================== ======================
 /**
@@ -31,7 +31,7 @@ namespace API {
 
             if (ClientID instanceof Error || !ClientID) return resolve(Error("[APIs]: Невозможно получить ID клиента!"));
 
-            const result = await httpsClient.get(`${db.api}/${method}&client_id=${ClientID}`, {resolve: "json"});
+            const result = await httpsClient.get(`${db.api}/${method}&client_id=${ClientID}`, { resolve: "json" });
 
             if (!result) return resolve(Error("[APIs]: Невозможно найти данные!"));
 
@@ -48,7 +48,7 @@ namespace API {
         const filterFormats = formats.filter((d) => d.format.protocol === "progressive").pop() ?? formats[0];
 
         return new Promise(async (resolve) => {
-            const EndFormat = await httpsClient.get(`${filterFormats.url}?client_id=${ClientID}`, {resolve: "json"});
+            const EndFormat = await httpsClient.get(`${filterFormats.url}?client_id=${ClientID}`, { resolve: "json" });
 
             return resolve(EndFormat.url);
         });
@@ -81,7 +81,7 @@ namespace construct {
      * @description Заготавливаем пример автора
      * @param user {any} Автор
      */
-    export function author(user: any) {
+    export function author(user: any): inAuthor {
         return {
             url: user.permalink_url,
             title: user.username,
@@ -96,14 +96,14 @@ namespace construct {
      * @constructor
      */
     export function parseImage(image: string): { url: string } {
-        if (!image) return {url: image};
+        if (!image) return { url: image };
 
         const imageSplit = image.split("-");
         const FormatImage = image.split(".").pop();
 
         imageSplit[imageSplit.length - 1] = "original";
 
-        return {url: `${imageSplit.join("-")}.${FormatImage}`};
+        return { url: `${imageSplit.join("-")}.${FormatImage}` };
     }
 }
 //====================== ====================== ====================== ======================
@@ -125,10 +125,10 @@ export namespace SoundCloud {
                 //Если запрос выдал ошибку то
                 if (api instanceof Error) return reject(api);
 
-                const {result, ClientID} = api;
+                const { result, ClientID } = api;
                 const format = await API.getFormat(result.media.transcodings, ClientID); //Получаем исходный файл музыки
 
-                return resolve({...construct.track(result, url), format: {url: format}});
+                return resolve({ ...construct.track(result, url), format: { url: format } });
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
@@ -137,7 +137,7 @@ export namespace SoundCloud {
      * @description Получаем плейлист
      * @param url {string} Ссылка на плейлист
      */
-    export function getPlaylist(url: string, options = {limit: APIs.limits.playlist}): Promise<inTrack | inPlaylist> {
+    export function getPlaylist(url: string, options = { limit: APIs.limits.playlist }): Promise<inTrack | inPlaylist> {
         return new Promise<inPlaylist | inTrack>(async (resolve, reject) => {
             try {
                 //Создаем запрос
@@ -146,13 +146,14 @@ export namespace SoundCloud {
                 //Если запрос выдал ошибку то
                 if (api instanceof Error) return reject(api);
 
-                const {result} = api;
+                const { result } = api;
 
                 //Если треков нет значит, это ссылка на трек, а не на плейлист
                 if (result.tracks === undefined) return getTrack(url).then(resolve);
                 const tracks = result.tracks.splice(0, options.limit);
 
-                return resolve({ url, title: result.title,
+                return resolve({
+                    url, title: result.title,
                     author: construct.author(result.user),
                     image: construct.parseImage(result.artwork_url),
                     items: tracks.map(construct.track)
@@ -167,7 +168,7 @@ export namespace SoundCloud {
      * @param options {limit: number} Кол-во выдаваемых треков
      * @constructor
      */
-    export function SearchTracks(search: string, options = {limit: APIs.limits.search}): Promise<inTrack[]> {
+    export function SearchTracks(search: string, options = { limit: APIs.limits.search }): Promise<inTrack[]> {
         return new Promise<inTrack[]>(async (resolve, reject) => {
             try {
                 //Создаем запрос
@@ -176,7 +177,7 @@ export namespace SoundCloud {
                 //Если запрос выдал ошибку то
                 if (api instanceof Error) return reject(api);
 
-                const {result} = api;
+                const { result } = api;
                 return resolve(result.collection.map(construct.track));
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
@@ -205,7 +206,7 @@ function getClientID(): Promise<string | Error> | string {
 
         split.forEach((r: any) => r.startsWith("https") ? urls.push(r.split("\"")[0]) : null);
 
-        const parsedPage2 = await httpsClient.get(urls.pop(), {resolve: "string"});
+        const parsedPage2 = await httpsClient.get(urls.pop(), { resolve: "string" });
 
         if (parsedPage2 instanceof Error) return resolve(Error("[APIs]: Не удалось получить ClientID!"));
         return resolve(parsedPage2.split(",client_id:\"")[1].split("\"")[0]);

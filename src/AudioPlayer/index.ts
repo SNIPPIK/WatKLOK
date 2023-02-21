@@ -232,7 +232,7 @@ export namespace Player {
  * @param message {ClientMessage} Сообщение с сервера
  * @param args {string} Аргументы Пример: команда аргумент1 аргумент2
  */
-function skipSong(message: ClientMessage, args: number = 1) {
+function skipSong(message: ClientMessage, args: number = 1): void {
     const {client, guild, author} = message;
     const queue: Queue = client.queue.get(guild.id);
     const {player, songs, options} = queue;

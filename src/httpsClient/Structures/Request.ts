@@ -91,7 +91,7 @@ export namespace Request {
  * @description Получаем всю страницу
  * @param decoder {Decoder | IncomingMessage}
  */
-function extractPage(decoder: Decoder | IncomingMessage) {
+function extractPage(decoder: Decoder | IncomingMessage): Promise<string> {
     const data: string[] = [];
 
     return new Promise<string>((resolve) => {

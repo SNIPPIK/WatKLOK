@@ -1,5 +1,5 @@
 import {ChannelType,Guild,InternalDiscordGatewayAdapterCreator,StageChannel,VoiceChannel,VoiceState} from "discord.js";
-import {getVoiceConnection, getVoiceConnections, joinVoiceChannel} from "@discordjs/voice";
+import {VoiceConnection, getVoiceConnection, getVoiceConnections, joinVoiceChannel} from "@discordjs/voice";
 
 const VoiceChannelsGroup = "A";
 
@@ -15,7 +15,7 @@ export namespace Voice {
      * @param guild {Guild} Сервер
      * @param type {string} Тип канала
      */
-    export function Join({id, guild, type}: VoiceChannels) {
+    export function Join({id, guild, type}: VoiceChannels): VoiceConnection {
         const JoinVoice = joinVoiceChannel({ selfDeaf: true, selfMute: false, channelId: id, guildId: guild.id,
             adapterCreator: guild.voiceAdapterCreator as InternalDiscordGatewayAdapterCreator, group: VoiceChannelsGroup });
         const me = guild.members?.me;
@@ -30,7 +30,7 @@ export namespace Voice {
      * @description Отключаемся от канала
      * @param guild {VoiceChannels | string} ID канала или сам канал
      */
-    export function Disconnect(guild: Guild | string) {
+    export function Disconnect(guild: Guild | string): void {
         const VoiceConnection = getVoice(typeof guild === "string" ? guild : guild.id);
 
         //Если бот подключен к голосовому каналу, то отключаемся!
@@ -61,5 +61,5 @@ export namespace Voice {
      * @description Получаем голосовое подключение
      * @param guildID {string} ID сервера
      */
-    export function getVoice(guildID: string) { return getVoiceConnection(guildID, VoiceChannelsGroup); }
+    export function getVoice(guildID: string): VoiceConnection { return getVoiceConnection(guildID, VoiceChannelsGroup); }
 }

@@ -3,7 +3,7 @@ import UserAgents from "@db/UserAgents.json";
 /**
  * @description Получаем рандомный user-agent и его версию
  */
-export function GetUserAgent(): { Agent: string, Version: string } {
+export function getUserAgent(): { Agent: string, Version: string } {
     const MinAgents = Math.ceil(0);
     const MaxAgents = Math.floor(UserAgents.length - 1);
 

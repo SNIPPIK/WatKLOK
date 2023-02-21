@@ -1,4 +1,4 @@
-import {ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, User} from "discord.js";
+import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, CacheType, ComponentType, InteractionCollector, User} from "discord.js";
 import {ClientMessage, UtilsMsg} from "@Client/interactionCreate";
 import {MessageCycle} from "@Structures/LifeCycle";
 import {Balancer} from "@Structures/Balancer";
@@ -7,6 +7,8 @@ import {consoleTime} from "@Client/Client";
 import {EmbedMessages} from "./Embeds";
 import {Music} from "@db/Config.json";
 import {Queue} from "@Queue/Queue";
+
+
 if (Music.Buttons.length < 4) Error(`[Config]: Buttons has not found, find ${Music.Buttons.length}, need 4`);
 
 //Кнопки с которыми можно взаимодействовать
@@ -118,7 +120,7 @@ export namespace MessagePlayer {
  * @param message {ClientMessage} Сообщение
  * @param queue {Queue} Очередь сервера
  */
-function CreateCollector(message: ClientMessage, queue: Queue) {
+function CreateCollector(message: ClientMessage, queue: Queue): InteractionCollector<ButtonInteraction<CacheType>> {
     //Создаем сборщик кнопок
     const collector = message.createMessageComponentCollector({ filter: (i) => ButtonIDs.includes(i.customId), componentType: ComponentType.Button, time: 60e5 });
     const {player} = queue;

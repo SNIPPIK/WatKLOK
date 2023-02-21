@@ -57,7 +57,7 @@ namespace construct {
      * @description Собираем трек в готовый образ
      * @param track {SpotifyTrack} Трек из Spotify API
      */
-    export async function track(track: SpotifyTrack) {
+    export async function track(track: SpotifyTrack): Promise<inTrack> {
         const sortImages = track.album.images[0].width > track.album.images.pop().width ? track.album.images[0] : track.album.images.pop();
 
         return {
@@ -177,7 +177,7 @@ export namespace Spotify {
      * @description Получаем 5 популярных треков автора
      * @param url {string} Ссылка на автора
      */
-    export function getAuthorTracks(url: string, options = {limit: APIs.limits.author}): any {
+    export function getAuthorTracks(url: string, options = {limit: APIs.limits.author}): Promise<inTrack[]> {
         const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {

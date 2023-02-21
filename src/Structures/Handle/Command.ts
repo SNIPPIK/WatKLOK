@@ -7,7 +7,7 @@ import { ClientInteraction, ClientInteractive, ClientMessage, EmbedConstructor }
  */
 export namespace replacer {
     //Обрезает текст до необходимых значений
-    export function replaceText(text: string, value: number | any, clearText: boolean = false) {
+    export function replaceText(text: string, value: number | any, clearText: boolean = false): string {
         try {
             if (clearText) text = text.replace(/[\[,\]}{"`'*]/gi, "");
             if (text.length > value && value !== false) return `${text.substring(0, value)}...`;

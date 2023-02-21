@@ -89,7 +89,7 @@ export namespace FFspace {
          * @param methods {string[]}
          * @param target {Readable | Writable}
          */
-        private setter = (methods: string[], target?: Readable | Writable) => {
+        private setter = (methods: string[], target?: Readable | Writable): void => {
             // @ts-ignore
             if (target) return methods.forEach((method) => this[method] = target[method].bind(target));
             else {
@@ -103,7 +103,7 @@ export namespace FFspace {
          * @description Удаляем все что не нужно
          * @param error {Error | null} По какой ошибке завершаем работу FFmpeg'a
          */
-        public _destroy = (error?: Error | null) => {
+        public _destroy = (error?: Error | null): void => {
             this.removeAllListeners();
             if (!super.destroyed) super.destroy();
 

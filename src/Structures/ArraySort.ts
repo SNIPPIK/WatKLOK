@@ -1,4 +1,4 @@
-export function ArraySort<V>(number: number = 5, array: V[], callback: (value: V, index?: number) => string, joined: string = "\n\n") {
+export function ArraySort<V>(number: number = 5, array: V[], callback: (value: V, index?: number) => string, joined: string = "\n\n"): string[] {
     const pages: string[] = [];
 
     // @ts-ignore

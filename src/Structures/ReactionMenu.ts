@@ -19,7 +19,7 @@ export namespace ReactionMenu {
      * @param isSlash
      * @requires {reaction}
      */
-    export function create(embed: EmbedConstructor | string, message: ClientInteractive, callbacks: ReactionCallbacks, isSlash: boolean = false) {
+    export function create(embed: EmbedConstructor | string, message: ClientInteractive, callbacks: ReactionCallbacks, isSlash: boolean = false): void {
         const args = typeof embed === "string" ? {content: embed, fetchReply: true} : {embeds: [embed], fetchReply: true};
         const promise = (msg: ClientMessage) => Object.entries(callbacks).forEach(([key, value]) => {
             const emoji = emojis[key as "back" | "next" | "cancel"];

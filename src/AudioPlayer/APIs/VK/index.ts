@@ -1,4 +1,4 @@
-import {inPlaylist, inTrack} from "@Queue/Song";
+import {inAuthor, inPlaylist, inTrack} from "@Queue/Song";
 import {httpsClient} from "@httpsClient";
 import {APIs} from "@db/Config.json";
 import {env} from "@env";
@@ -47,7 +47,7 @@ namespace API {
  * @description Формирование общих данных
  */
 namespace construct {
-    export function track(track: Track["response"][0]) {
+    export function track(track: Track["response"][0]): inTrack {
         const image = track?.album?.thumb;
 
         return {
@@ -59,7 +59,7 @@ namespace construct {
             format: { url: track?.url }
         };
     }
-    export function author(user: any) {
+    export function author(user: any): inAuthor {
         const url = `${db.link}/audio&q=${user.artist.replaceAll(" ", "").toLowerCase()}`;
 
         return { url, title: user.artist, isVerified: user.is_licensed };

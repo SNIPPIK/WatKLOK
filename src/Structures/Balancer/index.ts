@@ -20,7 +20,7 @@ export namespace Balancer {
      * @param callback {callback} Функция
      * @returns 
      */
-    export function push(callback: callback) {
+    export function push(callback: callback): void {
         //Если выключено создаение очереди, то выполняем функцию незамедлительно
         if (!QueueCallbacks) return callback();
 
@@ -35,11 +35,17 @@ export namespace Balancer {
  * @returns 
  */
 function cycleStep(): void {
-    const callback = db.queue.shift();
+    setImmediate((): void => {
+        const callback = db.queue.shift();
 
-    if (!callback) return;
-
-    setImmediate(() => {try { callback(); } finally { return cycleStep(); }});
+        if (!callback) return;
+        
+        try { 
+            callback(); 
+        } finally { 
+            return cycleStep(); 
+        }
+    });
 }
 
 type callback = () => void;
