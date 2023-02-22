@@ -80,38 +80,39 @@ function extractSignature(formats: YouTubeFormat[], html5player: string): Promis
  * @param {string} html5Link
  * @returns {Promise<Array.<string>>}
  */
-async function extractFunctions(html5Link: string): Promise<string[]> {
-    const body = await httpsClient.get(html5Link, {resolve: "string"}) as string, functions: string[] = [];
+function extractFunctions(html5Link: string): Promise<string[]> {
+    const functions: string[] = [];
+    return new Promise((resolve, reject) => httpsClient.get(html5Link, {resolve: "string"}).then((body: string) => {
+        if (!body) return;
 
-    if (!body) return;
+        const decipherName = body.split(`a.set("alr","yes");c&&(c=`)[1].split(`(decodeURIC`)[0];
+        let ncodeName = body.split(`&&(b=a.get("n"))&&(b=`)[1].split(`(b)`)[0];
 
-    const decipherName = body.split(`a.set("alr","yes");c&&(c=`)[1].split(`(decodeURIC`)[0];
-    let ncodeName = body.split(`&&(b=a.get("n"))&&(b=`)[1].split(`(b)`)[0];
+        //extract Decipher
+        if (decipherName && decipherName.length) {
+            const functionStart = `${decipherName}=function(a)`;
+            const ndx = body.indexOf(functionStart);
 
-    //extract Decipher
-    if (decipherName && decipherName.length) {
-        const functionStart = `${decipherName}=function(a)`;
-        const ndx = body.indexOf(functionStart);
-
-        if (ndx >= 0) {
-            let functionBody = `var ${functionStart}${cutAfterJS(body.slice(ndx + functionStart.length))}`;
-            functions.push(`${extractManipulations(functionBody, body)};${functionBody};${decipherName}(sig);`);
+            if (ndx >= 0) {
+                let functionBody = `var ${functionStart}${cutAfterJS(body.slice(ndx + functionStart.length))}`;
+                functions.push(`${extractManipulations(functionBody, body)};${functionBody};${decipherName}(sig);`);
+            }
         }
-    }
 
-    //extract ncode
-    if (ncodeName.includes('[')) ncodeName = body.split(`${ncodeName.split('[')[0]}=[`)[1].split(`]`)[0];
-    if (ncodeName && ncodeName.length) {
-        const functionStart = `${ncodeName}=function(a)`;
-        const ndx = body.indexOf(functionStart);
+        //extract ncode
+        if (ncodeName.includes('[')) ncodeName = body.split(`${ncodeName.split('[')[0]}=[`)[1].split(`]`)[0];
+        if (ncodeName && ncodeName.length) {
+            const functionStart = `${ncodeName}=function(a)`;
+            const ndx = body.indexOf(functionStart);
 
-        if (ndx >= 0) functions.push(`var ${functionStart}${cutAfterJS(body.slice(ndx + functionStart.length))};${ncodeName}(ncode);`);
-    }
+            if (ndx >= 0) functions.push(`var ${functionStart}${cutAfterJS(body.slice(ndx + functionStart.length))};${ncodeName}(ncode);`);
+        }
 
-    //Проверяем если ли functions
-    if (!functions || !functions.length) return;
+        //Проверяем если ли functions
+        if (!functions || !functions.length) return;
 
-    return functions;
+        return resolve(functions);
+    }).catch((err: Error) => reject(err)));
 }
 //====================== ====================== ====================== ======================
 /**
@@ -173,6 +174,13 @@ function _ncode(url: string, nTransformScript: vm.Script): string {
     return components.toString();
 }
 //====================== ====================== ====================== ======================
+const EsSegment = [
+    // Strings
+    { s: '"', e: '"' }, { s: "'", e: "'" }, { s: '`', e: '`' },
+
+    // RegEx
+    { s: '/', e: '/', prf: /(^|[[{:;,])\s?$/ }
+];
 /**
  * @description Сопоставление начальной и конечной фигурной скобки входного JS
  * @param mixedJson {string}
@@ -194,18 +202,13 @@ function cutAfterJS(mixedJson: string): string {
     // Go through all characters from the start
     for (let i = 0; i < mixedJson.length; i++) {
         // End of current escaped object
-        if (!isEscaped && isEscapedObject !== null && mixedJson[i] === isEscapedObject.end) {
-            isEscapedObject = null;
-            continue;
-            // Might be the start of a new escaped object
-        } else if (!isEscaped && isEscapedObject === null) {
-            for (const escaped of ESCAPING_SEGMENT) {
-                if (mixedJson[i] !== escaped.start) continue;
+        if (!isEscaped && isEscapedObject !== null && mixedJson[i] === isEscapedObject.e) { isEscapedObject = null; continue; } 
+        // Might be the start of a new escaped object
+        else if (!isEscaped && isEscapedObject === null) {
+            for (const escaped of EsSegment) {
+                if (mixedJson[i] !== escaped.s) continue;
                 // Test startPrefix against last 10 characters
-                if (!escaped.startPrefix || mixedJson.substring(i - 10, i).match(escaped.startPrefix)) {
-                    isEscapedObject = escaped;
-                    break;
-                }
+                if (!escaped.prf || mixedJson.substring(i - 10, i).match(escaped.prf)) { isEscapedObject = escaped; break; }
             }
             // Continue if we found a new escaped object
             if (isEscapedObject !== null) continue;
@@ -230,44 +233,39 @@ function cutAfterJS(mixedJson: string): string {
 //====================== ====================== ====================== ======================
 /*                            Functions of the old decryption                              */
 //====================== ====================== ====================== ======================
-// RegExp for various js functions
-const var_js = '[a-zA-Z_\\$]\\w*';
-const singleQuote = `'[^'\\\\]*(:?\\\\[\\s\\S][^'\\\\]*)*'`;
-const duoQuote = `"[^"\\\\]*(:?\\\\[\\s\\S][^"\\\\]*)*"`;
-const quote_js = `(?:${singleQuote}|${duoQuote})`;
-const key_js = `(?:${var_js}|${quote_js})`;
-const prop_js = `(?:\\.${var_js}|\\[${quote_js}\\])`;
-const empty_js = `(?:''|"")`;
-const reverse_function = ':function\\(a\\)\\{' + '(?:return )?a\\.reverse\\(\\)' + '\\}';
-const slice_function = ':function\\(a,b\\)\\{' + 'return a\\.slice\\(b\\)' + '\\}';
-const splice_function = ':function\\(a,b\\)\\{' + 'a\\.splice\\(0,b\\)' + '\\}';
-const swap_function =
-    ':function\\(a,b\\)\\{' +
-    'var c=a\\[0\\];a\\[0\\]=a\\[b(?:%a\\.length)?\\];a\\[b(?:%a\\.length)?\\]=c(?:;return a)?' +
-    '\\}';
-const obj_regexp = new RegExp(
-    `var (${var_js})=\\{((?:(?:${key_js}${reverse_function}|${key_js}${slice_function}|${key_js}${splice_function}|${key_js}${swap_function}),?\\r?\\n?)+)};`
-);
-const function_regexp = new RegExp(
-    `${
-        `function(?: ${var_js})?\\(a\\)\\{` + `a=a\\.split\\(${empty_js}\\);\\s*` + `((?:(?:a=)?${var_js}`
-    }${prop_js}\\(a,\\d+\\);)+)` +
-    `return a\\.join\\(${empty_js}\\)` +
-    `\\}`
-);
-const reverse_regexp = new RegExp(`(?:^|,)(${key_js})${reverse_function}`, 'm');
-const slice_regexp = new RegExp(`(?:^|,)(${key_js})${slice_function}`, 'm');
-const splice_regexp = new RegExp(`(?:^|,)(${key_js})${splice_function}`, 'm');
-const swap_regexp = new RegExp(`(?:^|,)(${key_js})${swap_function}`, 'm');
-const ESCAPING_SEGMENT = [
-    // Strings
-    { start: '"', end: '"' },
-    { start: "'", end: "'" },
-    { start: '`', end: '`' },
+const js = {
+    var: '[a-zA-Z_\\$]\\w*',
+    single: `'[^'\\\\]*(:?\\\\[\\s\\S][^'\\\\]*)*'`,
+    duo: `"[^"\\\\]*(:?\\\\[\\s\\S][^"\\\\]*)*"`,
+    empty: `(?:''|"")`,
 
-    // RegEx
-    { start: '/', end: '/', startPrefix: /(^|[[{:;,])\s?$/ }
-];
+    reverse: ':function\\(a\\)\\{' + '(?:return )?a\\.reverse\\(\\)' + '\\}',
+    slice: ':function\\(a,b\\)\\{' + 'return a\\.slice\\(b\\)' + '\\}',
+    splice: ':function\\(a,b\\)\\{' + 'a\\.splice\\(0,b\\)' + '\\}',
+    swap: ':function\\(a,b\\)\\{' +
+    'var c=a\\[0\\];a\\[0\\]=a\\[b(?:%a\\.length)?\\];a\\[b(?:%a\\.length)?\\]=c(?:;return a)?' +
+    '\\}'
+}
+const quote = `(?:${js.single}|${js.duo})`;
+const prop = `(?:\\.${js.var}|\\[${quote}\\])`;
+const key = `(?:${js.var}|${quote})`;
+
+const regExp = {
+    reverse: new RegExp(`(?:^|,)(${key})${js.reverse}`, 'm'),
+    slice: new RegExp(`(?:^|,)(${key})${js.slice}`, 'm'),
+    splice: new RegExp(`(?:^|,)(${key})${js.splice}`, 'm'),
+    swap: new RegExp(`(?:^|,)(${key})${js.swap}`, 'm'),
+    
+
+    obj: new RegExp(`var (${js.var})=\\{((?:(?:${key}${js.reverse}|${key}${js.slice}|${key}${js.splice}|${key}${js.swap}),?\\r?\\n?)+)};`),
+    function: new RegExp(
+        `${
+            `function(?: ${js.var})?\\(a\\)\\{` + `a=a\\.split\\(${js.empty}\\);\\s*` + `((?:(?:a=)?${js.var}`
+        }${prop}\\(a,\\d+\\);)+)` +
+        `return a\\.join\\(${js.empty}\\)` +
+        `\\}`
+    )
+}
 //====================== ====================== ====================== ======================
 /**
  * @description Проводим некоторые манипуляции с signature
@@ -296,8 +294,8 @@ function DecodeSignature(tokens: string[], signature: string): string {
  * @param page {string} Страница html5player
  */
 function parseTokens(page: string): string[] {
-    const funAction = function_regexp.exec(page);
-    const objAction = obj_regexp.exec(page);
+    const funAction = regExp.function.exec(page);
+    const objAction = regExp.obj.exec(page);
 
     if (!funAction || !objAction) return null;
 
@@ -307,7 +305,7 @@ function parseTokens(page: string): string[] {
 
     let result: RegExpExecArray, tokens: string[] = [], keys: string[] = [];
 
-    [reverse_regexp, slice_regexp, splice_regexp, swap_regexp].forEach((res) => {
+    [regExp.reverse, regExp.slice, regExp.splice, regExp.swap].forEach((res) => {
         result = res.exec(objPage);
         keys.push(replacer(result));
     });
