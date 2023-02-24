@@ -25,5 +25,5 @@
     "sharder": "cd build && node -r tsconfig-paths/register src/Client/ShardManager.js",
     "build": "tsc -p ./tsconfig.json"
   },
-  "version": "2.5.2"
+  "version": "2.5.3"
 }
