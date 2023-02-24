@@ -8,7 +8,6 @@ import {EmbedMessages} from "./Embeds";
 import {Music} from "@db/Config.json";
 import {Queue} from "@Queue/Queue";
 
-
 if (Music.Buttons.length < 4) Error(`[Config]: Buttons has not found, find ${Music.Buttons.length}, need 4`);
 
 //Кнопки с которыми можно взаимодействовать

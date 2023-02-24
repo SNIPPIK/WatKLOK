@@ -6,6 +6,8 @@ import {consoleTime} from "@Client/Client";
 import {Music} from "@db/Config.json";
 import {Queue} from "@Queue/Queue";
 
+export {PlayerCycle, MessageCycle};
+
 //База данных
 const db = {
     // База с плеерами
@@ -24,7 +26,7 @@ const db = {
 //====================== ====================== ====================== ======================
 //                                 -= Players functions =-                                 //
 //====================== ====================== ====================== ======================
-export namespace PlayerCycle {
+namespace PlayerCycle {
     /**
      * @description Добавляем плеер в базу
      * @param player {AudioPlayer}
@@ -75,7 +77,7 @@ function playerCycleStep(): void {
 //====================== ====================== ====================== ======================
 //                                -= Messages functions =-                                 //
 //====================== ====================== ====================== ======================
-export namespace MessageCycle {
+namespace MessageCycle {
     /**
      * @description Добавляем сообщение в <Message[]>
      * @param message {message} Сообщение

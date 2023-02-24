@@ -1,12 +1,15 @@
-import {SongFinder, platform, platformSupporter} from "../SongSupport";
+import {SongFinder, platform, Platform} from "../SongSupport";
 import {DownloadManager} from "@Structures/Media/Uploader";
 import {ClientMessage} from "@Client/interactionCreate";
 import {DurationUtils} from "@Structures/Durations";
 import {httpsClient} from "@httpsClient";
 import {Music} from "@db/Config.json";
 
+export {Song, inAuthor, inPlaylist, inTrack};
+
+
 //Создаем трек для внутреннего использования
-export class Song {
+class Song {
     readonly #title: string;
     readonly #url: string;
     readonly #author: inAuthor;
@@ -20,7 +23,7 @@ export class Song {
     #resLink: string;
 
     public constructor(track: inTrack, author: ClientMessage["author"]) {
-        const platform = platformSupporter.getPlatform(track.url);
+        const platform = Platform.name(track.url);
         const {username, id, avatar} = author;
         const seconds = parseInt(track.duration.seconds);
 
@@ -36,7 +39,7 @@ export class Song {
         this.#image = !track.image || track.image?.url === "" ? {url: Music.images._image} : track.image;
         this.#requester = {username, id, avatarURL: () => `https://cdn.discordapp.com/avatars/${id}/${avatar}.webp`};
         this.#isLive = track.isLive;
-        this.#color = platformSupporter.getColor(platform);
+        this.#color = Platform.color(platform);
         this.#platform = platform;
         this.#resLink = track?.format?.url;
     };
@@ -109,7 +112,7 @@ interface SongRequester {
  * @description Пример получаемого трека
  * @type interface
  */
-export interface inTrack {
+interface inTrack {
     title: string;
     url: string;
     duration: {
@@ -137,7 +140,7 @@ export interface inTrack {
  * @description Пример получаемого автора трека
  * @type interface
  */
-export interface inAuthor {
+interface inAuthor {
     title: string;
     url: string | undefined;
     image?: {
@@ -152,7 +155,7 @@ export interface inAuthor {
  * @description Пример получаемого плейлиста
  * @type interface
  */
-export interface inPlaylist {
+interface inPlaylist {
     url: string;
     title: string;
     items: inTrack[];

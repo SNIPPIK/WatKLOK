@@ -7,10 +7,12 @@ import {Balancer} from "@Structures/Balancer";
 import {WatKLOK} from "@Client/Client";
 import {Bot} from '@db/Config.json';
 
+export {interactionCreate, UtilsMsg};
+
 //База с пользователями которые слишком часто используют команды
 const CoolDownBase = new Map<string, { time: number }>();
 
-export class interactionCreate extends Event<ClientInteraction, null> {
+class interactionCreate extends Event<ClientInteraction, null> {
     public readonly name = "interactionCreate";
     public readonly isEnable = true;
 
@@ -137,7 +139,7 @@ export class interactionCreate extends Event<ClientInteraction, null> {
 /**
  * @description Взаимодействия с сообщениями
  */
-export namespace UtilsMsg {
+namespace UtilsMsg {
     /**
      * @description Удаляем сообщение в зависимости от типа
      * @param message {ClientInteractive} Сообщение

@@ -11,7 +11,7 @@ import {FFspace} from "@FFspace";
 
 //Здесь все функции для взаимодействия с плеером
 export namespace Player {
-    export const play = toQueue;
+    export const handleContent = toQueue;
     /**
      * @description Продолжает воспроизведение музыки
      * @param message {ClientMessage} Сообщение с сервера

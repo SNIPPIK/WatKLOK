@@ -1,9 +1,11 @@
 import {existsSync, readFileSync, writeFile} from 'node:fs';
 
+export {getCookies, uploadCookie};
+
 /**
  * @description Получаем куки из json файла
  */
-export function getCookies(): string {
+function getCookies(): string {
     try {
         if (!existsSync(`db/Cookie.json`)) return null;
         return JSON.parse(readFileSync(`db/Cookie.json`, "utf8")).cookie;
@@ -14,7 +16,7 @@ export function getCookies(): string {
  * @description Сохраняем куки в json файл
  * @param Cookie {string | string[]} Что нужно добавить к текущему куки
  */
-export function uploadCookie(Cookie: string | string[]): void {
+function uploadCookie(Cookie: string | string[]): void {
     if (!existsSync(`db/Cookie.json`)) return null;
 
     try {

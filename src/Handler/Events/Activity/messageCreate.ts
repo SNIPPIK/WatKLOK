@@ -3,6 +3,7 @@ import {Event} from "@Structures/Handle/Event";
 import {Bot} from "@db/Config.json";
 
 const {runCommand} = interactionCreate;
+
 export class messageCreate extends Event<ClientMessage, null> {
     public readonly name = "messageCreate";
     public readonly isEnable = true;

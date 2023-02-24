@@ -3,6 +3,8 @@ import {request as httpsRequest, RequestOptions as ReqOptions} from "https";
 import {IncomingMessage, request as httpRequest} from "http";
 import {uploadCookie} from "./Cookie";
 
+export {Request, RequestOptions};
+
 const decoderBase = {
     "gzip": createGunzip,
     "br": createBrotliDecompress,
@@ -14,7 +16,7 @@ const protocols = {
     "https": httpsRequest //https запрос
 };
 
-export namespace Request {
+namespace Request {
     /**
      * @description Создаем запрос по ссылке, модифицируем по необходимости
      * @param url {string} Ссылка
@@ -104,7 +106,7 @@ function extractPage(decoder: Decoder | IncomingMessage): Promise<string> {
 }
 
 type Decoder = BrotliDecompress | Gunzip | Deflate;
-export interface RequestOptions extends ReqOptions {
+interface RequestOptions extends ReqOptions {
     body?: string;
     method?: "POST" | "GET" | "HEAD";
 }
