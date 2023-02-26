@@ -2,7 +2,7 @@
   "APIs": {
     "limits": {
       "playlist": 50,
-      "search": 15,
+      "search": 5,
       "author": 5
     },
     "showErrors": true,
