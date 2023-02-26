@@ -1,16 +1,18 @@
 import {ClientMessage, EmbedConstructor} from "@Client/interactionCreate";
+import {inPlaylist, inTrack, Song} from "@Queue/Song";
 import {DurationUtils} from "@Structures/Durations";
 import {replacer} from "@Structures/Handle/Command";
-import {inPlaylist, Song} from "@Queue/Song";
+import { Platform } from "@Structures/SongSupport";
 import {WatKLOK} from "@Client/Client";
 import {Music} from "@db/Config.json";
 import {Queue} from "@Queue/Queue";
 import {Colors} from "discord.js";
 
+
 //Здесь хранятся все EMBED данные о сообщениях (Используется в Managers/Player/Messages)
 export namespace EmbedMessages {
     /**
-    * @description Message сообщение о текущем треке
+    * @description JSON<EMBED> для отображения текущего трека
     * @param client {WatKLOK} Клиент
     * @param queue {Queue} Очередь
     */
@@ -26,7 +28,7 @@ export namespace EmbedMessages {
     }
     //====================== ====================== ====================== ======================
     /**
-     * @description Message сообщение о добавленном треке
+     * @description JSON<EMBED> для отображения добавленного трека
      * @param client {WatKLOK} Клиент
      * @param color {Song<color>} Цвет
      * @param song {Song} Трек который был добавлен
@@ -45,7 +47,7 @@ export namespace EmbedMessages {
     }
     //====================== ====================== ====================== ======================
     /**
-     * @description Создаем Message сообщение для отправки в чат
+     * @description JSON<EMBED> для отображения данных плейлиста
      * @param client {WatKLOK} Бот
      * @param DisAuthor {ClientMessage.author} Автор сообщения
      * @param playlist {inPlaylist} Плейлист
@@ -63,7 +65,7 @@ export namespace EmbedMessages {
     }
     //====================== ====================== ====================== ======================
     /**
-    * @description Message сообщение о добавленном треке
+    * @description JSON<EMBED> для отображения ошибки
     * @param client {WatKLOK} Клиент
     * @param color {Song<color>} Цвет
     * @param songs {Queue<songs>} Все треки
@@ -77,6 +79,34 @@ export namespace EmbedMessages {
             description: `\n[${title}](${url})\n\`\`\`js\n${err}...\`\`\``,
             author: { name: AuthorSong, url: author.url, iconURL: choiceImage(author.isVerified) },
             footer: { text: `${requester.username} | ${DurationUtils.getTimeQueue(songs)} | 🎶: ${songs.length}`, iconURL: requester?.avatarURL() ?? client.user.displayAvatarURL() }
+        };
+    }
+    //====================== ====================== ====================== ======================
+    /**
+     * @description JSON<Embed> для отображения найденных треков
+     * @param tracks {inTracks[]} Найденные треки
+     * @param platform {platform} Платформа на которой ищем
+     * @param author {message.author} Автор запроса
+     */
+    export function toSearch(tracks: inTrack[], platform: string, author: ClientMessage["author"]): EmbedConstructor {
+        return {
+            color: Platform.color(platform as any),
+            title: `Найдено ${tracks.length}`,
+            footer: { text: `${author.username} | Платформа: ${platform}`, iconURL: author.avatarURL() },
+            timestamp: new Date(),
+
+            fields: tracks.map((track, index) => {
+                const duration = platform === "YOUTUBE" ? track.duration.seconds : DurationUtils.ParsingTimeToString(parseInt(track.duration.seconds));
+                const title = `[${replacer.replaceText(track.title, 80, true)}](${track.url})`; //Название трека
+                const author = `${replacer.replaceText(track.author.title, 30, true)}`; //Автор трека
+
+                index++;
+
+                return {
+                    name: `${index}: _${author} | ${duration ?? "LIVE"}_`,
+                    value: `__**❯** ${title}__\n`
+                }
+            }),
         };
     }
 }

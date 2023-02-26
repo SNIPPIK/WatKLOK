@@ -1,4 +1,4 @@
-import {ActivityType, Client, IntentsBitField, Options, Collection} from "discord.js";
+import {Client, IntentsBitField, Options, Collection, ActivityType} from "discord.js";
 import {ClientMessage} from "@Client/interactionCreate";
 import {DurationUtils} from "@Structures/Durations";
 import {Bot, Channels, APIs} from "@db/Config.json";
@@ -105,10 +105,10 @@ class WatKLOK extends Client {
                 //IntentsBitField.Flags.GuildMembers,
 
             ],
-            ws: { properties: { browser: "Web" as "Discord iOS" | "Web" } },
+            shards: "auto",
             presence: {
                 activities: [{
-                    name: "Music 🎶",
+                    name: "music on web",
                     type: ActivityType.Listening
                 }]
             }

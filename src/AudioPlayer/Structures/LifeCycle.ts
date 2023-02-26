@@ -1,12 +1,12 @@
-import {EmbedMessages} from "@Structures/Messages/Embeds";
-import {ClientMessage} from "@Client/interactionCreate";
-import {AudioPlayer} from "@Structures/Player";
-import {Balancer} from "@Structures/Balancer";
-import {consoleTime} from "@Client/Client";
-import {Music} from "@db/Config.json";
-import {Queue} from "@Queue/Queue";
+import { EmbedMessages } from "@Structures/Messages/Embeds";
+import { ClientMessage } from "@Client/interactionCreate";
+import { AudioPlayer } from "@Structures/Player";
+import { Balancer } from "@Structures/Balancer";
+import { consoleTime } from "@Client/Client";
+import { Music } from "@db/Config.json";
+import { Queue } from "@Queue/Queue";
 
-export {PlayerCycle, MessageCycle};
+export { PlayerCycle, MessageCycle };
 
 //База данных
 const db = {
@@ -59,20 +59,24 @@ namespace PlayerCycle {
             db.timeout = null;
         }
     }
-}
-//Жизненный цикл плееров
-function playerCycleStep(): void {
-    setImmediate((): void => {
-        const players = db.pls.filter((player) => player.state.status === "read");
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Жизненный цикл плееров
+     */
+    function playerCycleStep(): void {
+        setImmediate((): void => {
+            const players = db.pls.filter((player) => player.state.status === "read");
 
-        try {
-            db.time += 20;
-            for (const player of players) player["preparePacket"]();
-        } finally {
-            db.timeout = setTimeout(playerCycleStep, db.time - Date.now());
-        }
-    })
+            try {
+                db.time += 20;
+                for (const player of players) player["preparePacket"]();
+            } finally {
+                db.timeout = setTimeout(playerCycleStep, db.time - Date.now());
+            }
+        })
+    }
 }
+
 
 //====================== ====================== ====================== ======================
 //                                -= Messages functions =-                                 //
@@ -115,38 +119,41 @@ namespace MessageCycle {
             }
         }
     }
-}
-//Жизненый цикл сообщений
-function messageCycleStep(): void {
-    setImmediate((): void => {
-        try {
-            setTimeout(() => db.msg.forEach((message) => Balancer.push(() => editMessage(message))), 1e3);
-        } finally { db.timeout_m = setTimeout(messageCycleStep, Music.AudioPlayer.updateMessage < 10 ? 15e3 : Music.AudioPlayer.updateMessage * 1e3); }
-    });
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Обновляем сообщение
- * @param message {ClientMessage} Сообщение
- * @requires {MessageCycle}
- */
-function editMessage(message: ClientMessage): void {
-    const {client, guild} = message;
-    const queue: Queue = client.queue.get(guild.id);
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Обновляем сообщение
+     * @param message {ClientMessage} Сообщение
+     * @requires {MessageCycle}
+     */
+    function editMessage(message: ClientMessage): void {
+        const { client, guild } = message;
+        const queue: Queue = client.queue.get(guild.id);
 
-    //Если очереди нет или сообщение нельзя отредактировать, то удаляем сообщение
-    if (!queue || !queue?.song) return MessageCycle.toRemove(message.channelId);
+        //Если очереди нет или сообщение нельзя отредактировать, то удаляем сообщение
+        if (!queue || !queue?.song) return MessageCycle.toRemove(message.channelId);
 
-    //Если у плеера статус при котором нельзя обновлять сообщение
-    if (!queue.player.hasUpdate) return;
+        //Если у плеера статус при котором нельзя обновлять сообщение
+        if (!queue.player.hasUpdate) return;
 
-    setImmediate(() => {
-        const CurrentPlayEmbed = EmbedMessages.toPlaying(queue);
+        setImmediate(() => {
+            const CurrentPlayEmbed = EmbedMessages.toPlaying(queue);
 
-        //Обновляем сообщение
-        return message.edit({embeds: [CurrentPlayEmbed]}).catch((e) => {
-            if (e.message === "Unknown Message") MessageCycle.toRemove(message.channelId);
-            consoleTime(`[MessageEmitter]: [function: UpdateMessage]: ${e.message}`);
+            //Обновляем сообщение
+            return message.edit({ embeds: [CurrentPlayEmbed] }).catch((e) => {
+                if (e.message === "Unknown Message") MessageCycle.toRemove(message.channelId);
+                consoleTime(`[MessageEmitter]: [function: UpdateMessage]: ${e.message}`);
+            });
         });
-    });
+    }
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Жизненый цикл сообщений
+     */
+    function messageCycleStep(): void {
+        setImmediate((): void => {
+            try {
+                setTimeout(() => db.msg.forEach((message) => Balancer.push(() => editMessage(message))), 1e3);
+            } finally { db.timeout_m = setTimeout(messageCycleStep, Music.AudioPlayer.updateMessage < 10 ? 15e3 : Music.AudioPlayer.updateMessage * 1e3); }
+        });
+    }
 }

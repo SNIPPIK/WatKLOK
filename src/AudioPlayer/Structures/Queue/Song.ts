@@ -8,7 +8,9 @@ import {Music} from "@db/Config.json";
 export {Song, inAuthor, inPlaylist, inTrack};
 
 
-//Создаем трек для внутреннего использования
+/**
+ * @description Создаем трек для внутреннего использования
+ */
 class Song {
     readonly #title: string;
     readonly #url: string;
@@ -23,8 +25,9 @@ class Song {
     #resLink: string;
 
     public constructor(track: inTrack, author: ClientMessage["author"]) {
-        const platform = Platform.name(track.url);
         const {username, id, avatar} = author;
+
+        const platform = Platform.name(track.url);
         const seconds = parseInt(track.duration.seconds);
 
         this.#title = track.title;
@@ -115,24 +118,16 @@ interface SongRequester {
 interface inTrack {
     title: string;
     url: string;
-    duration: {
-        seconds: string;
-    };
+    duration: { seconds: string; };
     image?: { url: string; height?: number; width?: number };
     author: {
         title: string;
-        url: string | undefined;
-        image?: {
-            url: string | undefined;
-            width?: number;
-            height?: number;
-        };
+        url: string | null;
+        image?: { url: string | null;  width?: number; height?: number; };
         isVerified?: boolean;
     },
-    format?: { url: string | undefined };
+    format?: { url: string | null };
     isLive?: boolean;
-    isPrivate?: boolean;
-    isValid?: boolean;
     PrevFile?: string;
 }
 //====================== ====================== ====================== ======================
@@ -143,11 +138,7 @@ interface inTrack {
 interface inAuthor {
     title: string;
     url: string | undefined;
-    image?: {
-        url: string | undefined;
-        width?: number;
-        height?: number;
-    };
+    image?: { url: string | undefined; width?: number; height?: number; };
     isVerified?: boolean;
 }
 //====================== ====================== ====================== ======================
@@ -159,8 +150,6 @@ interface inPlaylist {
     url: string;
     title: string;
     items: inTrack[];
-    image: {
-        url: string;
-    };
+    image: { url: string; };
     author?: inAuthor;
 }

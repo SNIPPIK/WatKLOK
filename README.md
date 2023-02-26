@@ -46,7 +46,7 @@
     VK_TOKEN="" #Vk auth token (user token, not a bot token)
     YANDEX="" #Ссылка для получения токена https://oauth.yandex.ru/authorize?response_type=token&client_id=23cabbbdc6cd418abb4b39c32c41195d
    ```
-2. [`Cookie.json`](db/Cookie.json) | необходим для видео 18+ (**YouTube**)
+2. [`Cookie.json`](db/Cookie.json) | необходим для снятия ограничений **YouTube**
     ```json5
    {
       "Cookie": ""
@@ -59,7 +59,7 @@
          //Лимиты размеров (плейлиста, поиска, топ треков автора)
          "limits": {
             "playlist": 50, //playlist, album
-            "search": 15,
+            "search": 5, //Рекомендуется 5
             "author": 5
          },
 

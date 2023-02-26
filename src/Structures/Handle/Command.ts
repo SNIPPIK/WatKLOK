@@ -1,11 +1,12 @@
 import { ApplicationCommandOptionType, PermissionResolvable, BaseApplicationCommandOptionsData } from "discord.js";
 import { ClientInteraction, ClientInteractive, ClientMessage, EmbedConstructor } from "@Client/interactionCreate";
 
+export {replacer, Command, ResolveData, messageUtilsOptions};
 
 /**
  * @description Изменение данных
  */
-export namespace replacer {
+namespace replacer {
     //Обрезает текст до необходимых значений
     export function replaceText(text: string, value: number | any, clearText: boolean = false): string {
         try {
@@ -21,7 +22,7 @@ export namespace replacer {
 /**
  * @description Как выглядит команда
  */
-export class Command {
+class Command {
     public constructor(options: {
         //Название команды
         name: string;
@@ -90,7 +91,7 @@ interface InteractiveOptions extends BaseApplicationCommandOptionsData {
 /**
  * @description Что может выходить из команды
  */
-export type ResolveData = ResolveEmbed | ResolveText | ResolveMenu;
+type ResolveData = ResolveEmbed | ResolveText | ResolveMenu;
 //====================== ====================== ====================== ======================
 /**
  * @description Если команда подразумевает отправление готового EMBED сообщения
@@ -121,7 +122,7 @@ interface ResolveMenu {
 /**
  * @description Аргументы для отправления сообщения
  */
-export interface messageUtilsOptions {
+interface messageUtilsOptions {
     text: string | EmbedConstructor;
     color?: ResolveText["color"];
     message: ClientMessage | ClientInteraction;

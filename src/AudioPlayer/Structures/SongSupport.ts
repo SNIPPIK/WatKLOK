@@ -3,12 +3,11 @@ import { ClientMessage, UtilsMsg } from "@Client/interactionCreate";
 import { Music, ReactionMenuSettings, APIs } from "@db/Config.json";
 import { inPlaylist, inTrack, Song } from "@Queue/Song";
 import { DurationUtils } from "@Structures/Durations";
-import { replacer } from "@Structures/Handle/Command";
-import { ArraySort } from "@Structures/ArraySort";
 import { Balancer } from "@Structures/Balancer";
 import { Colors } from "discord.js";
 import { FFprobe } from "@FFspace";
 import { env } from "@env";
+import { EmbedMessages } from "./Messages/Embeds";
 
 const emoji: string = ReactionMenuSettings.emojis.cancel;
 
@@ -253,9 +252,6 @@ namespace Platform {
 }
 
 
-
-
-
 //====================== ====================== ====================== ======================
 /*                             Namespace for find url resource                             */
 //====================== ====================== ====================== ======================
@@ -284,37 +280,34 @@ namespace SongFinder {
 
         return track;
     }
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Ищем трек на yandex music, если нет токена yandex music или yandex зажмотил ссылку то ищем на YouTube
- * @param nameSong {string} Название трека
- * @param duration {number} Длительность трека
- * @param platform {platform} Платформа
- */
-function FindTrack(nameSong: string, duration: number, platform: platform): Promise<string> {
-    const handlePlatform = Platform.isFailed(platform) || Platform.noAudio(platform) ? Platform.isFailed("YANDEX") ? "YOUTUBE" : "YANDEX" : platform;
-    const platformCallbacks = Platforms.all.find((info) => info.platform === handlePlatform).callbacks;
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Ищем трек на yandex music, если нет токена yandex music или yandex зажмотил ссылку то ищем на YouTube
+     * @param nameSong {string} Название трека
+     * @param duration {number} Длительность трека
+     * @param platform {platform} Платформа
+     */
+    function FindTrack(nameSong: string, duration: number, platform: platform): Promise<string> {
+        const handlePlatform = Platform.isFailed(platform) || Platform.noAudio(platform) ? Platform.isFailed("YANDEX") ? "YOUTUBE" : "YANDEX" : platform;
+        const platformCallbacks = Platforms.all.find((info) => info.platform === handlePlatform).callbacks;
 
-    return platformCallbacks.search(nameSong).then((Tracks: inTrack[]) => {
-        //Фильтруем треки оп времени
-        const FindTracks: inTrack[] = Tracks.filter((track: inTrack) => {
-            const DurationSong: number = (handlePlatform === "YOUTUBE" ? DurationUtils.ParsingTimeToNumber : parseInt)(track.duration.seconds);
+        return platformCallbacks.search(nameSong).then((Tracks: inTrack[]) => {
+            //Фильтруем треки оп времени
+            const FindTracks: inTrack[] = Tracks.filter((track: inTrack) => {
+                const DurationSong: number = (handlePlatform === "YOUTUBE" ? DurationUtils.ParsingTimeToNumber : parseInt)(track.duration.seconds);
 
-            //Как надо фильтровать треки
-            return DurationSong === duration || DurationSong < duration + 7 && DurationSong > duration - 5 || DurationSong < duration + 27 && DurationSong > duration - 27;
+                //Как надо фильтровать треки
+                return DurationSong === duration || DurationSong < duration + 7 && DurationSong > duration - 5 || DurationSong < duration + 27 && DurationSong > duration - 27;
+            });
+
+            //Если треков нет
+            if (FindTracks?.length < 1) return null;
+
+            //Получаем данные о треке
+            return platformCallbacks.track(FindTracks[0].url).then((video: inTrack) => video?.format?.url) as Promise<string>;
         });
-
-        //Если треков нет
-        if (FindTracks?.length < 1) return null;
-
-        //Получаем данные о треке
-        return platformCallbacks.track(FindTracks[0].url).then((video: inTrack) => video?.format?.url) as Promise<string>;
-    });
+    }
 }
-
-
-
 
 
 //====================== ====================== ====================== ======================
@@ -348,109 +341,95 @@ namespace toPlayer {
             return runCallback(callback(argument) as Promise<inTrack | inPlaylist | inTrack[]>, platform, message);
         });
     }
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Показываем данные о том что будет получено
- * @param platform {platform} Платформа с кторой получаем данные
- * @param type {callback} Тип запроса
- * @param message {ClientMessage} Сообщение с сервера
- */
-function sendGettingData(platform: platform, type: callback, message: ClientMessage): void {
-    //Отправляем сообщение о текущем запросе
-    UtilsMsg.createMessage({ text: `${message.author}, производится запрос в **${platform.toLowerCase()}.${type}**`, color: "Grey", message });
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Показываем данные о том что будет получено
+     * @param platform {platform} Платформа с кторой получаем данные
+     * @param type {callback} Тип запроса
+     * @param message {ClientMessage} Сообщение с сервера
+     */
+    function sendGettingData(platform: platform, type: callback, message: ClientMessage): void {
+        //Отправляем сообщение о текущем запросе
+        UtilsMsg.createMessage({ text: `${message.author}, производится запрос в **${platform.toLowerCase()}.${type}**`, color: "Grey", message });
 
-    //Если у этой платформы нельзя получить исходный файл музыки, то сообщаем
-    if (Platform.noAudio(platform) && APIs.showWarningAudio) {
-        const workPlatform = Platform.isFailed("YANDEX") ? "youtube.track" : "yandex.track";
+        //Если у этой платформы нельзя получить исходный файл музыки, то сообщаем
+        if (Platform.noAudio(platform) && APIs.showWarningAudio) {
+            const workPlatform = Platform.isFailed("YANDEX") ? "youtube.track" : "yandex.track";
 
-        UtilsMsg.createMessage({ text: `⚠️ Warning | [${platform}]\n\nЯ не могу получать исходные файлы музыки у этой платформы.\nЗапрос будет произведен в ${workPlatform}`, color: "Yellow", codeBlock: "css", message });
+            UtilsMsg.createMessage({ text: `⚠️ Warning | [${platform}]\n\nЯ не могу получать исходные файлы музыки у этой платформы.\nЗапрос будет произведен в ${workPlatform}`, color: "Yellow", codeBlock: "css", message });
+        }
+    }
+    //====================== ====================== ====================== ======================
+    /**
+     * 
+     * @param callback {Function} Обрабатываемая функция получения данных
+     * @param platform {platform} Платформа с кторой получаем данные
+     * @param message  {ClientMessage} Сообщение с сервера
+     */
+    function runCallback(callback: Promise<inTrack | inTrack[] | inPlaylist>, platform: platform, message: ClientMessage): void {
+        const { author, client } = message;
+        const VoiceChannel = message.member.voice.channel;
+
+        callback.catch((e) => {
+            if (e.length > 2e3) UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e.message}`, color: "DarkRed", codeBlock: "css", message });
+            else UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e}`, color: "DarkRed", codeBlock: "css", message });
+        });
+        callback.then((data: inTrack | inPlaylist | inTrack[]): void => {
+            if (!data) return UtilsMsg.createMessage({ text: `${author}, данные не были найдены!`, color: "DarkRed", message });
+
+            //Если пользователь ищет трек, но найден всего один
+            if (data instanceof Array && data.length === 1) return client.player.handleContent(message, VoiceChannel, data[0]);
+
+            //Если пользователь ищет трек
+            else if (data instanceof Array) return searchTracks.toSend(data, platform, message);
+
+            //Загружаем трек или плейлист в GuildQueue
+            return client.player.handleContent(message, VoiceChannel, data);
+        });
     }
 }
+
+
 //====================== ====================== ====================== ======================
-/**
- * 
- * @param callback {Function} Обрабатываемая функция получения данных
- * @param platform {platform} Платформа с кторой получаем данные
- * @param message  {ClientMessage} Сообщение с сервера
- */
-function runCallback(callback: Promise<inTrack | inTrack[] | inPlaylist>, platform: platform, message: ClientMessage): void {
-    const { author, client } = message;
-    const VoiceChannel = message.member.voice.channel;
-
-    callback.catch((e) => {
-        if (e.length > 2e3) UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e.message}`, color: "DarkRed", codeBlock: "css", message });
-        else UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e}`, color: "DarkRed", codeBlock: "css", message });
-    });
-    callback.then((data: inTrack | inPlaylist | inTrack[]): void => {
-        if (!data) return UtilsMsg.createMessage({ text: `${author}, данные не были найдены!`, color: "DarkRed", message });
-
-        //Если пользователь ищет трек, но найден всего один
-        if (data instanceof Array && data.length === 1) return client.player.handleContent(message, VoiceChannel, data[0]);
-
-        //Если пользователь ищет трек
-        else if (data instanceof Array) return toSend(data, { message, platform });
-
-        //Загружаем трек или плейлист в GuildQueue
-        return client.player.handleContent(message, VoiceChannel, data);
-    });
-}
+/*                        Namespace to send search message to channel                      */
 //====================== ====================== ====================== ======================
-/**
- * @description Отправляем сообщение о том что удалось найти
- * @param results {inTrack[]} Результаты поиска
- * @param options {Options}
- * @requires {Reaction, deleteMessage}
- */
-function toSend(results: inTrack[], options: { platform?: platform, message: ClientMessage }): void {
-    const { message, platform } = options;
-    const { author, client } = message;
+namespace searchTracks {
+    /**
+     * @description Оправляем сообщение о том что было найдено
+     * @param tracks {inTracks[]} Найденные треки
+     * @param platform {platform} Платформа на которой ищем
+     * @param message {ClientMessage} Сообщение с сервера
+     * @returns 
+     */
+    export function toSend(tracks: inTrack[], platform: platform, message: ClientMessage) {
+        const { author, client } = message;
 
-    if (results.length < 1) return UtilsMsg.createMessage({ text: `${author} | Я не смог найти музыку с таким названием. Попробуй другое название!`, color: "DarkRed", message });
+        if (tracks.length < 1) return UtilsMsg.createMessage({ text: `${author} | Я не смог найти музыку с таким названием. Попробуй другое название!`, color: "DarkRed", message });
 
-    const choice = `Выбери от 1 до ${results.length}`;
-    const requester = `[Платформа: ${platform} | Запросил: ${author.username}]`;
-    const songsList = toSortingList(results, platform);
-    //Отправляем сообщение
-    message.channel.send(`\`\`\`css\n${choice}\n${requester}\n\n${songsList}\`\`\``).then((msg: any) => {
-        //Создаем сборщик
-        const collector = UtilsMsg.createCollector(msg.channel, (m) => {
-            const messageNum = parseInt(m.content);
-            return !isNaN(messageNum) && messageNum <= results.length && messageNum > 0 && m.author.id === author.id;
-        });
-        const clear = () => { UtilsMsg.deleteMessage(msg, 1e3); collector?.stop(); }
+        message.channel.send({ embeds: [EmbedMessages.toSearch(tracks, platform, author)] }).then((msg) => {
+            //Создаем сборщик
+            const collector = UtilsMsg.createCollector(msg.channel, (m) => {
+                const messageNum = parseInt(m.content);
+                return !isNaN(messageNum) && messageNum <= tracks.length && messageNum > 0 && m.author.id === author.id;
+            });
+            const clear = () => { UtilsMsg.deleteMessage(msg, 1e3); collector?.stop(); }
 
-        //Делаем что-бы при нажатии на эмодзи удалялся сборщик
-        UtilsMsg.createReaction(msg, emoji, (reaction, user) => reaction.emoji.name === emoji && user.id !== client.user.id, clear, 30e3);
-        //Если пользователь нечего не выбрал, то удаляем сборщик и сообщение через 30 сек
-        setTimeout(clear, 30e3);
+            //Делаем что-бы при нажатии на эмодзи удалялся сборщик
+            UtilsMsg.createReaction(msg, emoji, (reaction, user) => reaction.emoji.name === emoji && user.id !== client.user.id, clear, 30e3);
+            //Если пользователь нечего не выбрал, то удаляем сборщик и сообщение через 30 сек
+            setTimeout(clear, 30e3);
 
-        //Что будет делать сборщик после нахождения числа
-        collector.once("collect", (m: any): void => {
-            setImmediate(() => {
-                //Чистим чат и удаляем сборщик
-                UtilsMsg.deleteMessage(m); clear(); 
+            //Что будет делать сборщик после нахождения числа
+            collector.once("collect", (m: any): void => {
+                setImmediate(() => {
+                    //Чистим чат и удаляем сборщик
+                    UtilsMsg.deleteMessage(m); clear();
 
-                //Получаем ссылку на трек, затем включаем его
-                const url = results[parseInt(m.content) - 1].url;
-                return toPlayer.play(message as any, url);
+                    //Получаем ссылку на трек, затем включаем его
+                    const url = tracks[parseInt(m.content) - 1].url;
+                    return toPlayer.play(message as any, url);
+                });
             });
         });
-    });
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Получаем лист с треками
- * @param results {inTrack[]} Результаты поиска
- * @param platform {platform} Платформа с кторой получаем данные
- */
-function toSortingList(results: inTrack[], platform: platform): string[] {
-    return ArraySort<inTrack>(15, results, (track, index) => {
-        const Duration = platform === "YOUTUBE" ? track.duration.seconds : DurationUtils.ParsingTimeToString(parseInt(track.duration.seconds)); //Проверяем надо ли конвертировать время
-        const NameTrack = `[${replacer.replaceText(track.title, 80, true)}]`; //Название трека
-        const DurationTrack = `[${Duration ?? "LIVE"}]`; //Длительность трека
-        const AuthorTrack = `[${replacer.replaceText(track.author.title, 12, true)}]`; //Автор трека
-
-        return `${index + 1} ➜ ${DurationTrack} | ${AuthorTrack} | ${NameTrack}`;
-    }, "\n");
+    }
 }
