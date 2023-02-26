@@ -199,6 +199,7 @@ function getFilters(AudioFilters: AudioFilters, seek: number): string {
 
     //Включать более плавное включение музыки
     if (seek === 0) response.push("afade=t=in:st=0:d=3");
+    response.push(`volume=${Music.Audio.volume / 100}`);
 
     if (AudioFilters) parseFilters(AudioFilters, (fl, filter) => {
         if (filter) {

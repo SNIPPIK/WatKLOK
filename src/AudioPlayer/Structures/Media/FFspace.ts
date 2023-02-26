@@ -55,6 +55,7 @@ class FFmpeg extends Duplex {
      * @description Удаляем все что не нужно
      */
     public _destroy = (): void => {
+        this.removeAllListeners();
         if (!super.destroyed) super.destroy();
 
         if (this.deletable) {
