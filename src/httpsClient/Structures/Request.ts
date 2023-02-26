@@ -54,9 +54,7 @@ namespace Request {
      * @requires {Request}
      */
     export function parseBody(options?: RequestOptions): Promise<string | Error> {
-        return new Promise(async (resolve) => {
-            const request = await Request(options);
-
+        return new Promise((resolve) => Request(options).then((request) => {
             if (request instanceof Error) return resolve(request);
 
             const encoding = request.headers["content-encoding"] as "br" | "gzip" | "deflate";
@@ -64,7 +62,7 @@ namespace Request {
 
             if (!decoder) return resolve(extractPage(request));
             return resolve(extractPage(request.pipe(decoder)));
-        });
+        }));
     }
     //====================== ====================== ====================== ======================
     /**
@@ -74,9 +72,7 @@ namespace Request {
      * @requires {parseBody}
      */
     export function parseJson(options?: RequestOptions): Promise<null | any> {
-        return new Promise(async (resolve) => {
-            const body = await parseBody(options);
-
+        return new Promise((resolve) => parseBody(options).then(body => {
             if (body instanceof Error) return resolve(null);
 
             try {
@@ -85,7 +81,7 @@ namespace Request {
                 console.log(`[httpsClient]: Invalid json response body at ${options.host} reason: ${e.message}`);
                 return resolve(null);
             }
-        });
+        }));
     }
 }
 //====================== ====================== ====================== ======================
