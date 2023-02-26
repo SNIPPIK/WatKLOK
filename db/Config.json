@@ -42,6 +42,7 @@
       "button": "⚪"
     },
     "Audio": {
+      "volume": 100,
       "bitrate": "256k"
     },
     "images": {
