@@ -42,8 +42,7 @@
       "button": "⚪"
     },
     "Audio": {
-      "bitrate": "256k",
-      "transition": false
+      "bitrate": "256k"
     },
     "images": {
       "ver": "https://media.discordapp.net/attachments/815897363188154408/1028014390299082852/Ok.png",
