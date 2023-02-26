@@ -6,7 +6,7 @@ import {toQueue} from "@Queue/Queue";
 import {Voice} from "@VoiceManager";
 import {Queue} from "@Queue/Queue";
 import {Song} from "@Queue/Song";
-import {FFspace} from "@FFspace";
+import {Filter} from "@FFspace";
 
 
 //Здесь все функции для взаимодействия с плеером
@@ -138,7 +138,7 @@ export namespace Player {
      * @param filter {typeof FFspace.getFilter} Сам фильтр
      * @param arg
      */
-    export function filter(message: ClientMessage, filter: FFspace.Filter, arg: number): Promise<void> | void {
+    export function filter(message: ClientMessage, filter: Filter, arg: number): Promise<void> | void {
         const {client, guild, author} = message;
         const queue: Queue = client.queue.get(guild.id);
         const {player, play}: Queue = queue;

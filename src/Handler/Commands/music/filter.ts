@@ -2,7 +2,7 @@ import {ClientMessage, EmbedConstructor} from "@Client/interactionCreate";
 import {ApplicationCommandOptionType, Colors} from "discord.js";
 import {Command, ResolveData} from "@Structures/Handle/Command";
 import {ReactionMenu} from "@Structures/ReactionMenu";
-import {FFspace} from "@Structures/Media/FFspace";
+import {getFilter} from "@Structures/Media/FFspace";
 import {ArraySort} from "@Structures/ArraySort";
 import Filters from "@db/Filters.json";
 import {Queue} from "@Queue/Queue";
@@ -83,7 +83,7 @@ export class FilterCommand extends Command {
         } else if (FilterName === "all") return this.ReactionMenuFilters(Filters, message);
 
         //Получаем данные о фильтре
-        const Filter = FFspace.getFilter(FilterName);
+        const Filter = getFilter(FilterName);
 
         if (Filter) client.player.filter(message, Filter, FilterArg);
         else return {text: `${author.username}, у меня нет такого фильтра. Все фильтры - all`, color: "Yellow", codeBlock: "css"};

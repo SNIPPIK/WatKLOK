@@ -1,9 +1,9 @@
 import {existsSync, createWriteStream, rename} from "fs";
-import {httpsClient} from "@httpsClient";
 import { Balancer } from "@Structures/Balancer";
-import {FileSystem} from "@FileSystem";
+import {httpsClient} from "@httpsClient";
 import { Music } from "@db/Config.json";
 import { IncomingMessage } from "http";
+import {FileSystem} from "@FileSystem";
 import {Song} from "@Queue/Song";
 
 type DownloadSong = {title: string, author: string, duration: number, resource: string};

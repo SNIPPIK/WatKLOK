@@ -7,7 +7,7 @@ import { replacer } from "@Structures/Handle/Command";
 import { ArraySort } from "@Structures/ArraySort";
 import { Balancer } from "@Structures/Balancer";
 import { Colors } from "discord.js";
-import { FFspace } from "@FFspace";
+import { FFprobe } from "@FFspace";
 import { env } from "@env";
 
 const emoji: string = ReactionMenuSettings.emojis.cancel;
@@ -122,7 +122,7 @@ const Platforms = {
 
             //Доступные запросы для этой платформы
             callbacks: {
-                track: (url: string): Promise<inTrack> => FFspace.FFprobe(url).then((trackInfo: any) => {
+                track: (url: string): Promise<inTrack> => FFprobe(url).then((trackInfo: any) => {
                     //Если не найдена звуковая дорожка
                     if (!trackInfo) return null;
 

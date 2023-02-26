@@ -1,6 +1,6 @@
+import {FFmpeg, getFilter, Arguments} from "@FFspace";
 import {Music, Debug} from "@db/Config.json";
 import {consoleTime} from "@Client/Client";
-import {FFspace} from "@FFspace";
 import {opus} from "prism-media";
 import {Readable} from "stream";
 import fs from "fs";
@@ -11,7 +11,7 @@ type FFmpegOptions = {seek?: number, filters?: AudioFilters};
 export class OpusAudio {
     private _opus: opus.OggDemuxer = new opus.OggDemuxer({autoDestroy: true});
     private _streams: Array<Readable> = [];
-    private _ffmpeg: FFspace.FFmpeg;
+    private _ffmpeg: FFmpeg;
 
     private _duration: number = 0;
     private _readable: boolean = false;
@@ -37,8 +37,8 @@ export class OpusAudio {
      * @type {FFspace.FFmpeg}
      * @private
      */
-    private get ffmpeg() { return this._ffmpeg as FFspace.FFmpeg; };
-    private set ffmpeg(ffmpeg: FFspace.FFmpeg) { this._ffmpeg = ffmpeg; };
+    private get ffmpeg() { return this._ffmpeg as FFmpeg; };
+    private set ffmpeg(ffmpeg: FFmpeg) { this._ffmpeg = ffmpeg; };
     //====================== ====================== ====================== ======================
     /**
      * @description opus.OggDemuxer
@@ -54,7 +54,7 @@ export class OpusAudio {
         const resource = choiceResource(path);
 
         //Создаем ffmpeg
-        this.ffmpeg = new FFspace.FFmpeg(choiceArgs(path, typeof resource, options));
+        this.ffmpeg = new FFmpeg(choiceArgs(path, typeof resource, options));
 
         //Если resource является Readable то загружаем его в ffmpeg
         if (resource instanceof Readable) {
@@ -137,7 +137,7 @@ function choiceResource(path: string): string | Readable {
  * @param resource {string | Readable} Путь или поток
  * @param options {FFmpegOptions} Модификаторы для ffmpeg
  */
-function choiceArgs(url: string, resource: string | Readable, options: FFmpegOptions): FFspace.Arguments {
+function choiceArgs(url: string, resource: string | Readable, options: FFmpegOptions): Arguments {
     if (resource === "string") return createArgs(url, options?.filters, options?.seek);
     return createArgs(null, options?.filters, options?.seek);
 }
@@ -148,11 +148,11 @@ function choiceArgs(url: string, resource: string | Readable, options: FFmpegOpt
  * @param url {string} Ссылка
  * @param seek {number} Пропуск музыки до 00:00:00
  */
-function createArgs(url: string, AudioFilters: AudioFilters, seek: number): FFspace.Arguments {
+function createArgs(url: string, AudioFilters: AudioFilters, seek: number): Arguments {
     const thisArgs = ["-reconnect", 1, "-reconnect_streamed", 1, "-reconnect_delay_max", 5];
     const audioDecoding = ["-c:a", "libopus", "-f", "opus"];
     const audioBitrate = ["-b:a", Music.Audio.bitrate];
-    const filters = getFilters(AudioFilters);
+    const filters = getFilters(AudioFilters, seek);
 
     if (seek) thisArgs.push("-ss", seek ?? 0);
     if (url) thisArgs.push( "-i", url);
@@ -192,12 +192,13 @@ function getDurationFilters(AudioFilters: AudioFilters): number {
 /**
  * @description Создаем фильтры для FFmpeg
  * @param AudioFilters {AudioFilters} Аудио фильтры которые включил пользователь
+ * @param seek {number} Нужен для определения впервые включен ли поток
  */
-function getFilters(AudioFilters: AudioFilters): string {
+function getFilters(AudioFilters: AudioFilters, seek: number): string {
     const response: Array<string> = [];
 
     //Включать более плавное включение музыки
-    if (Music.Audio.transition) response.push("afade=t=in:st=0:d=3");
+    if (seek === 0) response.push("afade=t=in:st=0:d=3");
 
     if (AudioFilters) parseFilters(AudioFilters, (fl, filter) => {
         if (filter) {
@@ -206,7 +207,7 @@ function getFilters(AudioFilters: AudioFilters): string {
             const indexFilter = AudioFilters.indexOf(fl);
             response.push(`${filter.filter}${AudioFilters.slice(indexFilter + 1)[0]}`);
         }
-    })
+    });
 
     return response.join(",");
 }
@@ -220,7 +221,7 @@ function parseFilters(AudioFilters: AudioFilters, callback: (fl: string, filter:
     AudioFilters.forEach((filter: string | number) => {
         if (typeof filter === "number") return;
 
-        const Filter = FFspace.getFilter(filter);
+        const Filter = getFilter(filter);
 
         return callback(filter, Filter);
     });

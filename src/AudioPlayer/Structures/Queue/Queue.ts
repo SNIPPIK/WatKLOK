@@ -49,7 +49,8 @@ function CreateQueue(message: ClientMessage, VoiceChannel: Voice.VoiceChannels):
 
     //Создаем очередь
     const GuildQueue = new Queue(message, VoiceChannel);
-     //Подключаемся к голосовому каналу
+    
+    //Подключаемся к голосовому каналу
     GuildQueue.player.voice = Voice.Join(VoiceChannel); //Добавляем подключение в плеер
     client.queue.set(guild.id, GuildQueue); //Записываем очередь в <client.queue>
 

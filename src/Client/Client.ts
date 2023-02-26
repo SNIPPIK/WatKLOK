@@ -8,7 +8,9 @@ import {FileSystem} from "@FileSystem";
 import {Queue} from "@Queue/Queue";
 import {env} from "@env";
 
-export function consoleTime(data: string): void {
+export {consoleTime, WatKLOK};
+
+function consoleTime(data: string): void {
     const date = new Date();
     const reformatDate = [date.getHours(), date.getMinutes(), date.getSeconds()].map(DurationUtils.toFixed0);
 
@@ -16,10 +18,10 @@ export function consoleTime(data: string): void {
     return console.log(`[${reformatDate.join(":")}.${date.getMilliseconds()}] ${data}`);
 }
 
-const queue = new Collection<string, Queue>();
+const queue = new Collection<string | number, Queue>();
 const commands = new Collection<string, Command>(); //База, со всеми командами
 
-export class WatKLOK extends Client {
+class WatKLOK extends Client {
     /**
      * @description Все команды бота
      */
