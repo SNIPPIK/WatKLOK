@@ -1,7 +1,6 @@
 import {Command, ResolveData} from "@Structures/Handle/Command";
 import {ClientMessage} from "@Client/interactionCreate";
 import {ApplicationCommandOptionType} from "discord.js";
-import {toPlayer} from "@Structures/SongSupport";
 import {Queue} from "@Queue/Queue";
 
 export class PlayCommand extends Command {
@@ -54,7 +53,7 @@ export class PlayCommand extends Command {
         if (!search) return { text: `${author}, Укажи ссылку, название или прикрепи файл!`, color: "Yellow" };
 
         try {
-            toPlayer.play(message, search);
+            client.player.play(message, search);
         } catch (e) {
             return { text: `Произошла ошибка -> ${search}\n${e}`, color: "DarkRed", codeBlock: "css" };
         }

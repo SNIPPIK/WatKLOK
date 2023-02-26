@@ -1,29 +1,57 @@
-import {ClientMessage, UtilsMsg} from "@Client/interactionCreate";
-import {DurationUtils} from "@Structures/Durations";
-import {Voting} from "@db/Config.json";
-import {VoiceState} from "discord.js";
-import {toQueue} from "@Queue/Queue";
-import {Voice} from "@VoiceManager";
-import {Queue} from "@Queue/Queue";
-import {Song} from "@Queue/Song";
-import {Filter} from "@FFspace";
-
+import { Platform, callback, platform } from "@Structures/SongSupport";
+import { ClientMessage, UtilsMsg } from "@Client/interactionCreate";
+import { Song, inPlaylist, inTrack } from "@Queue/Song";
+import { DurationUtils } from "@Structures/Durations";
+import { Voting, APIs, Music } from "@db/Config.json";
+import { MessagePlayer } from "@Structures/Messages";
+import { Balancer } from "@Structures/Balancer";
+import { Queue, toQueue } from "@Queue/Queue";
+import { VoiceState } from "discord.js";
+import { Voice } from "@VoiceManager";
+import { Filter } from "@FFspace";
 
 //Здесь все функции для взаимодействия с плеером
 export namespace Player {
-    export const handleContent = toQueue;
+    /**
+     * @description Получаем данные из базы по данным
+     * @param message {ClientMessage} Сообщение с сервера
+     * @param arg {string} Что требует пользователь
+     */
+    export function play(message: ClientMessage, arg: string): void {
+        const { author } = message;
+
+        Balancer.push(() => {
+            const type = Platform.type(arg); //Тип запроса
+            const platform = Platform.name(arg); //Платформа с которой будем взаимодействовать
+            const argument = Platform.filterArg(arg);
+
+            //Если нельзя получить данные с определенной платформы
+            if (Platform.isFailed(platform)) return UtilsMsg.createMessage({ text: `${author}, я не могу взять данные с этой платформы **${platform}**\n Причина: [**Authorization data not found**]`, color: "Yellow", message });
+
+            const callback = Platform.callback(platform, type); //Ищем в списке платформу
+
+            if (callback === "!platform") return UtilsMsg.createMessage({ text: `${author}, у меня нет поддержки такой платформы!\nПлатформа **${platform}**!`, color: "Yellow", message });
+            else if (callback === "!callback") return UtilsMsg.createMessage({ text: `${author}, у меня нет поддержки этого типа запроса!\nТип запроса **${type}**!\nПлатформа: **${platform}**`, color: "Yellow", message });
+
+            //Если включено показывать запросы
+            if (Music.showGettingData) sendGettingData(platform, type, message);
+
+            return runCallback(callback(argument) as Promise<inTrack | inPlaylist | inTrack[]>, platform, message);
+        });
+    }
+    //====================== ====================== ====================== ======================
     /**
      * @description Продолжает воспроизведение музыки
      * @param message {ClientMessage} Сообщение с сервера
      */
     export function resume(message: ClientMessage): void {
-        const {client, guild} = message;
-        const {player, song}: Queue = client.queue.get(guild.id);
-        const {title}: Song = song;
+        const { client, guild } = message;
+        const { player, song }: Queue = client.queue.get(guild.id);
+        const { title }: Song = song;
 
         //Продолжаем воспроизведение музыки если она на паузе
         player.resume();
-        return UtilsMsg.createMessage({text: `▶️ | Resume song | ${title}`, message, codeBlock: "css", color: "Green"});
+        return UtilsMsg.createMessage({ text: `▶️ | Resume song | ${title}`, message, codeBlock: "css", color: "Green" });
     }
     //====================== ====================== ====================== ======================
     /**
@@ -31,13 +59,13 @@ export namespace Player {
      * @param message {ClientMessage} Сообщение с сервера
      */
     export function pause(message: ClientMessage): void {
-        const {client, guild} = message;
-        const {player, song}: Queue = client.queue.get(guild.id);
-        const {title}: Song = song;
+        const { client, guild } = message;
+        const { player, song }: Queue = client.queue.get(guild.id);
+        const { title }: Song = song;
 
         //Приостанавливаем музыку если она играет
         player.pause();
-        return UtilsMsg.createMessage({text: `⏸ | Pause song | ${title}`, message, codeBlock: "css", color: "Green"});
+        return UtilsMsg.createMessage({ text: `⏸ | Pause song | ${title}`, message, codeBlock: "css", color: "Green" });
     }
     //====================== ====================== ====================== ======================
     /**
@@ -47,10 +75,10 @@ export namespace Player {
      * @requires {toStop}
      */
     export function remove(message: ClientMessage, arg: number = 1): void {
-        const {client, guild, author} = message;
+        const { client, guild, author } = message;
         const queue: Queue = client.queue.get(guild.id);
-        const {player, songs} = queue;
-        const {title, url}: Song = songs[arg - 1];
+        const { player, songs } = queue;
+        const { title, url }: Song = songs[arg - 1];
 
         setImmediate(() => {
             //Если музыку нельзя пропустить из-за плеера
@@ -66,7 +94,7 @@ export namespace Player {
                     if (arg === 1) toStop(message);
 
                     //Сообщаем какой трек был убран
-                    return UtilsMsg.createMessage({text: `⏭️ | Remove song | ${title}`, message, codeBlock: "css", color: "Green"});
+                    return UtilsMsg.createMessage({ text: `⏭️ | Remove song | ${title}`, message, codeBlock: "css", color: "Green" });
                 } else {
                     //Если пользователю нельзя это сделать
                     return UtilsMsg.createMessage({ text: `${author}, убрать этот трек [${title}](${url}) не вышло!`, message, color: "Yellow" });
@@ -82,10 +110,10 @@ export namespace Player {
      * @requires {ParsingTimeToString}
      */
     export function seek(message: ClientMessage, seek: number): void {
-        const {client, guild, author} = message;
+        const { client, guild, author } = message;
         const queue: Queue = client.queue.get(guild.id);
-        const {song, play, player} = queue;
-        const {title}: Song = song;
+        const { song, play, player } = queue;
+        const { title }: Song = song;
 
         //Если музыку нельзя пропустить из-за плеера
         if (!player.hasSkipped) return UtilsMsg.createMessage({ text: `${author}, ⚠ Музыка еще не играет!`, message, color: "Yellow" });
@@ -116,10 +144,10 @@ export namespace Player {
      * @param message {ClientMessage} Сообщение с сервера
      */
     export function replay(message: ClientMessage): void {
-        const {client, guild, author} = message;
+        const { client, guild, author } = message;
         const queue: Queue = client.queue.get(guild.id);
-        const {song, play} = queue;
-        const {title}: Song = song;
+        const { song, play } = queue;
+        const { title }: Song = song;
 
         //Запускаем голосование
         Vote(message, queue, (win) => {
@@ -127,7 +155,7 @@ export namespace Player {
                 play();
 
                 //Сообщаем о том что музыка начата с начала
-                return UtilsMsg.createMessage({text: `🔂 | Replay | ${title}`, message, color: "Green", codeBlock: "css"});
+                return UtilsMsg.createMessage({ text: `🔂 | Replay | ${title}`, message, color: "Green", codeBlock: "css" });
             } else return UtilsMsg.createMessage({ text: `${author}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color: "Yellow" });
         }, "повторное проигрывание трека", 1);
     }
@@ -139,9 +167,9 @@ export namespace Player {
      * @param arg
      */
     export function filter(message: ClientMessage, filter: Filter, arg: number): Promise<void> | void {
-        const {client, guild, author} = message;
+        const { client, guild, author } = message;
         const queue: Queue = client.queue.get(guild.id);
-        const {player, play}: Queue = queue;
+        const { player, play }: Queue = queue;
         const seek: number = player.streamDuration;
 
         const isFilter = !!queue.filters.find((Filter) => typeof Filter === "number" ? null : filter.names.includes(Filter));
@@ -156,7 +184,7 @@ export namespace Player {
                 const isOkArgs = arg >= (filter.args as number[])[0] && arg <= (filter.args as number[])[1];
 
                 //Если аргументы не подходят
-                if (!isOkArgs) return UtilsMsg.createMessage({text: `${author.username} | Filter: ${name} не изменен из-за несоответствия аргументов!`, message, color: "Yellow", codeBlock: "css" });
+                if (!isOkArgs) return UtilsMsg.createMessage({ text: `${author.username} | Filter: ${name} не изменен из-за несоответствия аргументов!`, message, color: "Yellow", codeBlock: "css" });
 
                 //Запускаем голосование
                 Vote(message, queue, (win) => {
@@ -180,7 +208,7 @@ export namespace Player {
 
                         play(seek);
 
-                        return UtilsMsg.createMessage({text: `${author.username} | Filter: ${name} отключен!`, color: "Green", message, codeBlock: "css"});
+                        return UtilsMsg.createMessage({ text: `${author.username} | Filter: ${name} отключен!`, color: "Green", message, codeBlock: "css" });
                     } else return UtilsMsg.createMessage({ text: `${author.username}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color: "Yellow" });
                 }, "отключение фильтра");
             }
@@ -196,10 +224,10 @@ export namespace Player {
 
                         play(seek);
 
-                        return UtilsMsg.createMessage({text: `${author.username} | Filter: ${name}:${arg} включен!`, color: "Green", message, codeBlock: "css"});
+                        return UtilsMsg.createMessage({ text: `${author.username} | Filter: ${name}:${arg} включен!`, color: "Green", message, codeBlock: "css" });
                     } else return UtilsMsg.createMessage({ text: `${author.username}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color: "Yellow" });
                 }, "добавление фильтра");
-            //Если нет аргумента
+                //Если нет аргумента
             } else {
                 //Запускаем голосование
                 Vote(message, queue, (win) => {
@@ -208,7 +236,7 @@ export namespace Player {
 
                         play(seek);
 
-                        return UtilsMsg.createMessage({text: `${author.username} | Filter: ${name} включен!`, color: "Green", message, codeBlock: "css"});
+                        return UtilsMsg.createMessage({ text: `${author.username} | Filter: ${name} включен!`, color: "Green", message, codeBlock: "css" });
                     } else return UtilsMsg.createMessage({ text: `${author.username}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color: "Yellow" });
                 }, "добавление фильтра");
             }
@@ -220,12 +248,14 @@ export namespace Player {
      * @param message {ClientMessage} Сообщение с сервера
      */
     export function toStop(message: ClientMessage): void {
-        const {client, guild} = message;
-        const {player}: Queue = client.queue.get(guild.id);
+        const { client, guild } = message;
+        const { player }: Queue = client.queue.get(guild.id);
 
         if (player.hasSkipped) player.stop();
     }
 }
+
+
 //====================== ====================== ====================== ======================
 /**
  * @description Пропускает музыку под номером
@@ -233,10 +263,10 @@ export namespace Player {
  * @param args {string} Аргументы Пример: команда аргумент1 аргумент2
  */
 function skipSong(message: ClientMessage, args: number = 1): void {
-    const {client, guild, author} = message;
+    const { client, guild, author } = message;
     const queue: Queue = client.queue.get(guild.id);
-    const {player, songs, options} = queue;
-    const {title, color, url}: Song = songs[args - 1];
+    const { player, songs, options } = queue;
+    const { title, color, url }: Song = songs[args - 1];
 
     setImmediate(() => {
         //Если музыку нельзя пропустить из-за плеера
@@ -253,7 +283,7 @@ function skipSong(message: ClientMessage, args: number = 1): void {
                     else queue.songs = songs.slice(args - 2);
 
                     UtilsMsg.createMessage({ text: `⏭️ | Skip to song [${args}] | ${title}`, message, codeBlock: "css", color: "Green" });
-                } else UtilsMsg.createMessage({text: `⏭️ | Skip song | ${title}`, message, codeBlock: "css", color: "Green"});
+                } else UtilsMsg.createMessage({ text: `⏭️ | Skip song | ${title}`, message, codeBlock: "css", color: "Green" });
 
                 return Player.toStop(message);
             } else {
@@ -273,8 +303,8 @@ function skipSong(message: ClientMessage, args: number = 1): void {
  * @param arg {number} Какой трек надо будет убрать
  * @constructor
  */
-function Vote(message: ClientMessage, queue: Queue, callback: (win: boolean) => void, str: string = "пропуск трека", arg?: number ): void {
-    const { member, author, guild} = message;
+function Vote(message: ClientMessage, queue: Queue, callback: (win: boolean) => void, str: string = "пропуск трека", arg?: number): void {
+    const { member, author, guild } = message;
 
     setImmediate(() => {
         const voiceConnection: VoiceState[] = Voice.Members(guild) as VoiceState[];
@@ -289,7 +319,7 @@ function Vote(message: ClientMessage, queue: Queue, callback: (win: boolean) => 
         const choice = `Голосование за ${str}! | ${member.user.username}\n${song ? `Трек: ${song.title} | ${song.duration.full}` : ""}\n\nГолосование длится всего 5 секунд!`;
 
         //Отправляем сообщение
-        message.channel.send({content: `\`\`\`css\n${choice}\n\`\`\``}).then(msg => {
+        message.channel.send({ content: `\`\`\`css\n${choice}\n\`\`\`` }).then(msg => {
             UtilsMsg.createReaction(msg, Voting[0],
                 (reaction, user) => reaction.emoji.name === Voting[0] && user.id !== message.client.user.id,
                 (reaction) => Yes = reaction.count - 1, 5e3
@@ -304,3 +334,53 @@ function Vote(message: ClientMessage, queue: Queue, callback: (win: boolean) => 
         });
     });
 }
+//====================== ====================== ====================== ======================
+
+
+//====================== ====================== ====================== ======================
+/**
+ * @description Показываем данные о том что будет получено
+ * @param platform {platform} Платформа с кторой получаем данные
+ * @param type {callback} Тип запроса
+ * @param message {ClientMessage} Сообщение с сервера
+ */
+function sendGettingData(platform: platform, type: callback, message: ClientMessage): void {
+    //Отправляем сообщение о текущем запросе
+    UtilsMsg.createMessage({ text: `${message.author}, производится запрос в **${platform.toLowerCase()}.${type}**`, color: "Grey", message });
+
+    //Если у этой платформы нельзя получить исходный файл музыки, то сообщаем
+    if (Platform.noAudio(platform) && APIs.showWarningAudio) {
+        const workPlatform = Platform.isFailed("YANDEX") ? "youtube.track" : "yandex.track";
+
+        UtilsMsg.createMessage({ text: `⚠️ Warning | [${platform}]\n\nЯ не могу получать исходные файлы музыки у этой платформы.\nЗапрос будет произведен в ${workPlatform}`, color: "Yellow", codeBlock: "css", message });
+    }
+}
+//====================== ====================== ====================== ======================
+/**
+ * 
+ * @param callback {Function} Обрабатываемая функция получения данных
+ * @param platform {platform} Платформа с кторой получаем данные
+ * @param message  {ClientMessage} Сообщение с сервера
+ */
+function runCallback(callback: Promise<inTrack | inTrack[] | inPlaylist>, platform: platform, message: ClientMessage): void {
+    const { author, client } = message;
+    const VoiceChannel = message.member.voice.channel;
+
+    callback.catch((e) => {
+        if (e.length > 2e3) UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e.message}`, color: "DarkRed", codeBlock: "css", message });
+        else UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e}`, color: "DarkRed", codeBlock: "css", message });
+    });
+    callback.then((data: inTrack | inPlaylist | inTrack[]): void => {
+        if (!data) return UtilsMsg.createMessage({ text: `${author}, данные не были найдены!`, color: "DarkRed", message });
+
+        //Если пользователь ищет трек, но найден всего один
+        if (data instanceof Array && data.length === 1) return toQueue(message, VoiceChannel, data[0]);
+
+        //Если пользователь ищет трек
+        else if (data instanceof Array) return MessagePlayer.toSearch(data, platform, message);
+
+        //Загружаем трек или плейлист в GuildQueue
+        return toQueue(message, VoiceChannel, data);
+    });
+}
+//====================== ====================== ====================== ======================

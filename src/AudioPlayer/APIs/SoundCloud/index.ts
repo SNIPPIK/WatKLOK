@@ -137,8 +137,8 @@ export namespace SoundCloud {
      * @description Получаем плейлист
      * @param url {string} Ссылка на плейлист
      */
-    export function getPlaylist(url: string, options = { limit: APIs.limits.playlist }): Promise<inTrack | inPlaylist> {
-        return new Promise<inPlaylist | inTrack>(async (resolve, reject) => {
+    export function getPlaylist(url: string, options = { limit: APIs.limits.playlist }): Promise<inPlaylist> {
+        return new Promise<inPlaylist>(async (resolve, reject) => {
             try {
                 //Создаем запрос
                 const api = await API.Request(`resolve?url=${url}`);
@@ -149,7 +149,7 @@ export namespace SoundCloud {
                 const { result } = api;
 
                 //Если треков нет значит, это ссылка на трек, а не на плейлист
-                if (result.tracks === undefined) return getTrack(url).then(resolve);
+                if (result.tracks === undefined) return reject(Error(`[APIs]: Невозможно найти данные!`));
                 const tracks = result.tracks.splice(0, options.limit);
 
                 return resolve({

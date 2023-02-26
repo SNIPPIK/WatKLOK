@@ -2,7 +2,7 @@ import {ClientMessage, EmbedConstructor} from "@Client/interactionCreate";
 import {inPlaylist, inTrack, Song} from "@Queue/Song";
 import {DurationUtils} from "@Structures/Durations";
 import {replacer} from "@Structures/Handle/Command";
-import { Platform } from "@Structures/SongSupport";
+import {Platform} from "@Structures/SongSupport";
 import {WatKLOK} from "@Client/Client";
 import {Music} from "@db/Config.json";
 import {Queue} from "@Queue/Queue";

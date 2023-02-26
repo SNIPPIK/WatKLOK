@@ -1,17 +1,12 @@
 import { SoundCloud, Spotify, VK, YandexMusic, YouTube } from "@AudioPlayer/APIs";
-import { ClientMessage, UtilsMsg } from "@Client/interactionCreate";
-import { Music, ReactionMenuSettings, APIs } from "@db/Config.json";
 import { inPlaylist, inTrack, Song } from "@Queue/Song";
 import { DurationUtils } from "@Structures/Durations";
-import { Balancer } from "@Structures/Balancer";
+import { Music } from "@db/Config.json";
 import { Colors } from "discord.js";
 import { FFprobe } from "@FFspace";
 import { env } from "@env";
-import { EmbedMessages } from "./Messages/Embeds";
 
-const emoji: string = ReactionMenuSettings.emojis.cancel;
-
-export { toPlayer, Platform, SongFinder, platform };
+export { Platform, findSong as SongFinder, platform, callback };
 //====================== ====================== ====================== ======================
 
 //Поддерживаемые платформы
@@ -36,11 +31,11 @@ interface platformData {
     }
 }
 
-const Platforms = {
+const Platforms: {noAudio: platform[], noAuth: platform[], all: platformData[]} = {
     //Платформы у которых нет возможности получить доступ к аудио
-    noAudio: ["SPOTIFY"] as string[],
+    noAudio: ["SPOTIFY"],
     //Платформы у которых нет данных авторизации
-    noAuth: [] as string[],
+    noAuth: [],
 
     //Все возможные запросы данных в JSON формате
     all: [
@@ -134,7 +129,7 @@ const Platforms = {
                 })
             }
         }
-    ] as platformData[]
+    ]
 };
 //====================== ====================== ====================== ======================
 //Проверяем наличие данных авторизации
@@ -255,12 +250,12 @@ namespace Platform {
 //====================== ====================== ====================== ======================
 /*                             Namespace for find url resource                             */
 //====================== ====================== ====================== ======================
-namespace SongFinder {
+namespace findSong {
     /**
      * @description Получаем данные о треке заново
      * @param song {Song} Трек который надо найти по новой
      */
-    export function getLinkResource(song: Song): Promise<string> {
+    export function searchResource(song: Song): Promise<string> {
         const { platform, url, author, title, duration } = song;
 
         if (!Platform.noAudio(platform)) {
@@ -305,131 +300,6 @@ namespace SongFinder {
 
             //Получаем данные о треке
             return platformCallbacks.track(FindTracks[0].url).then((video: inTrack) => video?.format?.url) as Promise<string>;
-        });
-    }
-}
-
-
-//====================== ====================== ====================== ======================
-/*                      Namespace for find platform in user arguments                      */
-//====================== ====================== ====================== ======================
-namespace toPlayer {
-    /**
-     * @description Получаем данные из базы по данным
-     * @param message {ClientMessage} Сообщение с сервера
-     * @param arg {string} Что требует пользователь
-     */
-    export function play(message: ClientMessage, arg: string): void {
-        const { author } = message;
-
-        Balancer.push(() => {
-            const type = Platform.type(arg); //Тип запроса
-            const platform = Platform.name(arg); //Платформа с которой будем взаимодействовать
-            const argument = Platform.filterArg(arg);
-
-            //Если нельзя получить данные с определенной платформы
-            if (Platform.isFailed(platform)) return UtilsMsg.createMessage({ text: `${author}, я не могу взять данные с этой платформы **${platform}**\n Причина: [**Authorization data not found**]`, color: "Yellow", message });
-
-            const callback = Platform.callback(platform, type); //Ищем в списке платформу
-
-            if (callback === "!platform") return UtilsMsg.createMessage({ text: `${author}, у меня нет поддержки такой платформы!\nПлатформа **${platform}**!`, color: "Yellow", message });
-            else if (callback === "!callback") return UtilsMsg.createMessage({ text: `${author}, у меня нет поддержки этого типа запроса!\nТип запроса **${type}**!\nПлатформа: **${platform}**`, color: "Yellow", message });
-
-            //Если включено показывать запросы
-            if (Music.showGettingData) sendGettingData(platform, type, message);
-
-            return runCallback(callback(argument) as Promise<inTrack | inPlaylist | inTrack[]>, platform, message);
-        });
-    }
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Показываем данные о том что будет получено
-     * @param platform {platform} Платформа с кторой получаем данные
-     * @param type {callback} Тип запроса
-     * @param message {ClientMessage} Сообщение с сервера
-     */
-    function sendGettingData(platform: platform, type: callback, message: ClientMessage): void {
-        //Отправляем сообщение о текущем запросе
-        UtilsMsg.createMessage({ text: `${message.author}, производится запрос в **${platform.toLowerCase()}.${type}**`, color: "Grey", message });
-
-        //Если у этой платформы нельзя получить исходный файл музыки, то сообщаем
-        if (Platform.noAudio(platform) && APIs.showWarningAudio) {
-            const workPlatform = Platform.isFailed("YANDEX") ? "youtube.track" : "yandex.track";
-
-            UtilsMsg.createMessage({ text: `⚠️ Warning | [${platform}]\n\nЯ не могу получать исходные файлы музыки у этой платформы.\nЗапрос будет произведен в ${workPlatform}`, color: "Yellow", codeBlock: "css", message });
-        }
-    }
-    //====================== ====================== ====================== ======================
-    /**
-     * 
-     * @param callback {Function} Обрабатываемая функция получения данных
-     * @param platform {platform} Платформа с кторой получаем данные
-     * @param message  {ClientMessage} Сообщение с сервера
-     */
-    function runCallback(callback: Promise<inTrack | inTrack[] | inPlaylist>, platform: platform, message: ClientMessage): void {
-        const { author, client } = message;
-        const VoiceChannel = message.member.voice.channel;
-
-        callback.catch((e) => {
-            if (e.length > 2e3) UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e.message}`, color: "DarkRed", codeBlock: "css", message });
-            else UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e}`, color: "DarkRed", codeBlock: "css", message });
-        });
-        callback.then((data: inTrack | inPlaylist | inTrack[]): void => {
-            if (!data) return UtilsMsg.createMessage({ text: `${author}, данные не были найдены!`, color: "DarkRed", message });
-
-            //Если пользователь ищет трек, но найден всего один
-            if (data instanceof Array && data.length === 1) return client.player.handleContent(message, VoiceChannel, data[0]);
-
-            //Если пользователь ищет трек
-            else if (data instanceof Array) return searchTracks.toSend(data, platform, message);
-
-            //Загружаем трек или плейлист в GuildQueue
-            return client.player.handleContent(message, VoiceChannel, data);
-        });
-    }
-}
-
-
-//====================== ====================== ====================== ======================
-/*                        Namespace to send search message to channel                      */
-//====================== ====================== ====================== ======================
-namespace searchTracks {
-    /**
-     * @description Оправляем сообщение о том что было найдено
-     * @param tracks {inTracks[]} Найденные треки
-     * @param platform {platform} Платформа на которой ищем
-     * @param message {ClientMessage} Сообщение с сервера
-     * @returns 
-     */
-    export function toSend(tracks: inTrack[], platform: platform, message: ClientMessage) {
-        const { author, client } = message;
-
-        if (tracks.length < 1) return UtilsMsg.createMessage({ text: `${author} | Я не смог найти музыку с таким названием. Попробуй другое название!`, color: "DarkRed", message });
-
-        message.channel.send({ embeds: [EmbedMessages.toSearch(tracks, platform, author)] }).then((msg) => {
-            //Создаем сборщик
-            const collector = UtilsMsg.createCollector(msg.channel, (m) => {
-                const messageNum = parseInt(m.content);
-                return !isNaN(messageNum) && messageNum <= tracks.length && messageNum > 0 && m.author.id === author.id;
-            });
-            const clear = () => { UtilsMsg.deleteMessage(msg, 1e3); collector?.stop(); }
-
-            //Делаем что-бы при нажатии на эмодзи удалялся сборщик
-            UtilsMsg.createReaction(msg, emoji, (reaction, user) => reaction.emoji.name === emoji && user.id !== client.user.id, clear, 30e3);
-            //Если пользователь нечего не выбрал, то удаляем сборщик и сообщение через 30 сек
-            setTimeout(clear, 30e3);
-
-            //Что будет делать сборщик после нахождения числа
-            collector.once("collect", (m: any): void => {
-                setImmediate(() => {
-                    //Чистим чат и удаляем сборщик
-                    UtilsMsg.deleteMessage(m); clear();
-
-                    //Получаем ссылку на трек, затем включаем его
-                    const url = tracks[parseInt(m.content) - 1].url;
-                    return toPlayer.play(message as any, url);
-                });
-            });
         });
     }
 }

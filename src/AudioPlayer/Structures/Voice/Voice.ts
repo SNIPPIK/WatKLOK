@@ -8,14 +8,14 @@ const VoiceChannelsGroup = "A";
  */
 export namespace Voice {
     //Допустимые голосовые каналы (стандартный и трибуна)
-    export type VoiceChannels = VoiceChannel | StageChannel;
+    export type Channels = VoiceChannel | StageChannel;
     /**
      * @description Подключаемся к голосовому каналу
      * @param id {string} ID канала
      * @param guild {Guild} Сервер
      * @param type {string} Тип канала
      */
-    export function Join({id, guild, type}: VoiceChannels): VoiceConnection {
+    export function Join({id, guild, type}: Channels): VoiceConnection {
         const JoinVoice = joinVoiceChannel({ selfDeaf: true, selfMute: false, channelId: id, guildId: guild.id,
             adapterCreator: guild.voiceAdapterCreator as InternalDiscordGatewayAdapterCreator, group: VoiceChannelsGroup });
         const me = guild.members?.me;
@@ -28,7 +28,7 @@ export namespace Voice {
     //====================== ====================== ====================== ======================
     /**
      * @description Отключаемся от канала
-     * @param guild {VoiceChannels | string} ID канала или сам канал
+     * @param guild {Channels | string} ID канала или сам канал
      */
     export function Disconnect(guild: Guild | string): void {
         const VoiceConnection = getVoice(typeof guild === "string" ? guild : guild.id);

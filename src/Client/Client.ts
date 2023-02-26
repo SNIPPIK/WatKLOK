@@ -108,7 +108,7 @@ class WatKLOK extends Client {
             shards: "auto",
             presence: {
                 activities: [{
-                    name: "music on web",
+                    name: "музыку",
                     type: ActivityType.Listening
                 }]
             }

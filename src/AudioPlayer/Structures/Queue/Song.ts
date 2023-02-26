@@ -6,7 +6,7 @@ import {httpsClient} from "@httpsClient";
 import {Music} from "@db/Config.json";
 
 export {Song, inAuthor, inPlaylist, inTrack};
-
+//====================== ====================== ====================== ======================
 
 /**
  * @description Создаем трек для внутреннего использования
@@ -83,7 +83,7 @@ class Song {
         }
 
         //Если нет ссылки, то ищем трек
-        if (!this.link) this.link = await SongFinder.getLinkResource(this);
+        if (!this.link) this.link = await SongFinder.searchResource(this);
 
         //Проверяем ссылку на работоспособность
         const checkResource = await httpsClient.checkLink(this.link);

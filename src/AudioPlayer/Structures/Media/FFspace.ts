@@ -5,58 +5,23 @@ import { dependencies } from "package.json";
 import AudioFilters from "@db/Filters.json";
 import { Debug } from "@db/Config.json";
 
-export {FFmpeg, FFprobe, Arguments, Filter, getFilter};
-
-const paths = {
-    ffmpeg: ["ffmpeg", "avconv"],
-    ffprobe: ["ffprobe"]
-}
-let FFmpegName: string, FFprobeName: string;
-
-function CheckFile(paths: string[], error: string) {
-    for (let path of paths) {
-        const result = spawnSync(path, ["-h"], { windowsHide: true, shell: false });
-        if (result.error) continue;
-        return path;
-    }
-    throw Error(error);
-}
-
-//Проверяем есть ли FFmpeg в системе
-if (!FFmpegName) {
-    //@ts-ignore
-    try { if (dependencies["ffmpeg-static"]) paths.ffmpeg.push(require("ffmpeg-static")); } catch (e) {/* Null */ }
-
-    FFmpegName = CheckFile(paths.ffmpeg, "FFmpeg not found!");
-    delete paths.ffmpeg;
-}
-//Проверяем есть ли FFprobe в системе
-if (!FFprobeName) {
-    //@ts-ignore
-    try { if (dependencies["ffprobe-static"]) paths.ffprobe.push(require("ffprobe-static").path); } catch (e) {/* Null */ }
-
-    FFprobeName = CheckFile(paths.ffprobe, "FFprobe not found!");
-    delete paths.ffprobe;
-}
+export { FFmpeg, FFprobe, Arguments, Filter, getFilter };
+//====================== ====================== ====================== ======================
 
 type Arguments = Array<string | number> | Array<string>;
 type Filter = typeof AudioFilters[0];
 
+//====================== ====================== ====================== ======================
 /**
- * ffmpeg is a very fast video and audio converter that can also grab from a live audio/video source. It can also convert between arbitrary sample rates and resize video on the fly with a high quality polyphase filter.
- * ffmpeg reads from an arbitrary number of input "files" (which can be regular files, pipes, network streams, grabbing devices, etc.), specified by the -i option, and writes to an arbitrary number of output "files", which are specified by a plain output url. Anything found on the command line which cannot be interpreted as an option is considered to be an output url.
- * Each input or output url can, in principle, contain any number of streams of different types (video/audio/subtitle/attachment/data). The allowed number and/or types of streams may be limited by the container format. Selecting which streams from which inputs will go into which output is either done automatically or with the -map option (see the Stream selection chapter).
- * To refer to input files in options, you must use their indices (0-based). E.g. the first input file is 0, the second is 1, etc. Similarly, streams within a file are referred to by their indices. E.g. 2:3 refers to the fourth stream in the third input file. Also see the Stream specifiers chapter.
- * As a general rule, options are applied to the next specified file. Therefore, order is important, and you can have the same option on the command line multiple times. Each occurrence is then applied to the next input or output file. Exceptions to this rule are the global options (e.g. verbosity level), which should be specified first.
+ * @description Используется для модификации и конвертации потоков
  */
 class FFmpeg extends Duplex {
     private process;
 
-    /**
-     * @description Запускаем FFmpeg
-     * @param args {Arguments} Аргументы запуска
-     * @param options {DuplexOptions} Настройки node Stream
-     */
+    public get deletable() { return !this.process?.killed || !this.destroyed || !!this.process; };
+    public get stdout() { return this?.process?.stdout; };
+    public get stdin() { return this?.process?.stdin; };
+
     public constructor(args: Arguments, options: DuplexOptions = {}) {
         super({ autoDestroy: true, objectMode: true, ...options });
 
@@ -70,19 +35,6 @@ class FFmpeg extends Duplex {
         this.setter(["read", "setEncoding", "pipe", "unpipe"], this.stdout);
         this.setter(["on", "once", "removeListener", "removeListeners", "listeners"]);
     }
-    public get deletable() { return !this.process?.killed || !this.destroyed || !!this.process; };
-
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Выход
-     * @private
-     */
-    public get stdout() { return this?.process?.stdout; };
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Вход
-     */
-    public get stdin() { return this?.process?.stdin; };
     //====================== ====================== ====================== ======================
     /**
      * @description Создаем "привязанные функции" (ПФ - термин из ECMAScript 6)
@@ -101,28 +53,17 @@ class FFmpeg extends Duplex {
     //====================== ====================== ====================== ======================
     /**
      * @description Удаляем все что не нужно
-     * @param error {Error | null} По какой ошибке завершаем работу FFmpeg'a
      */
-    public _destroy = (error?: Error | null): void => {
-        this.removeAllListeners();
+    public _destroy = (): void => {
         if (!super.destroyed) super.destroy();
-
-        [this.process.stdin, this.process.stdout, this.process.stderr].forEach((stream) => {
-            if (stream !== undefined && !stream.destroyed) {
-                stream.removeAllListeners();
-                stream.destroy();
-            }
-        });
 
         if (this.deletable) {
             this.process.removeAllListeners();
             this.process.kill("SIGKILL");
         }
-
         delete this.process;
 
         if (Debug) consoleTime(`[Debug] -> FFmpeg: [Clear memory]`);
-        if (error) return console.error(error);
     };
 }
 //====================== ====================== ====================== ======================
@@ -133,9 +74,7 @@ class FFmpeg extends Duplex {
 function FFprobe(url: string): Promise<JSON> {
     const ffprobe = runProcess(FFprobeName, ["-print_format", "json", "-show_format", "-i", url]);
     let information = "";
-    const cleanup = () => {
-        if (!ffprobe.killed) ffprobe.kill("SIGKILL");
-    }
+    const cleanup = () => { if (!ffprobe.killed) ffprobe.kill("SIGKILL"); }
 
     return new Promise((resolve) => {
         ffprobe.once("close", () => { cleanup(); return resolve(JSON.parse(information + "}")) });
@@ -144,9 +83,55 @@ function FFprobe(url: string): Promise<JSON> {
     });
 }
 //====================== ====================== ====================== ======================
-//Ищем Filter в Array<Filter>
-function getFilter(name: string): Filter { return AudioFilters.find((fn) => fn.names.includes(name)); }
+/**
+ * @description Запускаем процесс
+ * @param name {string} Имя процесса
+ * @param args {string[]} Аргументы процесса
+ */
+function runProcess(name: string, args: any[]): ChildProcessWithoutNullStreams & { stdout: { _readableState: Readable }, stdin: { _writableState: Writable } } {
+    return spawn(name, args) as any;
+}
 //====================== ====================== ====================== ======================
-function runProcess(file: string, args: any[]): ChildProcessWithoutNullStreams & { stdout: { _readableState: Readable }, stdin: { _writableState: Writable } } {
-    return spawn(file, args) as any;
+/**
+ * @description Ищем Filter в Array<Filter>
+ * @param name {string} Имя фильтра
+ */
+function getFilter(name: string): Filter { return AudioFilters.find((fn) => fn.names.includes(name)); }
+
+//====================== ====================== ====================== ======================
+/**
+ * @description Делаем проверку наличия FFmpeg, FFprobe
+ */
+//====================== ====================== ====================== ======================
+const paths = { ffmpeg: ["ffmpeg", "avconv"], ffprobe: ["ffprobe"] };
+let FFmpegName: string, FFprobeName: string;
+
+if (!FFmpegName) {
+    //@ts-ignore
+    try { if (dependencies["ffmpeg-static"]) paths.ffmpeg.push(require("ffmpeg-static")); } catch (e) {/* Null */ }
+
+    FFmpegName = checkName(paths.ffmpeg, "FFmpeg not found! Music will not play, you need to install ffmpeg!");
+    delete paths.ffmpeg;
+}
+
+if (!FFprobeName) {
+    //@ts-ignore
+    try { if (dependencies["ffprobe-static"]) paths.ffprobe.push(require("ffprobe-static").path); } catch (e) {/* Null */ }
+
+    FFprobeName = checkName(paths.ffprobe, "FFprobe not found! Discord links and files won't work!");
+    delete paths.ffprobe;
+}
+//====================== ====================== ====================== ======================
+/**
+ * @description Провеерка на наличие файла
+ * @param names Имена процесса
+ * @param error Ошибка если имя не найдено
+ */
+function checkName(names: string[], error: string) {
+    for (const name of names) {
+        const process = spawnSync(name, ["-h"], { windowsHide: true, shell: false });
+        if (process.error) continue;
+        return name;
+    }
+    console.log(`[\x1b[41mCritical\x1b[0m]: ${error}`);
 }

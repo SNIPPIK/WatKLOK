@@ -1,12 +1,13 @@
 import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, CacheType, ComponentType, InteractionCollector, User} from "discord.js";
 import {ClientMessage, UtilsMsg} from "@Client/interactionCreate";
+import {Music, ReactionMenuSettings} from "@db/Config.json";
+import {inPlaylist, inTrack, Song} from "@Queue/Song";
 import {MessageCycle} from "@Structures/LifeCycle";
 import {Balancer} from "@Structures/Balancer";
-import {inPlaylist, Song} from "@Queue/Song";
 import {consoleTime} from "@Client/Client";
 import {EmbedMessages} from "./Embeds";
-import {Music} from "@db/Config.json";
 import {Queue} from "@Queue/Queue";
+
 
 if (Music.Buttons.length < 4) Error(`[Config]: Buttons has not found, find ${Music.Buttons.length}, need 4`);
 
@@ -20,6 +21,7 @@ const Buttons = new ActionRowBuilder().addComponents([
         new ButtonBuilder().setCustomId("replay")       .setEmoji(Music.Buttons[3]).setStyle(ButtonStyle.Secondary)
     ]
 );
+const emoji: string = ReactionMenuSettings.emojis.cancel;
 
 //Сообщения, которые отправляет плеер
 export namespace MessagePlayer {
@@ -110,6 +112,44 @@ export namespace MessagePlayer {
             } catch (e) {
                 return consoleTime(`[MessagePlayer]: [function: toPushPlaylist]: ${e.message}`);
             }
+        });
+    }
+    /**
+     * @description Оправляем сообщение о том что было найдено
+     * @param tracks {inTracks[]} Найденные треки
+     * @param platform {platform} Платформа на которой ищем
+     * @param message {ClientMessage} Сообщение с сервера
+     * @returns 
+     */
+    export function toSearch(tracks: inTrack[], platform: string, message: ClientMessage) {
+        const { author, client } = message;
+
+        if (tracks.length < 1) return UtilsMsg.createMessage({ text: `${author} | Я не смог найти музыку с таким названием. Попробуй другое название!`, color: "DarkRed", message });
+
+        message.channel.send({ embeds: [EmbedMessages.toSearch(tracks, platform, author)] }).then((msg) => {
+            //Создаем сборщик
+            const collector = UtilsMsg.createCollector(msg.channel, (m) => {
+                const messageNum = parseInt(m.content);
+                return !isNaN(messageNum) && messageNum <= tracks.length && messageNum > 0 && m.author.id === author.id;
+            });
+            const clear = () => { UtilsMsg.deleteMessage(msg, 1e3); collector?.stop(); }
+
+            //Делаем что-бы при нажатии на эмодзи удалялся сборщик
+            UtilsMsg.createReaction(msg, emoji, (reaction, user) => reaction.emoji.name === emoji && user.id !== client.user.id, clear, 30e3);
+            //Если пользователь нечего не выбрал, то удаляем сборщик и сообщение через 30 сек
+            setTimeout(clear, 30e3);
+
+            //Что будет делать сборщик после нахождения числа
+            collector.once("collect", (m: any): void => {
+                setImmediate(() => {
+                    //Чистим чат и удаляем сборщик
+                    UtilsMsg.deleteMessage(m); clear();
+
+                    //Получаем ссылку на трек, затем включаем его
+                    const url = tracks[parseInt(m.content) - 1].url;
+                    return client.player.play(message as any, url);
+                });
+            });
         });
     }
 }

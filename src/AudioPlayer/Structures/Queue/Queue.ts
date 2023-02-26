@@ -11,15 +11,16 @@ import {OpusAudio} from "@OpusAudio";
 import {Voice} from "@VoiceManager";
 
 export {toQueue, Queue};
+//====================== ====================== ====================== ======================
 
 /**
  * @description Добавляем плейлист или трек в очередь
  * @param message {ClientMessage} Сообщение с сервера
- * @param VoiceChannel {Voice.VoiceChannels} К какому голосовому каналу надо подключатся
+ * @param VoiceChannel {Voice.Channels} К какому голосовому каналу надо подключатся
  * @param info {inTrack | inPlaylist} Входные данные это трек или плейлист?
  * @requires {CreateQueue}
  */
-function toQueue(message: ClientMessage, VoiceChannel: Voice.VoiceChannels, info: inTrack | inPlaylist): void {
+function toQueue(message: ClientMessage, VoiceChannel: Voice.Channels, info: inTrack | inPlaylist): void {
     const {queue, status} = CreateQueue(message, VoiceChannel);
     const requester = message.author;
 
@@ -39,9 +40,9 @@ function toQueue(message: ClientMessage, VoiceChannel: Voice.VoiceChannels, info
 /**
  * @description Создаем очереди или если она есть выдаем
  * @param message {ClientMessage} Сообщение с сервера
- * @param VoiceChannel {Voice.VoiceChannels} К какому голосовому каналу надо подключатся
+ * @param VoiceChannel {Voice.Channels} К какому голосовому каналу надо подключатся
  */
-function CreateQueue(message: ClientMessage, VoiceChannel: Voice.VoiceChannels): { status: "create" | "load", queue: Queue } {
+function CreateQueue(message: ClientMessage, VoiceChannel: Voice.Channels): { status: "create" | "load", queue: Queue } {
     const {client, guild} = message;
     const queue = client.queue.get(guild.id);
 
@@ -102,7 +103,7 @@ class Queue {
      * @description Каналы для взаимодействия. Каналы (message: TextChannel, voice: VoiceChannel)
      * @private
      */
-    private channels: { message: ClientMessage, voice: Voice.VoiceChannels | StageChannel };
+    private channels: { message: ClientMessage, voice: Voice.Channels | StageChannel };
     //Голосовой канал
     public get voice() { return this.channels.voice; };
     public set voice(voiceChannel) { this.channels.voice = voiceChannel; };
@@ -136,9 +137,9 @@ class Queue {
     /**
      * @description Создаем очередь для сервера
      * @param message {ClientMessage} Сообщение с сервера
-     * @param voice {Voice.VoiceChannels} Голосовой канал
+     * @param voice {Voice.Channels} Голосовой канал
      */
-    public constructor(message: ClientMessage, voice: Voice.VoiceChannels) {
+    public constructor(message: ClientMessage, voice: Voice.Channels) {
         this.channels = {message, voice};
 
         this.player.on("idle", () => PlayerEvents.onIdlePlayer(this));
