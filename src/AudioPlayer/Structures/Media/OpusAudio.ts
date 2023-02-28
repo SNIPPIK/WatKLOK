@@ -5,10 +5,14 @@ import {opus} from "prism-media";
 import {Readable} from "stream";
 import fs from "fs";
 
+export {OpusAudio};
+//====================== ====================== ====================== ======================
+
+
 type AudioFilters = Array<string> | Array<string | number>;
 type FFmpegOptions = {seek?: number, filters?: AudioFilters};
 
-export class OpusAudio {
+class OpusAudio {
     private _opus: opus.OggDemuxer = new opus.OggDemuxer({autoDestroy: true});
     private _streams: Array<Readable> = [];
     private _ffmpeg: FFmpeg;
@@ -51,7 +55,7 @@ export class OpusAudio {
      * @param options {FFmpegOptions} Настройки FFmpeg, такие, как seek, filter
      */
     public constructor(path: string, options: FFmpegOptions) {
-        const resource = choiceResource(path);
+        const resource = path.endsWith("opus") ? fs.createReadStream(path) : path
 
         //Создаем ffmpeg
         this.ffmpeg = new FFmpeg(choiceArgs(path, typeof resource, options));
@@ -121,14 +125,6 @@ export class OpusAudio {
 
         if (Debug) consoleTime(`[Debug] -> OpusAudio: [Clear memory]`);
     };
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Что из себя представляем входной аргумент path
- * @param path {string} Путь к файлам или ссылка
- */
-function choiceResource(path: string): string | Readable {
-    return path.endsWith("opus") ? fs.createReadStream(path) : path;
 }
 //====================== ====================== ====================== ======================
 /**

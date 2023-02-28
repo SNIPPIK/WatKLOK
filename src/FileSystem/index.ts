@@ -7,10 +7,7 @@ import {WatKLOK} from "@Client/Client";
 type TypeFileLoad = Command | Event<any, any> | Module;
 type FileCallback = (pull: TypeFileLoad, {}: { dir: string, file: string, reason: string }) => void;
 
-const FileBase = {
-    Commands: [] as string[],
-    Events: [] as string[]
-};
+const tempLogs: {Commands: string[], Events: string[]} = { Commands: [], Events: [] };
 
 export namespace FileSystem {
     /**
@@ -52,15 +49,14 @@ export namespace FileSystem {
             new FileLoader({path, callback: loadCallbacks[index]});
 
             setImmediate((): void => {
-                if (client.ShardID === undefined) Object.entries(FileBase).forEach(([key, value]) => console.log(`| FileSystem... Loaded ${key} | ${value.length}\n${value.join("\n")}\n`));
+                if (client.ShardID === undefined) Object.entries(tempLogs).forEach(([key, value]) => console.log(`| FileSystem... Loaded ${key} | ${value.length}\n${value.join("\n")}\n`));
                 //После вывода в консоль удаляем
-                Object.entries(FileBase).forEach(([key,]) => delete FileBase[key as "Commands" | "Events"]);
+                Object.entries(tempLogs).forEach(([key,]) => delete tempLogs[key as "Commands" | "Events"]);
             });
         });
     }
 }
 //====================== ====================== ====================== ======================
-
 /**
  * @description Загрузчик (загрузит необходимые файлы из главной директории)
  */
@@ -134,5 +130,5 @@ function log(type: "Commands" | "Events", dir: string, file: string, reason?: st
 
     if (reason) EndStr += ` | Reason: [${reason}]`; //Если есть ошибка добавляем ее
 
-    return FileBase[type].push(EndStr);
+    return tempLogs[type].push(EndStr);
 }

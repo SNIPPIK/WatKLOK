@@ -1,4 +1,4 @@
-import { RequestOptions, Request } from "./Structures/Request";
+import { RequestOptions, Request, method } from "./Structures/Request";
 import { getUserAgent } from "./Structures/Utils";
 import { getCookies } from "./Structures/Cookie";
 import { IncomingMessage } from "http";
@@ -64,7 +64,7 @@ export namespace httpsClient {
  * @param type {string} Тип выдачи данных
  * @param options {httpsClientOptions} Доп настройки
  */
-function runRequest(url: string, method: "GET" | "POST" | "HEAD", type: RequestType, options: httpsClientOptions): Promise<any> {
+function runRequest(url: string, method: method, type: RequestType, options: httpsClientOptions): Promise<any> {
     const { hostname, pathname, search, port, protocol } = new URL(url);
     let headers = options.headers ?? {};
     let reqOptions: RequestOptions = { method, hostname, path: pathname + search, port, headers, body: options?.body, protocol: protocol }

@@ -8,9 +8,12 @@ import {Music} from "@db/Config.json";
 import {Queue} from "@Queue/Queue";
 import {Colors} from "discord.js";
 
+export {EmbedMessages};
+//====================== ====================== ====================== ======================
+
 
 //Здесь хранятся все EMBED данные о сообщениях (Используется в Managers/Player/Messages)
-export namespace EmbedMessages {
+namespace EmbedMessages {
     /**
     * @description JSON<EMBED> для отображения текущего трека
     * @param client {WatKLOK} Клиент
@@ -110,6 +113,8 @@ export namespace EmbedMessages {
         };
     }
 }
+
+
 //====================== ====================== ====================== ======================
 /*                                   Function for toPlay                                   */
 //====================== ====================== ====================== ======================

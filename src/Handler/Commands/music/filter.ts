@@ -88,7 +88,13 @@ export class FilterCommand extends Command {
         if (Filter) client.player.filter(message, Filter, FilterArg);
         else return {text: `${author.username}, у меня нет такого фильтра. Все фильтры - all`, color: "Yellow", codeBlock: "css"};
     };
-    //Запускаем ReactionMenu
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Запускаем ReactionMenu
+     * @param filters {Filters} Все фильтры
+     * @param message {ClientMessage} Сообщение с сервера
+     * @returns 
+     */
     private ReactionMenuFilters = (filters: typeof Filters, message: ClientMessage) => {
         const embed: EmbedConstructor = { title: "Все доступные фильтры",  color: Colors.Yellow, thumbnail: { url: message.client.user.avatarURL() }, timestamp: new Date() };
         //Преобразуем все фильтры в string

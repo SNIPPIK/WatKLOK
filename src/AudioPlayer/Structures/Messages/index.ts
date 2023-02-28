@@ -8,6 +8,9 @@ import {consoleTime} from "@Client/Client";
 import {EmbedMessages} from "./Embeds";
 import {Queue} from "@Queue/Queue";
 
+export {MessagePlayer};
+//====================== ====================== ====================== ======================
+
 
 if (Music.Buttons.length < 4) Error(`[Config]: Buttons has not found, find ${Music.Buttons.length}, need 4`);
 
@@ -24,7 +27,7 @@ const Buttons = new ActionRowBuilder().addComponents([
 const emoji: string = ReactionMenuSettings.emojis.cancel;
 
 //Сообщения, которые отправляет плеер
-export namespace MessagePlayer {
+namespace MessagePlayer {
     /**
      * @description Отправляем сообщение о текущем треке, обновляем раз в 15 сек
      * @param message {ClientMessage} Сообщение

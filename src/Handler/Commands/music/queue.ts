@@ -59,7 +59,7 @@ export class QueueCommand extends Command {
                 });
             },
             //При нажатии на 2 эмодзи, будет выполнена эта функция
-            cancel: (reaction: MessageReaction, user: User, message: ClientMessage, msg: ClientMessage): void => {
+            cancel: ({}: MessageReaction, {}: User, message: ClientMessage, msg: ClientMessage): void => {
                 setImmediate(() => {
                     [msg, message].forEach((mes) => mes.deletable ? mes.delete().catch(() => null) : null);
                 });
@@ -76,7 +76,6 @@ export class QueueCommand extends Command {
             }
         };
     };
-
     //====================== ====================== ====================== ======================
     /**
      * @description Изменяем данные сообщения

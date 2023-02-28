@@ -48,11 +48,9 @@ function extractSignature(formats: YouTubeFormat[], html5player: string): Promis
         //Пробуем 1 способ получения ссылки
         try {
             const functions = await extractFunctions(html5player);
-            const decipherScript = functions.length ? new vm.Script(functions[0]) : null;
-            const nTransformScript = functions.length > 1 ? new vm.Script(functions[1]) : null;
 
             for (const format of sortingQuality) {
-                const url = setDownloadURL(format, decipherScript, nTransformScript);
+                const url = setDownloadURL(format, functions.length ? new vm.Script(functions[0]) : null, functions.length > 1 ? new vm.Script(functions[1]) : null);
 
                 if (!url) sortingQuality.shift();
                 else { format.url = url; break; }

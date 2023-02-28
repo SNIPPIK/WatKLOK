@@ -15,29 +15,33 @@ export class voiceStateUpdate extends Event<VoiceState, VoiceState> {
         const Guild = oldState.guild;
 
         setImmediate(() => {
-            const voice = Voice.getVoice(Guild.id), isBotVoice = !!newState.channel?.members?.find((member) => filterClient(client, member)) ?? !!oldState.channel?.members?.find((member) => filterClient(client, member));
-            const usersSize = newState.channel?.members?.filter((member) => filterMemberChannel(member, ChannelID))?.size ?? oldState.channel?.members?.filter((member) => filterMemberChannel(member, ChannelID))?.size;
+            const voice = Voice.getVoice(Guild.id);
 
-            //Если есть голосовое подключение и пользователей меньше одного и каналы соответствуют и выключен радио режим, то отключаемся от голосового канала
-            if (voice && usersSize < 1 && voice?.joinConfig?.channelId === oldState?.channelId && !queue?.options?.radioMode) Voice.Disconnect(Guild);
+            if (voice) {
+                const isBotVoice = !!newState.channel?.members?.find((member) => filterClient(client, member)) ?? !!oldState.channel?.members?.find((member) => filterClient(client, member));
+                const usersSize = newState.channel?.members?.filter((member) => filterMemberChannel(member, ChannelID))?.size ?? oldState.channel?.members?.filter((member) => filterMemberChannel(member, ChannelID))?.size;
 
-            //Если есть очередь и нет радио режима
-            if (queue && !queue?.options?.radioMode) {
-                if (usersSize < 1 && !isBotVoice) queue.TimeDestroying("start"); //Если есть очередь сервера, удаляем!
-                else if (usersSize > 0) queue.TimeDestroying("cancel"); //Если есть очередь сервера, отмена удаления!
+                //Если есть голосовое подключение и пользователей меньше одного и каналы соответствуют и выключен радио режим, то отключаемся от голосового канала
+                if (voice && usersSize < 1 && voice?.joinConfig?.channelId === oldState?.channelId && !queue?.options?.radioMode) Voice.Disconnect(Guild);
+
+                //Если есть очередь и нет радио режима
+                if (queue && !queue?.options?.radioMode) {
+                    if (usersSize < 1 && !isBotVoice) queue.TimeDestroying("start"); //Если есть очередь сервера, удаляем!
+                    else if (usersSize > 0) queue.TimeDestroying("cancel"); //Если есть очередь сервера, отмена удаления!
+                }
+
+                if (Debug) consoleTime(`[Debug] -> voiceStateUpdate: [Voice: ${!!voice} | inVoice: ${isBotVoice} | Users: ${usersSize} | Queue: ${!!queue}]`);
             }
-
-            if (Debug) consoleTime(`[Debug] -> voiceStateUpdate: [Voice: ${!!voice} | inVoice: ${isBotVoice} | Users: ${usersSize} | Queue: ${!!queue}]`);
         });
     };
 }
 
 //Фильтруем пользователей в голосовом канале
-function filterMemberChannel(member: GuildMember, channelID: string) {
+function filterMemberChannel(member: GuildMember, channelID: string): boolean {
     return !member.user.bot && member.voice?.channel?.id === channelID;
 }
 
 //Фильтруем бота в голосовом канале
-function filterClient(client: WatKLOK, member: GuildMember) {
+function filterClient(client: WatKLOK, member: GuildMember): boolean {
     return member.user.id === client.user.id;
 }

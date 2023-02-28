@@ -77,17 +77,16 @@ export namespace YouTube {
 
                 if (page instanceof Error) return reject(Error("[APIs]: Не удалось получить данные!"));
 
-                const result = page.split("var ytInitialPlayerResponse = ")?.[1]?.split(";</script>")[0].split(/(?<=}}});\s*(var|const|let)\s/)[0];
+                const result = JSON.parse(page?.split("var ytInitialPlayerResponse = ")?.[1]?.split(";</script>")[0]?.split(/(?<=}}});\s*(var|const|let)\s/)[0]);
 
                 //Если нет данных на странице
                 if (!result) return reject(Error("[APIs]: Не удалось получить данные!"));
-                const jsonResult = JSON.parse(result);
 
                 //Если статус получения данные не OK
-                if (jsonResult.playabilityStatus?.status === "LOGIN_REQUIRED") return reject(Error(`[APIs]: Данное видео невозможно включить из-за проблем с авторизацией!`));
-                else if (jsonResult.playabilityStatus?.status !== "OK") return reject(Error(`[APIs]: Не удалось получить данные! Status: ${jsonResult?.playabilityStatus?.status}`));
+                if (result.playabilityStatus?.status === "LOGIN_REQUIRED") return reject(Error(`[APIs]: Данное видео невозможно включить из-за проблем с авторизацией!`));
+                else if (result.playabilityStatus?.status !== "OK") return reject(Error(`[APIs]: Не удалось получить данные! Status: ${result?.playabilityStatus?.status}`));
 
-                const details = jsonResult.videoDetails;
+                const details = result.videoDetails;
                 let audios: YouTubeFormat;
 
                 //Выбираем какой формат у видео из <VideoDetails>.isLiveContent
@@ -95,7 +94,7 @@ export namespace YouTube {
                 else {
                     const html5player = `${db.link}${page.split('"jsUrl":"')[1].split('"')[0]}`;
                     const format = await runWorkerSignature({
-                        formats: [...jsonResult.streamingData?.formats ?? [], ...jsonResult.streamingData?.adaptiveFormats ?? []],
+                        formats: [...result.streamingData?.formats ?? [], ...result.streamingData?.adaptiveFormats ?? []],
                         html: html5player
                     });
 
@@ -291,17 +290,17 @@ function getID(url: string, isPlaylist: boolean = false): string {
  * @param workerData
  */
 function runWorkerSignature(workerData: {}): Promise<YouTubeFormat | Error> {
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
         const worker = new Worker(__dirname + "/Decipher.js", { workerData, resourceLimits: { stackSizeMb: 2, codeRangeSizeMb: 5, maxOldGenerationSizeMb: 15 }});
-        worker.once('message', (exitCode) => {
+        worker.once('message', async (exitCode) => {
             worker.emit("exit", 0);
             return resolve(exitCode.format);
         });
-        worker.once('error', (err) => {
+        worker.once('error', async (err) => {
             worker.emit("exit", 0);
             return resolve(Error(`[APIs]: ${err}`));
         });
-        worker.once('exit', (code) => {
+        worker.once('exit', async (code) => {
             if (code !== 0) resolve(Error(`[APIs]: Worker stopped with exit code ${code}`));
             return;
         });

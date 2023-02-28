@@ -66,15 +66,13 @@ namespace PlayerCycle {
      */
     function playerCycleStep(): void {
         setImmediate((): void => {
-            const players = db.pls.filter((player) => player.state.status === "read");
-
             try {
                 db.time += 20;
-                for (const player of players) player["preparePacket"]();
+                for (let player of db.pls) player["preparePacket"]();
             } finally {
                 db.timeout = setTimeout(playerCycleStep, db.time - Date.now());
             }
-        })
+        });
     }
 }
 

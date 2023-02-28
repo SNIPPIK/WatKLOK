@@ -1,7 +1,11 @@
 import {inTrack, Song} from "@Queue/Song";
 import {Queue} from "@Queue/Queue";
 
-export namespace DurationUtils {
+export {DurationUtils};
+//====================== ====================== ====================== ======================
+
+
+namespace DurationUtils {
     /**
      * @description Совмещаем время всех треков из очереди
      * @param queue {Queue | any[]} Очередь

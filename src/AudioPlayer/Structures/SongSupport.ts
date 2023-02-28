@@ -47,9 +47,9 @@ const Platforms: {noAudio: platform[], noAuth: platform[], all: platformData[]} 
 
             //Доступные запросы для этой платформы
             callbacks: {
-                track: YouTube.getVideo,
-                search: YouTube.SearchVideos,
-                artist: YouTube.getChannelVideos,
+                track:    YouTube.getVideo,
+                search:   YouTube.SearchVideos,
+                artist:   YouTube.getChannelVideos,
                 playlist: YouTube.getPlaylist
             }
         },
@@ -61,10 +61,10 @@ const Platforms: {noAudio: platform[], noAuth: platform[], all: platformData[]} 
 
             //Доступные запросы для этой платформы
             callbacks: {
-                track: Spotify.getTrack,
-                album: Spotify.getAlbum,
-                search: Spotify.SearchTracks,
-                artist: Spotify.getAuthorTracks,
+                track:    Spotify.getTrack,
+                album:    Spotify.getAlbum,
+                search:   Spotify.SearchTracks,
+                artist:   Spotify.getAuthorTracks,
                 playlist: Spotify.getPlaylist
             }
         },
@@ -76,10 +76,10 @@ const Platforms: {noAudio: platform[], noAuth: platform[], all: platformData[]} 
 
             //Доступные запросы для этой платформы
             callbacks: {
-                track: SoundCloud.getTrack,
-                search: SoundCloud.SearchTracks,
+                track:    SoundCloud.getTrack,
+                search:   SoundCloud.SearchTracks,
                 playlist: SoundCloud.getPlaylist,
-                album: SoundCloud.getPlaylist
+                album:    SoundCloud.getPlaylist
             }
         },
         { //Какие данные можно взять с VK
@@ -90,8 +90,8 @@ const Platforms: {noAudio: platform[], noAuth: platform[], all: platformData[]} 
 
             //Доступные запросы для этой платформы
             callbacks: {
-                track: VK.getTrack,
-                search: VK.SearchTracks,
+                track:    VK.getTrack,
+                search:   VK.SearchTracks,
                 playlist: VK.getPlaylist
             }
         },
@@ -103,8 +103,8 @@ const Platforms: {noAudio: platform[], noAuth: platform[], all: platformData[]} 
 
             //Доступные запросы для этой платформы
             callbacks: {
-                track: YandexMusic.getTrack,
-                album: YandexMusic.getAlbum,
+                track:  YandexMusic.getTrack,
+                album:  YandexMusic.getAlbum,
                 search: YandexMusic.SearchTracks,
                 artist: YandexMusic.getArtistTracks
             }
@@ -262,7 +262,7 @@ namespace findSong {
             const callback = Platform.callback(platform, "track");
 
             //Если нет такой платформы или нет callbacks.track
-            if (callback === "!platform" || callback === "!callback") return null;
+            if (typeof callback === "string") return null;
 
             //Выдаем ссылку
             return (callback(url) as Promise<inTrack>).then((track: inTrack) => track?.format?.url);

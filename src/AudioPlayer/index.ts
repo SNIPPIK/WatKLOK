@@ -266,7 +266,7 @@ function skipSong(message: ClientMessage, args: number = 1): void {
     const { client, guild, author } = message;
     const queue: Queue = client.queue.get(guild.id);
     const { player, songs, options } = queue;
-    const { title, color, url }: Song = songs[args - 1];
+    const { title, url }: Song = songs[args - 1];
 
     setImmediate(() => {
         //Если музыку нельзя пропустить из-за плеера

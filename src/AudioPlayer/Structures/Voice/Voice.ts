@@ -1,12 +1,15 @@
 import {ChannelType,Guild,InternalDiscordGatewayAdapterCreator,StageChannel,VoiceChannel,VoiceState} from "discord.js";
 import {VoiceConnection, getVoiceConnection, getVoiceConnections, joinVoiceChannel} from "@discordjs/voice";
 
-const VoiceChannelsGroup = "A";
+export {Voice};
+//====================== ====================== ====================== ======================
 
+
+const VoiceChannelsGroup = "A";
 /**
  * @description Здесь все возможные взаимодействия с голосовым каналом (еще не финал)
  */
-export namespace Voice {
+namespace Voice {
     //Допустимые голосовые каналы (стандартный и трибуна)
     export type Channels = VoiceChannel | StageChannel;
     /**

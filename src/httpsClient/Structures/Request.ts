@@ -3,7 +3,7 @@ import {request as httpsRequest, RequestOptions as ReqOptions} from "https";
 import {IncomingMessage, request as httpRequest} from "http";
 import {uploadCookie} from "./Cookie";
 
-export {Request, RequestOptions};
+export {Request, RequestOptions, method};
 
 const decoderBase = {
     "gzip": createGunzip,
@@ -100,9 +100,9 @@ function extractPage(decoder: Decoder | IncomingMessage): Promise<string> {
         });
     });
 }
-
+type method = "POST" | "GET" | "HEAD";
 type Decoder = BrotliDecompress | Gunzip | Deflate;
 interface RequestOptions extends ReqOptions {
     body?: string;
-    method?: "POST" | "GET" | "HEAD";
+    method?: method;
 }

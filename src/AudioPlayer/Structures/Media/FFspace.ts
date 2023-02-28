@@ -8,10 +8,9 @@ import { Debug } from "@db/Config.json";
 export { FFmpeg, FFprobe, Arguments, Filter, getFilter };
 //====================== ====================== ====================== ======================
 
+
 type Arguments = Array<string | number> | Array<string>;
 type Filter = typeof AudioFilters[0];
-
-//====================== ====================== ====================== ======================
 /**
  * @description Используется для модификации и конвертации потоков
  */

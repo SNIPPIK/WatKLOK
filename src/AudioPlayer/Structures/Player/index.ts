@@ -4,12 +4,16 @@ import {TypedEmitter} from "tiny-typed-emitter";
 import {Music} from "@db/Config.json";
 import {OpusAudio} from "@OpusAudio";
 
+export {AudioPlayer};
+//====================== ====================== ====================== ======================
+
+
 const SilenceFrame = Buffer.from([0xf8, 0xff, 0xfe, 0xfae]);
 const packetSender = Music.AudioPlayer.methodSendPackets;
 const SkippedStatuses = ["read", "pause"];
 const UpdateMessage = ["read"];
 
-export class AudioPlayer extends TypedEmitter<PlayerEvents> {
+class AudioPlayer extends TypedEmitter<PlayerEvents> {
     private _voice: VoiceConnection;
     private _state: PlayerStatus = { status: "idle" };
 
@@ -143,7 +147,7 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
         const state = this.state;
 
         //Если статус (idle или pause или его нет) прекратить выполнение функции
-        if (state?.status === "pause" || state?.status === "idle" || !state?.status) return;
+        if (state?.status !== "read" || !state?.status) return;
 
         //Если вдруг нет голосового канала
         if (!this.voice) return void (this.state = {...state, status: "pause"});
