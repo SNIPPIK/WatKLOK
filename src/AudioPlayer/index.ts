@@ -1,4 +1,4 @@
-import { Platform, callback, platform } from "@Structures/SongSupport";
+import { Platform, callback, platform } from "@Structures/Platform";
 import { ClientMessage, UtilsMsg } from "@Client/interactionCreate";
 import { Song, inPlaylist, inTrack } from "@Queue/Song";
 import { DurationUtils } from "@Structures/Durations";
