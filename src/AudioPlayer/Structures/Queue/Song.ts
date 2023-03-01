@@ -158,11 +158,11 @@ namespace findSong {
      */
     function searchTracks(nameSong: string, duration: number, platform: platform): Promise<string> {
         const exPlatform = Platform.isFailed(platform) || Platform.noAudio(platform) ? Platform.isFailed("YANDEX") ? "YOUTUBE" : "YANDEX" : platform;
-        const callbacks = Platform.full(platform).callbacks;
+        const callbacks = Platform.full(exPlatform).callbacks;
 
         return callbacks.search(nameSong).then((tracks: inTrack[]) => {
             //Фильтруем треки оп времени
-            const FindTrack: inTrack = tracks.find((track: inTrack) => {
+            const FindTracks: inTrack[] = tracks.filter((track: inTrack) => {
                 const DurationSong: number = (exPlatform === "YOUTUBE" ? DurationUtils.ParsingTimeToNumber : parseInt)(track.duration.seconds);
 
                 //Как надо фильтровать треки
@@ -170,10 +170,10 @@ namespace findSong {
             });
 
             //Если треков нет
-            if (!FindTrack) return null;
+            if (FindTracks?.length < 1) return null;
 
             //Получаем данные о треке
-            return callbacks.track(FindTrack.url).then((video: inTrack) => video?.format?.url) as Promise<string>;
+            return callbacks.track(FindTracks[0].url).then((video: inTrack) => video?.format?.url) as Promise<string>;
         });
     }
 }
