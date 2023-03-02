@@ -1,4 +1,4 @@
-[<img align="right" alt="Avatar bot" width="370px" src="https://media.discordapp.net/attachments/1016995045783633940/1080964769927942234/Icon.png" />](https://discordapp.com/users/623170593268957214)
+[<img align="right" alt="Avatar bot" width="350px" src="https://media.discordapp.net/attachments/1016995045783633940/1080964769927942234/Icon.png" />](https://discordapp.com/users/623170593268957214)
 # WatKLOK
 - Автор: [`SNIPPIK`](https://github.com/SNIPPIK)
 - Лицензия: [`WatKLOK LICENSE`](LICENSE.md)
@@ -24,14 +24,14 @@
 ## Поддерживаемые платформы
 [Можно добавить поддержку иных платформ](src/AudioPlayer/Structures/Platform.ts)
 
-| Платформы                                    | Что доступно                                 | Аудио                    | Доступ без авторизации |
-|----------------------------------------------|----------------------------------------------|--------------------------|------------------------|
-| [**YouTube**](https://www.youtube.com/)      | **видео, плейлисты, поиск, стримы, каналы**  | ✔                        | ✔                     |
-| [**Spotify**](https://open.spotify.com/)     | **треки, плейлисты, поиск, альбомы, авторы** | ✔ (Ym, Yt)               | ❌                    |
-| [**Yandex Music**](https://music.yandex.ru/) | **треки, альбомы, поиск, авторы**            | ✔                        | ❌                    |
-| [**VK**](https://vk.com/)                    | **треки, ~~плейлисты~~, поиск**              | ✔                        | ❌                    |
-| [**SoundCloud**](https://soundcloud.com/)    | **треки, плейлисты, поиск, альбомы**         | ✔                        | ✔                     |
-| [**Discord**](https://discord.com/)          | **ссылки, файлы**                            | ✔                        | ✔                     |
+|Теги| Платформы                                    | Что доступно                                      | Аудио                    | Доступ без авторизации |
+|----|----------------------------------------------|---------------------------------------------------|--------------------------|------------------------|
+| YT | [**YouTube**](https://www.youtube.com/)      | **видео, плейлисты, поиск, стримы, каналы**  | ✔                        | ✔                     |
+| SP | [**Spotify**](https://open.spotify.com/)     | **треки, плейлисты, поиск, альбомы, авторы** | ✔ (YM, YT)               | ❌                    |
+| YM | [**Yandex Music**](https://music.yandex.ru/) | **треки, альбомы, поиск, авторы**            | ✔                        | ❌                    |
+| SC | [**SoundCloud**](https://soundcloud.com/)    | **треки, плейлисты, поиск, альбомы**         | ✔                        | ✔                     |
+| VK | [**VK**](https://vk.com/)                    | **треки, ~~плейлисты~~, поиск**              | ✔                        | ❌                    |
+| D  | [**Discord**](https://discord.com/)           | **ссылки, файлы**                            | ✔                        | ✔                     |
 
 <details>
   <summary>Показать настройки</summary>
