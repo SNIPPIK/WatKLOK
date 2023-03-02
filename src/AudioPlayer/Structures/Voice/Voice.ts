@@ -24,10 +24,17 @@ namespace Voice {
         const me = guild.members?.me;
         
         //Temp fix
-        JoinVoice.on('stateChange', (old_state, new_state) => {
-            if (old_state.status === VoiceConnectionStatus.Ready && new_state.status === VoiceConnectionStatus.Connecting) {
-                JoinVoice.configureNetworking();
+        JoinVoice.on('stateChange', (oldState, newState) => {
+            const oldNetworking = Reflect.get(oldState, 'networking');
+            const newNetworking = Reflect.get(newState, 'networking');
+          
+            const networkStateChangeHandler = (oldNetworkState: any, newNetworkState: any) => {
+              const newUdp = Reflect.get(newNetworkState, 'udp');
+              clearInterval(newUdp?.keepAliveInterval);
             }
+          
+            oldNetworking?.off('stateChange', networkStateChangeHandler);
+            newNetworking?.on('stateChange', networkStateChangeHandler);
         });
 
         //Для голосовых трибун
