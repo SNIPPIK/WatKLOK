@@ -1,5 +1,5 @@
 import {ChannelType,Guild,InternalDiscordGatewayAdapterCreator,StageChannel,VoiceChannel,VoiceState} from "discord.js";
-import {VoiceConnection, getVoiceConnection, getVoiceConnections, joinVoiceChannel} from "@discordjs/voice";
+import {VoiceConnection, VoiceConnectionStatus, getVoiceConnection, getVoiceConnections, joinVoiceChannel} from "@discordjs/voice";
 
 export {Voice};
 //====================== ====================== ====================== ======================
