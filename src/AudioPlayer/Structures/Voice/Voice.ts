@@ -22,6 +22,13 @@ namespace Voice {
         const JoinVoice = joinVoiceChannel({ selfDeaf: true, selfMute: false, channelId: id, guildId: guild.id,
             adapterCreator: guild.voiceAdapterCreator as InternalDiscordGatewayAdapterCreator, group: VoiceChannelsGroup });
         const me = guild.members?.me;
+        
+        //Temp fix
+        JoinVoice.on('stateChange', (old_state, new_state) => {
+            if (old_state.status === VoiceConnectionStatus.Ready && new_state.status === VoiceConnectionStatus.Connecting) {
+                JoinVoice.configureNetworking();
+            }
+        });
 
         //Для голосовых трибун
         if (type !== ChannelType.GuildVoice && me) me?.voice?.setRequestToSpeak(true).catch(() => undefined);
