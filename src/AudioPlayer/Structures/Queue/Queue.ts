@@ -22,20 +22,26 @@ export {toQueue, Queue};
  * @requires {CreateQueue}
  */
 function toQueue(message: ClientMessage, VoiceChannel: Voice.Channels, info: inTrack | inPlaylist): void {
-    const {queue, status} = CreateQueue(message, VoiceChannel);
+    const { queue, status } = CreateQueue(message, VoiceChannel);
     const requester = message.author;
 
-    setImmediate(() => {
-        //Если поступает плейлист
+    try {
+        //Зугружаем плейлисты или альбомы
         if ("items" in info) {
+            //Отправляем сообщение о том что плейлист будет добавлен в очередь
             MessagePlayer.toPushPlaylist(message, info);
-            //Добавляем треки в очередь
-            info.items.forEach((track: inTrack) => Balancer.push(() => queue.push(new Song(track, requester))));
-        } else queue.push(new Song(info, requester), queue.songs.length >= 1); //Добавляем трек в очередь
 
+            //Зугрежаем треки из плейлиста в очередь
+            for (let track of info.items) push(new Song(track, requester), queue);
+            return;
+        }
+
+        //Добавляем трек в очередь
+        push(new Song(info, requester), queue, queue.songs.length >= 1);
+    } finally {
         //Запускаем callback плеера, если очередь была создана, а не загружена!
         if (status === "create") queue.play();
-    });
+    }
 }
 //====================== ====================== ====================== ======================
 /**
