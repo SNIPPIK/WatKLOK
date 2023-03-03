@@ -3,8 +3,8 @@ import { FFmpeg, Arguments } from "@Media/FFspace";
 import { Music, Debug } from "@db/Config.json";
 import { opus } from "prism-media";
 import { Readable } from "stream";
+import { Logger } from "@Logger";
 import fs from "fs";
-import { Logger } from "@Structures/Logger";
 
 export { OpusAudio };
 //====================== ====================== ====================== ======================
@@ -13,7 +13,7 @@ export { OpusAudio };
 type FFmpegOptions = { seek?: number, filters?: Filters };
 
 class OpusAudio {
-    private _opus: opus.OggDemuxer = new opus.OggDemuxer({ autoDestroy: true, highWaterMark: 16});
+    private _opus: opus.OggDemuxer = new opus.OggDemuxer({ autoDestroy: true, highWaterMark: 24 });
     private _streams: Array<Readable> = [];
     private _ffmpeg: FFmpeg;
 
