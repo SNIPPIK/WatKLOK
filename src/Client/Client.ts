@@ -1,22 +1,14 @@
-import {Client, IntentsBitField, Options, Collection, ActivityType} from "discord.js";
-import {ClientMessage} from "@Client/interactionCreate";
-import {DurationUtils} from "@Structures/Durations";
-import {Bot, Channels, APIs} from "@db/Config.json";
-import {Command} from "@Structures/Handle/Command";
-import {Player} from "@AudioPlayer/index";
-import {FileSystem} from "@FileSystem";
-import {Queue} from "@Queue/Queue";
-import {env} from "@env";
+import { Client, IntentsBitField, Options, Collection, ActivityType } from "discord.js";
+import { ClientMessage } from "@Client/interactionCreate";
+import { Bot, Channels, APIs } from "@db/Config.json";
+import { Command } from "@Structures/Handle/Command";
+import { Player } from "@AudioPlayer/index";
+import { FileSystem } from "@FileSystem";
+import { Queue } from "@Queue/Queue";
+import { Logger } from "@Logger";
+import { env } from "@env";
 
-export {consoleTime, WatKLOK};
-
-function consoleTime(data: string): void {
-    const date = new Date();
-    const reformatDate = [date.getHours(), date.getMinutes(), date.getSeconds()].map(DurationUtils.toFixed0);
-
-    if (client.ShardID) return console.log(`[ShardID: ${client.ShardID}]: [${reformatDate.join(":")}.${date.getMilliseconds()}] ${data}`);
-    return console.log(`[${reformatDate.join(":")}.${date.getMilliseconds()}] ${data}`);
-}
+export { WatKLOK };
 
 const queue = new Collection<string | number, Queue>();
 const commands = new Collection<string, Command>(); //База, со всеми командами
@@ -47,7 +39,8 @@ class WatKLOK extends Client {
      */
     public constructor() {
         super({
-            sweepers: { ...Options.DefaultSweeperSettings,
+            sweepers: {
+                ...Options.DefaultSweeperSettings,
                 messages: {
                     interval: 1800, // Every 30 min...
                     lifetime: 900	// 15 minutes.
@@ -132,7 +125,7 @@ client.login().then((): void => {
         //Если выключено APIs.showErrors, то ошибки не будут отображаться
         if (!APIs.showErrors && err?.message?.match(/APIs/)) return;
 
-        consoleTime(`| uncaughtException |\n┌ Name:    ${err.name}\n├ Message: ${err.message}\n|\n└ Stack:   ${err.stack}`);
+        Logger.error(`┌ Name:    ${err.name}\n├ Message: ${err.message}\n|\n└ Stack:   ${err.stack}`);
 
         //Если выключено APIs.sendErrors, то ошибки не буду отправляться в текстовый канал
         if (!APIs.sendErrors && err?.message?.match(/APIs/)) return;
@@ -141,8 +134,9 @@ client.login().then((): void => {
             const channel = client.channels.cache.get(Channels.sendErrors) as ClientMessage["channel"];
 
             if (channel) channel.send(
-                { content: `\`\`\`ts\n┌uncaughtException\n├ Name:    ${err.name}\n├ Message: ${err.message}\n|\n└ Stack:   ${err.stack}\n\`\`\``
-            }).catch(() => null);
-        } catch {/* Continue */}
+                {
+                    content: `\`\`\`ts\n┌uncaughtException\n├ Name:    ${err.name}\n├ Message: ${err.message}\n|\n└ Stack:   ${err.stack}\n\`\`\``
+                }).catch(() => null);
+        } catch {/* Continue */ }
     });
 });

@@ -1,10 +1,10 @@
-import {PlayerCycle} from "@Structures/LifeCycle";
-import {VoiceConnection} from "@discordjs/voice";
-import {TypedEmitter} from "tiny-typed-emitter";
-import {Music} from "@db/Config.json";
-import {OpusAudio} from "@OpusAudio";
+import { PlayerCycle } from "@Structures/LifeCycle";
+import { VoiceConnection } from "@discordjs/voice";
+import { TypedEmitter } from "tiny-typed-emitter";
+import { OpusAudio } from "@Media/OpusAudio";
+import { Music } from "@db/Config.json";
 
-export {AudioPlayer};
+export { AudioPlayer, SilenceFrame };
 //====================== ====================== ====================== ======================
 
 
@@ -14,7 +14,7 @@ const SkippedStatuses = ["read", "pause"];
 const UpdateMessage = ["read"];
 
 class AudioPlayer extends TypedEmitter<PlayerEvents> {
-    private _voice: VoiceConnection;
+    private _connection: VoiceConnection;
     private _state: PlayerStatus = { status: "idle" };
 
     //====================== ====================== ====================== ======================
@@ -26,8 +26,8 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
     /**
      * @description Все голосовые каналы к которым подключен плеер
      */
-    public get voice() { return this._voice; };
-    public set voice(voice: VoiceConnection) { this._voice = voice; };
+    public get connection() { return this._connection; };
+    public set connection(voice: VoiceConnection) { this._connection = voice; };
     //====================== ====================== ====================== ======================
     /**
      * @description Смена действий плеера
@@ -51,13 +51,19 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
 
             //Устраняем фриз после смены потока
             this.sendPacket(SilenceFrame);
-        }    
-        
+        }
+
+        //Если не получается отправить пакеты
+        if (newStatus === "autoPause") {
+            if (this.connection) this.emit("error", Error(`[VoiceConnection]: has state ${this.connection.state.status}!`), false);
+            else this.emit("error", Error(`[VoiceConnection]: has not found!`), false);
+        }
+
         //Фильтруем статусы бота что в emit не попало что не надо
         if (oldStatus !== newStatus || oldStatus !== "idle" && newStatus === "read") {
             PlayerCycle.toRemove(this);
             this.emit(newStatus);
-        }        
+        }
 
         //Добавляем плеер в CycleStep
         PlayerCycle.toPush(this);
@@ -74,11 +80,24 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
     public get hasUpdate() { return UpdateMessage.includes(this.state.status); };
     //====================== ====================== ====================== ======================
     /**
+     * @description Проверяем можно ли читать плеер
+     */
+    public get hasPlayable() {
+        const state = this._state;
+        if (state.status === "idle") return false;
+
+        //Если поток уничтожен или больше не читается, переходим в состояние Idle.
+        if (!state.stream.readable) { this.state = { status: "idle" }; return false; }
+
+        return true;
+    }
+    //====================== ====================== ====================== ======================
+    /**
      * @description Ставим на паузу плеер
      */
     public pause = (): void => {
         if (this.state.status !== "read") return;
-        this.state = {...this.state, status: "pause"};
+        this.state = { ...this.state, status: "pause" };
     };
     //====================== ====================== ====================== ======================
     /**
@@ -86,7 +105,7 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
      */
     public resume = (): void => {
         if (this.state.status !== "pause") return;
-        this.state = {...this.state, status: "read"};
+        this.state = { ...this.state, status: "read" };
     };
     //====================== ====================== ====================== ======================
     /**
@@ -94,7 +113,7 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
      */
     public stop = (): void => {
         if (this.state.status === "idle") return;
-        this.state = {status: "idle"};
+        this.state = { status: "idle" };
     };
     //====================== ====================== ====================== ======================
     /**
@@ -105,11 +124,11 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
         if (!stream) return void this.emit("error", Error(`Stream is null`), true);
 
         //Если прочитать возможно
-        if (stream.readable) this.state = {status: "read", stream};
+        if (stream.readable) this.state = { status: "read", stream };
         else {
             //Включаем поток когда можно будет начать читать
             stream.opus.once("readable", () => {
-                this.state = {status: "read", stream};
+                this.state = { status: "read", stream };
             });
             //Если происходит ошибка, то продолжаем читать этот же поток
             stream.opus.once("error", () => this.emit("error", Error("Fail read stream"), true));
@@ -119,10 +138,9 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
     /**
      * @description Передача пакетов в голосовые каналы
      * @param packet {null} Пакет
-     * @private
      */
     public sendPacket = (packet: Buffer): void => {
-        const voiceConnection = this.voice;
+        const voiceConnection = this.connection;
 
         //Если голосовой канал готов
         if (voiceConnection.state.status === "ready") {
@@ -147,17 +165,24 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
         const state = this.state;
 
         //Если статус (idle или pause или его нет) прекратить выполнение функции
-        if (state?.status !== "read" || !state?.status) return;
+        if (state.status === "idle" || state.status === "pause" || !state?.status) return;
 
-        //Если вдруг нет голосового канала
-        if (!this.voice) return void (this.state = {...state, status: "pause"});
+        //Если некуда проигрывать музыку ставить плеер на паузу
+        if (!this.connection) return void (this.state = { ...state, status: "autoPause" });
+        else if (this.state.status === "autoPause" && this.connection && this.connection.state.status === "ready") {
+            //Если стоит статус плеера (autoPause) и есть канал или каналы в которые можно воспроизвести музыку, стартуем!
+            this.state = { ...this.state, status: "read", stream: this.state.stream };
+        }
+
+        //Не читать пакеты при статусе плеера (autoPaused)
+        if (state.status === "autoPause") return;
 
         //Отправка музыкального пакета
         if (state.status === "read") {
             const packet: Buffer | null = state.stream?.read();
 
             if (packet) return this.sendPacket(packet);
-            this.voice.setSpeaking(false);
+            this.connection.setSpeaking(false);
             this.stop();
         }
     };
@@ -171,7 +196,7 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
         //Выключаем плеер если сейчас играет трек
         this.stop();
 
-        delete this._voice;
+        delete this._connection;
         delete this._state;
 
         PlayerCycle.toRemove(this);
@@ -197,14 +222,17 @@ function isDestroy(oldS: PlayerStatus, newS: PlayerStatus): boolean {
 interface PlayerEvents {
     //Плеер начал проигрывать аудио
     read: () => any;
-    //Плеер встал на паузу
-    pause: () => any;
-    //Плеер не находит <player>.voice
-    autoPause: () => any;
+
     //Плеер закончил последние действие
     idle: () => any;
+
     //Плеер получил ошибку
     error: (error: Error, skipSong: boolean) => void;
+
+    //Плеер встал на паузу
+    pause: () => any;
+    //Плеер не находит <player>.voice или проблема с подключение к голосовому каналу
+    autoPause: (error?: Error | string) => any;
 }
 //====================== ====================== ====================== ======================
 /**
@@ -212,7 +240,7 @@ interface PlayerEvents {
  */
 interface PlayerStatus {
     //Текущий статус плеера
-    status: "read" | "pause" | "idle" | "error";
+    status: "read" | "pause" | "idle" | "error" | "autoPause";
     //OggOpus Конвертер
     stream?: OpusAudio;
 }

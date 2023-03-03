@@ -37,7 +37,7 @@ export class PlayCommand extends Command {
     public readonly run = (message: ClientMessage, args: string[]): ResolveData | Promise<ResolveData> => {
         const {author, member, guild, client} = message;
         const queue: Queue = client.queue.get(guild.id);
-        const search: string = args.join(" ") ?? message.attachments?.last()?.url;
+        const search: string = args.join(" ");
         const voiceChannel = member?.voice;
 
         //Если пользователь не подключен к голосовым каналам
@@ -50,7 +50,7 @@ export class PlayCommand extends Command {
         };
 
         //Если пользователь не указал аргумент
-        if (!search) return { text: `${author}, Укажи ссылку, название или прикрепи файл!`, color: "Yellow" };
+        if (!search) return { text: `${author}, Укажи ссылку, название или прикрепи файл и укажи на него ссылку!`, color: "Yellow" };
 
         try {
             client.player.play(message, search);

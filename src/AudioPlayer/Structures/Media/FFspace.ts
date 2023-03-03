@@ -1,16 +1,14 @@
 import { ChildProcessWithoutNullStreams, spawn, spawnSync } from "child_process";
 import { Duplex, DuplexOptions, Readable, Writable } from "stream";
-import { consoleTime } from "@Client/Client";
 import { dependencies } from "package.json";
-import AudioFilters from "@db/Filters.json";
 import { Debug } from "@db/Config.json";
+import { Logger } from "@Structures/Logger";
 
-export { FFmpeg, FFprobe, Arguments, Filter, getFilter };
+export { FFmpeg, FFprobe, Arguments };
 //====================== ====================== ====================== ======================
 
 
 type Arguments = Array<string | number> | Array<string>;
-type Filter = typeof AudioFilters[0];
 /**
  * @description Используется для модификации и конвертации потоков
  */
@@ -28,7 +26,7 @@ class FFmpeg extends Duplex {
         if (!args.includes("-i")) args = ["-i", "-", ...args];
         this.process = runProcess(FFmpegName, [...args, "pipe:1"]);
 
-        if (Debug) consoleTime(`[Debug] -> FFmpeg: [Execute]`);
+        if (Debug) Logger.log(`FFmpeg: [Execute]`, true);
 
         this.setter(["write", "end"], this.stdin);
         this.setter(["read", "setEncoding", "pipe", "unpipe"], this.stdout);
@@ -63,7 +61,7 @@ class FFmpeg extends Duplex {
         }
         delete this.process;
 
-        if (Debug) consoleTime(`[Debug] -> FFmpeg: [Clear memory]`);
+        if (Debug) Logger.log(`FFmpeg: [Clear memory]`, true);
     };
 }
 //====================== ====================== ====================== ======================
@@ -91,12 +89,6 @@ function FFprobe(url: string): Promise<JSON> {
 function runProcess(name: string, args: any[]): ChildProcessWithoutNullStreams & { stdout: { _readableState: Readable }, stdin: { _writableState: Writable } } {
     return spawn(name, args) as any;
 }
-//====================== ====================== ====================== ======================
-/**
- * @description Ищем Filter в Array<Filter>
- * @param name {string} Имя фильтра
- */
-function getFilter(name: string): Filter { return AudioFilters.find((fn) => fn.names.includes(name)); }
 
 //====================== ====================== ====================== ======================
 /**
@@ -133,5 +125,5 @@ function checkName(names: string[], error: string) {
         if (process.error) continue;
         return name;
     }
-    console.log(`[\x1b[41mCritical\x1b[0m]: ${error}`);
+    Logger.error(error);
 }

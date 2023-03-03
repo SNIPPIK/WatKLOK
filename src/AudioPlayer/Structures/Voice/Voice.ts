@@ -1,7 +1,7 @@
-import {ChannelType,Guild,InternalDiscordGatewayAdapterCreator,StageChannel,VoiceChannel,VoiceState} from "discord.js";
-import {VoiceConnection, VoiceConnectionStatus, getVoiceConnection, getVoiceConnections, joinVoiceChannel} from "@discordjs/voice";
+import { ChannelType, Guild, InternalDiscordGatewayAdapterCreator, StageChannel, VoiceChannel, VoiceState } from "discord.js";
+import { VoiceConnection, getVoiceConnection, getVoiceConnections, joinVoiceChannel } from "@discordjs/voice";
 
-export {Voice};
+export { Voice };
 //====================== ====================== ====================== ======================
 
 
@@ -18,27 +18,29 @@ namespace Voice {
      * @param guild {Guild} Сервер
      * @param type {string} Тип канала
      */
-    export function Join({id, guild, type}: Channels): VoiceConnection {
-        const JoinVoice = joinVoiceChannel({ selfDeaf: true, selfMute: false, channelId: id, guildId: guild.id,
-            adapterCreator: guild.voiceAdapterCreator as InternalDiscordGatewayAdapterCreator, group: VoiceChannelsGroup });
+    export function Join({ id, guild, type }: Channels): VoiceConnection {
         const me = guild.members?.me;
-        
+        const JoinVoice = joinVoiceChannel({
+            selfDeaf: true, selfMute: false, channelId: id, guildId: guild.id,
+            adapterCreator: guild.voiceAdapterCreator as InternalDiscordGatewayAdapterCreator, group: VoiceChannelsGroup
+        });
+
         //Temp fix
-        JoinVoice.on('stateChange', (oldState, newState) => {
-            const oldNetworking = Reflect.get(oldState, 'networking');
-            const newNetworking = Reflect.get(newState, 'networking');
+        JoinVoice.on("stateChange", (oldState, newState) => {
+            const oldNetworking = Reflect.get(oldState, "networking");
+            const newNetworking = Reflect.get(newState, "networking");
           
             const networkStateChangeHandler = (oldNetworkState: any, newNetworkState: any) => {
-              const newUdp = Reflect.get(newNetworkState, 'udp');
+              const newUdp = Reflect.get(newNetworkState, "udp");
               clearInterval(newUdp?.keepAliveInterval);
             }
           
-            oldNetworking?.off('stateChange', networkStateChangeHandler);
-            newNetworking?.on('stateChange', networkStateChangeHandler);
+            oldNetworking?.off("stateChange", networkStateChangeHandler);
+            newNetworking?.once("stateChange", networkStateChangeHandler);
         });
 
         //Для голосовых трибун
-        if (type !== ChannelType.GuildVoice && me) me?.voice?.setRequestToSpeak(true).catch(() => undefined);
+        if (type !== ChannelType.GuildVoice && me) me?.voice?.setRequestToSpeak(true);
 
         return JoinVoice;
     }

@@ -1,19 +1,19 @@
-import {FFmpeg, getFilter, Arguments} from "@FFspace";
-import {Music, Debug} from "@db/Config.json";
-import {consoleTime} from "@Client/Client";
-import {opus} from "prism-media";
-import {Readable} from "stream";
+import {AudioFilters, Filters} from "@Media/AudioFilters";
+import { FFmpeg, Arguments } from "@Media/FFspace";
+import { Music, Debug } from "@db/Config.json";
+import { opus } from "prism-media";
+import { Readable } from "stream";
 import fs from "fs";
+import { Logger } from "@Structures/Logger";
 
-export {OpusAudio};
+export { OpusAudio };
 //====================== ====================== ====================== ======================
 
 
-type AudioFilters = Array<string> | Array<string | number>;
-type FFmpegOptions = {seek?: number, filters?: AudioFilters};
+type FFmpegOptions = { seek?: number, filters?: Filters };
 
 class OpusAudio {
-    private _opus: opus.OggDemuxer = new opus.OggDemuxer({autoDestroy: true});
+    private _opus: opus.OggDemuxer = new opus.OggDemuxer({ autoDestroy: true, highWaterMark: 16});
     private _streams: Array<Readable> = [];
     private _ffmpeg: FFmpeg;
 
@@ -58,7 +58,7 @@ class OpusAudio {
         const resource = path.endsWith("opus") ? fs.createReadStream(path) : path
 
         //Создаем ffmpeg
-        this.ffmpeg = new FFmpeg(choiceArgs(path, typeof resource, options));
+        this.ffmpeg = new FFmpeg(choiceArgs(path, typeof resource, options), {highWaterMark: 16});
 
         //Если resource является Readable то загружаем его в ffmpeg
         if (resource instanceof Readable) {
@@ -68,7 +68,7 @@ class OpusAudio {
         this.ffmpeg.pipe(this.opus); //Загружаем из FFmpeg'a в opus.OggDemuxer
 
         //Проверяем сколько времени длится пакет
-        if (options?.filters?.length > 0) this._durFrame = getDurationFilters(options?.filters);
+        if (options?.filters?.length > 0) this._durFrame = AudioFilters.getDuration(options?.filters);
         if (options.seek > 0) this._duration = options.seek * 1e3;
 
         //Когда можно будет читать поток записываем его в <this.#started>
@@ -76,7 +76,7 @@ class OpusAudio {
         //Если в <this> будет один из этих статусов, чистим память!
         ["end", "close", "error"].forEach((event: string) => this.opus.once(event, this.destroy));
 
-        if (Debug) consoleTime(`[Debug] -> OpusAudio: [Start decoding file in ${path}]`);
+        if (Debug) Logger.log(`OpusAudio: [Start decoding file in ${path}]`, true);
     };
     //====================== ====================== ====================== ======================
     /**
@@ -123,9 +123,10 @@ class OpusAudio {
         }
         delete this._opus;
 
-        if (Debug) consoleTime(`[Debug] -> OpusAudio: [Clear memory]`);
+        if (Debug) Logger.log(`OpusAudio: [Clear memory]`, true);
     };
 }
+
 //====================== ====================== ====================== ======================
 /**
  * @description Создаем аргументы в зависимости от типа resource
@@ -140,86 +141,23 @@ function choiceArgs(url: string, resource: string | Readable, options: FFmpegOpt
 //====================== ====================== ====================== ======================
 /**
  * @description Создаем аргументы для FFmpeg
- * @param AudioFilters {AudioFilters} Аудио фильтры которые включил пользователь
+ * @param Filters {Filters} Аудио фильтры которые включил пользователь
  * @param url {string} Ссылка
  * @param seek {number} Пропуск музыки до 00:00:00
  */
-function createArgs(url: string, AudioFilters: AudioFilters, seek: number): Arguments {
+function createArgs(url: string, Filters: Filters, seek: number): Arguments {
     const thisArgs = ["-reconnect", 1, "-reconnect_streamed", 1, "-reconnect_delay_max", 5];
     const audioDecoding = ["-c:a", "libopus", "-f", "opus"];
     const audioBitrate = ["-b:a", Music.Audio.bitrate];
-    const filters = getFilters(AudioFilters, seek);
+    const filters = AudioFilters.getVanilaFilters(Filters, seek);
 
     if (seek) thisArgs.push("-ss", seek ?? 0);
-    if (url) thisArgs.push( "-i", url);
+    if (url) thisArgs.push("-i", url);
 
     if (filters.length > 0) thisArgs.push("-af", filters);
 
     //Всегда есть один фильтр <AudioFade>
     return [...thisArgs, "-compression_level", 12,
-        ...audioDecoding, ...audioBitrate, "-preset:a", "ultrafast"
+    ...audioDecoding, ...audioBitrate, "-preset:a", "ultrafast"
     ];
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Получаем множитель времени для правильного отображения. При добавлении новых аргументов в Filters.json<FilterConfigurator>, их нужно тоже добавить сюда!
- * @param AudioFilters {AudioFilters} Аудио фильтры которые включил пользователь
- */
-function getDurationFilters(AudioFilters: AudioFilters): number {
-    let duration = 20;
-
-    if (AudioFilters) parseFilters(AudioFilters, (fl, filter) => {
-
-        //Если у фильтра есть модификатор скорости
-        if (filter?.speed) {
-            if (typeof filter.speed === "number") duration *= Number(filter.speed);
-            else {
-                const Index = AudioFilters.indexOf(fl) + 1; //Позиция <filter> в AudioFilters
-                const number = AudioFilters.slice(Index); //Получаем то что указал пользователь
-
-                duration *= Number(number);
-            }
-        }
-    });
-
-    return duration;
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Создаем фильтры для FFmpeg
- * @param AudioFilters {AudioFilters} Аудио фильтры которые включил пользователь
- * @param seek {number} Нужен для определения впервые включен ли поток
- */
-function getFilters(AudioFilters: AudioFilters, seek: number): string {
-    const response: Array<string> = [];
-
-    //Включать более плавное включение музыки
-    if (seek === 0) response.push("afade=t=in:st=0:d=3");
-    response.push(`volume=${Music.Audio.volume / 100}`);
-
-    if (AudioFilters) parseFilters(AudioFilters, (fl, filter) => {
-        if (filter) {
-            if (!filter.args) return response.push(filter.filter);
-
-            const indexFilter = AudioFilters.indexOf(fl);
-            response.push(`${filter.filter}${AudioFilters.slice(indexFilter + 1)[0]}`);
-        }
-    });
-
-    return response.join(",");
-}
-//====================== ====================== ====================== ======================
-/**
-* @description Создаем фильтры для FFmpeg
-* @param AudioFilters {AudioFilters} Аудио фильтры которые включил пользователь
-* @param callback {Function}
-*/
-function parseFilters(AudioFilters: AudioFilters, callback: (fl: string, filter: any ) => void): void {
-    AudioFilters.forEach((filter: string | number) => {
-        if (typeof filter === "number") return;
-
-        const Filter = getFilter(filter);
-
-        return callback(filter, Filter);
-    });
 }

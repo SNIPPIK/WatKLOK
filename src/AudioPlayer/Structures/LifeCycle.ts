@@ -1,10 +1,9 @@
 import { EmbedMessages } from "@Structures/Messages/Embeds";
 import { ClientMessage } from "@Client/interactionCreate";
 import { AudioPlayer } from "@Structures/Player";
-import { Balancer } from "@Structures/Balancer";
-import { consoleTime } from "@Client/Client";
 import { Music } from "@db/Config.json";
 import { Queue } from "@Queue/Queue";
+import { Logger } from "@Logger";
 
 export { PlayerCycle, MessageCycle };
 //====================== ====================== ====================== ======================
@@ -65,14 +64,42 @@ namespace PlayerCycle {
      * @description Жизненный цикл плееров
      */
     function playerCycleStep(): void {
+        const players = db.pls.filter((player) => player.hasPlayable);
+
+        //Добавляем задержку ровно размера пакета
+        db.time += 20;
+        
+        //Если выбран djs тип отправлений пакетов
+        if (Music.AudioPlayer.methodSendPackets === "djs") return sendPlayersPackets(players);
+
+        //Если выбран другой тип отправлений пакетов
         setImmediate((): void => {
             try {
-                db.time += 20;
-                for (let player of db.pls) player["preparePacket"]();
+                for (let player of players) player["preparePacket"]();
             } finally {
                 db.timeout = setTimeout(playerCycleStep, db.time - Date.now());
             }
         });
+    }
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Отправляем пакеты
+     * @param players {AudioPlayer[]} Плееры на которых играем музыка 
+     */
+    function sendPlayersPackets(players: AudioPlayer[]) {
+        const nextPlayer = players.shift();
+
+        //Если нет больше плееров запускаем проверку заново
+        if (!nextPlayer) {
+            db.timeout = setTimeout(() => playerCycleStep(), db.time - Date.now());
+            return;
+        }
+
+        //Отправляем пакеты
+        nextPlayer["preparePacket"]();
+
+        //Запускаем следующий плеер
+        setImmediate(() => sendPlayersPackets(players));
     }
 }
 
@@ -91,7 +118,7 @@ namespace MessageCycle {
         db.msg.push(message); //Добавляем сообщение в базу
 
         //Если в базе есть хоть одно сообщение, то запускаем таймер
-        if (db.msg.length === 1) Balancer.push(messageCycleStep);
+        if (db.msg.length === 1) setImmediate(messageCycleStep);
     }
     //====================== ====================== ====================== ======================
     /**
@@ -134,13 +161,13 @@ namespace MessageCycle {
         //Если у плеера статус при котором нельзя обновлять сообщение
         if (!queue.player.hasUpdate) return;
 
-        setImmediate(() => {
+        setImmediate((): void => {
             const CurrentPlayEmbed = EmbedMessages.toPlaying(queue);
 
             //Обновляем сообщение
-            return message.edit({ embeds: [CurrentPlayEmbed] }).catch((e) => {
+            message.edit({ embeds: [CurrentPlayEmbed] }).catch((e) => {
                 if (e.message === "Unknown Message") MessageCycle.toRemove(message.channelId);
-                consoleTime(`[MessageEmitter]: [function: UpdateMessage]: ${e.message}`);
+                Logger.log(`[MessageEmitter]: [function: UpdateMessage]: ${e.message}`);
             });
         });
     }
@@ -149,10 +176,25 @@ namespace MessageCycle {
      * @description Жизненый цикл сообщений
      */
     function messageCycleStep(): void {
-        setImmediate((): void => {
-            try {
-                setTimeout(() => db.msg.forEach((message) => Balancer.push(() => editMessage(message))), 1e3);
-            } finally { db.timeout_m = setTimeout(messageCycleStep, Music.AudioPlayer.updateMessage < 10 ? 15e3 : Music.AudioPlayer.updateMessage * 1e3); }
-        });
+        const messages = db.msg.filter(msg => !!msg.edit);
+        
+        sendMessage(messages);
+    }
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Обновляем сообщения
+     * @param messages {ClientMessages} Сообщение которые надо обновлять
+     */
+    function sendMessage(messages: ClientMessage[]): void {
+        const message = messages.shift();
+
+        if (!message) {
+            db.timeout_m = setTimeout(messageCycleStep, Music.AudioPlayer.updateMessage < 10 ? 15e3 : Music.AudioPlayer.updateMessage * 1e3);
+            return;
+        }
+
+        editMessage(message);
+
+        setImmediate(() => sendMessage(messages));
     }
 }

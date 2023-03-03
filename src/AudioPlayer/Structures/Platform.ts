@@ -1,8 +1,8 @@
 import { SoundCloud, Spotify, VK, YandexMusic, YouTube } from "@AudioPlayer/APIs";
 import { inPlaylist, inTrack } from "@Queue/Song";
+import { FFprobe } from "@Media/FFspace";
 import { Music } from "@db/Config.json";
 import { Colors } from "discord.js";
-import { FFprobe } from "@FFspace";
 import { env } from "@env";
 
 export { Platform, platform, callback };
@@ -111,7 +111,7 @@ const Platforms: {noAudio: platform[], noAuth: platform[], all: platformData[]} 
         { //Какие данные можно взять с Discord
             platform: "DISCORD",
             color: Colors.Grey, //Цвет трека
-            reg: /^(https?:\/\/)?(cdn\.)?( )?(discordapp)\/.+$/gi, //Как фильтровать ссылки
+            reg: /^(https?:\/\/)?(cdn\.)?( )?(discordapp\.com)\/.+$/gi || /^(http?:\/\/)\/.+$/gi || /^(https?:\/\/)\/.+$/gi, //Как фильтровать ссылки
 
             //Доступные запросы для этой платформы
             callbacks: {

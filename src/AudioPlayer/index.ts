@@ -6,9 +6,9 @@ import { Voting, APIs, Music } from "@db/Config.json";
 import { MessagePlayer } from "@Structures/Messages";
 import { Balancer } from "@Structures/Balancer";
 import { Queue, toQueue } from "@Queue/Queue";
+import { Filter } from "@Media/AudioFilters";
 import { VoiceState } from "discord.js";
 import { Voice } from "@VoiceManager";
-import { Filter } from "@FFspace";
 
 //Здесь все функции для взаимодействия с плеером
 export namespace Player {

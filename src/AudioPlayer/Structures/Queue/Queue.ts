@@ -1,16 +1,15 @@
-import {ClientMessage} from "@Client/interactionCreate";
-import {PlayerEvents} from "@Structures/Player/Events";
-import {MessagePlayer} from "@Structures/Messages";
-import {inPlaylist, inTrack, Song} from "./Song";
-import {Balancer} from "@Structures/Balancer";
-import {consoleTime} from "@Client/Client";
-import {StageChannel} from "discord.js";
-import {Debug} from "@db/Config.json";
-import {AudioPlayer} from "../Player";
-import {OpusAudio} from "@OpusAudio";
-import {Voice} from "@VoiceManager";
+import { ClientMessage } from "@Client/interactionCreate";
+import { PlayerEvents } from "@Structures/Player/Events";
+import { inPlaylist, inTrack, Song } from "@Queue/Song";
+import { AudioPlayer } from "@Structures/Player/index";
+import { MessagePlayer } from "@Structures/Messages";
+import { OpusAudio } from "@Media/OpusAudio";
+import { StageChannel } from "discord.js";
+import { Debug } from "@db/Config.json";
+import { Voice } from "@VoiceManager";
+import { Logger } from "@Logger";
 
-export {toQueue, Queue};
+export { toQueue, Queue };
 //====================== ====================== ====================== ======================
 
 
@@ -25,23 +24,21 @@ function toQueue(message: ClientMessage, VoiceChannel: Voice.Channels, info: inT
     const { queue, status } = CreateQueue(message, VoiceChannel);
     const requester = message.author;
 
-    try {
-        //Зугружаем плейлисты или альбомы
-        if ("items" in info) {
-            //Отправляем сообщение о том что плейлист будет добавлен в очередь
-            MessagePlayer.toPushPlaylist(message, info);
+    //Запускаем callback плеера, если очередь была создана, а не загружена!
+    if (status === "create") setImmediate(queue.play);
 
-            //Зугрежаем треки из плейлиста в очередь
-            for (let track of info.items) push(new Song(track, requester), queue);
-            return;
-        }
+    //Зугружаем плейлисты или альбомы
+    if ("items" in info) {
+        //Отправляем сообщение о том что плейлист будет добавлен в очередь
+        MessagePlayer.toPushPlaylist(message, info);
 
-        //Добавляем трек в очередь
-        push(new Song(info, requester), queue, queue.songs.length >= 1);
-    } finally {
-        //Запускаем callback плеера, если очередь была создана, а не загружена!
-        if (status === "create") queue.play();
+        //Зугрежаем треки из плейлиста в очередь
+        for (let track of info.items) push(new Song(track, requester), queue);
+        return;
     }
+
+    //Добавляем трек в очередь
+    push(new Song(info, requester), queue, queue.songs.length >= 1);
 }
 //====================== ====================== ====================== ======================
 /**
@@ -50,19 +47,31 @@ function toQueue(message: ClientMessage, VoiceChannel: Voice.Channels, info: inT
  * @param VoiceChannel {Voice.Channels} К какому голосовому каналу надо подключатся
  */
 function CreateQueue(message: ClientMessage, VoiceChannel: Voice.Channels): { status: "create" | "load", queue: Queue } {
-    const {client, guild} = message;
+    const { client, guild } = message;
     const queue = client.queue.get(guild.id);
 
-    if (queue) return {queue, status: "load"};
+    if (queue) return { queue, status: "load" };
 
     //Создаем очередь
     const GuildQueue = new Queue(message, VoiceChannel);
-    
+
     //Подключаемся к голосовому каналу
-    GuildQueue.player.voice = Voice.Join(VoiceChannel); //Добавляем подключение в плеер
+    GuildQueue.player.connection = Voice.Join(VoiceChannel); //Добавляем подключение в плеер
     client.queue.set(guild.id, GuildQueue); //Записываем очередь в <client.queue>
 
-    return {queue: GuildQueue, status: "create"};
+    return { queue: GuildQueue, status: "create" };
+}
+//====================== ====================== ====================== ======================
+/**
+ * @description Добавляем трек в очередь
+ * @param song {Song} Трек
+ * @param queue {Queue} Очередь в которую надо добавить трек
+ * @param sendMessage {boolean} Отправить сообщение о добавлении трека
+ */
+function push(song: Song, queue: Queue, sendMessage: boolean = false) {
+    if (sendMessage) MessagePlayer.toPushSong(queue, song);
+
+    queue.songs.push(song);
 }
 //====================== ====================== ====================== ======================
 
@@ -147,21 +156,10 @@ class Queue {
      * @param voice {Voice.Channels} Голосовой канал
      */
     public constructor(message: ClientMessage, voice: Voice.Channels) {
-        this.channels = {message, voice};
+        this.channels = { message, voice };
 
         this.player.on("idle", () => PlayerEvents.onIdlePlayer(this));
         this.player.on("error", (err, isSkip) => PlayerEvents.onErrorPlayer(err, this, isSkip));
-    };
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Добавляем трек в очередь
-     * @param song {Song} Трек
-     * @param sendMessage {boolean} Отправить сообщение о добавлении трека
-     */
-    public push = (song: Song, sendMessage: boolean = false): void => {
-        if (sendMessage) MessagePlayer.toPushSong(this, song);
-
-        this.songs.push(song);
     };
     //====================== ====================== ====================== ======================
     /**
@@ -177,7 +175,7 @@ class Queue {
             if (!seek) MessagePlayer.toPlay(this.message);
 
             //Если включен режим отладки показывает что сейчас играет и где
-            if (Debug) consoleTime(`[Debug] -> Play: ${this.guild.id}: ${this.song.title}`);
+            if (Debug) Logger.log(`Play: ${this.guild.id}: ${this.song.title}`, true);
 
             const resource = this.song.resource(seek);
 
@@ -186,7 +184,7 @@ class Queue {
                 if (!url) return void this.player.emit("error", Error(`Link to resource, not found`), true);
 
                 //Создаем поток
-                const stream = new OpusAudio(url, {seek, filters: this.song.isLive ? [] : this.filters});
+                const stream = new OpusAudio(url, { seek, filters: this.song.isLive ? [] : this.filters });
 
                 //Отправляем поток в плеер
                 return this.player.readStream(stream);
@@ -212,7 +210,7 @@ class Queue {
      */
     public cleanup = (): void => {
         const message = this.message;
-        const {client, guild} = message;
+        const { client, guild } = message;
 
         if (message && message?.deletable) message?.delete().catch(() => undefined);
 
@@ -220,8 +218,11 @@ class Queue {
         clearTimeout(this.Timer);
 
         if (this._player) {
-            this.player.destroy();
+            //Чистим голосовое подключение
+            this.player.connection.removeAllListeners();
 
+            //Удаляем плеер и его данные
+            this.player.destroy();
             delete this._player;
         }
 

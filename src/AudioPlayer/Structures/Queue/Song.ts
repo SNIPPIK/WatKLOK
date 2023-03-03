@@ -1,5 +1,5 @@
 import { platform, Platform } from "../Platform";
-import { DownloadManager } from "@Structures/Media/Uploader";
+import { DownloadManager } from "@Structures/Download";
 import { ClientMessage } from "@Client/interactionCreate";
 import { DurationUtils } from "@Structures/Durations";
 import { httpsClient } from "@httpsClient";

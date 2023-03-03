@@ -1,9 +1,10 @@
-import {consoleTime, WatKLOK} from "@Client/Client";
-import {GuildMember, VoiceState} from "discord.js";
-import {Event} from "@Structures/Handle/Event";
-import {Debug} from "@db/Config.json";
-import {Voice} from "@VoiceManager";
-import {Queue} from "@Queue/Queue";
+import { GuildMember, VoiceState } from "discord.js";
+import { Event } from "@Structures/Handle/Event";
+import { WatKLOK } from "@Client/Client";
+import { Debug } from "@db/Config.json";
+import { Voice } from "@VoiceManager";
+import { Queue } from "@Queue/Queue";
+import { Logger } from "@Structures/Logger";
 
 export class voiceStateUpdate extends Event<VoiceState, VoiceState> {
     public readonly name: string = "voiceStateUpdate";
@@ -18,8 +19,8 @@ export class voiceStateUpdate extends Event<VoiceState, VoiceState> {
             const voice = Voice.getVoice(Guild.id);
 
             if (voice) {
-                const isBotVoice = !!newState.channel?.members?.find((member) => filterClient(client, member)) ?? !!oldState.channel?.members?.find((member) => filterClient(client, member));
-                const usersSize = newState.channel?.members?.filter((member) => filterMemberChannel(member, ChannelID))?.size ?? oldState.channel?.members?.filter((member) => filterMemberChannel(member, ChannelID))?.size;
+                const isBotVoice = !!(newState.channel?.members ?? oldState.channel?.members)?.find((member) => filterClient(client, member));
+                const usersSize = (newState.channel?.members ?? oldState.channel?.members)?.filter((member) => filterMemberChannel(member, ChannelID))?.size;
 
                 //Если есть голосовое подключение и пользователей меньше одного и каналы соответствуют и выключен радио режим, то отключаемся от голосового канала
                 if (voice && usersSize < 1 && voice?.joinConfig?.channelId === oldState?.channelId && !queue?.options?.radioMode) Voice.Disconnect(Guild);
@@ -30,7 +31,7 @@ export class voiceStateUpdate extends Event<VoiceState, VoiceState> {
                     else if (usersSize > 0) queue.TimeDestroying("cancel"); //Если есть очередь сервера, отмена удаления!
                 }
 
-                if (Debug) consoleTime(`[Debug] -> voiceStateUpdate: [Voice: ${!!voice} | inVoice: ${isBotVoice} | Users: ${usersSize} | Queue: ${!!queue}]`);
+                if (Debug) Logger.log(`voiceStateUpdate: [Voice: ${!!voice} | inVoice: ${isBotVoice} | Users: ${usersSize} | Queue: ${!!queue}]`, true);
             }
         });
     };

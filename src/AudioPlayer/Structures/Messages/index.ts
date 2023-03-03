@@ -1,14 +1,14 @@
-import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, CacheType, ComponentType, InteractionCollector, User} from "discord.js";
-import {ClientMessage, UtilsMsg} from "@Client/interactionCreate";
-import {Music, ReactionMenuSettings} from "@db/Config.json";
-import {inPlaylist, inTrack, Song} from "@Queue/Song";
-import {MessageCycle} from "@Structures/LifeCycle";
-import {Balancer} from "@Structures/Balancer";
-import {consoleTime} from "@Client/Client";
-import {EmbedMessages} from "./Embeds";
-import {Queue} from "@Queue/Queue";
+import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, CacheType, ComponentType, InteractionCollector, User } from "discord.js";
+import { ClientMessage, UtilsMsg } from "@Client/interactionCreate";
+import { Music, ReactionMenuSettings } from "@db/Config.json";
+import { inPlaylist, inTrack, Song } from "@Queue/Song";
+import { MessageCycle } from "@Structures/LifeCycle";
+import { Balancer } from "@Structures/Balancer";
+import { EmbedMessages } from "./Embeds";
+import { Queue } from "@Queue/Queue";
+import { Logger } from "@Logger";
 
-export {MessagePlayer};
+export { MessagePlayer };
 //====================== ====================== ====================== ======================
 
 
@@ -18,11 +18,11 @@ if (Music.Buttons.length < 4) Error(`[Config]: Buttons has not found, find ${Mus
 const ButtonIDs = ["skip", "resume_pause", "replay", "last"];
 //Кнопки над сообщением о проигрывании трека
 const Buttons = new ActionRowBuilder().addComponents([
-        new ButtonBuilder().setCustomId("last")         .setEmoji(Music.Buttons[0]).setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId("resume_pause") .setEmoji(Music.Buttons[1]).setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId("skip")         .setEmoji(Music.Buttons[2]).setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId("replay")       .setEmoji(Music.Buttons[3]).setStyle(ButtonStyle.Secondary)
-    ]
+    new ButtonBuilder().setCustomId("last").setEmoji(Music.Buttons[0]).setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("resume_pause").setEmoji(Music.Buttons[1]).setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("skip").setEmoji(Music.Buttons[2]).setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("replay").setEmoji(Music.Buttons[3]).setStyle(ButtonStyle.Secondary)
+]
 );
 const emoji: string = ReactionMenuSettings.emojis.cancel;
 
@@ -42,9 +42,9 @@ namespace MessagePlayer {
 
         Balancer.push(() => {
             const embedCurrentPlaying = EmbedMessages.toPlaying(queue);
-            const msg = message.channel.send({embeds: [embedCurrentPlaying as any], components: [Buttons as any]});
+            const msg = message.channel.send({ embeds: [embedCurrentPlaying as any], components: [Buttons as any] });
 
-            msg.catch((e) => console.log(`[MessagePlayer]: [function: toPlay]: ${e.message}`));
+            msg.catch((e) => Logger.error(`[MessagePlayer]: [function: toPlay]: ${e.message}`));
             msg.then((msg) => {
                 //Добавляем к сообщению кнопки
                 const collector = CreateCollector(msg, queue);
@@ -64,16 +64,16 @@ namespace MessagePlayer {
      * @param err {Error | string} Ошибка
      */
     export function toError(queue: Queue, err: Error | string = null): void {
-        const {client, channel} = queue.message;
+        const { client, channel } = queue.message;
 
         Balancer.push(() => {
             try {
                 const Embed = EmbedMessages.toError(client, queue, err);
-                const WarningChannelSend = channel.send({embeds: [Embed]});
+                const WarningChannelSend = channel.send({ embeds: [Embed] });
 
                 WarningChannelSend.then(UtilsMsg.deleteMessage);
             } catch (e) {
-                return consoleTime(`[MessagePlayer]: [function: toError]: ${e.message}`);
+                return Logger.error(`[MessagePlayer]: [function: toError]: ${e.message}`);
             }
         });
     }
@@ -84,16 +84,16 @@ namespace MessagePlayer {
      * @param song {Song} Трек
      */
     export function toPushSong(queue: Queue, song: Song): void {
-        const {channel} = queue.message;
+        const { channel } = queue.message;
 
         Balancer.push(() => {
             try {
                 const EmbedPushedSong = EmbedMessages.toPushSong(song, queue);
-                const PushChannel = channel.send({embeds: [EmbedPushedSong]});
+                const PushChannel = channel.send({ embeds: [EmbedPushedSong] });
 
                 PushChannel.then(UtilsMsg.deleteMessage);
             } catch (e) {
-                return consoleTime(`[MessagePlayer]: [function: toPushSong]: ${e.message}`);
+                return Logger.error(`[MessagePlayer]: [function: toPushSong]: ${e.message}`);
             }
         });
     }
@@ -104,16 +104,16 @@ namespace MessagePlayer {
      * @param playlist {inPlaylist} Сам плейлист
      */
     export function toPushPlaylist(message: ClientMessage, playlist: inPlaylist): void {
-        const {channel} = message;
+        const { channel } = message;
 
         Balancer.push(() => {
             try {
                 const EmbedPushPlaylist = EmbedMessages.toPushPlaylist(message, playlist);
-                const PushChannel = channel.send({embeds: [EmbedPushPlaylist]});
+                const PushChannel = channel.send({ embeds: [EmbedPushPlaylist] });
 
                 PushChannel.then(UtilsMsg.deleteMessage);
             } catch (e) {
-                return consoleTime(`[MessagePlayer]: [function: toPushPlaylist]: ${e.message}`);
+                return Logger.error(`[MessagePlayer]: [function: toPushPlaylist]: ${e.message}`);
             }
         });
     }
@@ -165,13 +165,13 @@ namespace MessagePlayer {
 function CreateCollector(message: ClientMessage, queue: Queue): InteractionCollector<ButtonInteraction<CacheType>> {
     //Создаем сборщик кнопок
     const collector = message.createMessageComponentCollector({ filter: (i) => ButtonIDs.includes(i.customId), componentType: ComponentType.Button, time: 60e5 });
-    const {player} = queue;
+    const { player } = queue;
     const EmitPlayer = message.client.player;
 
     //Добавляем ему ивент сборки кнопок
     collector.on("collect", (i): void => {
         message.author = i?.member?.user as User ?? i?.user;
-        try { i.deferReply(); i.deleteReply(); } catch (e) {/*Notfing*/}
+        try { i.deferReply(); i.deleteReply(); } catch (e) {/*Notfing*/ }
 
         //Если вдруг пользователь будет нажимать на кнопки после выключения плеера
         if (!player?.state || !player?.state?.status) return;

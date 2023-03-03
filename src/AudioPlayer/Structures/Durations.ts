@@ -62,6 +62,7 @@ namespace DurationUtils {
      */
     export function toFixed0(duration: string | number): string | number {
         const fixed = parseInt(duration as any);
+
         return (fixed < 10) ? ("0" + fixed) : fixed;
     }
 }

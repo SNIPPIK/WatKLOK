@@ -2,6 +2,7 @@
   "compilerOptions": {
     "paths": {
       "@Client/*": ["src/Client/*", "src/Handler/Events/Activity/*"],
+      "@Logger": ["src/Structures/Logger/index"],
 
       "@Handler/*": ["src/Handler/*"],
       "@FileSystem": ["src/FileSystem/index"],
@@ -12,11 +13,10 @@
       "@Managers/*": ["src/AudioPlayer/Managers/*"],
       "@httpsClient": ["src/httpsClient/index"],
 
-      "@FFspace": ["src/AudioPlayer/Structures/Media/FFspace"],
+      "@Media/*": ["src/AudioPlayer/Structures/Media/*"],
       "@AudioPlayer/*": ["src/AudioPlayer/*"],
       "@Queue/*": ["src/AudioPlayer/Structures/Queue/*"],
-      "@VoiceManager": ["src/AudioPlayer/Structures/Voice/Voice"],
-      "@OpusAudio": ["src/AudioPlayer/Structures/Media/OpusAudio"]
+      "@VoiceManager": ["src/AudioPlayer/Structures/Voice/Voice"]
     },
     "baseUrl": "./",
     // Основные настройки.
@@ -47,5 +47,6 @@
     "importHelpers": false,              // Имортировать созданные хелперы (__extends, __rest и так далее) из "tslib".
     "noImplicitAny": true                // Запрет на использование any
   },
+  "include": ["tsconfig.json", "src", "db", "package.json"],
   "exclude": ["node_modules"]
 }

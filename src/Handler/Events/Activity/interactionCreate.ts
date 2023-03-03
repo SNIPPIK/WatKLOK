@@ -7,7 +7,7 @@ import {Balancer} from "@Structures/Balancer";
 import {WatKLOK} from "@Client/Client";
 import {Bot} from '@db/Config.json';
 
-export {interactionCreate, UtilsMsg};
+export {interactionCreate, UtilsMsg, ClientInteraction, ClientMessage, ClientInteractive, EmbedConstructor};
 
 //База с пользователями которые слишком часто используют команды
 const CoolDownBase = new Map<string, { time: number }>();
@@ -221,7 +221,7 @@ function sendArgs(options: messageUtilsOptions): { content: string } | { embeds:
  */
 function sendMessage(message: ClientMessage | ClientInteraction, isSlash: boolean, args: any) {
     if (isSlash) return message.reply({...args, fetchReply: true});
-    return message.channel.send({...args, fetchReply: true});
+    return (message as ClientMessage).channel.send({...args, fetchReply: true});
 }
 //====================== ====================== ====================== ======================
 /**
@@ -232,17 +232,17 @@ type Channels = DMChannel | PartialDMChannel | NewsChannel | TextChannel | Threa
 /**
  * @description Необходимо для некоторых функций (для совместного применения)
  */
-export type ClientInteractive = ClientMessage | ClientInteraction;
+type ClientInteractive = ClientMessage | ClientInteraction;
 //====================== ====================== ====================== ======================
 /**
  * @description Embed, format JSON
  */
-export interface EmbedConstructor extends EmbedData {}
+interface EmbedConstructor extends EmbedData {}
 //====================== ====================== ====================== ======================
 /**
  * @description Структура сообщения с тестового канала вызванная через "/"
  */
-export interface ClientInteraction extends BaseInteraction {
+interface ClientInteraction extends BaseInteraction {
     client: WatKLOK;
     member: GuildMember; customId: string; commandName: string; commandId: string; author: User;
     //delete: () => void;
@@ -259,7 +259,7 @@ type SendMessageOptions = string | MessagePayload | BaseMessageOptions | { embed
  * @description Структура сообщения с текстового канала через <prefix>
  */
 // @ts-ignore
-export interface ClientMessage extends Message {
+interface ClientMessage extends Message {
     client: WatKLOK;
     channel: { send(options: SendMessageOptions & {fetchReply?: boolean}): Promise<ClientMessage> } & Channels;
     edit(content: SendMessageOptions | MessageEditOptions): Promise<ClientMessage>
