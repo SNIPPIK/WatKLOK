@@ -76,7 +76,7 @@ class OpusAudio {
         //Если в <this> будет один из этих статусов, чистим память!
         ["end", "close", "error"].forEach((event: string) => this.opus.once(event, this.destroy));
 
-        if (Debug) Logger.debug(`OpusAudio: [Start decoding file in ${path}]`);
+        if (Debug) Logger.debug(`[AudioPlayer]: [OpusAudio]: Decoding [${path}]`);
     };
     //====================== ====================== ====================== ======================
     /**
@@ -123,7 +123,7 @@ class OpusAudio {
         }
         delete this._opus;
 
-        if (Debug) Logger.debug(`OpusAudio: [Clear memory]`);
+        if (Debug) Logger.debug(`[AudioPlayer]: [OpusAudio]: Cleaning memory!`);
     };
 }
 

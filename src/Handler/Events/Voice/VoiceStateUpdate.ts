@@ -29,7 +29,7 @@ export class voiceStateUpdate extends Event<VoiceState, VoiceState> {
                 else if (usersSize > 0) queue.TimeDestroying("cancel"); //Если есть очередь сервера, отмена удаления!
             }
 
-            if (Debug) Logger.debug(`voiceStateUpdate: [Voice: ${!!voice} | inVoice: ${isBotVoice} | Users: ${usersSize} | Queue: ${!!queue}]`);
+            if (Debug) Logger.debug(`[Event]: voiceStateUpdate: [Voice: ${!!voice} | inVoice: ${isBotVoice} | Users: ${usersSize} | Queue: ${!!queue}]`);
         });
     };
 }

@@ -113,7 +113,7 @@ class Queue {
             if (!seek) MessagePlayer.toPlay(this.message);
 
             //Если включен режим отладки показывает что сейчас играет и где
-            if (Debug) Logger.debug(`Play: ${this.guild.id}: ${this.song.title}`);
+            if (Debug) Logger.debug(`[Queue]: [${this.guild.id}]: Play: [${this.song.duration.full}] - [${this.song.title}]`);
 
             const resource = this.song.resource(seek);
 
@@ -173,7 +173,7 @@ class Queue {
 
         client.queue.delete(guild.id);
 
-        if (Debug) Logger.debug(`[Queue: ${message.guildId}]: has deleted`);
+        if (Debug) Logger.debug(`[Queue]: [${message.guild.id}]: has deleted`);
     };
     //====================== ====================== ====================== ======================
     /**
@@ -193,8 +193,6 @@ class Queue {
             clearTimeout(this.Timer); 
             this.hasDestroying = false;
         }
-
-        if (Debug) Logger.debug(`[Queue]: [Status]: ${state} timer destroying`);
     };
 }
 //====================== ====================== ====================== ======================

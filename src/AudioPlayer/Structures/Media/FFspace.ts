@@ -26,7 +26,7 @@ class FFmpeg extends Duplex {
         if (!args.includes("-i")) args = ["-i", "-", ...args];
         this.process = runProcess(FFmpegName, [...args, "pipe:1"]);
 
-        if (Debug) Logger.debug(`FFmpeg: [Execute]`);
+        if (Debug) Logger.debug(`[AudioPlayer]: [FFmpeg lib]: running ffmpeg`);
 
         this.setter(["write", "end"], this.stdin);
         this.setter(["read", "setEncoding", "pipe", "unpipe"], this.stdout);
@@ -61,7 +61,7 @@ class FFmpeg extends Duplex {
         }
         delete this.process;
 
-        if (Debug) Logger.debug(`FFmpeg: [Clear memory]`);
+        if (Debug) Logger.debug(`[AudioPlayer]: [FFmpeg lib]: Cleaning memory!`);
     };
 }
 //====================== ====================== ====================== ======================
