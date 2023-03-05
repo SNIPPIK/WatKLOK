@@ -27,37 +27,22 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
      * @description Все голосовые каналы к которым подключен плеер
      */
     public get connection() { return this._connection; };
-    public set connection(voice: VoiceConnection) { this._connection = voice; };
+    public set connection(connection: VoiceConnection) { this._connection = connection; };
     //====================== ====================== ====================== ======================
     /**
      * @description Смена действий плеера
      */
     public get state() { return this._state; };
-    public set state(state: PlayerStatus) {
+    public set state(newState: PlayerStatus) {
         const oldState = this._state;
-        const oldStatus = oldState.status, newStatus = state.status;
+        const oldStatus = oldState.status, newStatus = newState.status;
 
         //Проверяем на нужный статус, удаляем старый поток
-        if (isDestroy(oldState, state)) {
-            //Очищаемся от прошлого потока
-            oldState.stream.opus.removeAllListeners();
-            oldState.stream.opus.destroy();
-            oldState.stream.opus.read(); //Устраняем утечку памяти
-            oldState.stream.destroy();
-
-            //Устраняем фриз после смены потока
-            this.sendPacket(SilenceFrame);
-        }
+        if (oldState.stream && !oldState.stream.destroyed && (newState.status === "idle" || oldState.stream !== newState.stream)) this.destroy("stream");
 
         //Перезаписываем state
         delete this._state;
-        this._state = state;        
-
-        //Если не получается отправить пакеты
-        if (newStatus === "autoPause") {
-            if (this.connection) this.emit("error", Error(`[VoiceConnection]: has state ${this.connection.state.status}!`), false);
-            else this.emit("error", Error(`[VoiceConnection]: has not found!`), false);
-        }
+        this._state = newState;
 
         //Фильтруем статусы бота что в emit не попало что не надо
         if (oldStatus !== newStatus || oldStatus !== "idle" && newStatus === "read") {
@@ -84,7 +69,7 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
      */
     public get hasPlayable() {
         const state = this._state;
-        if (state.status === "idle") return false;
+        if (state.status === "idle" || !this.connection) return false;
 
         //Если поток уничтожен или больше не читается, переходим в состояние Idle.
         if (!state.stream.readable) { this.state = { status: "idle" }; return false; }
@@ -167,15 +152,11 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
         //Если статус (idle или pause или его нет) прекратить выполнение функции
         if (state.status === "idle" || state.status === "pause" || !state?.status) return;
 
-        //Если некуда проигрывать музыку ставить плеер на паузу
-        if (!this.connection) return void (this.state = { ...state, status: "autoPause" });
-        else if (this.state.status === "autoPause" && this.connection && this.connection.state.status === "ready") {
-            //Если стоит статус плеера (autoPause) и есть канал или каналы в которые можно воспроизвести музыку, стартуем!
-            this.state = { ...this.state, status: "read", stream: this.state.stream };
+        //Если вдруг нет голосового канала
+        if (!this.connection) {
+            this.state = {...state, status: "pause"};
+            return;
         }
-
-        //Не читать пакеты при статусе плеера (autoPaused)
-        if (state.status === "autoPause") return;
 
         //Отправка музыкального пакета
         if (state.status === "read") {
@@ -190,30 +171,28 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
     /**
      * @description Удаление неиспользованных данных
      */
-    public destroy = (): void => {
-        this.removeAllListeners();
+    public destroy = (status: "all" | "stream" = "all"): void => {
+        if (status === "all") {
+            this.removeAllListeners();
 
-        //Выключаем плеер если сейчас играет трек
-        this.stop();
+            //Выключаем плеер если сейчас играет трек
+            this.stop();
 
-        delete this._connection;
-        delete this._state;
+            delete this._connection;
+            delete this._state;
 
-        PlayerCycle.toRemove(this);
+            PlayerCycle.toRemove(this);
+        } else {
+            //Очищаемся от прошлого потока
+            this.state.stream.opus.removeAllListeners();
+            this.state.stream.opus.destroy();
+            this.state.stream.opus.read(); //Устраняем утечку памяти
+            this.state.stream.destroy();
+
+            //Устраняем фриз после смены потока
+            this.sendPacket(SilenceFrame);
+        }
     };
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Аргументы для удаления аудио потока
- */
-function isDestroy(oldS: PlayerStatus, newS: PlayerStatus): boolean {
-    if (!oldS.stream || oldS.stream?.destroyed) return false;
-
-    if ((oldS.status === "read" && newS.status === "pause" || oldS.status === "pause" && newS.status === "read") && oldS.stream === newS.stream) return false;
-    else if (oldS.status !== "idle" && newS.status === "read") return true;
-    else if (oldS.status === "read" && newS.status === "idle") return true;
-
-    return false;
 }
 //====================== ====================== ====================== ======================
 /**
@@ -231,8 +210,6 @@ interface PlayerEvents {
 
     //Плеер встал на паузу
     pause: () => any;
-    //Плеер не находит <player>.voice или проблема с подключение к голосовому каналу
-    autoPause: (error?: Error | string) => any;
 }
 //====================== ====================== ====================== ======================
 /**
@@ -240,7 +217,7 @@ interface PlayerEvents {
  */
 interface PlayerStatus {
     //Текущий статус плеера
-    status: "read" | "pause" | "idle" | "error" | "autoPause";
+    status: "read" | "pause" | "idle" | "error";
     //OggOpus Конвертер
     stream?: OpusAudio;
 }

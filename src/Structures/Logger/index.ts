@@ -6,10 +6,10 @@ export namespace Logger {
      * @param text {string} Текст лога
      * @param isDebug {boolean} Добавить префикс Debug
      */
-    export function log(text: string, isDebug: boolean = false): void {
+    export function log(text: string): void {
         const Time = currentTime();
 
-        return console.log(`${Time}${isDebug ? " [\x1b[33mDebug\x1b[0m]:" : ""} ${text.replace(/\[/gi, "[\x1b[32m").replace(/]/gi, "\x1b[0m]")}`);
+        return console.log(`${Time} ${text.replace(/\[/gi, "[\x1b[32m").replace(/]/gi, "\x1b[0m]")}`);
     }
     //====================== ====================== ====================== ======================
     /**
@@ -20,6 +20,17 @@ export namespace Logger {
         const Time = currentTime();
 
         return console.log(`${Time} [\x1b[31mError\x1b[0m]: \x1b[31m${text}\x1b[0m`);
+    }
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Отправляем лог с временем
+     * @param text {string} Текст лога
+     * @param isDebug {boolean} Добавить префикс Debug
+     */
+    export function debug(text: string): void {
+        const Time = currentTime();
+
+        return console.log(`${Time} [\x1b[33mDebug\x1b[0m]: ${text.replace(/\[/gi, "[\x1b[32m").replace(/]/gi, "\x1b[0m]")}`);
     }
 }
 //====================== ====================== ====================== ======================

@@ -49,7 +49,7 @@ function extractSignature(formats: YouTubeFormat[], html5player: string): Promis
         try {
             const functions = await extractFunctions(html5player);
 
-            for (const format of sortingQuality) {
+            for (let format of sortingQuality) {
                 const url = setDownloadURL(format, functions.length ? new vm.Script(functions[0]) : null, functions.length > 1 ? new vm.Script(functions[1]) : null);
 
                 if (!url) sortingQuality.shift();
@@ -59,7 +59,7 @@ function extractSignature(formats: YouTubeFormat[], html5player: string): Promis
             const page = await httpsClient.get(html5player, {resolve: "string"}) as string;
             const tokens = parseTokens(page);
 
-            for (const format of sortingQuality) {
+            for (let format of sortingQuality) {
                 const url = setDownload(format, tokens);
 
                 if (!url) sortingQuality.shift();

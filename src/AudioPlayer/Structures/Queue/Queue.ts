@@ -1,12 +1,12 @@
 import { ClientMessage } from "@Client/interactionCreate";
 import { PlayerEvents } from "@Structures/Player/Events";
+import { Song, inPlaylist, inTrack } from "@Queue/Song";
 import { AudioPlayer } from "@Structures/Player/index";
+import { Collection, StageChannel } from "discord.js";
 import { MessagePlayer } from "@Structures/Messages";
 import { OpusAudio } from "@Media/OpusAudio";
-import { Collection, StageChannel } from "discord.js";
 import { Debug } from "@db/Config.json";
 import { Voice } from "@VoiceManager";
-import { Song, inPlaylist, inTrack } from "@Queue/Song";
 import { Logger } from "@Logger";
 
 export { Queue, CollectionQueue };
@@ -113,7 +113,7 @@ class Queue {
             if (!seek) MessagePlayer.toPlay(this.message);
 
             //Если включен режим отладки показывает что сейчас играет и где
-            if (Debug) Logger.log(`Play: ${this.guild.id}: ${this.song.title}`, true);
+            if (Debug) Logger.debug(`Play: ${this.guild.id}: ${this.song.title}`);
 
             const resource = this.song.resource(seek);
 
@@ -172,6 +172,8 @@ class Queue {
         delete this.hasDestroying;
 
         client.queue.delete(guild.id);
+
+        if (Debug) Logger.debug(`[Queue: ${message.guildId}]: has deleted`);
     };
     //====================== ====================== ====================== ======================
     /**
@@ -183,10 +185,16 @@ class Queue {
         const player = this.player;
 
         //Запускаем таймер по истечению которого очереди будет удалена!
-        if (state === "start" && this.hasDestroying) {
-            this.Timer = setTimeout(this.cleanup, 20e3);
-            player.pause(); this.hasDestroying = true;
-        } else clearTimeout(this.Timer); this.hasDestroying = false;
+        if (state === "start" && !this.hasDestroying) {
+            this.Timer = setTimeout(this.cleanup, 10e3);
+            player.pause(); 
+            this.hasDestroying = true;
+        } else {
+            clearTimeout(this.Timer); 
+            this.hasDestroying = false;
+        }
+
+        if (Debug) Logger.debug(`[Queue]: [Status]: ${state} timer destroying`);
     };
 }
 //====================== ====================== ====================== ======================
@@ -212,7 +220,7 @@ class CollectionQueue<V, K> extends Collection<V, K> {
     * @param info {inTrack | inPlaylist} Входные данные это трек или плейлист?
     * @requires {CreateQueue}
     */
-    public readonly create = (message: ClientMessage, VoiceChannel: Voice.Channels, info: inTrack | inPlaylist): void => {
+    public create = (message: ClientMessage, VoiceChannel: Voice.Channels, info: inTrack | inPlaylist): void => {
         const { queue, status } = CreateQueue(message, VoiceChannel);
         const requester = message.author;
 

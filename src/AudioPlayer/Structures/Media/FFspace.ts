@@ -26,7 +26,7 @@ class FFmpeg extends Duplex {
         if (!args.includes("-i")) args = ["-i", "-", ...args];
         this.process = runProcess(FFmpegName, [...args, "pipe:1"]);
 
-        if (Debug) Logger.log(`FFmpeg: [Execute]`, true);
+        if (Debug) Logger.debug(`FFmpeg: [Execute]`);
 
         this.setter(["write", "end"], this.stdin);
         this.setter(["read", "setEncoding", "pipe", "unpipe"], this.stdout);
@@ -61,7 +61,7 @@ class FFmpeg extends Duplex {
         }
         delete this.process;
 
-        if (Debug) Logger.log(`FFmpeg: [Clear memory]`, true);
+        if (Debug) Logger.debug(`FFmpeg: [Clear memory]`);
     };
 }
 //====================== ====================== ====================== ======================
@@ -89,6 +89,17 @@ function FFprobe(url: string): Promise<JSON> {
 function runProcess(name: string, args: any[]): ChildProcessWithoutNullStreams & { stdout: { _readableState: Readable }, stdin: { _writableState: Writable } } {
     return spawn(name, args) as any;
 }
+
+
+
+
+
+
+
+
+
+
+
 
 //====================== ====================== ====================== ======================
 /**

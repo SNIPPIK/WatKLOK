@@ -19,7 +19,7 @@ export class Player {
      * @param message {ClientMessage} Сообщение с сервера
      * @param args {string} Что требует пользователь
      */
-    public readonly play = (message: ClientMessage, args: string): void => {
+    public play = (message: ClientMessage, args: string): void => {
         const { author } = message;
 
         Balancer.push(() => {
@@ -46,7 +46,7 @@ export class Player {
      * @description Завершает текущую музыку
      * @param message {ClientMessage} Сообщение с сервера
      */
-    public readonly stop = (message: ClientMessage): void => {
+    public stop = (message: ClientMessage): void => {
         const { client, guild } = message;
         const { player }: Queue = client.queue.get(guild.id);
 
@@ -58,7 +58,7 @@ export class Player {
      * @param message {ClientMessage} Сообщение с сервера
      * @param args {number} Сколько треков пропускаем
      */
-    public readonly skip = (message: ClientMessage, args: number = 1): void => {
+    public skip = (message: ClientMessage, args: number = 1): void => {
         const { client, guild, author } = message;
         const queue: Queue = client.queue.get(guild.id);
         const { player, songs, options } = queue;
@@ -94,7 +94,7 @@ export class Player {
      * @description Приостанавливает воспроизведение музыки
      * @param message {ClientMessage} Сообщение с сервера
      */
-    public readonly pause = (message: ClientMessage): void => {
+    public pause = (message: ClientMessage): void => {
         const { client, guild } = message;
         const { player, song }: Queue = client.queue.get(guild.id);
         const { title }: Song = song;
@@ -108,7 +108,7 @@ export class Player {
      * @description Продолжает воспроизведение музыки
      * @param message {ClientMessage} Сообщение с сервера
      */
-    public readonly resume = (message: ClientMessage): void => {
+    public resume = (message: ClientMessage): void => {
         const { client, guild } = message;
         const { player, song }: Queue = client.queue.get(guild.id);
         const { title }: Song = song;
@@ -124,7 +124,7 @@ export class Player {
      * @param arg {string} Аргументы Пример: команда аргумент1 аргумент2
      * @requires {toStop}
      */
-    public readonly remove = (message: ClientMessage, arg: number = 1): void => {
+    public remove = (message: ClientMessage, arg: number = 1): void => {
         const { client, guild, author } = message;
         const queue: Queue = client.queue.get(guild.id);
         const { player, songs } = queue;
@@ -159,7 +159,7 @@ export class Player {
      * @param seek {number} музыка будет играть с нужной секунды (не работает без ffmpeg)
      * @requires {ParsingTimeToString}
      */
-    public readonly seek = (message: ClientMessage, seek: number): void => {
+    public seek = (message: ClientMessage, seek: number): void => {
         const { client, guild, author } = message;
         const queue: Queue = client.queue.get(guild.id);
         const { song, play, player } = queue;
@@ -183,7 +183,7 @@ export class Player {
      * @description Повтор текущей музыки
      * @param message {ClientMessage} Сообщение с сервера
      */
-    public readonly replay = (message: ClientMessage): void => {
+    public replay = (message: ClientMessage): void => {
         const { client, guild, author } = message;
         const queue: Queue = client.queue.get(guild.id);
         const { song, play } = queue;
@@ -206,7 +206,7 @@ export class Player {
      * @param filter {typeof FFspace.getFilter} Сам фильтр
      * @param arg
      */
-    public readonly filter = (message: ClientMessage, filter: Filter, arg: number): Promise<void> | void => {
+    public filter = (message: ClientMessage, filter: Filter, arg: number): Promise<void> | void => {
         const { client, guild, author } = message;
         const queue: Queue = client.queue.get(guild.id);
         const { player, play }: Queue = queue;
