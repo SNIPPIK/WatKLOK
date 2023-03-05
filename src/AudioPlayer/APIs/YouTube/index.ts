@@ -302,7 +302,6 @@ function runWorkerSignature(workerData: {}): Promise<YouTubeFormat | Error> {
         });
         worker.once('exit', async (code) => {
             if (code !== 0) resolve(Error(`[APIs]: Worker stopped with exit code ${code}`));
-            return;
         });
     });
 }

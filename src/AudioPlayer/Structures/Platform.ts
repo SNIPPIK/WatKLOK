@@ -14,7 +14,7 @@ type platform = "YOUTUBE" | "SPOTIFY" | "VK" | "SOUNDCLOUD" | "DISCORD" | "YANDE
 type callback = "track" | "playlist" | "search" | "album" | "artist";
 //Данные которые хранит Platforms.all в формате Array
 interface platformData {
-    platform: platform;
+    name: platform;
     color: number;
     prefix?: string[];
     reg: RegExp;
@@ -39,7 +39,7 @@ const Platforms: {noAudio: platform[], noAuth: platform[], all: platformData[]} 
     //Все возможные запросы данных в JSON формате
     all: [
         { //Какие данные можно взять с YouTube
-            platform: "YOUTUBE",
+            name: "YOUTUBE",
             color: 16711680, //Цвет трека
             prefix: ["yt", "ytb"], //Префиксы для поиска
             reg: /^(https?:\/\/)?(www\.)?(m\.)?(music\.)?( )?(youtube\.com|youtu\.?be)\/.+$/gi, //Как фильтровать ссылки
@@ -53,7 +53,7 @@ const Platforms: {noAudio: platform[], noAuth: platform[], all: platformData[]} 
             }
         },
         { //Какие данные можно взять с Spotify
-            platform: "SPOTIFY",
+            name: "SPOTIFY",
             color: 1420288, //Цвет трека
             prefix: ["sp"], //Префиксы для поиска
             reg: /^(https?:\/\/)?(open\.)?(m\.)?(spotify\.com|spotify\.?ru)\/.+$/gi, //Как фильтровать ссылки
@@ -68,7 +68,7 @@ const Platforms: {noAudio: platform[], noAuth: platform[], all: platformData[]} 
             }
         },
         { //Какие данные можно взять с Soundcloud
-            platform: "SOUNDCLOUD",
+            name: "SOUNDCLOUD",
             color: 0xe67e22, //Цвет трека
             prefix: ["sc"], //Префиксы для поиска
             reg: /^(https?:\/\/)?((?:www|m)\.)?(api\.soundcloud\.com|soundcloud\.com|snd\.sc)\/.+$/gi, //Как фильтровать ссылки
@@ -82,7 +82,7 @@ const Platforms: {noAudio: platform[], noAuth: platform[], all: platformData[]} 
             }
         },
         { //Какие данные можно взять с VK
-            platform: "VK",
+            name: "VK",
             color: 30719, //Цвет трека
             prefix: ["vk"], //Префиксы для поиска
             reg: /^(https?:\/\/)?(vk\.com)\/.+$/gi, //Как фильтровать ссылки
@@ -95,7 +95,7 @@ const Platforms: {noAudio: platform[], noAuth: platform[], all: platformData[]} 
             }
         },
         {  //Какие данные можно взять с Yandex music
-            platform: "YANDEX",
+            name: "YANDEX",
             color: Colors.Yellow, //Цвет трека
             prefix: ["ym", "yandex", "y"], //Префиксы для поиска
             reg: /^(https?:\/\/)?(music\.)?(yandex\.ru)\/.+$/gi, //Как фильтровать ссылки
@@ -109,7 +109,7 @@ const Platforms: {noAudio: platform[], noAuth: platform[], all: platformData[]} 
             }
         },
         { //Какие данные можно взять с Discord
-            platform: "DISCORD",
+            name: "DISCORD",
             color: Colors.Grey, //Цвет трека
             reg: /^(https?:\/\/)?(cdn\.)?( )?(discordapp\.com)\/.+$/gi || /^(http?:\/\/)\/.+$/gi || /^(https?:\/\/)\/.+$/gi, //Как фильтровать ссылки
 
@@ -156,7 +156,7 @@ namespace Platform {
      * @param platform {platform} Платформа
      */
     export function color(platform: platform): number | null {
-        const findPlatforms = Platforms.all.find((info) => info.platform === platform);
+        const findPlatforms = Platforms.all.find((info) => info.name === platform);
 
         if (findPlatforms) return findPlatforms.color;
         return null;
@@ -176,7 +176,7 @@ namespace Platform {
      * @param type {callback} Тип запроса
      */
     export function callback(platform: platform, type: callback) {
-        const findPlatforms = Platforms.all.find((info) => info.platform === platform);
+        const findPlatforms = Platforms.all.find((info) => info.name === platform);
 
         if (!findPlatforms) return "!platform";
 
@@ -214,12 +214,12 @@ namespace Platform {
         if (str.match(/^(https?:\/\/)/gi)) {
             const findPlatform = Platforms.all.filter((info) => str.match(info.reg));
 
-            return findPlatform[0].platform;
+            return findPlatform[0].name;
         } else { //Если пользователь ищет трек по названию
             const prefixs = str.split(' '), platform = prefixs[0].toLowerCase();
             const findPlatform = Platforms.all.find((info) => info.prefix && info.prefix.includes(platform));
 
-            if (findPlatform) return findPlatform.platform;
+            if (findPlatform) return findPlatform.name;
             return "YOUTUBE";
         }
     }
@@ -233,7 +233,7 @@ namespace Platform {
         if (!str || str.match(/^(https?:\/\/)/gi)) return str;
 
         const ArrayArg = str.split(" ");
-        const findPlatform = Platforms.all.find((info) => info.platform === ArrayArg[0].toUpperCase() || info.prefix && info.prefix.includes(ArrayArg[0].toLowerCase()));
+        const findPlatform = Platforms.all.find((info) => info.name === ArrayArg[0].toUpperCase() || info.prefix && info.prefix.includes(ArrayArg[0].toLowerCase()));
 
         if (findPlatform && ArrayArg.length > 1) {
             ArrayArg.splice(0, 1);
@@ -249,6 +249,6 @@ namespace Platform {
      * @param platform {platform} Платформа
      */
     export function full(platform: platform) {
-        return Platforms.all.find((pl) => pl.platform === platform);
+        return Platforms.all.find((pl) => pl.name === platform);
     }
 }

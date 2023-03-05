@@ -37,10 +37,6 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
         const oldState = this._state;
         const oldStatus = oldState.status, newStatus = state.status;
 
-        //Перезаписываем state
-        delete this._state;
-        this._state = state;
-
         //Проверяем на нужный статус, удаляем старый поток
         if (isDestroy(oldState, state)) {
             //Очищаемся от прошлого потока
@@ -52,6 +48,10 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
             //Устраняем фриз после смены потока
             this.sendPacket(SilenceFrame);
         }
+
+        //Перезаписываем state
+        delete this._state;
+        this._state = state;        
 
         //Если не получается отправить пакеты
         if (newStatus === "autoPause") {

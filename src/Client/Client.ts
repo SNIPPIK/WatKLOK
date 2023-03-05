@@ -4,16 +4,15 @@ import { Bot, Channels, APIs } from "@db/Config.json";
 import { Command } from "@Structures/Handle/Command";
 import { Player } from "@AudioPlayer/index";
 import { FileSystem } from "@FileSystem";
-import { Queue } from "@Queue/Queue";
+import { CollectionQueue, Queue } from "@Queue/Queue";
 import { Logger } from "@Logger";
 import { env } from "@env";
 
-export { WatKLOK };
-
-const queue = new Collection<string | number, Queue>();
+const queue = new CollectionQueue<string | number, Queue>();
 const commands = new Collection<string, Command>(); //База, со всеми командами
+const player = new Player();
 
-class WatKLOK extends Client {
+export class WatKLOK extends Client {
     /**
      * @description Все команды бота
      */
@@ -27,7 +26,7 @@ class WatKLOK extends Client {
     /**
      * @description Плеер
      */
-    public get player() { return Player; };
+    public get player() { return player; };
     //====================== ====================== ====================== ======================
     /**
      * @description Текущий ID осколка

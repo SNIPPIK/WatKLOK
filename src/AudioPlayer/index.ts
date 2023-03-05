@@ -5,25 +5,27 @@ import { DurationUtils } from "@Structures/Durations";
 import { Voting, APIs, Music } from "@db/Config.json";
 import { MessagePlayer } from "@Structures/Messages";
 import { Balancer } from "@Structures/Balancer";
-import { Queue, toQueue } from "@Queue/Queue";
 import { Filter } from "@Media/AudioFilters";
 import { VoiceState } from "discord.js";
 import { Voice } from "@VoiceManager";
+import { Queue } from "@Queue/Queue";
 
-//Здесь все функции для взаимодействия с плеером
-export namespace Player {
+/**
+ * @description Все доступные взаимодействия с плеером через client.player
+ */
+export class Player {
     /**
      * @description Получаем данные из базы по данным
      * @param message {ClientMessage} Сообщение с сервера
-     * @param arg {string} Что требует пользователь
+     * @param args {string} Что требует пользователь
      */
-    export function play(message: ClientMessage, arg: string): void {
+    public readonly play = (message: ClientMessage, args: string): void => {
         const { author } = message;
 
         Balancer.push(() => {
-            const type = Platform.type(arg); //Тип запроса
-            const platform = Platform.name(arg); //Платформа с которой будем взаимодействовать
-            const argument = Platform.filterArg(arg);
+            const type = Platform.type(args); //Тип запроса
+            const platform = Platform.name(args); //Платформа с которой будем взаимодействовать
+            const argument = Platform.filterArg(args);
 
             //Если нельзя получить данные с определенной платформы
             if (Platform.isFailed(platform)) return UtilsMsg.createMessage({ text: `${author}, я не могу взять данные с этой платформы **${platform}**\n Причина: [**Authorization data not found**]`, color: "Yellow", message });
@@ -38,13 +40,75 @@ export namespace Player {
 
             return runCallback(callback(argument) as Promise<inTrack | inPlaylist | inTrack[]>, platform, message);
         });
-    }
+    };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Завершает текущую музыку
+     * @param message {ClientMessage} Сообщение с сервера
+     */
+    public readonly stop = (message: ClientMessage): void => {
+        const { client, guild } = message;
+        const { player }: Queue = client.queue.get(guild.id);
+
+        if (player.hasSkipped) player.stop();
+    };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Пропускает текущую музыку
+     * @param message {ClientMessage} Сообщение с сервера
+     * @param args {number} Сколько треков пропускаем
+     */
+    public readonly skip = (message: ClientMessage, args: number = 1): void => {
+        const { client, guild, author } = message;
+        const queue: Queue = client.queue.get(guild.id);
+        const { player, songs, options } = queue;
+        const { title, url }: Song = songs[args - 1];
+    
+        setImmediate(() => {
+            //Если музыку нельзя пропустить из-за плеера
+            if (!player.hasSkipped) return UtilsMsg.createMessage({ text: `${author}, ⚠ Музыка еще не играет!`, message, color: "Yellow" });
+    
+            //Если пользователь укажет больше чем есть в очереди
+            if (args > songs.length) return UtilsMsg.createMessage({ text: `${author}, В очереди ${songs.length}!`, message, color: "Yellow" });
+    
+            //Голосование за пропуск
+            Vote(message, queue, (win): void => {
+                if (win) {
+                    if (args > 1) {
+                        if (options.loop === "songs") for (let i = 0; i < args - 2; i++) songs.push(songs.shift());
+                        else queue.songs = songs.slice(args - 2);
+    
+                        UtilsMsg.createMessage({ text: `⏭️ | Skip to song [${args}] | ${title}`, message, codeBlock: "css", color: "Green" });
+                    } else UtilsMsg.createMessage({ text: `⏭️ | Skip song | ${title}`, message, codeBlock: "css", color: "Green" });
+    
+                    return client.player.stop(message);
+                } else {
+                    //Если пользователю нельзя пропустить трек сделать
+                    return UtilsMsg.createMessage({ text: `${author}, пропустить этот трек [${title}](${url}) не вышло!`, message, color: "Yellow" });
+                }
+            }, "пропуск трека", args);
+        });
+    };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Приостанавливает воспроизведение музыки
+     * @param message {ClientMessage} Сообщение с сервера
+     */
+    public readonly pause = (message: ClientMessage): void => {
+        const { client, guild } = message;
+        const { player, song }: Queue = client.queue.get(guild.id);
+        const { title }: Song = song;
+
+        //Приостанавливаем музыку если она играет
+        player.pause();
+        return UtilsMsg.createMessage({ text: `⏸ | Pause song | ${title}`, message, codeBlock: "css", color: "Green" });
+    };
     //====================== ====================== ====================== ======================
     /**
      * @description Продолжает воспроизведение музыки
      * @param message {ClientMessage} Сообщение с сервера
      */
-    export function resume(message: ClientMessage): void {
+    public readonly resume = (message: ClientMessage): void => {
         const { client, guild } = message;
         const { player, song }: Queue = client.queue.get(guild.id);
         const { title }: Song = song;
@@ -55,26 +119,12 @@ export namespace Player {
     }
     //====================== ====================== ====================== ======================
     /**
-     * @description Приостанавливает воспроизведение музыки
-     * @param message {ClientMessage} Сообщение с сервера
-     */
-    export function pause(message: ClientMessage): void {
-        const { client, guild } = message;
-        const { player, song }: Queue = client.queue.get(guild.id);
-        const { title }: Song = song;
-
-        //Приостанавливаем музыку если она играет
-        player.pause();
-        return UtilsMsg.createMessage({ text: `⏸ | Pause song | ${title}`, message, codeBlock: "css", color: "Green" });
-    }
-    //====================== ====================== ====================== ======================
-    /**
      * @description Убираем музыку из очереди
      * @param message {ClientMessage} Сообщение с сервера
      * @param arg {string} Аргументы Пример: команда аргумент1 аргумент2
      * @requires {toStop}
      */
-    export function remove(message: ClientMessage, arg: number = 1): void {
+    public readonly remove = (message: ClientMessage, arg: number = 1): void => {
         const { client, guild, author } = message;
         const queue: Queue = client.queue.get(guild.id);
         const { player, songs } = queue;
@@ -91,7 +141,7 @@ export namespace Player {
                     queue.songs.splice(arg - 1, 1);
 
                     //Если пользователь указал первый трек, то пропускаем го
-                    if (arg === 1) toStop(message);
+                    if (arg === 1) this.stop(message);
 
                     //Сообщаем какой трек был убран
                     return UtilsMsg.createMessage({ text: `⏭️ | Remove song | ${title}`, message, codeBlock: "css", color: "Green" });
@@ -109,7 +159,7 @@ export namespace Player {
      * @param seek {number} музыка будет играть с нужной секунды (не работает без ffmpeg)
      * @requires {ParsingTimeToString}
      */
-    export function seek(message: ClientMessage, seek: number): void {
+    public readonly seek = (message: ClientMessage, seek: number): void => {
         const { client, guild, author } = message;
         const queue: Queue = client.queue.get(guild.id);
         const { song, play, player } = queue;
@@ -130,20 +180,10 @@ export namespace Player {
     }
     //====================== ====================== ====================== ======================
     /**
-     * @description Пропускает текущую музыку
-     * @param message {ClientMessage} Сообщение с сервера
-     * @param args {number} Сколько треков пропускаем
-     */
-    export function skip(message: ClientMessage, args: number): void {
-        if (args) return skipSong(message, args);
-        return skipSong(message);
-    }
-    //====================== ====================== ====================== ======================
-    /**
      * @description Повтор текущей музыки
      * @param message {ClientMessage} Сообщение с сервера
      */
-    export function replay(message: ClientMessage): void {
+    public readonly replay = (message: ClientMessage): void => {
         const { client, guild, author } = message;
         const queue: Queue = client.queue.get(guild.id);
         const { song, play } = queue;
@@ -166,7 +206,7 @@ export namespace Player {
      * @param filter {typeof FFspace.getFilter} Сам фильтр
      * @param arg
      */
-    export function filter(message: ClientMessage, filter: Filter, arg: number): Promise<void> | void {
+    public readonly filter = (message: ClientMessage, filter: Filter, arg: number): Promise<void> | void => {
         const { client, guild, author } = message;
         const queue: Queue = client.queue.get(guild.id);
         const { player, play }: Queue = queue;
@@ -242,56 +282,6 @@ export namespace Player {
             }
         }
     }
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Завершает текущую музыку
-     * @param message {ClientMessage} Сообщение с сервера
-     */
-    export function toStop(message: ClientMessage): void {
-        const { client, guild } = message;
-        const { player }: Queue = client.queue.get(guild.id);
-
-        if (player.hasSkipped) player.stop();
-    }
-}
-
-
-//====================== ====================== ====================== ======================
-/**
- * @description Пропускает музыку под номером
- * @param message {ClientMessage} Сообщение с сервера
- * @param args {string} Аргументы Пример: команда аргумент1 аргумент2
- */
-function skipSong(message: ClientMessage, args: number = 1): void {
-    const { client, guild, author } = message;
-    const queue: Queue = client.queue.get(guild.id);
-    const { player, songs, options } = queue;
-    const { title, url }: Song = songs[args - 1];
-
-    setImmediate(() => {
-        //Если музыку нельзя пропустить из-за плеера
-        if (!player.hasSkipped) return UtilsMsg.createMessage({ text: `${author}, ⚠ Музыка еще не играет!`, message, color: "Yellow" });
-
-        //Если пользователь укажет больше чем есть в очереди
-        if (args > songs.length) return UtilsMsg.createMessage({ text: `${author}, В очереди ${songs.length}!`, message, color: "Yellow" });
-
-        //Голосование за пропуск
-        Vote(message, queue, (win): void => {
-            if (win) {
-                if (args > 1) {
-                    if (options.loop === "songs") for (let i = 0; i < args - 2; i++) songs.push(songs.shift());
-                    else queue.songs = songs.slice(args - 2);
-
-                    UtilsMsg.createMessage({ text: `⏭️ | Skip to song [${args}] | ${title}`, message, codeBlock: "css", color: "Green" });
-                } else UtilsMsg.createMessage({ text: `⏭️ | Skip song | ${title}`, message, codeBlock: "css", color: "Green" });
-
-                return Player.toStop(message);
-            } else {
-                //Если пользователю нельзя пропустить трек сделать
-                return UtilsMsg.createMessage({ text: `${author}, пропустить этот трек [${title}](${url}) не вышло!`, message, color: "Yellow" });
-            }
-        }, "пропуск трека", args);
-    });
 }
 //====================== ====================== ====================== ======================
 /**
@@ -335,9 +325,6 @@ function Vote(message: ClientMessage, queue: Queue, callback: (win: boolean) => 
     });
 }
 //====================== ====================== ====================== ======================
-
-
-//====================== ====================== ====================== ======================
 /**
  * @description Показываем данные о том что будет получено
  * @param platform {platform} Платформа с кторой получаем данные
@@ -374,13 +361,12 @@ function runCallback(callback: Promise<inTrack | inTrack[] | inPlaylist>, platfo
         if (!data) return UtilsMsg.createMessage({ text: `${author}, данные не были найдены!`, color: "DarkRed", message });
 
         //Если пользователь ищет трек, но найден всего один
-        if (data instanceof Array && data.length === 1) return toQueue(message, VoiceChannel, data[0]);
+        if (data instanceof Array && data.length === 1) return client.queue.create(message, VoiceChannel, data[0]);
 
         //Если пользователь ищет трек
         else if (data instanceof Array) return MessagePlayer.toSearch(data, platform, message);
 
         //Загружаем трек или плейлист в GuildQueue
-        return toQueue(message, VoiceChannel, data);
+        return client.queue.create(message, VoiceChannel, data);
     });
 }
-//====================== ====================== ====================== ======================
