@@ -1,13 +1,13 @@
 {
   "compilerOptions": {
     "paths": {
-      "@Client/*": ["src/Client/*", "src/Handler/Events/Activity/*"],
+      "@Client/*": ["src/Client/*", "src/_Handler/Events/Activity/*"],
       "@Logger": ["src/Structures/Logger/index"],
 
-      "@Handler/*": ["src/Handler/*"],
-      "@FileSystem": ["src/FileSystem/index"],
       "@db/*": ["db/*"],
-      "@env": ["src/FileSystem/env"],
+      "@Handler/*": ["src/_Handler/*"],
+      "@FileSystem": ["src/_Handler/FileSystem/index"],
+      "@env": ["src/_Handler/FileSystem/env"],
 
       "@Structures/*": ["src/Structures/*", "src/AudioPlayer/Structures/*"],
       "@Managers/*": ["src/AudioPlayer/Managers/*"],
