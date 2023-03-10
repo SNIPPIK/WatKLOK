@@ -13,12 +13,32 @@ type Arguments = Array<string | number> | Array<string>;
  * @description Используется для модификации и конвертации потоков
  */
 class FFmpeg extends Duplex {
+    /**
+     * @description Процесс 
+     */
     private process;
-
+    //====================== ====================== ====================== ======================
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Жив ли процесс
+     */
     public get deletable() { return !this.process?.killed || !this.destroyed || !!this.process; };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Данные выходящие из процесса
+     */
     public get stdout() { return this?.process?.stdout; };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Данные входящие в процесс
+     */
     public get stdin() { return this?.process?.stdin; };
-
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Создаем FFmpeg 
+     * @param args {Arguments} Аргументы запуска
+     * @param options {DuplexOptions} Модификации потока
+     */
     public constructor(args: Arguments, options: DuplexOptions = {}) {
         super({ autoDestroy: true, objectMode: true, ...options });
 

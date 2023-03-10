@@ -10,6 +10,7 @@ import { VoiceState } from "discord.js";
 import { Voice } from "@VoiceManager";
 import { Queue } from "@Queue/Queue";
 
+
 /**
  * @description Все доступные взаимодействия с плеером через client.player
  */
@@ -36,7 +37,17 @@ export class Player {
             else if (callback === "!callback") return UtilsMsg.createMessage({ text: `${author}, у меня нет поддержки этого типа запроса!\nТип запроса **${type}**!\nПлатформа: **${platform}**`, color: "Yellow", message });
 
             //Если включено показывать запросы
-            if (Music.showGettingData) sendGettingData(platform, type, message);
+            if (Music.showGettingData) {
+                //Отправляем сообщение о текущем запросе
+                UtilsMsg.createMessage({ text: `${message.author}, производится запрос в **${platform.toLowerCase()}.${type}**`, color: "Grey", message });
+
+                //Если у этой платформы нельзя получить исходный файл музыки, то сообщаем
+                if (Platform.noAudio(platform) && APIs.showWarningAudio) {
+                    const workPlatform = Platform.isFailed("YANDEX") ? "youtube.track" : "yandex.track";
+
+                    UtilsMsg.createMessage({ text: `⚠️ Warning | [${platform}]\n\nЯ не могу получать исходные файлы музыки у этой платформы.\nЗапрос будет произведен в ${workPlatform}`, color: "Yellow", codeBlock: "css", message });
+                }
+            }
 
             return runCallback(callback(argument) as Promise<inTrack | inPlaylist | inTrack[]>, platform, message);
         });
@@ -63,24 +74,24 @@ export class Player {
         const queue: Queue = client.queue.get(guild.id);
         const { player, songs, options } = queue;
         const { title, url }: Song = songs[args - 1];
-    
+
         setImmediate(() => {
             //Если музыку нельзя пропустить из-за плеера
             if (!player.hasSkipped) return UtilsMsg.createMessage({ text: `${author}, ⚠ Музыка еще не играет!`, message, color: "Yellow" });
-    
+
             //Если пользователь укажет больше чем есть в очереди
             if (args > songs.length) return UtilsMsg.createMessage({ text: `${author}, В очереди ${songs.length}!`, message, color: "Yellow" });
-    
+
             //Голосование за пропуск
             Vote(message, queue, (win): void => {
                 if (win) {
                     if (args > 1) {
                         if (options.loop === "songs") for (let i = 0; i < args - 2; i++) songs.push(songs.shift());
                         else queue.songs = songs.slice(args - 2);
-    
+
                         UtilsMsg.createMessage({ text: `⏭️ | Skip to song [${args}] | ${title}`, message, codeBlock: "css", color: "Green" });
                     } else UtilsMsg.createMessage({ text: `⏭️ | Skip song | ${title}`, message, codeBlock: "css", color: "Green" });
-    
+
                     return client.player.stop(message);
                 } else {
                     //Если пользователю нельзя пропустить трек сделать
@@ -116,7 +127,7 @@ export class Player {
         //Продолжаем воспроизведение музыки если она на паузе
         player.resume();
         return UtilsMsg.createMessage({ text: `▶️ | Resume song | ${title}`, message, codeBlock: "css", color: "Green" });
-    }
+    };
     //====================== ====================== ====================== ======================
     /**
      * @description Убираем музыку из очереди
@@ -150,7 +161,7 @@ export class Player {
                 }
             }, "удаление из очереди", arg);
         });
-    }
+    };
     //====================== ====================== ====================== ======================
     /**
      * @description Завершает текущую музыку
@@ -175,7 +186,7 @@ export class Player {
                 return UtilsMsg.createMessage({ text: `⏭️ | Seeking to [${DurationUtils.ParsingTimeToString(seek)}] song | ${title}`, message, codeBlock: "css", color: "Green" });
             } else return UtilsMsg.createMessage({ text: `${author}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color: "Yellow" });
         }, "пропуск времени в треке", 1);
-    }
+    };
     //====================== ====================== ====================== ======================
     /**
      * @description Повтор текущей музыки
@@ -196,7 +207,7 @@ export class Player {
                 return UtilsMsg.createMessage({ text: `🔂 | Replay | ${title}`, message, color: "Green", codeBlock: "css" });
             } else return UtilsMsg.createMessage({ text: `${author}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color: "Yellow" });
         }, "повторное проигрывание трека", 1);
-    }
+    };
     //====================== ====================== ====================== ======================
     /**
      * @description Применяем фильтры для плеера
@@ -279,7 +290,7 @@ export class Player {
                 }, "добавление фильтра");
             }
         }
-    }
+    };
 }
 //====================== ====================== ====================== ======================
 /**
@@ -320,24 +331,6 @@ function Vote(message: ClientMessage, queue: Queue, callback: (win: boolean) => 
             setTimeout(() => callback(Yes >= No), 5e3);
         });
     });
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Показываем данные о том что будет получено
- * @param platform {platform} Платформа с кторой получаем данные
- * @param type {callback} Тип запроса
- * @param message {ClientMessage} Сообщение с сервера
- */
-function sendGettingData(platform: platform, type: callback, message: ClientMessage): void {
-    //Отправляем сообщение о текущем запросе
-    UtilsMsg.createMessage({ text: `${message.author}, производится запрос в **${platform.toLowerCase()}.${type}**`, color: "Grey", message });
-
-    //Если у этой платформы нельзя получить исходный файл музыки, то сообщаем
-    if (Platform.noAudio(platform) && APIs.showWarningAudio) {
-        const workPlatform = Platform.isFailed("YANDEX") ? "youtube.track" : "yandex.track";
-
-        UtilsMsg.createMessage({ text: `⚠️ Warning | [${platform}]\n\nЯ не могу получать исходные файлы музыки у этой платформы.\nЗапрос будет произведен в ${workPlatform}`, color: "Yellow", codeBlock: "css", message });
-    }
 }
 //====================== ====================== ====================== ======================
 /**

@@ -31,13 +31,13 @@ interface platformData {
     }
 }
 
-const Platforms: {audio: platform[], auth: platform[], all: platformData[]} = {
+const Platforms: { audio: platform[], auth: platform[], all: platformData[] } = {
     //Платформы у которых нет возможности получить доступ к аудио
     audio: [],
 
     //Платформы у которых нет данных авторизации
     auth: [],
-    
+
     //Все возможные запросы данных в JSON формате
     all: [
         { //Какие данные можно взять с YouTube
@@ -49,9 +49,9 @@ const Platforms: {audio: platform[], auth: platform[], all: platformData[]} = {
 
             //Доступные запросы для этой платформы
             callbacks: {
-                track:    YouTube.getVideo,
-                search:   YouTube.SearchVideos,
-                artist:   YouTube.getChannelVideos,
+                track: YouTube.getVideo,
+                search: YouTube.SearchVideos,
+                artist: YouTube.getChannelVideos,
                 playlist: YouTube.getPlaylist
             }
         },
@@ -64,10 +64,10 @@ const Platforms: {audio: platform[], auth: platform[], all: platformData[]} = {
 
             //Доступные запросы для этой платформы
             callbacks: {
-                track:    Spotify.getTrack,
-                album:    Spotify.getAlbum,
-                search:   Spotify.SearchTracks,
-                artist:   Spotify.getAuthorTracks,
+                track: Spotify.getTrack,
+                album: Spotify.getAlbum,
+                search: Spotify.SearchTracks,
+                artist: Spotify.getAuthorTracks,
                 playlist: Spotify.getPlaylist
             }
         },
@@ -80,10 +80,10 @@ const Platforms: {audio: platform[], auth: platform[], all: platformData[]} = {
 
             //Доступные запросы для этой платформы
             callbacks: {
-                track:    SoundCloud.getTrack,
-                search:   SoundCloud.SearchTracks,
+                track: SoundCloud.getTrack,
+                search: SoundCloud.SearchTracks,
                 playlist: SoundCloud.getPlaylist,
-                album:    SoundCloud.getPlaylist
+                album: SoundCloud.getPlaylist
             }
         },
         { //Какие данные можно взять с VK
@@ -95,8 +95,8 @@ const Platforms: {audio: platform[], auth: platform[], all: platformData[]} = {
 
             //Доступные запросы для этой платформы
             callbacks: {
-                track:    VK.getTrack,
-                search:   VK.SearchTracks,
+                track: VK.getTrack,
+                search: VK.SearchTracks,
                 playlist: VK.getPlaylist
             }
         },
@@ -109,8 +109,8 @@ const Platforms: {audio: platform[], auth: platform[], all: platformData[]} = {
 
             //Доступные запросы для этой платформы
             callbacks: {
-                track:  YandexMusic.getTrack,
-                album:  YandexMusic.getAlbum,
+                track: YandexMusic.getTrack,
+                album: YandexMusic.getAlbum,
                 search: YandexMusic.SearchTracks,
                 artist: YandexMusic.getArtistTracks
             }
@@ -150,8 +150,6 @@ if (Platforms.audio.length === 0) (() => {
         if (!platfrom.audio) Platforms.audio.push(platfrom.name);
     }
 })();
-//====================== ====================== ====================== ======================
-
 //====================== ====================== ====================== ======================
 /*                           Namespace for getting data platforms                          */
 //====================== ====================== ====================== ======================

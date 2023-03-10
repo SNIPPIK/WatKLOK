@@ -1,11 +1,11 @@
-import {ClientMessage, EmbedConstructor} from "@Client/interactionCreate";
-import {ApplicationCommandOptionType, Colors} from "discord.js";
-import {Command, ResolveData} from "@Handler/FileSystem/Handle/Command";
-import {ReactionMenu} from "@Structures/ReactionMenu";
-import {AudioFilters} from "@Media/AudioFilters";
-import {ArraySort} from "@Structures/ArraySort";
+import { ClientMessage, EmbedConstructor } from "@Client/interactionCreate";
+import { ApplicationCommandOptionType, Colors } from "discord.js";
+import { Command, ResolveData } from "@Handler/FileSystem/Handle/Command";
+import { ReactionMenu } from "@Structures/ReactionMenu";
+import { AudioFilters } from "@Media/AudioFilters";
+import { ArraySort } from "@Structures/ArraySort";
 import Filters from "@db/Filters.json";
-import {Queue} from "@Queue/Queue";
+import { Queue } from "@Queue/Queue";
 
 export class FilterCommand extends Command {
     public constructor() {
@@ -31,11 +31,11 @@ export class FilterCommand extends Command {
     };
 
     public readonly run = (message: ClientMessage, args: string[]): ResolveData => {
-        const {author, member, guild, client} = message;
+        const { author, member, guild, client } = message;
         const queue: Queue = client.queue.get(guild.id);
 
         //Если нет очереди
-        if (!queue) return {text: `${author}, ⚠ | Музыка щас не играет.`, color: "Yellow"};
+        if (!queue) return { text: `${author}, ⚠ | Музыка щас не играет.`, color: "Yellow" };
 
         //Если пользователь не подключен к голосовым каналам
         if (!member?.voice?.channel || !member?.voice) return {
@@ -56,7 +56,7 @@ export class FilterCommand extends Command {
         };
 
         //Если текущий трек является потоковым
-        if (queue.song.isLive) return {
+        if (queue.song.options.isLive) return {
             text: `${author}, Фильтр не может работать совместно с Live треками!`,
             color: "Yellow"
         };
@@ -69,7 +69,7 @@ export class FilterCommand extends Command {
 
             //Если пользователь напишет all, то очередь сервера при ее наличии не будет показана
             if (queue) {
-                if (queue.filters.length === 0) return {text: `${author.username}, включенных аудио фильтров нет!`, codeBlock: "css"};
+                if (queue.filters.length === 0) return { text: `${author.username}, включенных аудио фильтров нет!`, codeBlock: "css" };
                 const ArrayFilters: typeof Filters = [];
 
                 queue.filters.forEach((filter) => {
@@ -79,14 +79,14 @@ export class FilterCommand extends Command {
 
                 return this.ReactionMenuFilters(ArrayFilters, message);
             }
-        //Показываем все фильтры
+            //Показываем все фильтры
         } else if (FilterName === "all") return this.ReactionMenuFilters(Filters, message);
 
         //Получаем данные о фильтре
         const Filter = AudioFilters.get(FilterName);
 
         if (Filter) client.player.filter(message, Filter, FilterArg);
-        else return {text: `${author.username}, у меня нет такого фильтра. Все фильтры - all`, color: "Yellow", codeBlock: "css"};
+        else return { text: `${author.username}, у меня нет такого фильтра. Все фильтры - all`, color: "Yellow", codeBlock: "css" };
     };
     //====================== ====================== ====================== ======================
     /**
@@ -96,10 +96,10 @@ export class FilterCommand extends Command {
      * @returns 
      */
     private ReactionMenuFilters = (filters: typeof Filters, message: ClientMessage) => {
-        const embed: EmbedConstructor = { title: "Все доступные фильтры",  color: Colors.Yellow, thumbnail: { url: message.client.user.avatarURL() }, timestamp: new Date() };
+        const embed: EmbedConstructor = { title: "Все доступные фильтры", color: Colors.Yellow, thumbnail: { url: message.client.user.avatarURL() }, timestamp: new Date() };
         //Преобразуем все фильтры в string
         const pages = ArraySort<typeof Filters[0]>(5, filters, (filter, index) => {
-            return `┌Номер в списке - [${index+1}]
+            return `┌Номер в списке - [${index + 1}]
                     ├ **Названия:** ${filter.names ? `(${filter.names})` : `Нет`}
                     ├ **Аргументы:** ${filter.args ? `(${filter.args})` : `Нет`}
                     ├ **Модификатор скорости:** ${filter.speed ? `${filter.speed}` : `Нет`}
@@ -108,6 +108,6 @@ export class FilterCommand extends Command {
         embed.description = pages[0];
         embed.footer = { text: `${message.author.username} | Лист 1 из ${pages.length}`, iconURL: message.author.displayAvatarURL() }
 
-        return {embed, callbacks: ReactionMenu.DefaultCallbacks(1, pages, embed)};
+        return { embed, callbacks: ReactionMenu.DefaultCallbacks(1, pages, embed) };
     };
 }

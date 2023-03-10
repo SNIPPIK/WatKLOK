@@ -1,7 +1,7 @@
-import {Command, ResolveData} from "@Handler/FileSystem/Handle/Command";
-import {ClientMessage} from "@Client/interactionCreate";
-import {ApplicationCommandOptionType} from "discord.js";
-import {Queue} from "@Queue/Queue";
+import { Command, ResolveData } from "@Handler/FileSystem/Handle/Command";
+import { ClientMessage } from "@Client/interactionCreate";
+import { ApplicationCommandOptionType } from "discord.js";
+import { Queue } from "@Queue/Queue";
 
 export class SeekCommand extends Command {
     public constructor() {
@@ -26,7 +26,7 @@ export class SeekCommand extends Command {
     };
 
     public readonly run = (message: ClientMessage, args: string[]): ResolveData => {
-        const {author, member, guild, client} = message;
+        const { author, member, guild, client } = message;
         const queue: Queue = client.queue.get(guild.id);
         const ArgDuration: any[] = args.join(" ").split(":");
         let EndDuration: number;
@@ -50,7 +50,7 @@ export class SeekCommand extends Command {
         if (queue.options.radioMode) return { text: `${author}, Невозможно из-за включенного режима радио!`, color: "Yellow" };
 
         //Если текущий трек является потоковым
-        if (queue.song.isLive) return { text: `${author}, А как? Это же стрим!`, color: "Yellow" };
+        if (queue.song.options.isLive) return { text: `${author}, А как? Это же стрим!`, color: "Yellow" };
 
         //Если пользователь не указал время
         if (!ArgDuration) return { text: `${author}, Укажи время, пример 00:00:00!`, color: "Yellow" };

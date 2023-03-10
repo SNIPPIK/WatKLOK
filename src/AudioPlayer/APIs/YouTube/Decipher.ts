@@ -1,21 +1,7 @@
-import {workerData, parentPort, isMainThread} from "worker_threads";
-import {URL, URLSearchParams} from 'node:url';
+import { URL, URLSearchParams } from 'node:url';
 import * as querystring from "querystring";
-import {httpsClient} from "@httpsClient";
+import { httpsClient } from "@httpsClient";
 import * as vm from "vm";
-
-/**
- * Запускаем расшифровку в другом потоке, поскольку из-за <vm>.Script возникают утечки памяти
- * После получения данных удаляем поток и устраняем утечку
- */
-if (!isMainThread) (async (): Promise<void> => {
-    const formats = await extractSignature(workerData.formats, workerData.html);
-
-    delete workerData.formats;
-    delete workerData.html;
-
-    return parentPort.postMessage({format: formats});
-})();
 
 //====================== ====================== ====================== ======================
 /*                        Original YouTube Signature extractor                             //
@@ -40,9 +26,9 @@ export interface YouTubeFormat {
  * @param {Array.<Object>} formats
  * @param {string} html5player
  */
-function extractSignature(formats: YouTubeFormat[], html5player: string): Promise<YouTubeFormat> {
+export function extractSignature(formats: YouTubeFormat[], html5player: string): Promise<YouTubeFormat> {
     //Делаем сортировку (получаем самый лучший формат по качеству)
-    const sortingQuality = formats.filter((format: YouTubeFormat) => (format.mimeType?.match(/opus/) || format?.mimeType?.match(/audio/)) && format.bitrate > 100 );
+    const sortingQuality = formats.filter((format: YouTubeFormat) => (format.mimeType?.match(/opus/) || format?.mimeType?.match(/audio/)) && format.bitrate > 100);
 
     return new Promise<YouTubeFormat>(async (resolve) => {
         //Пробуем 1 способ получения ссылки
@@ -56,7 +42,7 @@ function extractSignature(formats: YouTubeFormat[], html5player: string): Promis
                 else { format.url = url; break; }
             }
         } catch (e) { //Если 1 способ не помог пробуем 2
-            const page = await httpsClient.get(html5player, {resolve: "string"}) as string;
+            const page = await httpsClient.get(html5player, { resolve: "string" }) as string;
             const tokens = parseTokens(page);
 
             for (let format of sortingQuality) {
@@ -80,7 +66,7 @@ function extractSignature(formats: YouTubeFormat[], html5player: string): Promis
  */
 function extractFunctions(html5Link: string): Promise<string[]> {
     const functions: string[] = [];
-    return new Promise((resolve, reject) => httpsClient.get(html5Link, {resolve: "string"}).then((body: string) => {
+    return new Promise((resolve, reject) => httpsClient.get(html5Link, { resolve: "string" }).then((body: string) => {
         if (!body) return;
 
         const decipherName = body.split(`a.set("alr","yes");c&&(c=`)[1].split(`(decodeURIC`)[0];
@@ -200,7 +186,7 @@ function cutAfterJS(mixedJson: string): string {
     // Go through all characters from the start
     for (let i = 0; i < mixedJson.length; i++) {
         // End of current escaped object
-        if (!isEscaped && isEscapedObject !== null && mixedJson[i] === isEscapedObject.e) { isEscapedObject = null; continue; } 
+        if (!isEscaped && isEscapedObject !== null && mixedJson[i] === isEscapedObject.e) { isEscapedObject = null; continue; }
         // Might be the start of a new escaped object
         else if (!isEscaped && isEscapedObject === null) {
             for (const escaped of EsSegment) {
@@ -241,8 +227,8 @@ const js = {
     slice: ':function\\(a,b\\)\\{' + 'return a\\.slice\\(b\\)' + '\\}',
     splice: ':function\\(a,b\\)\\{' + 'a\\.splice\\(0,b\\)' + '\\}',
     swap: ':function\\(a,b\\)\\{' +
-    'var c=a\\[0\\];a\\[0\\]=a\\[b(?:%a\\.length)?\\];a\\[b(?:%a\\.length)?\\]=c(?:;return a)?' +
-    '\\}'
+        'var c=a\\[0\\];a\\[0\\]=a\\[b(?:%a\\.length)?\\];a\\[b(?:%a\\.length)?\\]=c(?:;return a)?' +
+        '\\}'
 }
 const quote = `(?:${js.single}|${js.duo})`;
 const prop = `(?:\\.${js.var}|\\[${quote}\\])`;
@@ -253,12 +239,11 @@ const regExp = {
     slice: new RegExp(`(?:^|,)(${key})${js.slice}`, 'm'),
     splice: new RegExp(`(?:^|,)(${key})${js.splice}`, 'm'),
     swap: new RegExp(`(?:^|,)(${key})${js.swap}`, 'm'),
-    
+
 
     obj: new RegExp(`var (${js.var})=\\{((?:(?:${key}${js.reverse}|${key}${js.slice}|${key}${js.splice}|${key}${js.swap}),?\\r?\\n?)+)};`),
     function: new RegExp(
-        `${
-            `function(?: ${js.var})?\\(a\\)\\{` + `a=a\\.split\\(${js.empty}\\);\\s*` + `((?:(?:a=)?${js.var}`
+        `${`function(?: ${js.var})?\\(a\\)\\{` + `a=a\\.split\\(${js.empty}\\);\\s*` + `((?:(?:a=)?${js.var}`
         }${prop}\\(a,\\d+\\);)+)` +
         `return a\\.join\\(${js.empty}\\)` +
         `\\}`
@@ -297,9 +282,9 @@ function parseTokens(page: string): string[] {
 
     if (!funAction || !objAction) return null;
 
-    const object = objAction[1].replace(/\$/g, '\\$');
-    const objPage = objAction[2].replace(/\$/g, '\\$');
-    const funPage = funAction[1].replace(/\$/g, '\\$');
+    const object = objAction[1].replace(/\$/g, "\\$");
+    const objPage = objAction[2].replace(/\$/g, "\\$");
+    const funPage = funAction[1].replace(/\$/g, "\\$");
 
     let result: RegExpExecArray, tokens: string[] = [], keys: string[] = [];
 
@@ -331,7 +316,7 @@ function parseTokens(page: string): string[] {
  * @param res {RegExpExecArray}
  */
 function replacer(res: RegExpExecArray): string {
-    return res && res[1].replace(/\$/g, '\\$').replace(/\$|^'|^"|'$|"$/g, '');
+    return res && res[1].replace(/\$/g, "\\$").replace(/\$|^'|^"|'$|"$/g, "");
 }
 //====================== ====================== ====================== ======================
 /**

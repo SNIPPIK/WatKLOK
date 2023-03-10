@@ -1,4 +1,4 @@
-import {AudioFilters, Filters} from "@Media/AudioFilters";
+import { AudioFilters, Filters } from "@Media/AudioFilters";
 import { FFmpeg, Arguments } from "@Media/FFspace";
 import { Music, Debug } from "@db/Config.json";
 import { opus } from "prism-media";
@@ -13,41 +13,56 @@ export { OpusAudio };
 type FFmpegOptions = { seek?: number, filters?: Filters };
 
 class OpusAudio {
+    /**
+     * @description Кодировщик из Ogg в Opus
+     */
     private _opus: opus.OggDemuxer = new opus.OggDemuxer({ autoDestroy: true, highWaterMark: 24 });
-    private _streams: Array<Readable> = [];
-    private _ffmpeg: FFmpeg;
-
-    private _duration: number = 0;
-    private _readable: boolean = false;
-    private _durFrame: number = 20;
-
     //====================== ====================== ====================== ======================
     /**
-     * @description Время проигрывания в секундах
-     * @type {number}
+     * @description Дополнительные потоки
+     */
+    private _streams: Readable[] = [];
+    //====================== ====================== ====================== ======================
+    /**
+     * @description FFmpeg
+     */
+    private _ffmpeg: FFmpeg = null;
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Время игры потока
+     */
+    private _duration: number = 0;
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Возможно ли читать поток
+     */
+    private _readable: boolean = false;
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Время пакета
+     */
+    private _durFrame: number = 20;
+    //====================== ====================== ====================== ======================
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Получаем время в секундах
      */
     public get duration() { return parseInt((this._duration / 1e3).toFixed(0)); };
     //====================== ====================== ====================== ======================
     /**
-     * @description Возможно ли прочитать поток
-     * @type {boolean}
+     * @description Можно ли читать поток
      */
-    // @ts-ignore
-    public get readable(): boolean { return this._readable; };
+    public get readable() { return this._readable; };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Уничтожен ли поток
+     */
     public get destroyed() { return this._opus?.destroyed ?? true; };
     //====================== ====================== ====================== ======================
     /**
-     * @description Выдаем или добавляем ffmpeg из this.streams
-     * @type {FFspace.FFmpeg}
-     * @private
+     * @description Получаем декодировщик
      */
-    private get ffmpeg() { return this._ffmpeg as FFmpeg; };
-    private set ffmpeg(ffmpeg: FFmpeg) { this._ffmpeg = ffmpeg; };
-    //====================== ====================== ====================== ======================
-    /**
-     * @description opus.OggDemuxer
-     */
-    public get opus() { return this._opus };
+    public get opus() { return this._opus; };
     //====================== ====================== ====================== ======================
     /**
      * @description Создаем поток при помощи ffmpeg конвертируем любой файл в opus
@@ -58,14 +73,14 @@ class OpusAudio {
         const resource = path.endsWith("opus") ? fs.createReadStream(path) : path
 
         //Создаем ffmpeg
-        this.ffmpeg = new FFmpeg(choiceArgs(path, typeof resource, options), {highWaterMark: 16});
+        this._ffmpeg = new FFmpeg(choiceArgs(path, typeof resource, options), { highWaterMark: 16 });
 
         //Если resource является Readable то загружаем его в ffmpeg
         if (resource instanceof Readable) {
-            resource.pipe(this.ffmpeg);
+            resource.pipe(this._ffmpeg);
             this._streams.push(resource);
         }
-        this.ffmpeg.pipe(this.opus); //Загружаем из FFmpeg'a в opus.OggDemuxer
+        this._ffmpeg.pipe(this.opus); //Загружаем из FFmpeg'a в opus.OggDemuxer
 
         //Проверяем сколько времени длится пакет
         if (options?.filters?.length > 0) this._durFrame = AudioFilters.getDuration(options?.filters);
@@ -80,7 +95,7 @@ class OpusAudio {
     };
     //====================== ====================== ====================== ======================
     /**
-     * @description Чтение пакета
+     * @description Выдаем пакет, добавляем время
      */
     public read = (): Buffer | null => {
         const packet: Buffer = this.opus?.read();
@@ -98,6 +113,7 @@ class OpusAudio {
         delete this._readable;
         delete this._durFrame;
 
+        //Удаляем прочие потоки
         if (this._streams?.length > 0) {
             for (const stream of this._streams) {
                 if (stream !== undefined && !stream.destroyed) {
@@ -109,13 +125,15 @@ class OpusAudio {
         }
         delete this._streams;
 
-        if (this.ffmpeg.deletable) {
-            this.ffmpeg.removeAllListeners();
-            this.ffmpeg.destroy();
-            this.ffmpeg.read();
+        //Удаляем FFmpeg
+        if (this._ffmpeg.deletable) {
+            this._ffmpeg.removeAllListeners();
+            this._ffmpeg.destroy();
+            this._ffmpeg.read();
         }
         delete this._ffmpeg;
 
+        //Удаляем кодировщик в opus
         if (this.opus) {
             this.opus.removeAllListeners();
             this.opus.destroy();
@@ -126,7 +144,6 @@ class OpusAudio {
         if (Debug) Logger.debug(`[AudioPlayer]: [OpusAudio]: Cleaning memory!`);
     };
 }
-
 //====================== ====================== ====================== ======================
 /**
  * @description Создаем аргументы в зависимости от типа resource

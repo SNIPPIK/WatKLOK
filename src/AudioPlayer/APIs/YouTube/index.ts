@@ -1,8 +1,8 @@
-import {httpsClient} from "@httpsClient";
-import {inAuthor, inPlaylist, inTrack} from "@Queue/Song";
-import {YouTubeFormat} from "./Decipher";
-import {Worker} from "worker_threads";
-import {APIs} from "@db/Config.json";
+import { httpsClient } from "@httpsClient";
+import { inAuthor, inPlaylist, inTrack } from "@Queue/Song";
+import { extractSignature, YouTubeFormat } from "./Decipher";
+import { Worker } from "worker_threads";
+import { APIs } from "@db/Config.json";
 
 //====================== ====================== ====================== ======================
 /**
@@ -24,7 +24,7 @@ namespace construct {
         return {
             url: `https://youtu.be/${video.videoId}`,
             title: video.title,
-            duration: {seconds: video.lengthSeconds},
+            duration: { seconds: video.lengthSeconds },
             image: video.thumbnail.thumbnails.pop(),
             author: await getChannel({ id: video.channelId, name: video.author }),
             isLive: video.isLiveContent
@@ -38,7 +38,7 @@ namespace construct {
                 title: video.shortBylineText.runs[0].text || undefined,
                 url: `${db.link}${video.shortBylineText.runs[0].navigationEndpoint.browseEndpoint.canonicalBaseUrl || video.shortBylineText.runs[0].navigationEndpoint.commandMetadata.webCommandMetadata.url}`
             },
-            duration: {seconds: video.lengthSeconds ?? video.lengthText?.simpleText ?? 0},
+            duration: { seconds: video.lengthSeconds ?? video.lengthText?.simpleText ?? 0 },
             image: {
                 url: video.thumbnail.thumbnails.pop().url,
                 height: video.thumbnail.thumbnails.pop()?.height,
@@ -90,13 +90,10 @@ export namespace YouTube {
                 let audios: YouTubeFormat;
 
                 //Выбираем какой формат у видео из <VideoDetails>.isLiveContent
-                if (details.isLiveContent) audios = {url: details.streamingData?.dashManifestUrl ?? null}; //dashManifestUrl, hlsManifestUrl
+                if (details.isLiveContent) audios = { url: details.streamingData?.dashManifestUrl ?? null }; //dashManifestUrl, hlsManifestUrl
                 else {
                     const html5player = `${db.link}${page.split('"jsUrl":"')[1].split('"')[0]}`;
-                    const format = await runWorkerSignature({
-                        formats: [...result.streamingData?.formats ?? [], ...result.streamingData?.adaptiveFormats ?? []],
-                        html: html5player
-                    });
+                    const format = await extractSignature([...result.streamingData?.formats ?? [], ...result.streamingData?.adaptiveFormats ?? []], html5player);
 
                     //Если формат ну удалось получить из-за ошибки
                     if (format instanceof Error) return reject(format);
@@ -104,7 +101,7 @@ export namespace YouTube {
                     audios = format;
                 }
 
-                return resolve({...await construct.video(details), format: audios});
+                return resolve({ ...await construct.video(details), format: audios });
             } catch (e) { return reject(Error(e)) }
         });
     }
@@ -113,7 +110,7 @@ export namespace YouTube {
      * @description Получаем данные о плейлисте
      * @param url {string} Ссылка на плейлист
      */
-    export function getPlaylist(url: string, options = {limit: APIs.limits.playlist}): Promise<inPlaylist> {
+    export function getPlaylist(url: string, options = { limit: APIs.limits.playlist }): Promise<inPlaylist> {
         const ID = getID(url, true);
 
         return new Promise(async (resolve, reject) => {
@@ -145,7 +142,7 @@ export namespace YouTube {
 
                 return resolve({
                     title: info.title.runs[0].text, url,
-                    items: videos.map(({playlistVideoRenderer}) => construct.playlist(playlistVideoRenderer)),
+                    items: videos.map(({ playlistVideoRenderer }) => construct.playlist(playlistVideoRenderer)),
                     author: await getChannel({ id: author.navigationEndpoint.browseEndpoint.browseId, name: author.title.runs[0].text }),
                     image: info.thumbnailRenderer.playlistVideoThumbnailRenderer.thumbnail.thumbnails.pop()
                 });
@@ -158,7 +155,7 @@ export namespace YouTube {
     * @param search {string} что ищем
     * @param options {limit} Настройки
     */
-    export function SearchVideos(search: string, options = {limit: APIs.limits.search}): Promise<inTrack[]> {
+    export function SearchVideos(search: string, options = { limit: APIs.limits.search }): Promise<inTrack[]> {
         return new Promise(async (resolve, reject) => {
             try {
                 //Создаем запрос
@@ -185,7 +182,7 @@ export namespace YouTube {
 
                 if (videos.length < 1) return reject(Error(`[APIs]: Не удалось найти: ${search}`));
 
-                return resolve(videos.map(({videoRenderer}: any) => construct.playlist(videoRenderer)));
+                return resolve(videos.map(({ videoRenderer }: any) => construct.playlist(videoRenderer)));
             } catch (e) { return reject(Error(e)) }
         });
     }
@@ -194,7 +191,7 @@ export namespace YouTube {
      * @description Получаем 5 последних треков автора
      * @param url {string} Ссылка на автора
      */
-    export function getChannelVideos(url: string, options = {limit: APIs.limits.author}): Promise<inTrack[]> {
+    export function getChannelVideos(url: string, options = { limit: APIs.limits.author }): Promise<inTrack[]> {
         return new Promise(async (resolve, reject) => {
             try {
                 let ID: string;
@@ -225,7 +222,8 @@ export namespace YouTube {
                 const endVideos = videos?.filter((video: any) => video?.richItemRenderer?.content?.videoRenderer)?.splice(0, options.limit);
 
                 endVideos.map((video: any) => {
-                    return { url: `https://youtu.be/${video.videoId}`, title: video.title.runs[0].text, duration: {seconds: video.lengthText.simpleText},
+                    return {
+                        url: `https://youtu.be/${video.videoId}`, title: video.title.runs[0].text, duration: { seconds: video.lengthText.simpleText },
                         author: { url: `${db.link}${ID}`, title: author.title }
                     }
                 });
@@ -241,7 +239,7 @@ export namespace YouTube {
  * @param id {string} ID канала
  * @param name {string} Название канала
  */
-function getChannel({id, name}: { id: string, name?: string }): Promise<inAuthor> {
+function getChannel({ id, name }: { id: string, name?: string }): Promise<inAuthor> {
     return new Promise(async (resolve) => {
         //Создаем запрос
         const channel = await httpsClient.get(`${db.link}/channel/${id}/channels?flow=grid&view=0&pbj=1`, {
@@ -283,25 +281,4 @@ function getID(url: string, isPlaylist: boolean = false): string {
         else if (parsedLink.searchParams.get("v") && !isPlaylist) return parsedLink.searchParams.get("v");
         return parsedLink.pathname.split("/")[1];
     } catch (err) { return null; }
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Запускаем расшифровку на другом потоке
- * @param workerData
- */
-function runWorkerSignature(workerData: {}): Promise<YouTubeFormat | Error> {
-    return new Promise(async (resolve) => {
-        const worker = new Worker(__dirname + "/Decipher.js", { workerData, resourceLimits: { stackSizeMb: 2, codeRangeSizeMb: 5, maxOldGenerationSizeMb: 15 }});
-        worker.once('message', async (exitCode) => {
-            worker.emit("exit", 0);
-            return resolve(exitCode.format);
-        });
-        worker.once('error', async (err) => {
-            worker.emit("exit", 0);
-            return resolve(Error(`[APIs]: ${err}`));
-        });
-        worker.once('exit', async (code) => {
-            if (code !== 0) resolve(Error(`[APIs]: Worker stopped with exit code ${code}`));
-        });
-    });
 }

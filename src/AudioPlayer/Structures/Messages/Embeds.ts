@@ -1,14 +1,14 @@
-import {ClientMessage, EmbedConstructor} from "@Client/interactionCreate";
-import {inPlaylist, inTrack, Song} from "@Queue/Song";
-import {DurationUtils} from "@Structures/Durations";
-import {replacer} from "@Handler/FileSystem/Handle/Command";
-import {Platform} from "@Structures/Platform";
-import {WatKLOK} from "@Client/Client";
-import {Music} from "@db/Config.json";
-import {Queue} from "@Queue/Queue";
-import {Colors} from "discord.js";
+import { ClientMessage, EmbedConstructor } from "@Client/interactionCreate";
+import { replacer } from "@Handler/FileSystem/Handle/Command";
+import { inPlaylist, inTrack, Song } from "@Queue/Song";
+import { DurationUtils } from "@Structures/Durations";
+import { Platform } from "@Structures/Platform";
+import { WatKLOK } from "@Client/Client";
+import { Music } from "@db/Config.json";
+import { Queue } from "@Queue/Queue";
+import { Colors } from "discord.js";
 
-export {EmbedMessages};
+export { EmbedMessages };
 //====================== ====================== ====================== ======================
 
 
@@ -24,7 +24,8 @@ namespace EmbedMessages {
         const fields = getFields(queue);
         const AuthorSong = replacer.replaceText(author.title, 45, false);
 
-        return { color, image, thumbnail: author?.image ?? {url: Music.images._image}, fields,
+        return {
+            color, image: image.track, thumbnail: image.author, fields,
             author: { name: AuthorSong, url: author.url, iconURL: choiceImage(author?.isVerified) },
             footer: { text: `${requester.username} | ${DurationUtils.getTimeQueue(queue)} | 🎶: ${queue.songs.length}`, iconURL: requester.avatarURL() }
         };
@@ -37,14 +38,15 @@ namespace EmbedMessages {
      * @param song {Song} Трек который был добавлен
      * @param songs {Queue<songs>} Все треки
      */
-    export function toPushSong(song: Song, {songs}: Queue): EmbedConstructor {
+    export function toPushSong(song: Song, { songs }: Queue): EmbedConstructor {
         const { color, author, image, title, url, duration, requester } = song;
         const AuthorSong = replacer.replaceText(author.title, 45, false);
         const fields = [{ name: "**Добавлено в очередь**", value: `**❯** **[${replacer.replaceText(title, 40, true)}](${url}})\n**❯** \`\`[${duration.full}]\`\`**` }];
 
-        return { color, fields,
-            author: { name: AuthorSong, iconURL: author?.image?.url, url: author.url },
-            thumbnail: !image?.url ? author?.image : image ?? {url: Music.images._image},
+        return {
+            color, fields,
+            thumbnail: image.track,
+            author: { name: AuthorSong, iconURL: image.author.url, url: author.url },
             footer: { text: `${requester.username} | ${DurationUtils.getTimeQueue(songs)} | 🎶: ${songs.length}`, iconURL: requester.avatarURL() }
         };
     }
@@ -56,12 +58,13 @@ namespace EmbedMessages {
      * @param playlist {inPlaylist} Плейлист
      * @param author {inPlaylist.author} Автор плейлиста
      */
-    export function toPushPlaylist({author: DisAuthor}: ClientMessage, playlist: inPlaylist): EmbedConstructor {
+    export function toPushPlaylist({ author: DisAuthor }: ClientMessage, playlist: inPlaylist): EmbedConstructor {
         const { author, image, url, title, items } = playlist;
 
-        return { color: Colors.Blue, timestamp: new Date(),
+        return {
+            color: Colors.Blue, timestamp: new Date(),
             author: { name: author?.title, iconURL: author?.image?.url, url: author?.url },
-            thumbnail: typeof image === "string" ? {url: image} : image ?? {url: Music.images._image},
+            thumbnail: typeof image === "string" ? { url: image } : image ?? { url: Music.images._image },
             description: `Найден плейлист **[${title}](${url})**`,
             footer: { text: `${DisAuthor.username} | ${DurationUtils.getTimeQueue(items)} | 🎶: ${items?.length}`, iconURL: DisAuthor.displayAvatarURL({}) }
         };
@@ -74,11 +77,12 @@ namespace EmbedMessages {
     * @param songs {Queue<songs>} Все треки
     * @param err {Error} Ошибка выданная плеером
     */
-    export function toError(client: WatKLOK, {songs, song}: Queue, err: Error | string): EmbedConstructor {
-        const {color, author, image, title, url, requester} = song;
+    export function toError(client: WatKLOK, { songs, song }: Queue, err: Error | string): EmbedConstructor {
+        const { color, author, image, title, url, requester } = song;
         const AuthorSong = replacer.replaceText(author.title, 45, false);
 
-        return { color, thumbnail: image ?? {url: Music.images._image}, timestamp: new Date(),
+        return {
+            color, thumbnail: image.track, timestamp: new Date(),
             description: `\n[${title}](${url})\n\`\`\`js\n${err}...\`\`\``,
             author: { name: AuthorSong, url: author.url, iconURL: choiceImage(author.isVerified) },
             footer: { text: `${requester.username} | ${DurationUtils.getTimeQueue(songs)} | 🎶: ${songs.length}`, iconURL: requester?.avatarURL() ?? client.user.displayAvatarURL() }
@@ -124,7 +128,7 @@ namespace EmbedMessages {
  * @param client {WatKLOK} Клиент
  */
 function getFields(queue: Queue): EmbedConstructor["fields"] {
-    const {songs, song, player} = queue;
+    const { songs, song, player } = queue;
     const VisualDuration = toString(song.duration, player.streamDuration);
 
     //Текущий трек

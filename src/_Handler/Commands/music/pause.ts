@@ -1,6 +1,6 @@
-import {Command, ResolveData} from "@Handler/FileSystem/Handle/Command";
-import {ClientMessage} from "@Client/interactionCreate";
-import {Queue} from "@Queue/Queue";
+import { Command, ResolveData } from "@Handler/FileSystem/Handle/Command";
+import { ClientMessage } from "@Client/interactionCreate";
+import { Queue } from "@Queue/Queue";
 
 export class PauseCommand extends Command {
     public constructor() {
@@ -14,7 +14,7 @@ export class PauseCommand extends Command {
     };
 
     public readonly run = (message: ClientMessage): ResolveData => {
-        const {author, member, guild, client} = message;
+        const { author, member, guild, client } = message;
         const queue: Queue = client.queue.get(guild.id);
 
         //Если нет очереди
@@ -36,7 +36,7 @@ export class PauseCommand extends Command {
         if (queue.player.state.status === "pause") return { text: `${author}, ⚠ | Музыка уже приостановлена!`, color: "Yellow" };
 
         //Если текущий трек является потоковым
-        if (queue.song.isLive) return { text: `${author}, ⚠ | Это бесполезно!`, color: "Yellow" };
+        if (queue.song.options.isLive) return { text: `${author}, ⚠ | Это бесполезно!`, color: "Yellow" };
 
         return void client.player.pause(message);
     };

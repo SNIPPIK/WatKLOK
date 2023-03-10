@@ -14,9 +14,16 @@ const SkippedStatuses = ["read", "pause"];
 const UpdateMessage = ["read"];
 
 class AudioPlayer extends TypedEmitter<PlayerEvents> {
+    /**
+     * @description Голосовое подключение к каналу
+     */
     private _connection: VoiceConnection;
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Статус плеера
+     */
     private _state: PlayerStatus = { status: "idle" };
-
+    //====================== ====================== ====================== ======================
     //====================== ====================== ====================== ======================
     /**
      * @description Общее время проигрывания музыки
@@ -24,35 +31,14 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
     public get streamDuration() { return this.state?.stream?.duration ?? 0 };
     //====================== ====================== ====================== ======================
     /**
+     * @description Текущий статус плеера
+     */
+    public get state() { return this._state; };
+    //====================== ====================== ====================== ======================
+    /**
      * @description Все голосовые каналы к которым подключен плеер
      */
     public get connection() { return this._connection; };
-    public set connection(connection: VoiceConnection) { this._connection = connection; };
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Смена действий плеера
-     */
-    public get state() { return this._state; };
-    public set state(newState: PlayerStatus) {
-        const oldState = this._state;
-        const oldStatus = oldState.status, newStatus = newState.status;
-
-        //Проверяем на нужный статус, удаляем старый поток
-        if (oldState.stream && !oldState.stream.destroyed && (newState.status === "idle" || oldState.stream !== newState.stream)) this.destroy("stream");
-
-        //Перезаписываем state
-        delete this._state;
-        this._state = newState;
-
-        //Фильтруем статусы бота что в emit не попало что не надо
-        if (oldStatus !== newStatus || oldStatus !== "idle" && newStatus === "read") {
-            PlayerCycle.toRemove(this);
-            this.emit(newStatus);
-        }
-
-        //Добавляем плеер в CycleStep
-        PlayerCycle.toPush(this);
-    };
     //====================== ====================== ====================== ======================
     /**
      * @description Возможно ли сейчас пропустить трек
@@ -76,6 +62,35 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
 
         return true;
     }
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Меняем голосовое подключение
+     */
+    public set connection(connection: VoiceConnection) { this._connection = connection; };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Меняем статус плеера
+     */
+    public set state(newState: PlayerStatus) {
+        const oldState = this._state;
+        const oldStatus = oldState.status, newStatus = newState.status;
+
+        //Проверяем на нужный статус, удаляем старый поток
+        if (oldState.stream && !oldState.stream.destroyed && (newState.status === "idle" || oldState.stream !== newState.stream)) this.destroy("stream");
+
+        //Перезаписываем state
+        delete this._state;
+        this._state = newState;
+
+        //Фильтруем статусы бота что в emit не попало что не надо
+        if (oldStatus !== newStatus || oldStatus !== "idle" && newStatus === "read") {
+            PlayerCycle.toRemove(this);
+            this.emit(newStatus);
+        }
+
+        //Добавляем плеер в CycleStep
+        PlayerCycle.toPush(this);
+    };
     //====================== ====================== ====================== ======================
     /**
      * @description Ставим на паузу плеер
@@ -154,7 +169,7 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
 
         //Если вдруг нет голосового канала
         if (!this.connection) {
-            this.state = {...state, status: "pause"};
+            this.state = { ...state, status: "pause" };
             return;
         }
 
@@ -194,7 +209,7 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
             this.sendPacket(SilenceFrame);
         }
     };
-}
+};
 //====================== ====================== ====================== ======================
 /**
  * @description Ивенты которые плеер может вернуть
