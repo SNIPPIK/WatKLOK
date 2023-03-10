@@ -257,7 +257,10 @@ class Queue {
         if (state === "start" && !this._timer) {
             this._timer = setTimeout(this.cleanup, 10e3);
             player.pause();
-        } else clearTimeout(this._timer);
+        } else {
+            player.resume();
+            clearTimeout(this._timer);
+        }
     };
     //====================== ====================== ====================== ======================
     /**
