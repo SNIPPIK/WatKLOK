@@ -17,7 +17,6 @@ export class voiceStateUpdate extends Event<VoiceState, VoiceState> {
 
         setImmediate(() => {
             const voice = Voice.getVoice(Guild.id);
-            const isBotVoice = !!(newState.channel?.members ?? oldState.channel?.members)?.find((member) => member.user.id === client.user.id);
             const usersSize = (newState.channel?.members ?? oldState.channel?.members)?.filter((member) => !member.user.bot && member.voice?.channel?.id === ChannelID)?.size;
 
             //Если есть голосовое подключение и пользователей меньше одного и каналы соответствуют и выключен радио режим, то отключаемся от голосового канала
@@ -25,11 +24,13 @@ export class voiceStateUpdate extends Event<VoiceState, VoiceState> {
 
             //Если есть очередь и нет радио режима
             if (queue && !queue?.options?.radioMode) {
+                const isBotVoice = !!(newState.channel?.members ?? oldState.channel?.members)?.find((member) => member.user.id === client.user.id);
+
                 if (usersSize < 1 && !isBotVoice) queue.TimeDestroying("start"); //Если есть очередь сервера, удаляем!
                 else if (usersSize > 0) queue.TimeDestroying("cancel"); //Если есть очередь сервера, отмена удаления!
-            }
 
-            if (Debug) Logger.debug(`[Event]: [voiceStateUpdate]: [Voice: ${!!voice} | inVoice: ${isBotVoice} | Users: ${usersSize} | Queue: ${!!queue}]`);
+                if (Debug) Logger.debug(`[Event]: [voiceStateUpdate]: [ID: ${ChannelID} | Voice: ${!!voice} | inVoice: ${isBotVoice} | Users: ${usersSize} | Queue: ${!!queue}]`);
+            }
         });
     };
 }

@@ -1,12 +1,12 @@
 import { Client, IntentsBitField, Options, Collection, ActivityType } from "discord.js";
-import { ClientMessage } from "@Client/interactionCreate";
-import { Bot, Channels, APIs } from "@db/Config.json";
 import { Command } from "@Handler/FileSystem/Handle/Command";
-import { Player } from "@AudioPlayer/index";
-import { FileSystem } from "src/_Handler/FileSystem";
+import { ClientMessage } from "@Client/interactionCreate";
 import { CollectionQueue, Queue } from "@Queue/Queue";
+import { Bot, Channels, APIs } from "@db/Config.json";
+import { Player } from "@AudioPlayer/index";
+import { FileSystem } from "@FileSystem";
 import { Logger } from "@Logger";
-import { env } from "src/_Handler/FileSystem/env";
+import { env } from "@env";
 
 const queue = new CollectionQueue<string | number, Queue>();
 const commands = new Collection<string, Command>(); //База, со всеми командами

@@ -198,7 +198,7 @@ class Queue {
             //Если включен режим отладки показывает что сейчас играет и где
             if (Debug) Logger.debug(`[Queue]: [${this.guild.id}]: Play: [${song.duration.full}] - [${song.title}]`);
 
-            const resource = new Promise<string>((resolve) => {
+            new Promise<string>((resolve) => {
                 //Если пользователь включил кеширование музыки
                 if (Music.CacheMusic) {
                     const info = DownloadManager.getNames(song);
@@ -217,9 +217,7 @@ class Queue {
                     song.link = url;
                     return resolve(url);
                 });
-            });
-
-            resource.then((url: string) => {
+            }).then((url: string) => {
                 //Если ссылка не была найдена
                 if (!url) return void this.player.emit("error", Error(`Link to resource, not found`), true);
 
@@ -228,9 +226,9 @@ class Queue {
 
                 //Отправляем поток в плеер
                 return this.player.readStream(stream);
-            });
-            //Если получение ссылки вызывает ошибку
-            resource.catch((err) => this.player.emit("error", Error(err), true));
+
+                //Если получение ссылки вызывает ошибку
+            }).catch((err: string) => this.player.emit("error", Error(err), true));
         });
     };
     //====================== ====================== ====================== ======================
@@ -277,7 +275,8 @@ class Queue {
 
         if (this._player) {
             //Удаляем плеер и его данные
-            this.player.destroy();
+            this.player.destroy("stream");
+            this.player.destroy("all");
             delete this._player;
         }
 
