@@ -1,8 +1,8 @@
 {
   "author": "SNIPPIK",
   "dependencies": {
-    "@discordjs/voice": "^0.14.0",
-    "discord.js": "^14.7.1",
+    "@discordjs/voice": "^0.15.0",
+    "discord.js": "^14.8.0",
     "dotenv": "^16.0.2",
     "sodium-native": "^4.0.0",
     "tiny-typed-emitter": "^2.1.0"
