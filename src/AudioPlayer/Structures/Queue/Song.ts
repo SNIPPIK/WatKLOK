@@ -124,7 +124,6 @@ class Song {
         this._title = track.title;
         this._url = track.url;
         this._platform = Platform.name(track.url);
-        this._link = track?.format?.url;
 
         //Прочие
         this._other = {
@@ -133,15 +132,15 @@ class Song {
 
         //Информация об авторе
         this._author = {
-            url: !track.author?.url || track.author?.url === "" ? Music.images._image : track.author.url,
+            url: !track.author?.url || track.author?.url === "" ? "" : track.author.url,
             title: !track.author?.title || track.author?.title === "" ? "Not found track name" : track.author.title,
             isVerified: track.author?.isVerified ?? undefined
         };
 
         //Изображения трека и автора
         this._images = {
-            track: !track.image || track.image?.url === "" ? { url: Music.images._image } : track.image,
-            author: !track.author?.image || track.author?.image?.url === "" ? { url: Music.images._image } : track.author.image
+            track: validURL(track.image) ? { url: Music.images._image } : track.image,
+            author: validURL(track.author.image) ? { url: Music.images._image } : track.author.image
         };
 
         //Время трека
@@ -156,9 +155,18 @@ class Song {
             avatarURL: () => `https://cdn.discordapp.com/avatars/${id}/${avatar}.webp`
         };
 
-        if (track.format && track.format.url) this._link = track.format.url;
+        if (validURL(track.format)) this._link = track.format.url;
     };
 }
+//====================== ====================== ====================== ======================
+/**
+ * @description Проверка является ли ссылка ссылкой
+ * @param image {{url: string}} Обьекст с ссылкой
+ */
+function validURL(image: { url: string }): boolean {
+    return (!image || image?.url === "") && !image?.url?.startsWith("http");
+}
+
 //====================== ====================== ====================== ======================
 /**
  * @description Какие данные доступны в <song>.requester

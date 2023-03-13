@@ -84,6 +84,10 @@ function runRequest(url: string, method: method, type: RequestType, options: htt
         if (cookie) headers = { ...headers, "cookie": cookie };
     }
 
+    if (type === "json") {
+        headers = { ...headers, 'Content-Type': 'application/json' };
+    }
+
     return RequestType[type](reqOptions);
 }
 
