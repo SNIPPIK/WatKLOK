@@ -25,22 +25,6 @@ namespace Voice {
             adapterCreator: guild.voiceAdapterCreator as InternalDiscordGatewayAdapterCreator, group: VoiceChannelsGroup
         });
 
-        //Temp fix
-        /*
-        JoinVoice.on("stateChange", (oldState, newState) => {
-            const oldNetworking = Reflect.get(oldState, "networking");
-            const newNetworking = Reflect.get(newState, "networking");
-          
-            const networkStateChangeHandler = (oldNetworkState: any, newNetworkState: any) => {
-              const newUdp = Reflect.get(newNetworkState, "udp");
-              clearInterval(newUdp?.keepAliveInterval);
-            }
-          
-            oldNetworking?.off("stateChange", networkStateChangeHandler);
-            newNetworking?.once("stateChange", networkStateChangeHandler);
-        });
-        */
-
         //Для голосовых трибун
         if (type !== ChannelType.GuildVoice && me) me?.voice?.setRequestToSpeak(true);
 

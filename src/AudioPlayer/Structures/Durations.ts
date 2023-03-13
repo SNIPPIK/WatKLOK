@@ -1,7 +1,7 @@
-import {inTrack, Song} from "@Queue/Song";
-import {Queue} from "@Queue/Queue";
+import { ISong, Song } from "@Queue/Song";
+import { Queue } from "@Queue/Queue";
 
-export {DurationUtils};
+export { DurationUtils };
 //====================== ====================== ====================== ======================
 
 
@@ -10,7 +10,7 @@ namespace DurationUtils {
      * @description Совмещаем время всех треков из очереди
      * @param queue {Queue | any[]} Очередь
      */
-    export function getTimeQueue(queue: Queue | Song[] | inTrack[]): string {
+    export function getTimeQueue(queue: Queue | Song[] | ISong.track[]): string {
         let Timer: number = 0;
 
         if (queue instanceof Queue) queue.songs.forEach((song: Song) => Timer += song.duration.seconds);

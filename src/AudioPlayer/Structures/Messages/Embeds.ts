@@ -1,8 +1,8 @@
 import { ClientMessage, EmbedConstructor } from "@Client/interactionCreate";
 import { replacer } from "@Handler/FileSystem/Handle/Command";
-import { inPlaylist, inTrack, Song } from "@Queue/Song";
 import { DurationUtils } from "@Structures/Durations";
 import { Platform } from "@Structures/Platform";
+import { ISong, Song } from "@Queue/Song";
 import { WatKLOK } from "@Client/Client";
 import { Music } from "@db/Config.json";
 import { Queue } from "@Queue/Queue";
@@ -55,10 +55,10 @@ namespace EmbedMessages {
      * @description JSON<EMBED> для отображения данных плейлиста
      * @param client {WatKLOK} Бот
      * @param DisAuthor {ClientMessage.author} Автор сообщения
-     * @param playlist {inPlaylist} Плейлист
-     * @param author {inPlaylist.author} Автор плейлиста
+     * @param playlist {ISong.playlist} Плейлист
+     * @param author {ISong.author} Автор плейлиста
      */
-    export function toPushPlaylist({ author: DisAuthor }: ClientMessage, playlist: inPlaylist): EmbedConstructor {
+    export function toPushPlaylist({ author: DisAuthor }: ClientMessage, playlist: ISong.playlist): EmbedConstructor {
         const { author, image, url, title, items } = playlist;
 
         return {
@@ -95,7 +95,7 @@ namespace EmbedMessages {
      * @param platform {platform} Платформа на которой ищем
      * @param author {message.author} Автор запроса
      */
-    export function toSearch(tracks: inTrack[], platform: string, author: ClientMessage["author"]): EmbedConstructor {
+    export function toSearch(tracks: ISong.track[], platform: string, author: ClientMessage["author"]): EmbedConstructor {
         return {
             color: Platform.color(platform as any),
             title: `Найдено ${tracks.length}`,

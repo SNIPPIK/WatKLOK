@@ -6,9 +6,6 @@ import { Logger } from "@Structures/Logger";
 
 export { FFmpeg, FFprobe, Arguments };
 //====================== ====================== ====================== ======================
-
-
-type Arguments = Array<string | number> | Array<string>;
 /**
  * @description Используется для модификации и конвертации потоков
  */
@@ -158,3 +155,8 @@ function checkName(names: string[], error: string) {
     }
     Logger.error(error);
 }
+//====================== ====================== ====================== ======================
+/**
+ * @description Допустимые аргументы для FFmpeg
+ */
+type Arguments = Array<string | number> | Array<string>;

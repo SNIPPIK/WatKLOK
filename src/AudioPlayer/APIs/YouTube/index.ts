@@ -1,7 +1,6 @@
-import { httpsClient } from "@httpsClient";
-import { inAuthor, inPlaylist, inTrack } from "@Queue/Song";
 import { extractSignature, YouTubeFormat } from "./Decipher";
-import { Worker } from "worker_threads";
+import { ISong } from "@Queue/Song";
+import { httpsClient } from "@httpsClient";
 import { APIs } from "@db/Config.json";
 
 //====================== ====================== ====================== ======================
@@ -15,12 +14,16 @@ import { APIs } from "@db/Config.json";
 const db = {
     link: "https://www.youtube.com"
 };
-
+//====================== ====================== ====================== ======================
 /**
  * @description Формирование общих данных
  */
 namespace construct {
-    export async function video(video: any): Promise<inTrack> {
+    /**
+     * @description Из полученных данных заготовляваем трек для AudioPlayer<Queue>
+     * @param video {any} Любое видео с youtube
+     */
+    export async function video(video: any): Promise<ISong.track> {
         return {
             url: `https://youtu.be/${video.videoId}`,
             title: video.title,
@@ -30,7 +33,13 @@ namespace construct {
             isLive: video.isLiveContent
         };
     }
-    export function playlist(video: any): inTrack {
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Из полученных данных заготовляваем трек для inPlaylist
+     * @param video {any} Любое видео с youtube
+     * @returns 
+     */
+    export function playlist(video: any): ISong.track {
         return {
             url: `${db.link}/watch?v=${video.videoId}`,
             title: video.title.runs[0].text,
@@ -49,7 +58,6 @@ namespace construct {
     }
 }
 //====================== ====================== ====================== ======================
-
 /**
  * @description Какие запросы доступны (какие были добавлены)
  */
@@ -58,7 +66,7 @@ export namespace YouTube {
      * @description Получаем данные о видео
      * @param url {string} Ссылка на видео
      */
-    export function getVideo(url: string): Promise<inTrack> {
+    export function getVideo(url: string): Promise<ISong.track> {
         const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
@@ -102,7 +110,7 @@ export namespace YouTube {
                 }
 
                 return resolve({ ...await construct.video(details), format: audios });
-            } catch (e) { return reject(Error(e)) }
+            } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
     //====================== ====================== ====================== ======================
@@ -110,7 +118,7 @@ export namespace YouTube {
      * @description Получаем данные о плейлисте
      * @param url {string} Ссылка на плейлист
      */
-    export function getPlaylist(url: string, options = { limit: APIs.limits.playlist }): Promise<inPlaylist> {
+    export function getPlaylist(url: string, options = { limit: APIs.limits.playlist }): Promise<ISong.playlist> {
         const ID = getID(url, true);
 
         return new Promise(async (resolve, reject) => {
@@ -146,7 +154,7 @@ export namespace YouTube {
                     author: await getChannel({ id: author.navigationEndpoint.browseEndpoint.browseId, name: author.title.runs[0].text }),
                     image: info.thumbnailRenderer.playlistVideoThumbnailRenderer.thumbnail.thumbnails.pop()
                 });
-            } catch (e) { return reject(Error(e)) }
+            } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
     //====================== ====================== ====================== ======================
@@ -155,7 +163,7 @@ export namespace YouTube {
     * @param search {string} что ищем
     * @param options {limit} Настройки
     */
-    export function SearchVideos(search: string, options = { limit: APIs.limits.search }): Promise<inTrack[]> {
+    export function SearchVideos(search: string, options = { limit: APIs.limits.search }): Promise<ISong.track[]> {
         return new Promise(async (resolve, reject) => {
             try {
                 //Создаем запрос
@@ -183,7 +191,7 @@ export namespace YouTube {
                 if (videos.length < 1) return reject(Error(`[APIs]: Не удалось найти: ${search}`));
 
                 return resolve(videos.map(({ videoRenderer }: any) => construct.playlist(videoRenderer)));
-            } catch (e) { return reject(Error(e)) }
+            } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
     //====================== ====================== ====================== ======================
@@ -191,7 +199,7 @@ export namespace YouTube {
      * @description Получаем 5 последних треков автора
      * @param url {string} Ссылка на автора
      */
-    export function getChannelVideos(url: string, options = { limit: APIs.limits.author }): Promise<inTrack[]> {
+    export function getChannelVideos(url: string, options = { limit: APIs.limits.author }): Promise<ISong.track[]> {
         return new Promise(async (resolve, reject) => {
             try {
                 let ID: string;
@@ -229,7 +237,7 @@ export namespace YouTube {
                 });
 
                 return resolve(endVideos);
-            } catch (e) { return reject(Error(e)) }
+            } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
 }
@@ -239,7 +247,7 @@ export namespace YouTube {
  * @param id {string} ID канала
  * @param name {string} Название канала
  */
-function getChannel({ id, name }: { id: string, name?: string }): Promise<inAuthor> {
+function getChannel({ id, name }: { id: string, name?: string }): Promise<ISong.author> {
     return new Promise(async (resolve) => {
         //Создаем запрос
         const channel = await httpsClient.get(`${db.link}/channel/${id}/channels?flow=grid&view=0&pbj=1`, {

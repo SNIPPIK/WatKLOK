@@ -1,8 +1,8 @@
-import {inAuthor, inPlaylist, inTrack} from "@Structures/Queue/Song";
-import {httpsClient} from "@httpsClient";
-import {APIs} from "@db/Config.json"
+import { ISong } from "@Structures/Queue/Song";
+import { httpsClient } from "@httpsClient";
+import { APIs } from "@db/Config.json"
 import crypto from "node:crypto";
-import {env} from "src/_Handler/FileSystem/env";
+import { env } from "@env";
 
 //====================== ====================== ====================== ======================
 //                            Простая реализация API yandex music                          //
@@ -15,7 +15,7 @@ const db = {
     api: "https://api.music.yandex.net",
     link: "https://music.yandex.ru"
 };
-
+//====================== ====================== ====================== ======================
 /**
  * @description Система запросов
  */
@@ -44,14 +44,17 @@ namespace API {
     }
 }
 //====================== ====================== ====================== ======================
-
 /**
  * @description Формирование общих данных
  */
 namespace construct {
-    export function track(track: any): inTrack {
+    /**
+     * @description Из полученных данных заготовляваем трек для AudioPlayer<Queue>
+     * @param video {any} Любой трек с Yandex Music
+     */
+    export function track(track: any): ISong.track {
         const author = track.artists?.length ? track.artists?.pop() : track.artists;
-        const image = {url: onImage(track?.ogImage || track?.coverUri) };
+        const image = { url: onImage(track?.ogImage || track?.coverUri) };
         const album = track.albums?.length ? track.albums[0] : track.albums;
         const title = `${track?.title ?? track?.name}` + (track.version ? ` - ${track.version}` : "");
 
@@ -59,12 +62,12 @@ namespace construct {
             title, image,
 
             url: `${db.link}/album/${album.id}/track/${track.id}`,
-            duration: {seconds: (track.durationMs / 1000).toFixed(0)},
+            duration: { seconds: (track.durationMs / 1000).toFixed(0) },
 
             author: track.author ?? {
                 title: author?.name,
                 url: `${db.link}/artist/${author.id}`,
-                image: {url: onImage(author?.ogImage ?? author?.coverUri)},
+                image: { url: onImage(author?.ogImage ?? author?.coverUri) },
                 isVerified: true
             }
         };
@@ -91,11 +94,11 @@ namespace construct {
         return new Promise<string | Error>(async (resolve) => {
             try {
                 const api = await API.Request(`tracks/${ID}/download-info`);
-            
+
                 if (!api || api instanceof Error) return resolve(Error("[APIs]: Not found links for track!"));
 
                 const track = api?.pop() ?? api;
-                const body = await httpsClient.get(track.downloadInfoUrl, {resolve: "string"});
+                const body = await httpsClient.get(track.downloadInfoUrl, { resolve: "string" });
 
                 if (body instanceof Error) return resolve(body);
 
@@ -111,7 +114,6 @@ namespace construct {
     }
 }
 //====================== ====================== ====================== ======================
-
 /**
  * @description Какие запросы доступны
  */
@@ -120,10 +122,10 @@ export namespace YandexMusic {
      * @description Получаем данные о треке
      * @param url {string} Ссылка на трек
      */
-    export function getTrack(url: string): Promise<inTrack> {
+    export function getTrack(url: string): Promise<ISong.track> {
         const ID = url.split(/[^0-9]/g).filter(str => str !== "");
 
-        return new Promise(async (resolve, reject)=> {
+        return new Promise(async (resolve, reject) => {
             try {
                 if (ID.length < 2) return reject(Error("[APIs]: Не найден ID трека!"));
 
@@ -136,7 +138,7 @@ export namespace YandexMusic {
                 track.author = await getAuthor(track?.artists[0].id);
 
                 if (audio instanceof Error) return resolve(construct.track(track));
-                return resolve({...construct.track(track), format: {url: audio}});
+                return resolve({ ...construct.track(track), format: { url: audio } });
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
@@ -146,7 +148,7 @@ export namespace YandexMusic {
      * @param url {string} Ссылка на альбом
      * @param options {limit: number} Настройки
      */
-    export function getAlbum(url: string, options = {limit: APIs.limits.playlist}): Promise<inPlaylist> {
+    export function getAlbum(url: string, options = { limit: APIs.limits.playlist }): Promise<ISong.playlist> {
         const ID = url.split(/[^0-9]/g).find(str => str !== "");
 
         return new Promise(async (resolve, reject) => {
@@ -163,11 +165,10 @@ export namespace YandexMusic {
 
                 const findTracks = (api.duplicates ?? api.volumes)?.pop();
                 const AlbumImage = construct.onImage(api?.ogImage ?? api?.coverUri);
-                const tracks: inTrack[] = findTracks.splice(0, options.limit);;
+                const tracks: ISong.track[] = findTracks.splice(0, options.limit);;
                 const Author = await getAuthor(api.artists[0]?.id);
 
-
-                return resolve({ url, title: api.title, image: {url: AlbumImage}, author: Author, items: tracks.map(construct.track) });
+                return resolve({ url, title: api.title, image: { url: AlbumImage }, author: Author, items: tracks.map(construct.track) });
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
@@ -176,7 +177,7 @@ export namespace YandexMusic {
      * @description Получаем 5 популярных треков автора
      * @param url {string} Ссылка на автора
      */
-    export function getArtistTracks(url: string, options = {limit: APIs.limits.author}): Promise<inTrack[]> {
+    export function getArtistTracks(url: string, options = { limit: APIs.limits.author }): Promise<ISong.track[]> {
         const ID = url.split(/[^0-9]/g).find(str => str !== "");
 
         return new Promise(async (resolve, reject) => {
@@ -201,7 +202,7 @@ export namespace YandexMusic {
      * @param str {string} Что надо искать
      * @constructor
      */
-    export function SearchTracks(str: string, options = {limit: APIs.limits.search}): Promise<inTrack[]> {
+    export function SearchTracks(str: string, options = { limit: APIs.limits.search }): Promise<ISong.track[]> {
         return new Promise(async (resolve, reject) => {
             try {
                 //Создаем запрос
@@ -225,7 +226,7 @@ export namespace YandexMusic {
  * @description Получаем данные об авторе трека
  * @param ID {string} ID автора
  */
-function getAuthor(ID: string): Promise<inAuthor> {
+function getAuthor(ID: string): Promise<ISong.author> {
     return new Promise(async (resolve, reject) => {
         if (!ID) return resolve(null);
 
@@ -242,7 +243,7 @@ function getAuthor(ID: string): Promise<inAuthor> {
             const author = api.artist;
             const image = construct.onImage(author?.ogImage);
 
-            return resolve({url: `https://music.yandex.ru/artist/${ID}`, title: author.name, image: {url: image}, isVerified: true });
+            return resolve({ url: `https://music.yandex.ru/artist/${ID}`, title: author.name, image: { url: image }, isVerified: true });
         } catch (e) { return null }
     });
 }

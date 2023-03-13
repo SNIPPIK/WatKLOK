@@ -10,8 +10,6 @@ export { OpusAudio };
 //====================== ====================== ====================== ======================
 
 
-type FFmpegOptions = { seek?: number, filters?: Filters };
-
 class OpusAudio {
     /**
      * @description Кодировщик из Ogg в Opus
@@ -178,3 +176,8 @@ function createArgs(url: string, Filters: Filters, seek: number): Arguments {
     ...audioDecoding, ...audioBitrate, "-preset:a", "ultrafast"
     ];
 }
+//====================== ====================== ====================== ======================
+/**
+ * @description Модификаторы для FFmpeg
+ */
+type FFmpegOptions = { seek?: number, filters?: Filters };

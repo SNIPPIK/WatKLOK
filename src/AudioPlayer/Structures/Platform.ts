@@ -1,9 +1,9 @@
 import { SoundCloud, Spotify, VK, YandexMusic, YouTube } from "@AudioPlayer/APIs";
-import { inPlaylist, inTrack } from "@Queue/Song";
 import { FFprobe } from "@Media/FFspace";
 import { Music } from "@db/Config.json";
+import { ISong } from "@Queue/Song";
 import { Colors } from "discord.js";
-import { env } from "src/_Handler/FileSystem/env";
+import { env } from "@env";
 
 export { Platform, platform, callback };
 //====================== ====================== ====================== ======================
@@ -21,13 +21,13 @@ interface platformData {
     reg: RegExp;
 
     callbacks: {
-        track: (str: string) => Promise<inTrack>,
+        track: (str: string) => Promise<ISong.track>,
 
-        search?: (str: string) => Promise<inTrack[]>,
-        artist?: (str: string) => Promise<inTrack[]>
+        search?: (str: string) => Promise<ISong.track[]>,
+        artist?: (str: string) => Promise<ISong.track[]>
 
-        playlist?: (str: string) => Promise<inPlaylist>,
-        album?: (str: string) => Promise<inPlaylist>,
+        playlist?: (str: string) => Promise<ISong.playlist>,
+        album?: (str: string) => Promise<ISong.playlist>,
     }
 }
 
@@ -123,7 +123,7 @@ const Platforms: { audio: platform[], auth: platform[], all: platformData[] } = 
 
             //Доступные запросы для этой платформы
             callbacks: {
-                track: (url: string): Promise<inTrack> => FFprobe(url).then((trackInfo: any) => {
+                track: (url: string): Promise<ISong.track> => FFprobe(url).then((trackInfo: any) => {
                     //Если не найдена звуковая дорожка
                     if (!trackInfo) return null;
 

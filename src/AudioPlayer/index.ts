@@ -1,15 +1,14 @@
-import { Platform, callback, platform } from "@Structures/Platform";
 import { ClientMessage, UtilsMsg } from "@Client/interactionCreate";
-import { Song, inPlaylist, inTrack } from "@Queue/Song";
+import { Platform, platform } from "@Structures/Platform";
 import { DurationUtils } from "@Structures/Durations";
 import { Voting, APIs, Music } from "@db/Config.json";
 import { MessagePlayer } from "@Structures/Messages";
 import { Balancer } from "@Structures/Balancer";
 import { Filter } from "@Media/AudioFilters";
+import { Song, ISong } from "@Queue/Song";
 import { VoiceState } from "discord.js";
 import { Voice } from "@VoiceManager";
 import { Queue } from "@Queue/Queue";
-
 
 /**
  * @description Все доступные взаимодействия с плеером через client.player
@@ -49,7 +48,7 @@ export class Player {
                 }
             }
 
-            return runCallback(callback(argument) as Promise<inTrack | inPlaylist | inTrack[]>, platform, message);
+            return runCallback(callback(argument) as Promise<ISong.SupportRequest>, platform, message);
         });
     };
     //====================== ====================== ====================== ======================
@@ -339,7 +338,7 @@ function Vote(message: ClientMessage, queue: Queue, callback: (win: boolean) => 
  * @param platform {platform} Платформа с кторой получаем данные
  * @param message  {ClientMessage} Сообщение с сервера
  */
-function runCallback(callback: Promise<inTrack | inTrack[] | inPlaylist>, platform: platform, message: ClientMessage): void {
+function runCallback(callback: Promise<ISong.SupportRequest>, platform: platform, message: ClientMessage): void {
     const { author, client } = message;
     const VoiceChannel = message.member.voice.channel;
 
@@ -347,7 +346,7 @@ function runCallback(callback: Promise<inTrack | inTrack[] | inPlaylist>, platfo
         if (e.length > 2e3) UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e.message}`, color: "DarkRed", codeBlock: "css", message });
         else UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e}`, color: "DarkRed", codeBlock: "css", message });
     });
-    callback.then((data: inTrack | inPlaylist | inTrack[]): void => {
+    callback.then((data: ISong.SupportRequest): void => {
         if (!data) return UtilsMsg.createMessage({ text: `${author}, данные не были найдены!`, color: "DarkRed", message });
 
         //Если пользователь ищет трек, но найден всего один

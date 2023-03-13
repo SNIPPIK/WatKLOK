@@ -1,7 +1,7 @@
-import {inAuthor, inPlaylist, inTrack} from "@Queue/Song";
-import {httpsClient} from "@httpsClient";
-import {APIs} from "@db/Config.json";
-import {env} from "src/_Handler/FileSystem/env";
+import { httpsClient } from "@httpsClient";
+import { APIs } from "@db/Config.json";
+import { ISong } from "@Queue/Song";
+import { env } from "@env";
 
 //====================== ====================== ====================== ======================
 /**
@@ -18,7 +18,7 @@ const db = {
 
     token: `?access_token=${env.get("VK_TOKEN")}`
 };
-
+//====================== ====================== ====================== ======================
 /**
  * @description Система запросов
  */
@@ -32,7 +32,7 @@ namespace API {
     export function Request(method: methodType, type: requestType, options: string): Promise<any | Error> {
         return new Promise(async (resolve) => {
             const url = `${db.api}/${method}.${type}${db.token}${options}&v=5.131`;
-            const api = await httpsClient.get(url, { resolve: "json", headers: {"accept-encoding": "gzip, deflate, br"}});
+            const api = await httpsClient.get(url, { resolve: "json", headers: { "accept-encoding": "gzip, deflate, br" } });
 
             if (!api || !api?.response) return resolve(Error("[APIs]: Невозможно найти данные!"));
             else if (api?.error) return resolve(Error(`[APIs]: ${api.error_msg}`));
@@ -47,19 +47,29 @@ namespace API {
  * @description Формирование общих данных
  */
 namespace construct {
-    export function track(track: Track["response"][0]): inTrack {
+    /**
+     * @description Из полученных данных заготовляваем трек для AudioPlayer<Queue>
+     * @param video {Track["response"][0]} Любой трек из VK
+     */
+    export function track(track: Track["response"][0]): ISong.track {
         const image = track?.album?.thumb;
 
         return {
             url: `${db.link}/audio${track.owner_id}_${track.id}`,
             title: track.title,
             author: author(track),
-            image: {url: image?.photo_1200 ?? image?.photo_600 ?? image?.photo_300 ?? image?.photo_270 ?? undefined},
+            image: { url: image?.photo_1200 ?? image?.photo_600 ?? image?.photo_300 ?? image?.photo_270 ?? undefined },
             duration: { seconds: track.duration.toFixed(0) },
             format: { url: track?.url }
         };
     }
-    export function author(user: any): inAuthor {
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Из полученных данных заготовляваем данные об авторе для inTrack
+     * @param user {any} Любой автор трека
+     * @returns 
+     */
+    export function author(user: any): ISong.author {
         const url = `${db.link}/audio&q=${user.artist.replaceAll(" ", "").toLowerCase()}`;
 
         return { url, title: user.artist, isVerified: user.is_licensed };
@@ -70,7 +80,11 @@ namespace construct {
  * @description Какие запросы доступны (какие были добавлены)
  */
 export namespace VK {
-    export function getTrack(url: string): Promise<inTrack> {
+    /**
+     * @description Делаем запрос к VK API (через account), получаем данные о треке
+     * @param url {string}
+     */
+    export function getTrack(url: string): Promise<ISong.track> {
         const ID = getID(url);
 
         return new Promise(async (resolve, reject) => {
@@ -94,7 +108,7 @@ export namespace VK {
      * @param url {string} Ссылка
      * @param options {{limit: number}}
      */
-    export function getPlaylist(url: string, options = {limit: APIs.limits.playlist}): Promise<inPlaylist> {
+    export function getPlaylist(url: string, options = { limit: APIs.limits.playlist }): Promise<ISong.playlist> {
         const PlaylistFullID = getID(url).split("_");
         const playlist_id = PlaylistFullID[1];
         const owner_id = PlaylistFullID[0];
@@ -119,7 +133,7 @@ export namespace VK {
                 return resolve({
                     url, title: playlist.title,
                     items: tracks.map(construct.track),
-                    image: {url: image?.photo_1200 ?? image?.photo_600 ?? image?.photo_300 ?? image?.photo_270 ?? undefined}
+                    image: { url: image?.photo_1200 ?? image?.photo_600 ?? image?.photo_300 ?? image?.photo_270 ?? undefined }
                 });
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
@@ -130,7 +144,7 @@ export namespace VK {
      * @param search {string} Что ищем
      * @param options {{limit: number}}
      */
-    export function SearchTracks(search: string, options = {limit: APIs.limits.search}): Promise<null | inTrack[]> {
+    export function SearchTracks(search: string, options = { limit: APIs.limits.search }): Promise<null | ISong.track[]> {
         return new Promise(async (resolve, reject) => {
             try {
                 //Создаем запрос
@@ -145,12 +159,17 @@ export namespace VK {
         });
     }
 }
-//Получаем ID
+//====================== ====================== ====================== ======================
+/**
+ * @description Получаем ID из ссылки
+ * @param url {string} Ссылка
+ */
 function getID(url: string): string {
     if (url.match(/\/audio/)) return url.split("/audio").at(- 1);
     return url.split("playlist/").at(- 1);
 }
-//====================== ====================== ====================== ======================
+
+
 type requestType = "get" | "getById" | "search" | "getPlaylistById" | "getPlaylist";
 type methodType = "audio" | "execute" | "catalog";
 
@@ -183,53 +202,53 @@ interface Playlist {
 
 interface Track {
     response:
-        [
-            {
-                artist: string,
+    [
+        {
+            artist: string,
+            id: number,
+            owner_id: number,
+            title: string,
+            duration: number,
+            access_key: string,
+            ads: {
+                content_id: string,
+                duration: string,
+                account_age_type: string,
+                puid22: string
+            },
+            is_explicit: boolean,
+            is_licensed: boolean,
+            track_code: string,
+            url: string,
+            date: number,
+            no_search: number,
+            is_hq: boolean,
+            album: {
                 id: number,
-                owner_id: number,
                 title: string,
-                duration: number,
+                owner_id: number,
                 access_key: string,
-                ads: {
-                    content_id: string,
-                    duration: string,
-                    account_age_type: string,
-                    puid22: string
-                },
-                is_explicit: boolean,
-                is_licensed: boolean,
-                track_code: string,
-                url: string,
-                date: number,
-                no_search: number,
-                is_hq: boolean,
-                album: {
-                    id: number,
-                    title: string,
-                    owner_id: number,
-                    access_key: string,
-                    thumb: Images
-                },
-                main_artists: [
-                    {
-                        name: string,
-                        domain: string,
-                        id: string
-                    }
-                ],
-                featured_artists: [
-                    {
-                        name: string,
-                        domain: string,
-                        id: string
-                    }
-                ],
-                short_videos_allowed: boolean,
-                stories_allowed: boolean,
-                stories_cover_allowed: boolean
-            }
-        ]
+                thumb: Images
+            },
+            main_artists: [
+                {
+                    name: string,
+                    domain: string,
+                    id: string
+                }
+            ],
+            featured_artists: [
+                {
+                    name: string,
+                    domain: string,
+                    id: string
+                }
+            ],
+            short_videos_allowed: boolean,
+            stories_allowed: boolean,
+            stories_cover_allowed: boolean
+        }
+    ]
 }
 
 interface Images {

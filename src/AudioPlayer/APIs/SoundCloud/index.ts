@@ -1,7 +1,7 @@
-import { inAuthor, inPlaylist, inTrack } from "@Queue/Song";
 import { httpsClient } from "@httpsClient";
 import { APIs } from "@db/Config.json";
-import { env } from "src/_Handler/FileSystem/env";
+import { ISong } from "@Queue/Song";
+import { env } from "@env";
 
 //====================== ====================== ====================== ======================
 /**
@@ -16,7 +16,7 @@ const db = {
 
     clientID: env.get("SOUNDCLOUD")
 };
-
+//====================== ====================== ====================== ======================
 /**
  * @description Система запросов
  */
@@ -55,7 +55,6 @@ namespace API {
     }
 }
 //====================== ====================== ====================== ======================
-
 /**
  * @description Формирование общих данных
  */
@@ -65,7 +64,7 @@ namespace construct {
      * @param track {any} Трек
      * @param url {string} Ссылка на трек
      */
-    export function track(track: any, url?: string): inTrack {
+    export function track(track: any, url?: string): ISong.track {
         if (!track.user) return;
 
         return {
@@ -81,7 +80,7 @@ namespace construct {
      * @description Заготавливаем пример автора
      * @param user {any} Автор
      */
-    export function author(user: any): inAuthor {
+    export function author(user: any): ISong.author {
         return {
             url: user.permalink_url,
             title: user.username,
@@ -107,7 +106,6 @@ namespace construct {
     }
 }
 //====================== ====================== ====================== ======================
-
 /**
  * @description Какие запросы доступны (какие были добавлены)
  */
@@ -116,8 +114,8 @@ export namespace SoundCloud {
      * @description Получаем трек
      * @param url {string} Ссылка на трек
      */
-    export function getTrack(url: string): Promise<inTrack> {
-        return new Promise<inTrack>(async (resolve, reject) => {
+    export function getTrack(url: string): Promise<ISong.track> {
+        return new Promise<ISong.track>(async (resolve, reject) => {
             try {
                 //Создаем запрос
                 const api = await API.Request(`resolve?url=${url}`);
@@ -137,8 +135,8 @@ export namespace SoundCloud {
      * @description Получаем плейлист
      * @param url {string} Ссылка на плейлист
      */
-    export function getPlaylist(url: string, options = { limit: APIs.limits.playlist }): Promise<inPlaylist> {
-        return new Promise<inPlaylist>(async (resolve, reject) => {
+    export function getPlaylist(url: string, options = { limit: APIs.limits.playlist }): Promise<ISong.playlist> {
+        return new Promise<ISong.playlist>(async (resolve, reject) => {
             try {
                 //Создаем запрос
                 const api = await API.Request(`resolve?url=${url}`);
@@ -168,8 +166,8 @@ export namespace SoundCloud {
      * @param options {limit: number} Кол-во выдаваемых треков
      * @constructor
      */
-    export function SearchTracks(search: string, options = { limit: APIs.limits.search }): Promise<inTrack[]> {
-        return new Promise<inTrack[]>(async (resolve, reject) => {
+    export function SearchTracks(search: string, options = { limit: APIs.limits.search }): Promise<ISong.track[]> {
+        return new Promise<ISong.track[]>(async (resolve, reject) => {
             try {
                 //Создаем запрос
                 const api = await API.Request(`search/tracks?q=${search}&limit=${options.limit}`);

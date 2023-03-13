@@ -1,7 +1,6 @@
 import { Platform, platform } from "@Structures/Platform";
 import { ClientMessage } from "@Client/interactionCreate";
 import { PlayerEvents } from "@Structures/Player/Events";
-import { Song, inPlaylist, inTrack } from "@Queue/Song";
 import { AudioPlayer } from "@Structures/Player/index";
 import { DownloadManager } from "@Structures/Download";
 import { Collection, StageChannel } from "discord.js";
@@ -10,6 +9,7 @@ import { MessagePlayer } from "@Structures/Messages";
 import { Debug, Music } from "@db/Config.json";
 import { OpusAudio } from "@Media/OpusAudio";
 import { httpsClient } from "@httpsClient";
+import { Song, ISong } from "@Queue/Song";
 import { Voice } from "@VoiceManager";
 import { Logger } from "@Logger";
 
@@ -24,10 +24,10 @@ class CollectionQueue<V, K> extends Collection<V, K> {
     * @description Создаем очереди или добавляем в нее обьект или обьекты
     * @param message {ClientMessage} Сообщение с сервера
     * @param VoiceChannel {Voice.Channels} К какому голосовому каналу надо подключатся
-    * @param info {inTrack | inPlaylist} Входные данные это трек или плейлист?
+    * @param info {ISong.track | ISong.playlist} Входные данные это трек или плейлист?
     * @requires {CreateQueue}
     */
-    public create = (message: ClientMessage, VoiceChannel: Voice.Channels, info: inTrack | inPlaylist): void => {
+    public create = (message: ClientMessage, VoiceChannel: Voice.Channels, info: ISong.track | ISong.playlist): void => {
         const { queue, status } = CreateQueue(message, VoiceChannel);
         const requester = message.author;
 
@@ -196,7 +196,7 @@ class Queue {
             if (!seek) MessagePlayer.toPlay(this.message);
 
             //Если включен режим отладки показывает что сейчас играет и где
-            if (Debug) Logger.debug(`[Queue]: [${this.guild.id}]: Play: [${song.duration.full}] - [${song.title}]`);
+            if (Debug) Logger.debug(`[Queue]: [${this.guild.id}]: Play: [${song.duration.full}] - [${song.author.title} - ${song.title}]`);
 
             new Promise<string>((resolve) => {
                 //Если пользователь включил кеширование музыки
@@ -343,7 +343,7 @@ namespace findSong {
             if (typeof callback === "string") return null;
 
             //Выдаем ссылку
-            return (callback(url) as Promise<inTrack>).then((track: inTrack) => track?.format?.url);
+            return (callback(url) as Promise<ISong.track>).then((track: ISong.track) => track?.format?.url);
         }
         //Ищем трек
         let track = searchTracks(`${author.title} ${title}`, duration.seconds, platform);
@@ -364,9 +364,9 @@ namespace findSong {
         const exPlatform = Platform.isFailed(platform) || Platform.noAudio(platform) ? Platform.isFailed("YANDEX") ? "YOUTUBE" : "YANDEX" : platform;
         const callbacks = Platform.full(exPlatform).callbacks;
 
-        return callbacks.search(nameSong).then((tracks: inTrack[]) => {
+        return callbacks.search(nameSong).then((tracks: ISong.track[]) => {
             //Фильтруем треки оп времени
-            const FindTracks: inTrack[] = tracks.filter((track: inTrack) => {
+            const FindTracks: ISong.track[] = tracks.filter((track: ISong.track) => {
                 const DurationSong: number = (exPlatform === "YOUTUBE" ? DurationUtils.ParsingTimeToNumber : parseInt)(track.duration.seconds);
 
                 //Как надо фильтровать треки
@@ -377,7 +377,7 @@ namespace findSong {
             if (FindTracks?.length < 1) return null;
 
             //Получаем данные о треке
-            return callbacks.track(FindTracks[0].url).then((video: inTrack) => video?.format?.url) as Promise<string>;
+            return callbacks.track(FindTracks[0].url).then((video: ISong.track) => video?.format?.url) as Promise<string>;
         });
     }
 }

@@ -59,29 +59,44 @@ namespace AudioFilters {
 
         return response.join(",");
     }
-    //====================== ====================== ====================== ======================
-    /**
-    * @description Создаем фильтры для FFmpeg
-    * @param AudioFilters {Filters} Аудио фильтры которые включил пользователь
-    * @param callback {Function}
-    */
-    function parse(filters: Filters, callback: (fl: string, filter: Filter) => void): void {
-        filters.forEach((filter: string | number) => {
-            if (typeof filter === "number") return;
-
-            const findFilter = get(filter);
-
-            return callback(filter, findFilter);
-        });
-    }
 }
+//====================== ====================== ====================== ======================
+/**
+* @description Создаем фильтры для FFmpeg
+* @param AudioFilters {Filters} Аудио фильтры которые включил пользователь
+* @param callback {Function}
+*/
+function parse(filters: Filters, callback: (fl: string, filter: Filter) => void): void {
+    filters.forEach((filter: string | number) => {
+        if (typeof filter === "number") return;
 
+        const findFilter = AudioFilters.get(filter);
+
+        return callback(filter, findFilter);
+    });
+}
+//====================== ====================== ====================== ======================
+/**
+ * @description Допустимые фильтры для Queue
+ */
 type Filters = Array<string | number>;
-
+//====================== ====================== ====================== ======================
+/**
+ * @description Как выглядит фильтр
+ */
 interface Filter {
+    //Имена
     names: string[];
+
+    //Описание
     description: string;
+
+    //Сам фильтр
     filter: string;
+
+    //Аргументы
     args: false | [number, number]
+
+    //Меняется ли скорость
     speed?: null | number
 };

@@ -1,9 +1,9 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, CacheType, ComponentType, InteractionCollector, User } from "discord.js";
 import { ClientMessage, UtilsMsg } from "@Client/interactionCreate";
 import { Music, ReactionMenuSettings } from "@db/Config.json";
-import { inPlaylist, inTrack, Song } from "@Queue/Song";
 import { MessageCycle } from "@Structures/LifeCycle";
 import { Balancer } from "@Structures/Balancer";
+import { ISong, Song } from "@Queue/Song";
 import { EmbedMessages } from "./Embeds";
 import { Queue } from "@Queue/Queue";
 import { Logger } from "@Logger";
@@ -101,9 +101,9 @@ namespace MessagePlayer {
     /**
      * @description Отправляем сообщение о том что плейлист был добавлен в очередь
      * @param message {ClientMessage} Сообщение
-     * @param playlist {inPlaylist} Сам плейлист
+     * @param playlist {ISong.playlist} Сам плейлист
      */
-    export function toPushPlaylist(message: ClientMessage, playlist: inPlaylist): void {
+    export function toPushPlaylist(message: ClientMessage, playlist: ISong.playlist): void {
         const { channel } = message;
 
         Balancer.push(() => {
@@ -117,14 +117,15 @@ namespace MessagePlayer {
             }
         });
     }
+    //====================== ====================== ====================== ======================
     /**
      * @description Оправляем сообщение о том что было найдено
-     * @param tracks {inTracks[]} Найденные треки
+     * @param tracks {ISong.track[]} Найденные треки
      * @param platform {platform} Платформа на которой ищем
      * @param message {ClientMessage} Сообщение с сервера
      * @returns 
      */
-    export function toSearch(tracks: inTrack[], platform: string, message: ClientMessage) {
+    export function toSearch(tracks: ISong.track[], platform: string, message: ClientMessage) {
         const { author, client } = message;
 
         if (tracks.length < 1) return UtilsMsg.createMessage({ text: `${author} | Я не смог найти музыку с таким названием. Попробуй другое название!`, color: "DarkRed", message });

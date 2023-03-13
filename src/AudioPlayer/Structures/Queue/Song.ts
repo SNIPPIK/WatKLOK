@@ -1,9 +1,9 @@
-import { platform, Platform } from "../Platform";
 import { ClientMessage } from "@Client/interactionCreate";
 import { DurationUtils } from "@Structures/Durations";
+import { platform, Platform } from "../Platform";
 import { Music } from "@db/Config.json";
 
-export { Song, inAuthor, inPlaylist, inTrack };
+export { Song, ISong };
 
 
 class Song {
@@ -25,7 +25,7 @@ class Song {
     /**
      * @description Пользователь который включил трек
      */
-    private _requester: SongRequester;
+    private _requester: ISong.requester;
     //====================== ====================== ====================== ======================
     /**
      * @description Платформа трека
@@ -41,10 +41,10 @@ class Song {
     //====================== ====================== ====================== ======================
     /**
      * @description Изображение трека и автора
-     * @param track {inTrack["image"]} Картинка трека
-     * @param author {inTrack["image"]} Картинка автора
+     * @param track {ISong.image} Картинка трека
+     * @param author {ISong.image} Картинка автора
      */
-    private _images: { track: inTrack["image"], author: inTrack["image"] };
+    private _images: { track: ISong.image, author: ISong.image };
     //====================== ====================== ====================== ======================
     /**
      * @description Прочие модификаторы
@@ -116,7 +116,7 @@ class Song {
     /**
      * @description Подгоняем трек под общую сетку
      */
-    public constructor(track: inTrack, author: ClientMessage["author"]) {
+    public constructor(track: ISong.track, author: ClientMessage["author"]) {
         //Данные об пользователе
         const { username, id, avatar } = author;
         const seconds = parseInt(track.duration.seconds);
@@ -166,57 +166,102 @@ class Song {
 function validURL(image: { url: string }): boolean {
     return (image || image?.url !== "") && image?.url?.startsWith("http");
 }
+//====================== ====================== ====================== ======================
+/**
+ * @description Все интерфейсы для работы системы треков
+ */
+namespace ISong {
+    /**
+     * @description Все доступные запросы
+     */
+    export type SupportRequest = ISong.track | ISong.track[] | ISong.playlist;
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Какие данные доступны в <song>.requester
+     * @type interface
+     */
+    export interface requester {
+        //ID Пользователя
+        id: string;
 
-//====================== ====================== ====================== ======================
-/**
- * @description Какие данные доступны в <song>.requester
- * @type interface
- */
-interface SongRequester {
-    id: string;
-    username: string;
-    avatarURL: () => string | null;
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Пример получаемого трека
- * @type interface
- */
-interface inTrack {
-    title: string;
-    url: string;
-    duration: { seconds: string; };
-    image?: { url: string; height?: number; width?: number };
-    author: {
+        //Ник пользователя
+        username: string;
+
+        //Ссылка на аватар пользователя
+        avatarURL: () => string | null;
+    }
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Пример получаемого трека
+     * @type interface
+     */
+    export interface track {
+        //Название трека
         title: string;
-        url: string | null;
-        image?: { url: string | null; width?: number; height?: number; };
+
+        //Ссылка на трек
+        url: string;
+
+        //Трек в прямом эфире
+        isLive?: boolean;
+
+        //Картинка трека
+        image: image;
+
+        //Автор трека
+        author: author,
+
+        //Время 
+        duration: {
+            //Длительность в секундах
+            seconds: string;
+        };
+
+        //Исходный файл
+        format?: {
+            //Ссылка на исходный файл
+            url: string | null
+        };
+    }
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Пример получаемого автора трека
+     * @type interface
+     */
+    export interface author {
+        //Имя автора
+        title: string;
+
+        //Ссылка на автора
+        url: string | undefined;
+        image?: image;
         isVerified?: boolean;
-    },
-    format?: { url: string | null };
-    isLive?: boolean;
-    PrevFile?: string;
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Пример получаемого автора трека
- * @type interface
- */
-interface inAuthor {
-    title: string;
-    url: string | undefined;
-    image?: { url: string | undefined; width?: number; height?: number; };
-    isVerified?: boolean;
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Пример получаемого плейлиста
- * @type interface
- */
-interface inPlaylist {
-    url: string;
-    title: string;
-    items: inTrack[];
-    image: { url: string; };
-    author?: inAuthor;
+    }
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Пример получаемого плейлиста
+     * @type interface
+     */
+    export interface playlist {
+        url: string;
+        title: string;
+        items: track[];
+        image: { url: string; };
+        author?: author;
+    }
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Параметры картинки
+     * @type interface
+     */
+    export interface image {
+        //Ссылка на картинку
+        url: string;
+
+        //Длина
+        height?: number;
+
+        //Высота
+        width?: number
+    }
 }
