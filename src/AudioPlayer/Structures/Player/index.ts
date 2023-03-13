@@ -198,15 +198,19 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
 
             PlayerCycle.toRemove(this);
         } else {
-            //Очищаемся от прошлого потока
-            this.state.stream.opus.removeAllListeners();
-            this.state.stream.opus.destroy();
-            this.state.stream.opus.read(); //Устраняем утечку памяти
-            this.state.stream.destroy();
-            delete this._state.stream;
+            if (this.state?.stream) {
+                if (this.state.stream?.opus) {
+                    //Очищаемся от прошлого потока
+                    this.state.stream.opus.removeAllListeners();
+                    this.state.stream.opus.destroy();
+                    this.state.stream.opus.read(); //Устраняем утечку памяти
 
-            //Устраняем фриз после смены потока
-            this.sendPacket(SilenceFrame);
+                    //Устраняем фриз после смены потока
+                    this.sendPacket(SilenceFrame);
+                }
+
+                this.state.stream.destroy();
+            }
         }
     };
 };

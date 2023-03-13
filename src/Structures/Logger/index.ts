@@ -9,7 +9,7 @@ export namespace Logger {
     export function log(text: string): void {
         const Time = currentTime();
 
-        return console.log(`${Time} ${text.replace(/\[/gi, "[\x1b[32m").replace(/]/gi, "\x1b[0m]")}`);
+        return console.log(`${Time} ➜ ${text.replace(/\[/gi, "[\x1b[32m").replace(/]/gi, "\x1b[0m]")}`);
     }
     //====================== ====================== ====================== ======================
     /**
@@ -19,7 +19,7 @@ export namespace Logger {
     export function error(text: string): void {
         const Time = currentTime();
 
-        return console.log(`${Time} [\x1b[31mError\x1b[0m]: \x1b[31m${text}\x1b[0m`);
+        return console.log(`${Time} ➜ [\x1b[31mError\x1b[0m]: \x1b[31m${text}\x1b[0m`);
     }
     //====================== ====================== ====================== ======================
     /**
@@ -30,7 +30,7 @@ export namespace Logger {
     export function debug(text: string): void {
         const Time = currentTime();
 
-        return console.log(`${Time} [\x1b[33mDebug\x1b[0m]: ${text.replace(/\[/gi, "[\x1b[32m").replace(/]/gi, "\x1b[0m]")}`);
+        return console.log(`${Time} ➜ [\x1b[33mDebug\x1b[0m]: ${text.replace(/\[/gi, "[\x1b[32m").replace(/]/gi, "\x1b[0m]")}`);
     }
 }
 //====================== ====================== ====================== ======================
@@ -40,7 +40,10 @@ export namespace Logger {
 function currentTime(): string {
     const date = new Date();
     const time = [date.getHours(), date.getMinutes(), date.getSeconds()].map(DurationUtils.toFixed0).join(":");
-    const ms = `${date.getMilliseconds()}`;
+    let ms = `${date.getMilliseconds()}`;
+
+    if (ms.length === 1) ms = `00${ms}`;
+    else if (ms.length === 2) ms = `0${ms}`;
 
     return `[${time}.${ms}]`;
 }

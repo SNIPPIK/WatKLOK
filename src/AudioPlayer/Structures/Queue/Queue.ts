@@ -275,7 +275,7 @@ class Queue {
 
         if (this._player) {
             //Удаляем плеер и его данные
-            //this.player.destroy("stream");
+            this.player.destroy("stream");
             this.player.destroy("all");
             delete this._player;
         }

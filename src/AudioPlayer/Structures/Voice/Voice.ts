@@ -26,6 +26,7 @@ namespace Voice {
         });
 
         //Temp fix
+        /*
         JoinVoice.on("stateChange", (oldState, newState) => {
             const oldNetworking = Reflect.get(oldState, "networking");
             const newNetworking = Reflect.get(newState, "networking");
@@ -38,6 +39,7 @@ namespace Voice {
             oldNetworking?.off("stateChange", networkStateChangeHandler);
             newNetworking?.once("stateChange", networkStateChangeHandler);
         });
+        */
 
         //Для голосовых трибун
         if (type !== ChannelType.GuildVoice && me) me?.voice?.setRequestToSpeak(true);
