@@ -139,8 +139,8 @@ class Song {
 
         //Изображения трека и автора
         this._images = {
-            track: validURL(track.image) ? { url: Music.images._image } : track.image,
-            author: validURL(track.author.image) ? { url: Music.images._image } : track.author.image
+            track: validURL(track.image) ? track.image : { url: Music.images._image },
+            author: validURL(track.author.image) ? track.author.image : { url: Music.images._image }
         };
 
         //Время трека
@@ -164,7 +164,7 @@ class Song {
  * @param image {{url: string}} Обьекст с ссылкой
  */
 function validURL(image: { url: string }): boolean {
-    return (!image || image?.url === "") && !image?.url?.startsWith("http");
+    return (image || image?.url !== "") && image?.url?.startsWith("http");
 }
 
 //====================== ====================== ====================== ======================
