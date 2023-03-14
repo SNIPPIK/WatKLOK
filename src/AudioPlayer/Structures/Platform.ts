@@ -119,7 +119,7 @@ const Platforms: { audio: platform[], auth: platform[], all: platformData[] } = 
             name: "DISCORD",
             audio: true,
             color: Colors.Grey, //Цвет трека
-            reg: /^(https?:\/\/)?(cdn\.)?( )?(discordapp\.com)\/.+$/gi || /^(http?:\/\/)\/.+$/gi || /^(https?:\/\/)\/.+$/gi, //Как фильтровать ссылки
+            reg: /^(https?:\/\/)?(cdn\.)?( )?(discordapp\.com)\/.+$/gi, //Как фильтровать ссылки
 
             //Доступные запросы для этой платформы
             callbacks: {
