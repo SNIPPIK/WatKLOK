@@ -1,7 +1,8 @@
-import {Command, ResolveData} from "@Handler/FileSystem/Handle/Command";
-import {ClientMessage} from "@Client/interactionCreate";
-import {ApplicationCommandOptionType} from "discord.js";
-import {Queue} from "@Queue/Queue";
+import { Command, ResolveData } from "@Handler/FileSystem/Handle/Command";
+import { ClientMessage } from "@Client/interactionCreate";
+import { ApplicationCommandOptionType } from "discord.js";
+import { Queue } from "@Queue/Queue";
+import { Logger } from "@Logger";
 
 export class SkipCommand extends Command {
     public constructor() {
@@ -22,10 +23,10 @@ export class SkipCommand extends Command {
         });
     };
 
-    public readonly run = (message: ClientMessage, args: string[] = ["0"]): ResolveData => {
-        const {author, member, guild, client} = message;
+    public readonly run = (message: ClientMessage, args: string[]): ResolveData => {
+        const { author, member, guild, client } = message;
         const queue: Queue = client.queue.get(guild.id);
-        const argsNum = parseInt(args[0]);
+        const arg = args.length > 1 ? parseInt(args.pop()) : 1;
 
         //Если нет очереди
         if (!queue) return { text: `${author}, ⚠ | Музыка щас не играет.`, color: "Yellow" };
@@ -39,9 +40,12 @@ export class SkipCommand extends Command {
             color: "Yellow"
         };
 
+        if (isNaN(arg)) return { text: `${author}, аргумент не является числом` };
+
         try {
-            return void client.player.skip(message, args && args[0] && !isNaN(argsNum) ? argsNum : null);
-        } catch {
+            return void client.player.skip(message, arg);
+        } catch (err) {
+            Logger.error(err);
             return { text: `${author}, Ошибка... попробуй еще раз!!!`, color: "DarkRed" };
         }
     };
