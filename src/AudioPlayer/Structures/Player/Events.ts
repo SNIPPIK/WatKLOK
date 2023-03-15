@@ -1,7 +1,7 @@
-import {MessagePlayer} from "@Structures/Messages";
-import {Queue} from "@Queue/Queue";
+import { MessagePlayer } from "@Structures/Messages";
+import { Queue } from "@Queue/Queue";
 
-export {PlayerEvents};
+export { PlayerEvents };
 //====================== ====================== ====================== ======================
 
 
@@ -12,7 +12,7 @@ namespace PlayerEvents {
      * @param queue {Queue} Сама очередь
      * @requires {isRemoveSong}
      */
-    export function onIdlePlayer(queue: Queue): void {
+    export function onIdle(queue: Queue): void {
         if (queue?.songs) isRemoveSong(queue); //Определяем тип loop
 
         //Выбираем случайный номер трека, просто меняем их местами
@@ -31,7 +31,7 @@ namespace PlayerEvents {
      * @param queue {Queue} Сама очередь
      * @param isSkipSong {boolean} Надо ли пропускать трек
      */
-    export function onErrorPlayer(err: Error | string, queue: Queue, isSkipSong: boolean): void {
+    export function onError(err: Error | string, queue: Queue, isSkipSong: boolean): void {
         //Выводим сообщение об ошибке
         MessagePlayer.toError(queue, err);
 
@@ -48,8 +48,8 @@ namespace PlayerEvents {
  * @description Повтор музыки
  * @param queue {Queue} Очередь сервера
  */
-function isRemoveSong({options, songs}: Queue): void {
-    const {radioMode, loop} = options;
+function isRemoveSong({ options, songs }: Queue): void {
+    const { radioMode, loop } = options;
 
     //Если включен радио мод или тип повтора трек нечего не делаем
     if (radioMode || loop === "song") return;

@@ -1,7 +1,7 @@
 import { Event } from "@Handler/FileSystem/Handle/Event";
 import { WatKLOK } from "@Client/Client";
-import { VoiceState } from "discord.js";
 import { Debug } from "@db/Config.json";
+import { VoiceState } from "discord.js";
 import { Voice } from "@VoiceManager";
 import { Queue } from "@Queue/Queue";
 import { Logger } from "@Logger";

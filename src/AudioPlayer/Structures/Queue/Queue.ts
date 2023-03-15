@@ -177,8 +177,8 @@ class Queue {
     public constructor(msg: ClientMessage, voice: Voice.Channels) {
         this._channel = { msg, voice };
 
-        this.player.on("idle", () => PlayerEvents.onIdlePlayer(this));
-        this.player.on("error", (err, isSkip) => PlayerEvents.onErrorPlayer(err, this, isSkip));
+        this.player.on("idle", () => PlayerEvents.onIdle(this));
+        this.player.on("error", (err, isSkip) => PlayerEvents.onError(err, this, isSkip));
     };
     //====================== ====================== ====================== ======================
     /**
@@ -239,7 +239,11 @@ class Queue {
     public swapSongs = (num?: number): void => {
         if (this.songs.length === 1) return this.player.stop();
 
-        swapPositions<Song>(this.songs, num ?? this.songs.length - 1);
+        const first = this.songs[0];
+        const position = num ?? this.songs.length - 1;
+
+        this.songs[0] = this.songs[position];
+        this.songs[position] = first;
         this.player.stop();
     };
     //====================== ====================== ====================== ======================
@@ -288,19 +292,9 @@ class Queue {
 
         client.queue.delete(guild.id);
 
+        if (Music.LeaveInEnd) Voice.Disconnect(message.guild.id);
         if (Debug) Logger.debug(`[Queue]: [${message.guild.id}]: has deleted`);
     };
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Смена позиции в Array
- * @param array {Array<any>} Array
- * @param position {number} Номер позиции
- */
-function swapPositions<V>(array: V[], position: number): void {
-    const first = array[0];
-    array[0] = array[position];
-    array[position] = first;
 }
 
 //====================== ====================== ====================== ======================

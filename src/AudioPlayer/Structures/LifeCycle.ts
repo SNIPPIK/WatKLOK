@@ -15,9 +15,9 @@ const db = {
     //База с сообщениями
     msg: [] as ClientMessage[],
     //Общий таймер плееров
-    timeout: null as NodeJS.Timeout,
+    pls_timeout: null as NodeJS.Timeout,
     //Общий таймер сообщений
-    timeout_m: null as NodeJS.Timeout,
+    msg_timeout: null as NodeJS.Timeout,
 
     //Время, необходимо для правильной отправки пакетов
     time: 0 as number
@@ -53,10 +53,10 @@ namespace PlayerCycle {
 
         //Чистим систему
         if (db.pls.length < 1) {
-            if (db.timeout) clearTimeout(db.timeout);
+            if (db.pls_timeout) clearTimeout(db.pls_timeout);
 
             db.time = null;
-            db.timeout = null;
+            db.pls_timeout = null;
         }
     }
     //====================== ====================== ====================== ======================
@@ -68,7 +68,7 @@ namespace PlayerCycle {
 
         //Добавляем задержку ровно размера пакета
         db.time += 20;
-        
+
         //Если выбран djs тип отправлений пакетов
         if (Music.AudioPlayer.methodSendPackets === "djs") return sendPlayersPackets(players);
 
@@ -77,7 +77,7 @@ namespace PlayerCycle {
             try {
                 for (let player of players) player["preparePacket"]();
             } finally {
-                db.timeout = setTimeout(playerCycleStep, db.time - Date.now());
+                db.pls_timeout = setTimeout(playerCycleStep, db.time - Date.now());
             }
         });
     }
@@ -91,7 +91,7 @@ namespace PlayerCycle {
 
         //Если нет больше плееров запускаем проверку заново
         if (!nextPlayer) {
-            db.timeout = setTimeout(() => playerCycleStep(), db.time - Date.now());
+            db.pls_timeout = setTimeout(() => playerCycleStep(), db.time - Date.now());
             return;
         }
 
@@ -138,10 +138,10 @@ namespace MessageCycle {
         //Если в базе больше нет сообщений
         if (db.msg.length === 0) {
             //Если таймер еще работает то удаляем его
-            if (db.timeout_m) {
-                clearTimeout(db.timeout_m);
+            if (db.msg_timeout) {
+                clearTimeout(db.msg_timeout);
 
-                db.timeout_m = null;
+                db.msg_timeout = null;
             }
         }
     }
@@ -177,7 +177,8 @@ namespace MessageCycle {
      */
     function messageCycleStep(): void {
         const messages = db.msg.filter(msg => !!msg.edit);
-        
+
+        //Запускаем отправку сообщений
         sendMessage(messages);
     }
     //====================== ====================== ====================== ======================
@@ -188,13 +189,16 @@ namespace MessageCycle {
     function sendMessage(messages: ClientMessage[]): void {
         const message = messages.shift();
 
+        //Если не больше сообщений то через время начинаем заново
         if (!message) {
-            db.timeout_m = setTimeout(messageCycleStep, Music.AudioPlayer.updateMessage < 10 ? 15e3 : Music.AudioPlayer.updateMessage * 1e3);
+            db.msg_timeout = setTimeout(messageCycleStep, Music.AudioPlayer.updateMessage < 10 ? 15e3 : Music.AudioPlayer.updateMessage * 1e3);
             return;
         }
 
+        //Обновляем сообщение
         editMessage(message);
 
+        //Продолжаем обновление
         setImmediate(() => sendMessage(messages));
     }
 }
