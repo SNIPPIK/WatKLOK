@@ -25,7 +25,7 @@
   "QueueCallbacks": false,
 
   "Music": {
-    "LeaveForEnd": false,
+    "LeaveInEnd": false,
     "CacheMusic": false,
     "CacheDir": "AudioCache",
 
