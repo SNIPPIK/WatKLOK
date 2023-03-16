@@ -133,7 +133,7 @@ class Song {
         //Информация об авторе
         this._author = {
             url: !track.author?.url || track.author?.url === "" ? "" : track.author.url,
-            title: !track.author?.title || track.author?.title === "" ? "Not found track name" : track.author.title,
+            title: !track.author?.title || track.author?.title === "" ? "Не найдено имя автора" : track.author.title,
             isVerified: track.author?.isVerified ?? undefined
         };
 

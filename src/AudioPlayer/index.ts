@@ -20,7 +20,8 @@ export class Player {
      * @param args {string} Что требует пользователь
      */
     public play = (message: ClientMessage, args: string): void => {
-        const { author } = message;
+        const { author, client } = message;
+        const VoiceChannel = message.member.voice.channel;
 
         Balancer.push(() => {
             const type = Platform.type(args); //Тип запроса
@@ -48,7 +49,21 @@ export class Player {
                 }
             }
 
-            return runCallback(callback(argument) as Promise<ISong.SupportRequest>, platform, message);
+            callback(argument).then((data: ISong.SupportRequest) => {
+                if (!data) return UtilsMsg.createMessage({ text: `${author}, данные не были найдены!`, color: "DarkRed", message });
+
+                //Если пользователь ищет трек, но найден всего один
+                if (data instanceof Array && data.length === 1) return client.queue.create(message, VoiceChannel, data[0]);
+
+                //Если пользователь ищет трек
+                else if (data instanceof Array) return MessagePlayer.toSearch(data, platform, message);
+
+                //Загружаем трек или плейлист в GuildQueue
+                return client.queue.create(message, VoiceChannel, data);
+            }).catch((e) => {
+                if (e.length > 2e3) UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e.message}`, color: "DarkRed", codeBlock: "css", message });
+                else UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e}`, color: "DarkRed", codeBlock: "css", message });
+            });
         });
     };
     //====================== ====================== ====================== ======================
@@ -329,33 +344,5 @@ function Vote(message: ClientMessage, queue: Queue, callback: (win: boolean) => 
             //Что делаем по истечению времени (5 сек)
             setTimeout(() => callback(Yes >= No), 5e3);
         });
-    });
-}
-//====================== ====================== ====================== ======================
-/**
- * 
- * @param callback {Function} Обрабатываемая функция получения данных
- * @param platform {platform} Платформа с кторой получаем данные
- * @param message  {ClientMessage} Сообщение с сервера
- */
-function runCallback(callback: Promise<ISong.SupportRequest>, platform: platform, message: ClientMessage): void {
-    const { author, client } = message;
-    const VoiceChannel = message.member.voice.channel;
-
-    callback.catch((e) => {
-        if (e.length > 2e3) UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e.message}`, color: "DarkRed", codeBlock: "css", message });
-        else UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e}`, color: "DarkRed", codeBlock: "css", message });
-    });
-    callback.then((data: ISong.SupportRequest): void => {
-        if (!data) return UtilsMsg.createMessage({ text: `${author}, данные не были найдены!`, color: "DarkRed", message });
-
-        //Если пользователь ищет трек, но найден всего один
-        if (data instanceof Array && data.length === 1) return client.queue.create(message, VoiceChannel, data[0]);
-
-        //Если пользователь ищет трек
-        else if (data instanceof Array) return MessagePlayer.toSearch(data, platform, message);
-
-        //Загружаем трек или плейлист в GuildQueue
-        return client.queue.create(message, VoiceChannel, data);
     });
 }
