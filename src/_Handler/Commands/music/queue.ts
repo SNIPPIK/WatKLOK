@@ -1,10 +1,10 @@
-import {Command, replacer, ResolveData} from "@Handler/FileSystem/Handle/Command";
-import {ArraySort} from "@Structures/ArraySort";
-import {ClientMessage} from "@Client/interactionCreate";
-import {DurationUtils} from "@Structures/Durations";
-import {MessageReaction, User} from "discord.js";
-import {Queue} from "@Queue/Queue";
-import {Song} from "@Queue/Song";
+import { Command, replacer, ResolveData } from "@Handler/FileSystem/Handle/Command";
+import { ArraySort } from "@Structures/ArraySort";
+import { ClientMessage } from "@Client/interactionCreate";
+import { DurationUtils } from "@Structures/Durations";
+import { MessageReaction, User } from "discord.js";
+import { Queue } from "@Queue/Queue";
+import { Song } from "@Queue/Song";
 
 export class QueueCommand extends Command {
     public constructor() {
@@ -19,7 +19,7 @@ export class QueueCommand extends Command {
     };
 
     public readonly run = (message: ClientMessage): ResolveData => {
-        const {author, guild, client} = message;
+        const { author, guild, client } = message;
         const queue: Queue = client.queue.get(guild.id);
 
         //Если нет очереди
@@ -34,9 +34,9 @@ export class QueueCommand extends Command {
         });
 
         const CurrentPlaying = `Current playing -> [${queue.song.title}]`; //Музыка, которая играет сейчас
-        const Footer = `${author.username} | ${DurationUtils.getTimeQueue(queue)} | Лист 1 из ${pages.length} | Songs: ${queue.songs.length}`; //Что будет снизу сообщения
+        const Footer = `${author.username} | ${DurationUtils.getTimeQueue(queue)} | Лист 1 из ${pages.length} | Songs: ${queue.songs.length} | Loop: ${queue.options.loop} | Random: ${queue.options.random} | Radio: ${queue.options.radioMode}`; //Что будет снизу сообщения
 
-        return {embed: `\`\`\`css\n➡️ | ${CurrentPlaying}\n\n${pages[0]}\n\n${Footer}\`\`\``, callbacks: this.Callbacks(1, pages, queue)}
+        return { embed: `\`\`\`css\n➡️ | ${CurrentPlaying}\n\n${pages[0]}\n\n${Footer}\`\`\``, callbacks: this.Callbacks(1, pages, queue) }
     };
     //====================== ====================== ====================== ======================
     /**
@@ -49,7 +49,7 @@ export class QueueCommand extends Command {
     private Callbacks = (page: number, pages: string[], queue: Queue) => {
         return {
             //При нажатии на 1 эмодзи, будет выполнена эта функция
-            back: ({users}: MessageReaction, user: User, message: ClientMessage, msg: ClientMessage): void => {
+            back: ({ users }: MessageReaction, user: User, message: ClientMessage, msg: ClientMessage): void => {
                 setImmediate(() => {
                     users.remove(user).catch((err) => console.log(err));
 
@@ -59,13 +59,13 @@ export class QueueCommand extends Command {
                 });
             },
             //При нажатии на 2 эмодзи, будет выполнена эта функция
-            cancel: ({}: MessageReaction, {}: User, message: ClientMessage, msg: ClientMessage): void => {
+            cancel: ({ }: MessageReaction, { }: User, message: ClientMessage, msg: ClientMessage): void => {
                 setImmediate(() => {
                     [msg, message].forEach((mes) => mes.deletable ? mes.delete().catch(() => null) : null);
                 });
             },
             //При нажатии на 3 эмодзи, будет выполнена эта функция
-            next: ({users}: MessageReaction, user: User, message: ClientMessage, msg: ClientMessage): void => {
+            next: ({ users }: MessageReaction, user: User, message: ClientMessage, msg: ClientMessage): void => {
                 setImmediate(() => {
                     users.remove(user).catch((err) => console.log(err));
 

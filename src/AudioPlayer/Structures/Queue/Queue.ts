@@ -195,9 +195,6 @@ class Queue {
             //Отправляем сообщение с авто обновлением
             if (!seek) MessagePlayer.toPlay(this.message);
 
-            //Если включен режим отладки показывает что сейчас играет и где
-            if (Debug) Logger.debug(`[Queue]: [${this.guild.id}]: Play: [${song.duration.full}] - [${song.author.title} - ${song.title}]`);
-
             new Promise<string>((resolve) => {
                 //Если пользователь включил кеширование музыки
                 if (Music.CacheMusic) {
@@ -229,6 +226,9 @@ class Queue {
 
                 //Если получение ссылки вызывает ошибку
             }).catch((err: string) => this.player.emit("error", Error(err), true));
+
+            //Если включен режим отладки показывает что сейчас играет и где
+            if (Debug) Logger.debug(`[Queue]: [${this.guild.id}]: Play: [${song.duration.full}] - [${song.author.title} - ${song.title}]`);
         });
     };
     //====================== ====================== ====================== ======================
