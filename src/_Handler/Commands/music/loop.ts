@@ -42,7 +42,7 @@ export class LoopCommand extends Command {
         //Если нет очереди
         if (!queue) return { text: `${author}, ⚠ | Музыка щас не играет.`, color: "Yellow" };
 
-        const argument = args.pop().toLowerCase();
+        const argument = args?.pop()?.toLowerCase();
         let text = "";
 
         //Если пользователь выключаем повтор
@@ -61,7 +61,7 @@ export class LoopCommand extends Command {
             text = `🔂 | Повтор  | ${queue.songs[0].title}`;
 
             //Если пользователь не указал аргумент
-        } else {
+        } else if (!argument) {
             queue.options.loop = queue.options.loop !== "songs" ? "songs" : "off";
             text = `🎶 | Повтор ${queue.options.loop}`;
         }
