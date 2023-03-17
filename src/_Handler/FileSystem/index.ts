@@ -106,6 +106,9 @@ class FileLoader {
                 if (pull instanceof Error) reason = pull.message;
                 if ("type" in pull) pull.type = dir; //Если есть type в pull
 
+                //Удаляем данные которые больше не нужны
+                delete pull.isEnable;
+
                 this.callback(pull, { dir, file, reason }); //Отправляем данные в callback
             }
         });
