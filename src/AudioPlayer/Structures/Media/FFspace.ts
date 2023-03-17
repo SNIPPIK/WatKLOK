@@ -76,7 +76,7 @@ class FFmpeg extends Duplex {
             this.process.removeAllListeners();
             this.process.kill("SIGKILL");
         }
-        delete this.process;
+        this.process = null;
 
         if (Debug) Logger.debug(`[AudioPlayer]: [FFmpeg lib]: Cleaning memory!`);
     };

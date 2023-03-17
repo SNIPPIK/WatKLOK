@@ -1,13 +1,13 @@
-import {existsSync, mkdirSync, readdirSync} from "node:fs";
-import {Command} from "@Handler/FileSystem/Handle/Command";
-import {Module} from "@Handler/FileSystem/Handle/Module";
-import {Event} from "@Handler/FileSystem/Handle/Event";
-import {WatKLOK} from "@Client/Client";
+import { existsSync, mkdirSync, readdirSync } from "node:fs";
+import { Command } from "@Handler/FileSystem/Handle/Command";
+import { Module } from "@Handler/FileSystem/Handle/Module";
+import { Event } from "@Handler/FileSystem/Handle/Event";
+import { WatKLOK } from "@Client/Client";
 
 type TypeFileLoad = Command | Event<any, any> | Module;
-type FileCallback = (pull: TypeFileLoad, {}: { dir: string, file: string, reason: string }) => void;
+type FileCallback = (pull: TypeFileLoad, { }: { dir: string, file: string, reason: string }) => void;
 
-const tempLogs: {Commands: string[], Events: string[]} = { Commands: [], Events: [] };
+let tempLogs: { Commands: string[], Events: string[] } = { Commands: [], Events: [] };
 
 export namespace FileSystem {
     /**
@@ -19,7 +19,7 @@ export namespace FileSystem {
 
         if (!dir.endsWith("/")) dirs.splice(dirs.length - 1);
 
-        for (let i in dirs) { currentDir += `${dirs[i]}/`;  if (!existsSync(currentDir)) mkdirSync(currentDir); }
+        for (let i in dirs) { currentDir += `${dirs[i]}/`; if (!existsSync(currentDir)) mkdirSync(currentDir); }
     }
     //====================== ====================== ====================== ======================
     /**
@@ -27,15 +27,21 @@ export namespace FileSystem {
      * @param client {WatKLOK} Бот
      */
     export function initFileSystem(client: WatKLOK): void {
-        const loadCallbacks: FileCallback[] = [ //Каким способом их обработать
-            (pull: Command, {file, reason, dir}) => {
+        const paths: (string | FileCallback)[] = [
+
+            //Команды бота
+            "_Handler/Commands",
+            (pull: Command, { file, reason, dir }) => {
                 if (reason) return log("Commands", dir, file, reason);
                 else if (!pull.name) return log("Commands", dir, file, "Parameter name has undefined");
 
                 client.commands.set(pull.name, pull);
                 log("Commands", dir, file);
             },
-            (pull: Event<any, any>, {file, reason, dir}) => {
+
+            //Ивенты бота
+            "_Handler/Events",
+            (pull: Event<any, any>, { file, reason, dir }) => {
                 if (reason) return log("Events", dir, file, reason);
                 else if (!pull.name) return log("Events", dir, file, "Parameter name has undefined");
 
@@ -44,16 +50,19 @@ export namespace FileSystem {
             }
         ];
 
-        //Загружаем путь, а затем действие
-        ["_Handler/Commands", "_Handler/Events"].forEach((path, index): void => {
-            new FileLoader({path, callback: loadCallbacks[index]});
+        //Загружаем данные
+        for (let path of paths) {
+            if (typeof path === "string") {
+                new FileLoader({ path, callback: paths[paths.indexOf(path) + 1] as FileCallback });
 
-            setImmediate((): void => {
-                if (client.ShardID === undefined) Object.entries(tempLogs).forEach(([key, value]) => console.log(`| FileSystem... Loaded ${key} | ${value.length}\n${value.join("\n")}\n`));
-                //После вывода в консоль удаляем
-                Object.entries(tempLogs).forEach(([key,]) => delete tempLogs[key as "Commands" | "Events"]);
-            });
-        });
+                //Выводим в консоль статус загрузки
+                Object.entries(tempLogs).forEach(([key, value]) => {
+                    if (client.ShardID === undefined) console.log(`| FileSystem... Loaded ${key} | ${value.length}\n${value.join("\n")}\n`);
+                });
+            }
+
+            if (paths.indexOf(path) + 1 === paths.length) setTimeout(() => tempLogs = null, 7e3);
+        }
     }
 }
 //====================== ====================== ====================== ======================
@@ -97,7 +106,7 @@ class FileLoader {
                 if (pull instanceof Error) reason = pull.message;
                 if ("type" in pull) pull.type = dir; //Если есть type в pull
 
-                this.callback(pull, {dir, file, reason}); //Отправляем данные в callback
+                this.callback(pull, { dir, file, reason }); //Отправляем данные в callback
             }
         });
     };

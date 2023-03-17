@@ -107,9 +107,9 @@ class OpusAudio {
      * @description Удаляем неиспользованные объекты
      */
     public destroy = (): void => {
-        delete this._duration;
-        delete this._readable;
-        delete this._durFrame;
+        this._duration = null;
+        this._readable = null;
+        this._durFrame = null;
 
         //Удаляем прочие потоки
         if (this._streams?.length > 0) {
@@ -121,7 +121,7 @@ class OpusAudio {
                 }
             }
         }
-        delete this._streams;
+        this._streams = null;
 
         //Удаляем FFmpeg
         if (this._ffmpeg.deletable) {
@@ -129,7 +129,7 @@ class OpusAudio {
             this._ffmpeg.destroy();
             this._ffmpeg.read();
         }
-        delete this._ffmpeg;
+        this._ffmpeg = null;
 
         //Удаляем кодировщик в opus
         if (this.opus) {
@@ -137,7 +137,7 @@ class OpusAudio {
             this.opus.destroy();
             this.opus.read();
         }
-        delete this._opus;
+        this._opus = null;
 
         if (Debug) Logger.debug(`[AudioPlayer]: [OpusAudio]: Cleaning memory!`);
     };

@@ -139,7 +139,7 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
      * @description Передача пакетов в голосовые каналы
      * @param packet {null} Пакет
      */
-    public sendPacket = (packet: Buffer): void => {
+    private sendPacket = (packet: Buffer): void => {
         const voiceConnection = this.connection;
 
         //Если голосовой канал готов
@@ -193,8 +193,8 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
             //Выключаем плеер если сейчас играет трек
             this.stop();
 
-            delete this._connection;
-            delete this._state;
+            this._connection = null;
+            this._state = null;
 
             PlayerCycle.toRemove(this);
         } else {

@@ -281,14 +281,14 @@ class Queue {
             //Удаляем плеер и его данные
             this.player.destroy("stream");
             this.player.destroy("all");
-            delete this._player;
+            this._player = null;
         }
 
-        delete this._songs;
-        delete this._filters;
-        delete this._options;
-        delete this._channel;
-        delete this._timer;
+        this._songs = null;
+        this._filters = null;
+        this._options = null;
+        this._channel = null;
+        this._timer = null;
 
         client.queue.delete(guild.id);
 
