@@ -9,7 +9,6 @@ import fs from "fs";
 export { OpusAudio };
 //====================== ====================== ====================== ======================
 
-
 class OpusAudio {
     /**
      * @description Кодировщик из Ogg в Opus
@@ -71,7 +70,14 @@ class OpusAudio {
         const resource = path.endsWith("opus") ? fs.createReadStream(path) : path
 
         //Создаем ffmpeg
-        this._ffmpeg = new FFmpeg(choiceArgs(path, typeof resource, options), { highWaterMark: 16 });
+        this._ffmpeg = new FFmpeg((
+
+            //Подготавливаем аргументы для
+            () => {
+                if (typeof resource === "string") return createArgs(path, options?.filters, options?.seek);
+                return createArgs(null, options?.filters, options?.seek);
+            }
+        )(), { highWaterMark: 16 });
 
         //Если resource является Readable то загружаем его в ffmpeg
         if (resource instanceof Readable) {
@@ -144,37 +150,23 @@ class OpusAudio {
 }
 //====================== ====================== ====================== ======================
 /**
- * @description Создаем аргументы в зависимости от типа resource
- * @param url {string} Ссылка
- * @param resource {string | Readable} Путь или поток
- * @param options {FFmpegOptions} Модификаторы для ffmpeg
- */
-function choiceArgs(url: string, resource: string | Readable, options: FFmpegOptions): Arguments {
-    if (resource === "string") return createArgs(url, options?.filters, options?.seek);
-    return createArgs(null, options?.filters, options?.seek);
-}
-//====================== ====================== ====================== ======================
-/**
  * @description Создаем аргументы для FFmpeg
  * @param Filters {Filters} Аудио фильтры которые включил пользователь
  * @param url {string} Ссылка
  * @param seek {number} Пропуск музыки до 00:00:00
  */
 function createArgs(url: string, Filters: Filters, seek: number): Arguments {
-    const thisArgs = ["-reconnect", 1, "-reconnect_streamed", 1, "-reconnect_delay_max", 5];
-    const audioDecoding = ["-c:a", "libopus", "-f", "opus"];
-    const audioBitrate = ["-b:a", Music.Audio.bitrate];
+    const reconnect = ["-reconnect", 1, "-reconnect_streamed", 1, "-reconnect_delay_max", 5];
+    const Audio = ["-c:a", "libopus", "-f", "opus", "-b:a", Music.Audio.bitrate];
     const filters = AudioFilters.getVanilaFilters(Filters, seek);
 
-    if (seek) thisArgs.push("-ss", seek ?? 0);
-    if (url) thisArgs.push("-i", url);
+    if (seek) reconnect.push("-ss", seek ?? 0);
+    if (url) reconnect.push("-i", url);
 
-    if (filters.length > 0) thisArgs.push("-af", filters);
+    if (filters.length > 0) reconnect.push("-af", filters);
 
     //Всегда есть один фильтр <AudioFade>
-    return [...thisArgs, "-compression_level", 12,
-    ...audioDecoding, ...audioBitrate, "-preset:a", "ultrafast"
-    ];
+    return [...reconnect, "-compression_level", 12, ...Audio, "-preset:a", "ultrafast"];
 }
 //====================== ====================== ====================== ======================
 /**

@@ -1,7 +1,7 @@
-import { Logger } from "@Logger";
 import { ClientMessage, interactionCreate, UtilsMsg } from "./interactionCreate";
 import { Event } from "@Handler/FileSystem/Handle/Event";
 import { Bot } from "@db/Config.json";
+import { Logger } from "@Logger";
 
 const { runCommand } = interactionCreate;
 

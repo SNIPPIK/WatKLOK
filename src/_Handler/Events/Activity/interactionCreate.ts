@@ -1,13 +1,13 @@
-import {ActionRow,ActionRowBuilder,BaseInteraction,BaseMessageOptions,Colors,CommandInteractionOption,DMChannel,EmbedData,GuildMember,Message,MessageEditOptions,MessagePayload,MessageReaction,NewsChannel,PartialDMChannel,TextChannel,ThreadChannel,User} from "discord.js";
-import {Command, messageUtilsOptions, ResolveData} from "@Handler/FileSystem/Handle/Command";
-import {DurationUtils} from "@Structures/Durations";
-import {ReactionMenu} from "@Structures/ReactionMenu";
-import {Event} from "@Handler/FileSystem/Handle/Event";
-import {Balancer} from "@Structures/Balancer";
-import {WatKLOK} from "@Client/Client";
-import {Bot} from '@db/Config.json';
+import { ActionRow, ActionRowBuilder, BaseInteraction, BaseMessageOptions, Colors, CommandInteractionOption, DMChannel, EmbedData, GuildMember, Message, MessageEditOptions, MessagePayload, MessageReaction, NewsChannel, PartialDMChannel, TextChannel, ThreadChannel, User } from "discord.js";
+import { Command, messageUtilsOptions, ResolveData } from "@Handler/FileSystem/Handle/Command";
+import { Event } from "@Handler/FileSystem/Handle/Event";
+import { ReactionMenu } from "@Structures/ReactionMenu";
+import { DurationUtils } from "@Structures/Durations";
+import { Balancer } from "@Structures/Balancer";
+import { WatKLOK } from "@Client/Client";
+import { Bot } from '@db/Config.json';
 
-export {interactionCreate, UtilsMsg, ClientInteraction, ClientMessage, ClientInteractive, EmbedConstructor};
+export { interactionCreate, UtilsMsg, ClientInteraction, ClientMessage, ClientInteractive, EmbedConstructor };
 
 //База с пользователями которые слишком часто используют команды
 const CoolDownBase = new Map<string, { time: number }>();
@@ -34,13 +34,13 @@ class interactionCreate extends Event<ClientInteraction, null> {
      * @param args {string[]} Аргументы
      */
     public static runCommand = (message: ClientInteractive, command: Command, args: string[] = []): void => {
-        const {author} = message;
+        const { author } = message;
 
         Balancer.push(() => {
             //Если нет команды, которую требует пользователь сообщаем ему об этом
             if (!command) return interactionCreate.sendMessage(message, { text: `${author}, я не нахожу такой команды!`, color: "DarkRed" });
             //Если команду нельзя использовать все сервера
-            if (command.isGuild && !message.guild) return interactionCreate.sendMessage(message,{text: `${author}, эта команда не работает вне сервера!`, color: "DarkRed"});
+            if (command.isGuild && !message.guild) return interactionCreate.sendMessage(message, { text: `${author}, эта команда не работает вне сервера!`, color: "DarkRed" });
 
             //Проверяем пользователь состоит в списке разработчиков
             const owner = interactionCreate.checkOwners(author, command);
@@ -73,10 +73,10 @@ class interactionCreate extends Event<ClientInteraction, null> {
         if ("callbacks" in command && command?.callbacks !== undefined) ReactionMenu.create(command.embed, message, command.callbacks);
 
         //Отправляем просто сообщение
-        else if ("text" in command) UtilsMsg.createMessage({...command, message });
+        else if ("text" in command) UtilsMsg.createMessage({ ...command, message });
 
         //Отправляем embed
-        else UtilsMsg.createMessage({text: command.embed, message});
+        else UtilsMsg.createMessage({ text: command.embed, message });
     }
     //====================== ====================== ====================== ======================
     /**
@@ -85,7 +85,7 @@ class interactionCreate extends Event<ClientInteraction, null> {
      * @param command {Command} Команда
      */
     private static checkPermissions = (command: Command, message: ClientInteractive): ResolveData => {
-        const {guild, member, author} = message;
+        const { guild, member, author } = message;
         const permissions = command.permissions;
 
         //Проверяем нет ли у бота ограничений на права
@@ -128,7 +128,7 @@ class interactionCreate extends Event<ClientInteraction, null> {
             if (CoolDownBase.get(author.id)) return { text: `${author}, ты слишком быстро отправляем сообщения! Подожди ${DurationUtils.ParsingTimeToString(CoolDownBase.get(author.id).time)}`, color: "DarkRed" }
             else {
                 //Добавляем пользователя в CoolDown базу
-                CoolDownBase.set(author.id, {time: command.isCLD});
+                CoolDownBase.set(author.id, { time: command.isCLD });
                 setTimeout(() => CoolDownBase.delete(author.id), command.isCLD * 1e3 ?? 5e3);
             }
         }
@@ -161,7 +161,7 @@ namespace UtilsMsg {
      * @param time {number} Через сколько удалить сообщение
      */
     export function createCollector(channel: ClientMessage["channel"], filter: (m: ClientMessage) => boolean, max: number = 1, time: number = 20e3) {
-        return channel.createMessageCollector({filter: filter as any, max, time});
+        return channel.createMessageCollector({ filter: filter as any, max, time });
     }
     //====================== ====================== ====================== ======================
     /**
@@ -174,7 +174,7 @@ namespace UtilsMsg {
      */
     export function createReaction(message: ClientMessage, emoji: string, filter: (reaction: MessageReaction, user: User) => boolean, callback: (reaction: MessageReaction) => any, time = 35e3): void {
         deleteMessage(message, time);
-        const createReactionCollector = () => message.createReactionCollector({filter, time}).on("collect", (reaction: MessageReaction) => callback(reaction));
+        const createReactionCollector = () => message.createReactionCollector({ filter, time }).on("collect", (reaction: MessageReaction) => callback(reaction));
         message.react(emoji).then(createReactionCollector);
     }
     //====================== ====================== ====================== ======================
@@ -183,7 +183,7 @@ namespace UtilsMsg {
      * @param options {messageUtilsOptions} Опции для отправления сообщения
      */
     export function createMessage(options: messageUtilsOptions): void {
-        const {message} = options;
+        const { message } = options;
         const Args = sendArgs(options);
         const channelSend = sendMessage(message, "isButton" in message, Args as any) as Promise<ClientMessage>;
 
@@ -198,18 +198,18 @@ namespace UtilsMsg {
  * @private
  */
 function sendArgs(options: messageUtilsOptions): { content: string } | { embeds: [EmbedConstructor] } {
-    const {color, text, codeBlock, notAttachEmbed} = options;
+    const { color, text, codeBlock, notAttachEmbed } = options;
 
     if (typeof text === "string") {
         const description = typeof codeBlock === "string" ? `\`\`\`${codeBlock}\n${text}\n\`\`\`` : text;
         if (!notAttachEmbed) {
             const embed: EmbedConstructor = { color: typeof color === "number" ? color : Colors[color] ?? 258044, description };
 
-            return {embeds: [embed]};
+            return { embeds: [embed] };
         }
-        return {content: description};
+        return { content: description };
     }
-    return {embeds: [text]};
+    return { embeds: [text] };
 }
 //====================== ====================== ====================== ======================
 /**
@@ -220,8 +220,8 @@ function sendArgs(options: messageUtilsOptions): { content: string } | { embeds:
  * @private
  */
 function sendMessage(message: ClientMessage | ClientInteraction, isSlash: boolean, args: any) {
-    if (isSlash) return message.reply({...args, fetchReply: true});
-    return (message as ClientMessage).channel.send({...args, fetchReply: true});
+    if (isSlash) return message.reply({ ...args, fetchReply: true });
+    return (message as ClientMessage).channel.send({ ...args, fetchReply: true });
 }
 //====================== ====================== ====================== ======================
 /**
@@ -237,7 +237,7 @@ type ClientInteractive = ClientMessage | ClientInteraction;
 /**
  * @description Embed, format JSON
  */
-interface EmbedConstructor extends EmbedData {}
+interface EmbedConstructor extends EmbedData { }
 //====================== ====================== ====================== ======================
 /**
  * @description Структура сообщения с тестового канала вызванная через "/"
@@ -261,7 +261,7 @@ type SendMessageOptions = string | MessagePayload | BaseMessageOptions | { embed
 // @ts-ignore
 interface ClientMessage extends Message {
     client: WatKLOK;
-    channel: { send(options: SendMessageOptions & {fetchReply?: boolean}): Promise<ClientMessage> } & Channels;
+    channel: { send(options: SendMessageOptions & { fetchReply?: boolean }): Promise<ClientMessage> } & Channels;
     edit(content: SendMessageOptions | MessageEditOptions): Promise<ClientMessage>
     reply(options: SendMessageOptions): Promise<ClientMessage>
     user: null;

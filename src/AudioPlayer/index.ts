@@ -1,8 +1,8 @@
 import { ClientMessage, UtilsMsg } from "@Client/interactionCreate";
-import { Platform, platform } from "@Structures/Platform";
 import { DurationUtils } from "@Structures/Durations";
 import { Voting, APIs, Music } from "@db/Config.json";
 import { MessagePlayer } from "@Structures/Messages";
+import { Platform } from "@Structures/Platform";
 import { Balancer } from "@Structures/Balancer";
 import { Filter } from "@Media/AudioFilters";
 import { Song, ISong } from "@Queue/Song";
@@ -49,7 +49,9 @@ export class Player {
                 }
             }
 
+            //Вызываем функцию для получения данных
             callback(argument).then((data: ISong.SupportRequest) => {
+                //Если данных нет
                 if (!data) return UtilsMsg.createMessage({ text: `${author}, данные не были найдены!`, color: "DarkRed", message });
 
                 //Если пользователь ищет трек, но найден всего один

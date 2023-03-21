@@ -79,7 +79,7 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
         if (oldState.stream && !oldState.stream.destroyed && (newState.status === "idle" || oldState.stream !== newState.stream)) this.destroy("stream");
 
         //Перезаписываем state
-        delete this._state;
+        this._state = null;
         this._state = newState;
 
         //Фильтруем статусы бота что в emit не попало что не надо
