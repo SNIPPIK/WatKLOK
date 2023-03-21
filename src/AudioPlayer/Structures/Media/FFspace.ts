@@ -2,7 +2,7 @@ import { ChildProcessWithoutNullStreams, spawn, spawnSync } from "child_process"
 import { Duplex, DuplexOptions, Readable, Writable } from "stream";
 import { dependencies } from "package.json";
 import { Debug } from "@db/Config.json";
-import { Logger } from "@Structures/Logger";
+import { Logger } from "@Logger";
 
 export { FFmpeg, FFprobe, Arguments };
 //====================== ====================== ====================== ======================
@@ -78,7 +78,7 @@ class FFmpeg extends Duplex {
         }
         this.process = null;
 
-        if (Debug) Logger.debug(`[AudioPlayer]: [FFmpeg lib]: Cleaning memory!`);
+        if (Debug) Logger.debug(`[AudioPlayer]: [FFmpeg lib]: Destroying!`);
     };
 }
 //====================== ====================== ====================== ======================

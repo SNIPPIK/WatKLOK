@@ -72,14 +72,14 @@ class OpusAudio {
         //Создаем ffmpeg
         this._ffmpeg = new FFmpeg((
 
-            //Подготавливаем аргументы для
+            //Подготавливаем аргументы для FFmpeg
             () => {
                 if (typeof resource === "string") return createArgs(path, options?.filters, options?.seek);
                 return createArgs(null, options?.filters, options?.seek);
             }
         )(), { highWaterMark: 16 });
 
-        //Если resource является Readable то загружаем его в ffmpeg
+        //Если resource является Readable то загружаем его в FFmpeg
         if (resource instanceof Readable) {
             resource.pipe(this._ffmpeg);
             this._streams.push(resource);
@@ -145,7 +145,7 @@ class OpusAudio {
         }
         this._opus = null;
 
-        if (Debug) Logger.debug(`[AudioPlayer]: [OpusAudio]: Cleaning memory!`);
+        if (Debug) Logger.debug(`[AudioPlayer]: [OpusAudio]: Destroying!`);
     };
 }
 //====================== ====================== ====================== ======================
