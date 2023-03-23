@@ -165,7 +165,7 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
         const state = this.state;
 
         //Если статус (idle или pause или его нет) прекратить выполнение функции
-        if (state.status === "idle" || state.status === "pause" || !state?.status) return;
+        if (state?.status === "idle" || state?.status === "pause" || !state?.status) return;
 
         //Если вдруг нет голосового канала
         if (!this.connection) {
