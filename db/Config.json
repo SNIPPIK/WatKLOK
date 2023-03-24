@@ -27,7 +27,7 @@
   "Music": {
     "LeaveInEnd": false,
     "CacheMusic": false,
-    "CacheDir": "AudioCache",
+    "CacheDir": "db/Audio",
 
     "showGettingData": true,
 
