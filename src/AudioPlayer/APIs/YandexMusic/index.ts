@@ -54,7 +54,7 @@ namespace construct {
      */
     export function track(track: any): ISong.track {
         const author = track.artists?.length ? track.artists?.pop() : track.artists;
-        const image = { url: onImage(track?.ogImage || track?.coverUri) };
+        const image = onImage(track?.ogImage || track?.coverUri);
         const album = track.albums?.length ? track.albums[0] : track.albums;
         const title = `${track?.title ?? track?.name}` + (track.version ? ` - ${track.version}` : "");
 
@@ -78,12 +78,15 @@ namespace construct {
      * @param image {string} Ссылка на картинку
      * @param size {number} Размер картинки
      */
-    export function onImage(image: string, size = 1e3): string {
-        if (!image) return "";
+    export function onImage(image: string, size = 1e3): ISong.image {
+        if (!image) return { url: "" };
 
         let img = image.split("%%")[0];
 
-        return `https://${img}m${size}x${size}`;
+        return {
+            url: `https://${img}m${size}x${size}`,
+            width: size, height: size
+        };
     }
     //====================== ====================== ====================== ======================
     /**
@@ -168,7 +171,7 @@ export namespace YandexMusic {
                 const tracks: ISong.track[] = findTracks.splice(0, options.limit);;
                 const Author = await getAuthor(api.artists[0]?.id);
 
-                return resolve({ url, title: api.title, image: { url: AlbumImage }, author: Author, items: tracks.map(construct.track) });
+                return resolve({ url, title: api.title, image: AlbumImage, author: Author, items: tracks.map(construct.track) });
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
@@ -243,7 +246,7 @@ function getAuthor(ID: string): Promise<ISong.author> {
             const author = api.artist;
             const image = construct.onImage(author?.ogImage);
 
-            return resolve({ url: `https://music.yandex.ru/artist/${ID}`, title: author.name, image: { url: image }, isVerified: true });
+            return resolve({ url: `https://music.yandex.ru/artist/${ID}`, title: author.name, image: image, isVerified: true });
         } catch (e) { return null }
     });
 }

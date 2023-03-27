@@ -19,7 +19,7 @@ namespace AudioFilters {
     export function getDuration(filters: Filters, duration: number = 20) {
         if (!filters) return duration;
 
-        parse(filters, (fl, filter: Filter) => {
+        filtersForEach(filters, (fl, filter: Filter) => {
 
             //Если у фильтра есть модификатор скорости
             if (filter?.speed) {
@@ -48,7 +48,7 @@ namespace AudioFilters {
         if (seek === 0) response.push("afade=t=in:st=0:d=3.5");
         response.push(`volume=${Music.Audio.volume / 100}`);
 
-        if (filters) parse(filters, (fl, filter: Filter) => {
+        if (filters) filtersForEach(filters, (fl, filter: Filter) => {
             if (filter) {
                 if (!filter.args) return response.push(filter.filter);
 
@@ -66,7 +66,7 @@ namespace AudioFilters {
 * @param AudioFilters {Filters} Аудио фильтры которые включил пользователь
 * @param callback {Function}
 */
-function parse(filters: Filters, callback: (fl: string, filter: Filter) => void): void {
+function filtersForEach(filters: Filters, callback: (fl: string, filter: Filter) => void): void {
     filters.forEach((filter: string | number) => {
         if (typeof filter === "number") return;
 

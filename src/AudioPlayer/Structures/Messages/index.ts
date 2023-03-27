@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, CacheType, ComponentType, InteractionCollector, User } from "discord.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, CacheType, ComponentType, User } from "discord.js";
 import { ClientMessage, UtilsMsg } from "@Client/interactionCreate";
 import { Music, ReactionMenuSettings } from "@db/Config.json";
 import { MessageCycle } from "@Structures/LifeCycle";
@@ -17,12 +17,13 @@ if (Music.Buttons.length < 4) Error(`[Config]: Buttons has not found, find ${Mus
 //Кнопки с которыми можно взаимодействовать
 const ButtonIDs = ["skip", "resume_pause", "replay", "last"];
 //Кнопки над сообщением о проигрывании трека
-const Buttons = new ActionRowBuilder().addComponents([
-    new ButtonBuilder().setCustomId("last").setEmoji(Music.Buttons[0]).setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("resume_pause").setEmoji(Music.Buttons[1]).setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("skip").setEmoji(Music.Buttons[2]).setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("replay").setEmoji(Music.Buttons[3]).setStyle(ButtonStyle.Secondary)
-]
+const Buttons = new ActionRowBuilder().addComponents(
+    [
+        new ButtonBuilder().setCustomId("last").setEmoji(Music.Buttons[0]).setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("resume_pause").setEmoji(Music.Buttons[1]).setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("skip").setEmoji(Music.Buttons[2]).setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("replay").setEmoji(Music.Buttons[3]).setStyle(ButtonStyle.Secondary)
+    ]
 );
 const emoji: string = ReactionMenuSettings.emojis.cancel;
 
@@ -47,10 +48,10 @@ namespace MessagePlayer {
             msg.catch((e) => Logger.error(`[MessagePlayer]: [function: toPlay]: ${e.message}`));
             msg.then((msg) => {
                 //Добавляем к сообщению кнопки
-                const collector = CreateCollector(msg, queue);
+                const collector = new ButtonCollector(msg);
 
                 //Удаляем сборщик после проигрывания трека
-                queue.player.once("idle", () => collector?.stop());
+                queue.player.once("idle", () => collector?.destroy());
 
                 //Добавляем сообщение к CycleStep
                 MessageCycle.toPush(msg);
@@ -160,18 +161,34 @@ namespace MessagePlayer {
 //====================== ====================== ====================== ======================
 /**
  * @description Создаем сборщик кнопок
- * @param message {ClientMessage} Сообщение
- * @param queue {Queue} Очередь сервера
  */
-function CreateCollector(message: ClientMessage, queue: Queue): InteractionCollector<ButtonInteraction<CacheType>> {
-    //Создаем сборщик кнопок
-    const collector = message.createMessageComponentCollector({ filter: (i) => ButtonIDs.includes(i.customId), componentType: ComponentType.Button, time: 60e5 });
-    const { player } = queue;
-    const EmitPlayer = message.client.player;
+class ButtonCollector {
+    /**
+     * @description Сборщик
+     */
+    private _collector: any;
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Создаем сборщик и добавляем ивент
+     * @param message {ClientMessage} Сообщение с сервера
+     */
+    public constructor(message: ClientMessage) {
+        this._collector = message.createMessageComponentCollector({ filter: (i) => ButtonIDs.includes(i.customId), componentType: ComponentType.Button, time: 60e5 });
+        this._collector.on("collect", (i: ButtonInteraction<CacheType>) => this.onCollect(i, message));
+    };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Отслеживаем ивент
+     * @param i {ButtonInteraction<CacheType>} Кто взаимодействует с кнопкой
+     * @param message {ClientMessage} Сообщение с сервера
+     * @returns 
+     */
+    private onCollect = (i: ButtonInteraction<CacheType>, message: ClientMessage) => {
+        const queue = message.client.queue.get(message.guild.id);
+        const { player } = queue, Player = message.client.player;
 
-    //Добавляем ему ивент сборки кнопок
-    collector.on("collect", (i): void => {
         message.author = i?.member?.user as User ?? i?.user;
+
         try { i.deferReply(); i.deleteReply(); } catch (e) {/*Notfing*/ }
 
         //Если вдруг пользователь будет нажимать на кнопки после выключения плеера
@@ -180,19 +197,25 @@ function CreateCollector(message: ClientMessage, queue: Queue): InteractionColle
         switch (i.customId) {
             case "resume_pause": { //Если надо приостановить музыку или продолжить воспроизведение
                 switch (player.state.status) {
-                    case "read": return void EmitPlayer.pause(message);
-                    case "pause": return void EmitPlayer.resume(message);
+                    case "read": return void Player.pause(message);
+                    case "pause": return void Player.resume(message);
                 }
                 return;
             }
             //Пропуск текущей музыки
-            case "skip": return void EmitPlayer.skip(message, 1);
+            case "skip": return void Player.skip(message, 1);
             //Повторно включить текущую музыку
-            case "replay": return void EmitPlayer.replay(message);
+            case "replay": return void Player.replay(message);
             //Включить последнею из списка музыку
             case "last": return queue?.swapSongs();
         }
-    });
-
-    return collector;
+    };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Отключаем сборщик и удаляем
+     */
+    public destroy = () => {
+        this._collector?.stop();
+        this._collector = null;
+    };
 }
