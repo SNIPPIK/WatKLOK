@@ -1,6 +1,6 @@
 import { Shard, ShardingManager } from "discord.js";
 import { Logger } from "@Logger";
-import { env } from "src/_Handler/FileSystem/env";
+import { env } from "@env";
 
 /**
  * @description Используется для большого кол-ва серверов. Если у вас более 1к, тогда рекомендуется запускать ShardManager

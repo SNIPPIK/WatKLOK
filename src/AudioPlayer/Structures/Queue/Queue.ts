@@ -308,6 +308,8 @@ namespace findSong {
      */
     export function checkingLink(url: string, song: Song, req = 0): Promise<string> {
         return new Promise(async (resolve) => {
+            if (Debug) Logger.debug(`[Queue]: [Song]: [${req}]: Search resource link!`);
+
             if (req > 3) return resolve(null);
 
             //Если нет ссылки, то ищем трек
