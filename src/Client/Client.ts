@@ -1,14 +1,12 @@
 import { Client, IntentsBitField, Options, Collection, ActivityType } from "discord.js";
 import { Command } from "@Handler/FileSystem/Handle/Command";
 import { ClientMessage } from "@Client/interactionCreate";
-import { CollectionQueue, Queue } from "@Queue/Queue";
 import { Bot, Channels, APIs } from "@db/Config.json";
 import { Player } from "@AudioPlayer/index";
 import { FileSystem } from "@FileSystem";
 import { Logger } from "@Logger";
 import { env } from "@env";
 
-const queue = new CollectionQueue<string | number, Queue>();
 const commands = new Collection<string, Command>(); //База, со всеми командами
 const player = new Player();
 
@@ -17,11 +15,6 @@ export class WatKLOK extends Client {
      * @description Все команды бота
      */
     public get commands() { return commands; };
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Все музыкальные очереди бота
-     */
-    public get queue() { return queue; };
     //====================== ====================== ====================== ======================
     /**
      * @description Плеер

@@ -153,7 +153,7 @@ namespace MessageCycle {
      */
     function editMessage(message: ClientMessage): void {
         const { client, guild } = message;
-        const queue: Queue = client.queue.get(guild.id);
+        const queue: Queue = client.player.queue.get(guild.id);
 
         //Если очереди нет или сообщение нельзя отредактировать, то удаляем сообщение
         if (!queue || !queue?.song) return MessageCycle.toRemove(message.channelId);

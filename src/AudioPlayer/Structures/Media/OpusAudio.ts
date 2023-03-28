@@ -117,33 +117,17 @@ class OpusAudio {
         this._readable = null;
         this._durFrame = null;
 
-        //Удаляем прочие потоки
-        if (this._streams?.length > 0) {
-            for (const stream of this._streams) {
-                if (stream !== undefined && !stream.destroyed) {
-                    stream.removeAllListeners();
-                    stream.destroy();
-                    stream.read();
-                }
+        //Удаляем потоки
+        for (let stream of [this._ffmpeg, this.opus, ...this._streams]) {
+            if (stream !== undefined && !stream.destroyed) {
+                stream.removeAllListeners();
+                stream.destroy();
+                stream.read();
             }
         }
-        this._streams = null;
-
-        //Удаляем FFmpeg
-        if (this._ffmpeg.deletable) {
-            this._ffmpeg.removeAllListeners();
-            this._ffmpeg.destroy();
-            this._ffmpeg.read();
-        }
         this._ffmpeg = null;
-
-        //Удаляем кодировщик в opus
-        if (this.opus) {
-            this.opus.removeAllListeners();
-            this.opus.destroy();
-            this.opus.read();
-        }
         this._opus = null;
+        this._streams = null;
 
         if (Debug) Logger.debug(`[AudioPlayer]: [OpusAudio]: Destroying!`);
     };

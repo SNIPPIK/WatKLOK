@@ -25,6 +25,7 @@ export class InfoCommand extends Command {
 
     public readonly run = (message: ClientMessage): ResolveData => {
         const {client, guild} = message;
+        const queue = client.player.queue;
 
         return {
             embed: {
@@ -42,7 +43,7 @@ export class InfoCommand extends Command {
                     },
                     {
                         name: "Музыка",
-                        value: `\`\`\`css\n• Queue      => ${client.queue.size}\n• Player     => ${client.queue.get(guild.id) ? client.queue.get(guild.id).player.state.status : 'Is not a work player'}\`\`\``
+                        value: `\`\`\`css\n• Queue      => ${queue.size}\n• Player     => ${queue.get(guild.id) ? queue.get(guild.id).player.state.status : 'Is not a work player'}\`\`\``
                     }
                 ],
                 footer: {

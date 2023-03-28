@@ -59,7 +59,7 @@ class CollectionQueue<V, K> extends Collection<V, K> {
  */
 function CreateQueue(message: ClientMessage, VoiceChannel: Voice.Channels): { status: "create" | "load", queue: Queue } {
     const { client, guild } = message;
-    const queue = client.queue.get(guild.id);
+    const queue = client.player.queue.get(guild.id);
 
     if (queue) return { queue, status: "load" };
 
@@ -68,7 +68,7 @@ function CreateQueue(message: ClientMessage, VoiceChannel: Voice.Channels): { st
 
     //Подключаемся к голосовому каналу
     GuildQueue.player.connection = Voice.Join(VoiceChannel); //Добавляем подключение в плеер
-    client.queue.set(guild.id, GuildQueue); //Записываем очередь в <client.queue>
+    client.player.queue.set(guild.id, GuildQueue); //Записываем очередь в <client.queue>
 
     return { queue: GuildQueue, status: "create" };
 }
@@ -290,7 +290,7 @@ class Queue {
         this._channel = null;
         this._timer = null;
 
-        client.queue.delete(guild.id);
+        client.player.queue.delete(guild.id);
 
         if (Music.LeaveInEnd) Voice.Disconnect(message.guild.id);
         if (Debug) Logger.debug(`[Queue]: [${message.guild.id}]: has deleted`);
@@ -308,8 +308,6 @@ namespace findSong {
      */
     export function checkingLink(url: string, song: Song, req = 0): Promise<string> {
         return new Promise(async (resolve) => {
-            if (Debug) Logger.debug(`[Queue]: [Song]: [${req}]: Search resource link!`);
-
             if (req > 3) return resolve(null);
 
             //Если нет ссылки, то ищем трек

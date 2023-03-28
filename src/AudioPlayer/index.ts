@@ -1,4 +1,5 @@
 import { ClientMessage, UtilsMsg } from "@Client/interactionCreate";
+import { CollectionQueue, Queue } from "@Queue/Queue";
 import { DurationUtils } from "@Structures/Durations";
 import { Voting, APIs, Music } from "@db/Config.json";
 import { MessagePlayer } from "@Structures/Messages";
@@ -8,19 +9,30 @@ import { Filter } from "@Media/AudioFilters";
 import { Song, ISong } from "@Queue/Song";
 import { VoiceState } from "discord.js";
 import { Voice } from "@VoiceManager";
-import { Queue } from "@Queue/Queue";
 
+
+//====================== ====================== ====================== ======================
+/**
+ * @description Храним все очереди здесь
+ */
+const _queue = new CollectionQueue<string | number, Queue>();
+//====================== ====================== ====================== ======================
 /**
  * @description Все доступные взаимодействия с плеером через client.player
  */
 export class Player {
     /**
+     * @description Получение всех очередей
+     */
+    public get queue() { return _queue; };
+    //====================== ====================== ====================== ======================
+    /**
      * @description Получаем данные из базы по данным
      * @param message {ClientMessage} Сообщение с сервера
      * @param args {string} Что требует пользователь
      */
-    public play = (message: ClientMessage, args: string): void => {
-        const { author, client } = message;
+    public readonly play = (message: ClientMessage, args: string): void => {
+        const { author } = message;
         const VoiceChannel = message.member.voice.channel;
 
         Balancer.push(() => {
@@ -55,13 +67,13 @@ export class Player {
                 if (!data) return UtilsMsg.createMessage({ text: `${author}, данные не были найдены!`, color: "DarkRed", message });
 
                 //Если пользователь ищет трек, но найден всего один
-                if (data instanceof Array && data.length === 1) return client.queue.create(message, VoiceChannel, data[0]);
+                if (data instanceof Array && data.length === 1) return this.queue.create(message, VoiceChannel, data[0]);
 
                 //Если пользователь ищет трек
                 else if (data instanceof Array) return MessagePlayer.toSearch(data, platform, message);
 
                 //Загружаем трек или плейлист в GuildQueue
-                return client.queue.create(message, VoiceChannel, data);
+                return this.queue.create(message, VoiceChannel, data);
             }).catch((e) => {
                 if (e.length > 2e3) UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e.message}`, color: "DarkRed", codeBlock: "css", message });
                 else UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e}`, color: "DarkRed", codeBlock: "css", message });
@@ -73,9 +85,9 @@ export class Player {
      * @description Завершает текущую музыку
      * @param message {ClientMessage} Сообщение с сервера
      */
-    public stop = (message: ClientMessage): void => {
-        const { client, guild } = message;
-        const { player }: Queue = client.queue.get(guild.id);
+    public readonly stop = (message: ClientMessage): void => {
+        const { guild } = message;
+        const { player }: Queue = this.queue.get(guild.id);
 
         if (player.hasSkipped) player.stop();
     };
@@ -85,9 +97,9 @@ export class Player {
      * @param message {ClientMessage} Сообщение с сервера
      * @param args {number} Сколько треков пропускаем
      */
-    public skip = (message: ClientMessage, args: number = 1): void => {
+    public readonly skip = (message: ClientMessage, args: number = 1): void => {
         const { client, guild, author } = message;
-        const queue: Queue = client.queue.get(guild.id);
+        const queue: Queue = this.queue.get(guild.id);
         const { player, songs, options } = queue;
         const { title, url }: Song = songs[args - 1];
 
@@ -121,9 +133,9 @@ export class Player {
      * @description Приостанавливает воспроизведение музыки
      * @param message {ClientMessage} Сообщение с сервера
      */
-    public pause = (message: ClientMessage): void => {
-        const { client, guild } = message;
-        const { player, song }: Queue = client.queue.get(guild.id);
+    public readonly pause = (message: ClientMessage): void => {
+        const { guild } = message;
+        const { player, song }: Queue = this.queue.get(guild.id);
         const { title }: Song = song;
 
         //Приостанавливаем музыку если она играет
@@ -135,9 +147,9 @@ export class Player {
      * @description Продолжает воспроизведение музыки
      * @param message {ClientMessage} Сообщение с сервера
      */
-    public resume = (message: ClientMessage): void => {
-        const { client, guild } = message;
-        const { player, song }: Queue = client.queue.get(guild.id);
+    public readonly resume = (message: ClientMessage): void => {
+        const { guild } = message;
+        const { player, song }: Queue = this.queue.get(guild.id);
         const { title }: Song = song;
 
         //Продолжаем воспроизведение музыки если она на паузе
@@ -150,9 +162,9 @@ export class Player {
      * @param message {ClientMessage} Сообщение с сервера
      * @param arg {string} Аргументы Пример: команда аргумент1 аргумент2
      */
-    public remove = (message: ClientMessage, arg: number = 1): void => {
-        const { client, guild, author } = message;
-        const queue: Queue = client.queue.get(guild.id);
+    public readonly remove = (message: ClientMessage, arg: number = 1): void => {
+        const { guild, author } = message;
+        const queue: Queue = this.queue.get(guild.id);
         const { player, songs } = queue;
         const { title, url }: Song = songs[arg - 1];
 
@@ -184,9 +196,9 @@ export class Player {
      * @param message {ClientMessage} Сообщение с сервера
      * @param seek {number} музыка будет играть с нужной секунды (не работает без ffmpeg)
      */
-    public seek = (message: ClientMessage, seek: number): void => {
-        const { client, guild, author } = message;
-        const queue: Queue = client.queue.get(guild.id);
+    public readonly seek = (message: ClientMessage, seek: number): void => {
+        const { guild, author } = message;
+        const queue: Queue = this.queue.get(guild.id);
         const { song, play, player } = queue;
         const { title }: Song = song;
 
@@ -208,9 +220,9 @@ export class Player {
      * @description Повтор текущей музыки
      * @param message {ClientMessage} Сообщение с сервера
      */
-    public replay = (message: ClientMessage): void => {
-        const { client, guild, author } = message;
-        const queue: Queue = client.queue.get(guild.id);
+    public readonly replay = (message: ClientMessage): void => {
+        const { guild, author } = message;
+        const queue: Queue = this.queue.get(guild.id);
         const { song, play } = queue;
         const { title }: Song = song;
 
@@ -231,9 +243,9 @@ export class Player {
      * @param filter {Filter} Сам фильтр
      * @param arg {number} Если надо изменить аргумент фильтра
      */
-    public filter = (message: ClientMessage, filter: Filter, arg: number): Promise<void> | void => {
-        const { client, guild, author } = message;
-        const queue: Queue = client.queue.get(guild.id);
+    public readonly filter = (message: ClientMessage, filter: Filter, arg: number): Promise<void> | void => {
+        const { guild, author } = message;
+        const queue: Queue = this.queue.get(guild.id);
         const { player, play }: Queue = queue;
         const seek: number = player.streamDuration;
 

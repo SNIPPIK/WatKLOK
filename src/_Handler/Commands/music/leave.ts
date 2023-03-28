@@ -17,7 +17,7 @@ export class LeaveCommand extends Command {
 
     public readonly run = (message: ClientMessage): ResolveData => {
         const {guild, member, author, client} = message;
-        const queue: Queue = client.queue.get(guild.id);
+        const queue: Queue = client.player.queue.get(guild.id);
         const actVoice = Voice.getVoice(guild.id);
 
         //Если бот не подключен к голосовому каналу

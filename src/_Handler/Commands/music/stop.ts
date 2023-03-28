@@ -15,8 +15,8 @@ export class StopCommand extends Command {
     };
 
     public readonly run = (message: ClientMessage): ResolveData => {
-        const {author, guild, member} = message;
-        const queue: Queue = message.client.queue.get(guild.id);
+        const {author, guild, member, client} = message;
+        const queue: Queue = client.player.queue.get(guild.id);
 
         //Если нет очереди
         if (!queue) return { text: `${author}, ⚠ | Музыка щас не играет.`, color: "Yellow" };

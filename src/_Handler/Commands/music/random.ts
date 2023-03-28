@@ -16,7 +16,7 @@ export class RandomCommand extends Command {
 
     public readonly run = (message: ClientMessage): ResolveData => {
         const {author, member, guild, client} = message;
-        const queue: Queue = client.queue.get(guild.id);
+        const queue: Queue = client.player.queue.get(guild.id);
 
         //Если нет очереди
         if (!queue) return { text: `${author}, ⚠ | Музыка щас не играет.`, color: "Yellow" };

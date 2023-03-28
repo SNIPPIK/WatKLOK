@@ -37,7 +37,7 @@ namespace MessagePlayer {
     export function toPlay(message: ClientMessage): void {
         //Если уже есть сообщение то удаляем
         MessageCycle.toRemove(message.channelId);
-        const queue: Queue = message.client.queue.get(message.guild.id);
+        const queue: Queue = message.client.player.queue.get(message.guild.id);
 
         if (!queue?.song) return;
 
@@ -184,7 +184,7 @@ class ButtonCollector {
      * @returns 
      */
     private onCollect = (i: ButtonInteraction<CacheType>, message: ClientMessage) => {
-        const queue = message.client.queue.get(message.guild.id);
+        const queue = message.client.player.queue.get(message.guild.id);
         const { player } = queue, Player = message.client.player;
 
         message.author = i?.member?.user as User ?? i?.user;

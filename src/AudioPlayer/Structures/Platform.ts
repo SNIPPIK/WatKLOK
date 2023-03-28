@@ -21,14 +21,14 @@ interface platformData {
     reg: RegExp;
 
     callbacks: {
-        track: (str: string) => Promise<ISong.track>,
+        track: (str: string) => Promise<ISong.track>;
 
-        search?: (str: string) => Promise<ISong.track[]>,
-        artist?: (str: string) => Promise<ISong.track[]>
+        search?: (str: string) => Promise<ISong.track[]>;
+        artist?: (str: string) => Promise<ISong.track[]>;
 
-        playlist?: (str: string) => Promise<ISong.playlist>,
-        album?: (str: string) => Promise<ISong.playlist>,
-    }
+        playlist?: (str: string) => Promise<ISong.playlist>;
+        album?: (str: string) => Promise<ISong.playlist>;
+    };
 }
 
 const Platforms: { audio: platform[], auth: platform[], all: platformData[] } = {
