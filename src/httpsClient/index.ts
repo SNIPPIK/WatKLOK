@@ -46,13 +46,13 @@ export namespace httpsClient {
      * @param url {string} Ссылка
      * @requires {Request}
      */
-    export function checkLink(url: string): Promise<"OK" | "Fail"> | "Fail" {
-        if (!url) return "Fail";
+    export function checkLink(url: string): Promise<boolean> | false {
+        if (!url) return false;
 
         return head(url, { resolve: "full", useragent: true }).then((resource: IncomingMessage) => {
-            if (resource instanceof Error) return "Fail"; //Если есть ошибка
-            if (resource.statusCode >= 200 && resource.statusCode < 400) return "OK"; //Если возможно скачивать ресурс
-            return "Fail"; //Если прошлые варианты не подходят, то эта ссылка не рабочая
+            if (resource instanceof Error) return false; //Если есть ошибка
+            if (resource.statusCode >= 200 && resource.statusCode < 400) return true; //Если возможно скачивать ресурс
+            return false; //Если прошлые варианты не подходят, то эта ссылка не рабочая
         });
     }
 }

@@ -184,8 +184,9 @@ class ButtonCollector {
      * @returns 
      */
     private onCollect = (i: ButtonInteraction<CacheType>, message: ClientMessage) => {
-        const queue = message.client.player.queue.get(message.guild.id);
-        const { player } = queue, Player = message.client.player;
+        const { client, guild } = message;
+        const queue = client.player.queue.get(guild.id);
+        const { player } = queue;
 
         message.author = i?.member?.user as User ?? i?.user;
 
@@ -197,15 +198,15 @@ class ButtonCollector {
         switch (i.customId) {
             case "resume_pause": { //Если надо приостановить музыку или продолжить воспроизведение
                 switch (player.state.status) {
-                    case "read": return void Player.pause(message);
-                    case "pause": return void Player.resume(message);
+                    case "read": return void client.player.pause(message);
+                    case "pause": return void client.player.resume(message);
                 }
                 return;
             }
             //Пропуск текущей музыки
-            case "skip": return void Player.skip(message, 1);
+            case "skip": return void client.player.skip(message, 1);
             //Повторно включить текущую музыку
-            case "replay": return void Player.replay(message);
+            case "replay": return void client.player.replay(message);
             //Включить последнею из списка музыку
             case "last": return queue?.swapSongs();
         }

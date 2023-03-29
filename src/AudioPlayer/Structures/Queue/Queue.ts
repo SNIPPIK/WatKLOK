@@ -228,7 +228,10 @@ class Queue {
             }).catch((err: string) => this.player.emit("error", Error(err), true));
 
             //Если включен режим отладки показывает что сейчас играет и где
-            if (Debug) Logger.debug(`[Queue]: [${this.guild.id}]: Play: [${song.duration.full}] - [${song.author.title} - ${song.title}]`);
+            if (Debug) {
+                if (!seek && !this.filters.length) Logger.debug(`[Queue]: [${this.guild.id}]: Play: [${song.duration.full}] - [${song.author.title} - ${song.title}]`);
+                else Logger.debug(`[Queue]: [${this.guild.id}]: Play: [seek: ${seek} | filters: ${this.filters.length}] | [${song.duration.full}] - [${song.author.title} - ${song.title}]`);
+            }
         });
     };
     //====================== ====================== ====================== ======================
@@ -314,10 +317,10 @@ namespace findSong {
             if (!url) url = await getLink(song);
 
             //Проверяем ссылку на работоспособность
-            const status = await httpsClient.checkLink(url);
+            const check = await httpsClient.checkLink(url);
 
             //Если ссылка работает
-            if (status === "OK") return resolve(url);
+            if (check) return resolve(url);
 
             //Если ссылка не работает, то удаляем ссылку и делаем новый запрос
             req++;

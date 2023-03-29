@@ -38,7 +38,7 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
     /**
      * @description Все голосовые каналы к которым подключен плеер
      */
-    public get connection() { return this._connection; };
+    public get connection() { return this._connection ?? undefined; };
     //====================== ====================== ====================== ======================
     /**
      * @description Возможно ли сейчас пропустить трек
@@ -165,7 +165,7 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
         const state = this.state;
 
         //Если статус (idle или pause или его нет) прекратить выполнение функции
-        if (state?.status === "idle" || state?.status === "pause" || !state?.status) return;
+        if (state?.status === "idle" || state?.status === "pause" || !state?.status || this.connection?.state?.status !== "ready") return;
 
         //Если вдруг нет голосового канала
         if (!this.connection) {
