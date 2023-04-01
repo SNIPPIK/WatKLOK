@@ -9,7 +9,7 @@ export namespace Logger {
     export function log(text: string): void {
         const Time = currentTime();
 
-        return console.log(`${Time} ➜ ${text.replace(/\[/gi, "[\x1b[32m").replace(/]/gi, "\x1b[0m]")}`);
+        process.stdout.write(`${Time} ➜ ${text.replace(/\[/gi, "[\x1b[32m").replace(/]/gi, "\x1b[0m]")}\n`);
     }
     //====================== ====================== ====================== ======================
     /**
@@ -19,7 +19,7 @@ export namespace Logger {
     export function error(text: string): void {
         const Time = currentTime();
 
-        return console.log(`${Time} ➜ [\x1b[31mError\x1b[0m]: \x1b[31m${text}\x1b[0m`);
+        process.stdout.write(`${Time} ➜ [\x1b[31mError\x1b[0m]: \x1b[31m${text}\x1b[0m\n`);
     }
     //====================== ====================== ====================== ======================
     /**
@@ -30,7 +30,7 @@ export namespace Logger {
     export function debug(text: string): void {
         const Time = currentTime();
 
-        return console.log(`${Time} ➜ [\x1b[33mDebug\x1b[0m]: ${text.replace(/\[/gi, "[\x1b[32m").replace(/]/gi, "\x1b[0m]")}`);
+        process.stdout.write(`${Time} ➜ [\x1b[33mDebug\x1b[0m]: ${text.replace(/\[/gi, "[\x1b[32m").replace(/]/gi, "\x1b[0m]")}\n`);
     }
 }
 //====================== ====================== ====================== ======================

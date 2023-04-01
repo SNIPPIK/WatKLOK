@@ -90,10 +90,17 @@ class OpusAudio {
         if (options?.filters?.length > 0) this._durFrame = AudioFilters.getDuration(options?.filters);
         if (options.seek > 0) this._duration = options.seek * 1e3;
 
+        //Если в <this> будет один из этих статусов, чистим память!
+        ["end", "close", "error"].forEach((event: string) => {
+            //Добавляем ивенты для декодера
+            this.opus.once(event, this.destroy);
+
+            //Добавляем ивенты для FFmpeg
+            this._ffmpeg.once(event, this._ffmpeg.destroy);
+        });
+
         //Когда можно будет читать поток записываем его в <this._readable>
         this.opus.once("readable", () => (this._readable = true));
-        //Если в <this> будет один из этих статусов, чистим память!
-        ["end", "close", "error"].forEach((event: string) => this.opus.once(event, this.destroy));
 
         if (Debug) Logger.debug(`[AudioPlayer]: [OpusAudio]: Decoding [${path}]`);
     };
