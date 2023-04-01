@@ -357,7 +357,7 @@ namespace findSong {
      * @param duration {number} Длительность трека
      * @param platform {platform} Платформа
      */
-    function searchTracks(nameSong: string, duration: number, platform: platform): any {//Promise<any> {
+    function searchTracks(nameSong: string, duration: number, platform: platform): Promise<string> {
         const exPlatform = Platform.isFailed(platform) || Platform.isAudio(platform) ? Platform.isFailed("YANDEX") ? "YOUTUBE" : "YANDEX" : platform;
         const callbacks = Platform.full(exPlatform).requests;
 

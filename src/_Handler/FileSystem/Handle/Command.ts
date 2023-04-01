@@ -1,7 +1,7 @@
 import { ApplicationCommandOptionType, PermissionResolvable, BaseApplicationCommandOptionsData } from "discord.js";
 import { ClientInteraction, ClientInteractive, ClientMessage, EmbedConstructor } from "@Client/interactionCreate";
 
-export {replacer, Command, ResolveData, messageUtilsOptions};
+export { replacer, Command, ResolveData, messageUtilsOptions };
 
 /**
  * @description Изменение данных
@@ -10,7 +10,7 @@ namespace replacer {
     //Обрезает текст до необходимых значений
     export function replaceText(text: string, value: number | any, clearText: boolean = false): string {
         try {
-            if (clearText) text = text.replace(/[\[,\]}{"`'*]/gi, "");
+            if (clearText) text = text.replace(/[\[,\]}{"`'*]()/gi, "");
             if (text.length > value && value !== false) return `${text.substring(0, value)}...`;
             return text;
         } catch { return text; }
@@ -62,12 +62,12 @@ class Command {
     public readonly description: string = "Нет описания";
 
     public readonly usage: string = "";
-    public readonly permissions: { client: PermissionResolvable[], user: PermissionResolvable[] } = {client: null, user: null};
+    public readonly permissions: { client: PermissionResolvable[], user: PermissionResolvable[] } = { client: null, user: null };
     public readonly options: InteractiveOptions[] = null;
 
-    public readonly isOwner: boolean  = false;
-    public readonly isSlash: boolean  = true;
-    public readonly isGuild: boolean  = true;
+    public readonly isOwner: boolean = false;
+    public readonly isSlash: boolean = true;
+    public readonly isGuild: boolean = true;
     public readonly isEnable: boolean = false;
 
     public readonly isCLD: number = 5;

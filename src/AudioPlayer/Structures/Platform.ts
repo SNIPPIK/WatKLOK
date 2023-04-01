@@ -21,12 +21,12 @@ const Platforms: { audio: platform[], auth: platform[], all: platformData[] } = 
             requests: [
                 {
                     type: "track",
-                    filter: /watch/ || /embed/ || /\/.+$/gi,
+                    filter: /(watch)?(embed)?(be)/gi,
                     run: YouTube.getVideo
                 },
                 {
                     type: "artist",
-                    filter: /channel/ || /@/,
+                    filter: /(channel)?(@)/gi,
                     run: YouTube.getChannelVideos
                 },
                 {
@@ -84,7 +84,7 @@ const Platforms: { audio: platform[], auth: platform[], all: platformData[] } = 
             requests: [
                 {
                     type: "track",
-                    filter: /track/ || /\/.+$/gi,
+                    filter: /(track)/gi,
                     run: SoundCloud.getTrack
                 },
                 {
@@ -94,7 +94,7 @@ const Platforms: { audio: platform[], auth: platform[], all: platformData[] } = 
                 },
                 {
                     type: "album",
-                    filter: /album/ || /sets/,
+                    filter: /(album)?(sets)/gi,
                     run: SoundCloud.getPlaylist
                 },
                 {

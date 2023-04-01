@@ -206,7 +206,7 @@ export namespace YouTube {
             try {
                 let ID: string;
 
-                if (url.match(/@/)) ID = `@${url.split("@")[1]}`;
+                if (url.match(/@/)) ID = `@${url.split("@")[1].split("/")[0]}`;
                 else ID = `channel/${url.split("channel/")[1]}`;
 
                 //Создаем запрос
@@ -231,14 +231,14 @@ export namespace YouTube {
                 const author = details.microformat.microformatDataRenderer;
                 const endVideos = videos?.filter((video: any) => video?.richItemRenderer?.content?.videoRenderer)?.splice(0, options.limit);
 
-                endVideos.map((video: any) => {
+                return resolve(endVideos.map((video: any) => {
+                    const dataVid = video?.richItemRenderer?.content?.videoRenderer;
+
                     return {
-                        url: `https://youtu.be/${video.videoId}`, title: video.title.runs[0].text, duration: { seconds: video.lengthText.simpleText },
+                        url: `https://youtu.be/${dataVid.videoId}`, title: dataVid.title.runs[0].text, duration: { seconds: dataVid.lengthText.simpleText },
                         author: { url: `${db.link}${ID}`, title: author.title }
                     }
-                });
-
-                return resolve(endVideos);
+                }));
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
