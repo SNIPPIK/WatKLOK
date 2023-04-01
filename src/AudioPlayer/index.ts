@@ -4,7 +4,6 @@ import { DurationUtils } from "@Structures/Durations";
 import { Voting, APIs, Music } from "@db/Config.json";
 import { MessagePlayer } from "@Structures/Messages";
 import { Platform } from "@Structures/Platform";
-import { Balancer } from "@Structures/Balancer";
 import { Filter } from "@Media/AudioFilters";
 import { Song, ISong } from "@Queue/Song";
 import { VoiceState } from "discord.js";
@@ -32,21 +31,26 @@ export class Player {
      * @param args {string} Что требует пользователь
      */
     public readonly play = (message: ClientMessage, args: string): void => {
-        const { author } = message;
-        const VoiceChannel = message.member.voice.channel;
+        const VoiceChannel = message.member?.voice?.channel;
 
         setImmediate((): void => {
-            const type = Platform.type(args); //Тип запроса
-            const platform = Platform.name(args); //Платформа с которой будем взаимодействовать
-            const argument = Platform.filterArg(args);
+            //Платформа с которой будем взаимодействовать
+            const platform = Platform.name(args);
+
+            //Если нет такой платформы 
+            if (!platform) return UtilsMsg.createMessage({ text: `⚠️ Warning\n\nУ меня нет поддержки этой платформы!`, codeBlock: "css", color: "Yellow", message });
 
             //Если нельзя получить данные с определенной платформы
-            if (Platform.isFailed(platform)) return UtilsMsg.createMessage({ text: `${author}, я не могу взять данные с этой платформы **${platform}**\n Причина: [**Authorization data not found**]`, color: "Yellow", message });
+            if (Platform.isFailed(platform)) return UtilsMsg.createMessage({ text: `⚠️ Warning | [${platform}]\n\nНет данных для авторизации, запрос не может быть выполнен!`, codeBlock: "css", color: "Yellow", message });
 
-            const callback = Platform.callback(platform, type); //Ищем в списке платформу
+            //Тип запроса
+            const type = Platform.type(args, platform);
 
-            if (callback === "!platform") return UtilsMsg.createMessage({ text: `${author}, у меня нет поддержки такой платформы!\nПлатформа **${platform}**!`, color: "Yellow", message });
-            else if (callback === "!callback") return UtilsMsg.createMessage({ text: `${author}, у меня нет поддержки этого типа запроса!\nТип запроса **${type}**!\nПлатформа: **${platform}**`, color: "Yellow", message });
+            //Ищем функцию которая вернет данные или ошибку
+            const callback = Platform.callback(platform, type);
+
+            //Если нет функции запроса
+            if (!callback) return UtilsMsg.createMessage({ text: `⚠️ Warning | [${platform}]\n\nУ меня нет поддержки этого запроса!`, codeBlock: "css", color: "Yellow", message });
 
             //Если включено показывать запросы
             if (Music.showGettingData) {
@@ -54,17 +58,19 @@ export class Player {
                 UtilsMsg.createMessage({ text: `${message.author}, производится запрос в **${platform.toLowerCase()}.${type}**`, color: "Grey", message });
 
                 //Если у этой платформы нельзя получить исходный файл музыки, то сообщаем
-                if (Platform.noAudio(platform) && APIs.showWarningAudio) {
+                if (Platform.isAudio(platform) && APIs.showWarningAudio) {
                     const workPlatform = Platform.isFailed("YANDEX") ? "youtube.track" : "yandex.track";
 
                     UtilsMsg.createMessage({ text: `⚠️ Warning | [${platform}]\n\nЯ не могу получать исходные файлы музыки у этой платформы.\nЗапрос будет произведен в ${workPlatform}`, color: "Yellow", codeBlock: "css", message });
                 }
             }
 
+            const argument = Platform.filterArg(args);
+
             //Вызываем функцию для получения данных
             callback(argument).then((data: ISong.SupportRequest) => {
                 //Если данных нет
-                if (!data) return UtilsMsg.createMessage({ text: `${author}, данные не были найдены!`, color: "DarkRed", message });
+                if (!data) return UtilsMsg.createMessage({ text: `⚠️ Warning | [${platform}.${type}]\n\nДанные не были получены!`, codeBlock: "css", color: "DarkRed", message });
 
                 //Если пользователь ищет трек, но найден всего один
                 if (data instanceof Array && data.length === 1) return this.queue.create(message, VoiceChannel, data[0]);
@@ -74,9 +80,9 @@ export class Player {
 
                 //Загружаем трек или плейлист в GuildQueue
                 return this.queue.create(message, VoiceChannel, data);
-            }).catch((e) => {
-                if (e.length > 2e3) UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e.message}`, color: "DarkRed", codeBlock: "css", message });
-                else UtilsMsg.createMessage({ text: `${author.username}, данные не были найдены!\nПричина: ${e}`, color: "DarkRed", codeBlock: "css", message });
+            }).catch((e: any) => {
+                if (e.length > 2e3) UtilsMsg.createMessage({ text: `⛔️ Error | [${platform}.${type}]\n\nПроизошла ошибка при получении данных!\n${e.message}`, color: "DarkRed", codeBlock: "css", message });
+                else UtilsMsg.createMessage({ text: `⛔️ Error | [${platform}.${type}]\n\nПроизошла ошибка при получении данных!\n${e}`, color: "DarkRed", codeBlock: "css", message });
             });
         });
     };

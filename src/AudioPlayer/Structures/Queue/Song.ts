@@ -164,7 +164,7 @@ class Song {
  * @param image {{url: string}} Обьекст с ссылкой
  */
 function validURL(image: { url: string }): boolean {
-    return (image || image?.url !== "") && image?.url?.startsWith("http");
+    return image && image.url && image.url.length > 0;
 }
 //====================== ====================== ====================== ======================
 /**

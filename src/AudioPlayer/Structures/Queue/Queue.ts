@@ -333,7 +333,7 @@ namespace findSong {
      * @param song {Song} Трек который надо найти по новой
      */
     function getLink({ platform, url, author, title, duration }: Song): Promise<string> {
-        if (!Platform.noAudio(platform)) {
+        if (!Platform.isAudio(platform)) {
             const callback = Platform.callback(platform, "track");
 
             //Если нет такой платформы или нет callbacks.track
@@ -357,11 +357,14 @@ namespace findSong {
      * @param duration {number} Длительность трека
      * @param platform {platform} Платформа
      */
-    function searchTracks(nameSong: string, duration: number, platform: platform): Promise<string> {
-        const exPlatform = Platform.isFailed(platform) || Platform.noAudio(platform) ? Platform.isFailed("YANDEX") ? "YOUTUBE" : "YANDEX" : platform;
-        const callbacks = Platform.full(exPlatform).callbacks;
+    function searchTracks(nameSong: string, duration: number, platform: platform): any {//Promise<any> {
+        const exPlatform = Platform.isFailed(platform) || Platform.isAudio(platform) ? Platform.isFailed("YANDEX") ? "YOUTUBE" : "YANDEX" : platform;
+        const callbacks = Platform.full(exPlatform).requests;
 
-        return callbacks.search(nameSong).then((tracks: ISong.track[]) => {
+        const seacrh = callbacks.find((req) => req.type === "search");
+        const track = callbacks.find((req) => req.type === "track");
+
+        return (seacrh.run(nameSong) as Promise<ISong.track[]>).then((tracks: ISong.track[]) => {
             //Фильтруем треки оп времени
             const FindTracks: ISong.track[] = tracks.filter((track: ISong.track) => {
                 const DurationSong: number = (exPlatform === "YOUTUBE" ? DurationUtils.ParsingTimeToNumber : parseInt)(track.duration.seconds);
@@ -374,7 +377,7 @@ namespace findSong {
             if (FindTracks?.length < 1) return null;
 
             //Получаем данные о треке
-            return callbacks.track(FindTracks[0].url).then((video: ISong.track) => video?.format?.url) as Promise<string>;
+            return (track.run(FindTracks[0].url) as Promise<ISong.track>).then((video: ISong.track) => video?.format?.url) as Promise<string>;
         });
     }
 }
