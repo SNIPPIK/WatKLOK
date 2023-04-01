@@ -13,7 +13,7 @@ class OpusAudio {
     /**
      * @description Кодировщик из Ogg в Opus
      */
-    private _opus: opus.OggDemuxer = new opus.OggDemuxer({ autoDestroy: true, highWaterMark: 24 });
+    private _opus: opus.OggDemuxer = new opus.OggDemuxer({ autoDestroy: true });
     //====================== ====================== ====================== ======================
     /**
      * @description Дополнительные потоки
@@ -77,7 +77,7 @@ class OpusAudio {
                 if (typeof resource === "string") return createArgs(path, options?.filters, options?.seek);
                 return createArgs(null, options?.filters, options?.seek);
             }
-        )(), { highWaterMark: 16 });
+        )());
 
         //Если resource является Readable то загружаем его в FFmpeg
         if (resource instanceof Readable) {
