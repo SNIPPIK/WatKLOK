@@ -231,6 +231,9 @@ namespace Platform {
         if (str.match(/^(https?:\/\/)/gi)) {
             const findPlatform = Platforms.all.filter((info) => str.match(info.reg));
 
+            //Если нет платформы в базе
+            if (!findPlatform.length) return (str?.split('//')[1]?.split("/")[0] ?? undefined) as any;
+
             return findPlatform[0].name;
         } else { //Если пользователь ищет трек по названию
             const prefixs = str.split(' '), platform = prefixs[0].toLowerCase();
