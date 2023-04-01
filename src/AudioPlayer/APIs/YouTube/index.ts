@@ -23,15 +23,17 @@ namespace construct {
      * @description Из полученных данных заготовляваем трек для AudioPlayer<Queue>
      * @param video {any} Любое видео с youtube
      */
-    export async function video(video: any): Promise<ISong.track> {
-        return {
-            url: `https://youtu.be/${video.videoId}`,
-            title: video.title,
-            duration: { seconds: video.lengthSeconds },
-            image: video.thumbnail.thumbnails.pop(),
-            author: await getChannel({ id: video.channelId, name: video.author }),
-            isLive: video.isLiveContent
-        };
+    export function video(video: any): Promise<ISong.track> {
+        return new Promise(async (resolve) => {
+            return resolve({
+                url: `https://youtu.be/${video.videoId}`,
+                title: video.title,
+                duration: { seconds: video.lengthSeconds },
+                image: video.thumbnail.thumbnails.pop(),
+                author: await getChannel({ id: video.channelId, name: video.author }),
+                isLive: video.isLiveContent
+            });
+        });
     }
     //====================== ====================== ====================== ======================
     /**

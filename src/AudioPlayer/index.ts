@@ -35,7 +35,7 @@ export class Player {
         const { author } = message;
         const VoiceChannel = message.member.voice.channel;
 
-        Balancer.push(() => {
+        setImmediate((): void => {
             const type = Platform.type(args); //Тип запроса
             const platform = Platform.name(args); //Платформа с которой будем взаимодействовать
             const argument = Platform.filterArg(args);

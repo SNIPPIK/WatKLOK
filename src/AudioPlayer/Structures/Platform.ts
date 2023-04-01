@@ -123,17 +123,23 @@ const Platforms: { audio: platform[], auth: platform[], all: platformData[] } = 
 
             //Доступные запросы для этой платформы
             callbacks: {
-                track: (url: string): Promise<ISong.track> => FFprobe(url).then((trackInfo: any) => {
-                    //Если не найдена звуковая дорожка
-                    if (!trackInfo) return null;
+                track: (url: string): Promise<ISong.track> => {
+                    return new Promise((resolve, reject) => {
+                        try {
+                            FFprobe(url).then((trackInfo: any) => {
+                                //Если не найдена звуковая дорожка
+                                if (!trackInfo) return null;
 
-                    return {
-                        url, author: null, image: { url: Music.images._image },
-                        title: url.split("/").pop(),
-                        duration: { seconds: trackInfo.format.duration },
-                        format: { url: trackInfo.format.filename }
-                    };
-                })
+                                return resolve({
+                                    url, author: null, image: { url: Music.images._image },
+                                    title: url.split("/").pop(),
+                                    duration: { seconds: trackInfo.format.duration },
+                                    format: { url: trackInfo.format.filename }
+                                });
+                            });
+                        } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
+                    });
+                }
             }
         }
     ]
