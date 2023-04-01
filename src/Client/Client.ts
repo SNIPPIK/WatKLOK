@@ -6,7 +6,6 @@ import { Player } from "@AudioPlayer/index";
 import { FileSystem } from "@FileSystem";
 import { Logger } from "@Logger";
 import { env } from "@env";
-import { url } from "node:inspector";
 
 const commands = new Collection<string, Command>(); //База, со всеми командами
 const player = new Player();
