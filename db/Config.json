@@ -46,10 +46,7 @@
       "volume": 100,
       "bitrate": "256k"
     },
-    "images": {
-      "_found": "https://raw.githubusercontent.com/SNIPPIK/WatKLOK/main/.github/resource/Icons/WTF.png",
-      "_image": "https://raw.githubusercontent.com/SNIPPIK/WatKLOK/main/.github/resource/Icons/Note.png"
-    },
+    "note": "https://raw.githubusercontent.com/SNIPPIK/WatKLOK/main/.github/resource/Icons/Note.png",
     "Buttons": [
       { "name": "⏪" }, { "name": "⏯" }, { "name": "⏩" }, { "name": "🔃" }
     ]
