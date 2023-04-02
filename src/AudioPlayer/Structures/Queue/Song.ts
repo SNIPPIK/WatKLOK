@@ -133,8 +133,7 @@ class Song {
         //Информация об авторе
         this._author = {
             url: !track.author?.url || track.author?.url === "" ? "" : track.author.url,
-            title: !track.author?.title || track.author?.title === "" ? "Не найдено имя автора" : track.author.title,
-            isVerified: track.author?.isVerified ?? undefined
+            title: !track.author?.title || track.author?.title === "" ? "Не найдено имя автора" : track.author.title
         };
 
         //Изображения трека и автора
@@ -145,8 +144,7 @@ class Song {
 
         //Время трека
         this._duration = {
-            seconds,
-            full: seconds > 0 ? DurationUtils.ParsingTimeToString(seconds) : "Live"
+            full: seconds > 0 ? DurationUtils.ParsingTimeToString(seconds) : "Live", seconds
         };
 
         //Пользователь который включил трек

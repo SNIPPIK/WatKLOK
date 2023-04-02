@@ -72,7 +72,7 @@ namespace construct {
     export function author(user: any): ISong.author {
         const url = `${db.link}/audio&q=${user.artist.replaceAll(" ", "").toLowerCase()}`;
 
-        return { url, title: user.artist, isVerified: user.is_licensed };
+        return { url, title: user.artist }; //, isVerified: user.is_licensed
     }
 }
 //====================== ====================== ====================== ======================

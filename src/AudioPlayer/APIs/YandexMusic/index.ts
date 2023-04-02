@@ -68,7 +68,7 @@ namespace construct {
                 title: author?.name,
                 url: `${db.link}/artist/${author.id}`,
                 image: { url: onImage(author?.ogImage ?? author?.coverUri) },
-                isVerified: true
+                //isVerified: true
             }
         };
     }
@@ -246,7 +246,7 @@ function getAuthor(ID: string): Promise<ISong.author> {
             const author = api.artist;
             const image = construct.onImage(author?.ogImage);
 
-            return resolve({ url: `https://music.yandex.ru/artist/${ID}`, title: author.name, image: image, isVerified: true });
+            return resolve({ url: `https://music.yandex.ru/artist/${ID}`, title: author.name, image: image });//, isVerified: true
         } catch (e) { return null }
     });
 }

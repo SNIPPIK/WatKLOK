@@ -1,20 +1,15 @@
 import { ClientMessage, UtilsMsg } from "@Client/interactionCreate";
-import { CollectionQueue, Queue } from "@Queue/Queue";
 import { DurationUtils } from "@Structures/Durations";
 import { Voting, APIs, Music } from "@db/Config.json";
 import { MessagePlayer } from "@Structures/Messages";
+import { Collection, VoiceState } from "discord.js";
 import { Platform } from "@Structures/Platform";
 import { Filter } from "@Media/AudioFilters";
 import { Song, ISong } from "@Queue/Song";
-import { VoiceState } from "discord.js";
 import { Voice } from "@VoiceManager";
+import { Queue } from "@Queue/Queue";
 
 
-//====================== ====================== ====================== ======================
-/**
- * @description Храним все очереди здесь
- */
-const _queue = new CollectionQueue<string | number, Queue>();
 //====================== ====================== ====================== ======================
 /**
  * @description Все доступные взаимодействия с плеером через client.player
@@ -366,3 +361,65 @@ function Vote(message: ClientMessage, queue: Queue, callback: (win: boolean) => 
         });
     });
 }
+//====================== ====================== ====================== ======================
+/**
+ * @description Collection Queue, содержит в себе все очереди
+ */
+class CollectionQueue<V, K> extends Collection<V, K> {
+    /**
+    * @description Создаем очереди или добавляем в нее обьект или обьекты
+    * @param message {ClientMessage} Сообщение с сервера
+    * @param VoiceChannel {Voice.Channels} К какому голосовому каналу надо подключатся
+    * @param info {ISong.track | ISong.playlist} Входные данные это трек или плейлист?
+    * @requires {CreateQueue}
+    */
+    public create = (message: ClientMessage, VoiceChannel: Voice.Channels, info: ISong.track | ISong.playlist): void => {
+        const { queue, status } = CreateQueue(message, VoiceChannel);
+        const requester = message.author;
+
+        //Запускаем callback плеера, если очередь была создана, а не загружена!
+        if (status === "create") setImmediate(queue.play);
+
+        //Зугружаем плейлисты или альбомы
+        if ("items" in info) {
+            //Отправляем сообщение о том что плейлист будет добавлен в очередь
+            MessagePlayer.toPushPlaylist(message, info);
+
+            //Зугрежаем треки из плейлиста в очередь
+            for (let track of info.items) queue.songs.push(new Song(track, requester));
+            return;
+        }
+
+        //Добавляем трек в очередь
+        const song = new Song(info, requester);
+        if (queue.songs.length >= 1) MessagePlayer.toPushSong(queue, song);
+
+        queue.songs.push(song);
+    };
+}
+//====================== ====================== ====================== ======================
+/**
+ * @description Создаем очереди или если она есть выдаем
+ * @param message {ClientMessage} Сообщение с сервера
+ * @param VoiceChannel {Voice.Channels} К какому голосовому каналу надо подключатся
+ */
+function CreateQueue(message: ClientMessage, VoiceChannel: Voice.Channels): { status: "create" | "load", queue: Queue } {
+    const { client, guild } = message;
+    const queue = client.player.queue.get(guild.id);
+
+    if (queue) return { queue, status: "load" };
+
+    //Создаем очередь
+    const GuildQueue = new Queue(message, VoiceChannel);
+
+    //Подключаемся к голосовому каналу
+    GuildQueue.player.connection = Voice.Join(VoiceChannel); //Добавляем подключение в плеер
+    client.player.queue.set(guild.id, GuildQueue); //Записываем очередь в <client.queue>
+
+    return { queue: GuildQueue, status: "create" };
+}
+//====================== ====================== ====================== ======================
+/**
+ * @description Храним все очереди здесь
+ */
+const _queue = new CollectionQueue<string | number, Queue>();

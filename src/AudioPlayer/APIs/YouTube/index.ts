@@ -97,6 +97,7 @@ export namespace YouTube {
                 else if (result.playabilityStatus?.status !== "OK") return reject(Error(`[APIs]: Не удалось получить данные! Status: ${result?.playabilityStatus?.status}`));
 
                 const details = result.videoDetails;
+                const video = await construct.video(details);
                 let audios: YouTubeFormat;
 
                 //Выбираем какой формат у видео из <VideoDetails>.isLiveContent
@@ -111,7 +112,7 @@ export namespace YouTube {
                     audios = format;
                 }
 
-                return resolve({ ...await construct.video(details), format: audios });
+                return resolve({ ...video, format: audios });
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
@@ -266,13 +267,13 @@ function getChannel({ id, name }: { id: string, name?: string }): Promise<ISong.
 
         const data = channel[1]?.response ?? channel?.response ?? null as any;
         const info = data?.header?.c4TabbedHeaderRenderer, Channel = data?.metadata?.channelMetadataRenderer,
-            avatar = info?.avatar, badges = info?.badges;
+            avatar = info?.avatar//, badges = info?.badges;
 
         return resolve({
             title: Channel?.title ?? name ?? "Not found name",
             url: `${db.link}/channel/${id}`,
-            image: avatar?.thumbnails.pop() ?? null,
-            isVerified: !!badges?.find((badge: any) => ["Verified", "Official Artist Channel"].includes(badge?.metadataBadgeRenderer?.tooltip))
+            image: avatar?.thumbnails.pop() ?? null
+            //isVerified: !!badges?.find((badge: any) => ["Verified", "Official Artist Channel"].includes(badge?.metadataBadgeRenderer?.tooltip))
         });
     });
 }

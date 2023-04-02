@@ -84,8 +84,8 @@ namespace construct {
         return {
             url: user.permalink_url,
             title: user.username,
-            image: parseImage(user.avatar_url),
-            isVerified: user.verified
+            image: parseImage(user.avatar_url)
+            //isVerified: user.verified
         }
     }
     //====================== ====================== ====================== ======================

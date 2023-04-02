@@ -8,12 +8,8 @@ import { Music } from "@db/Config.json";
 import { Queue } from "@Queue/Queue";
 import { Colors } from "discord.js";
 
-export { EmbedMessages };
-//====================== ====================== ====================== ======================
-
-
 //Здесь хранятся все EMBED данные о сообщениях (Используется в Managers/Player/Messages)
-namespace EmbedMessages {
+export namespace EmbedMessages {
     /**
     * @description JSON<EMBED> для отображения текущего трека
     * @param client {WatKLOK} Клиент
@@ -26,7 +22,7 @@ namespace EmbedMessages {
 
         return {
             color, image: image.track, thumbnail: image.author, fields,
-            author: { name: AuthorSong, url: author.url, iconURL: choiceImage(author?.isVerified) },
+            author: { name: AuthorSong, url: author.url, iconURL: Music.images._image },
             footer: { text: `${requester.username} | ${DurationUtils.getTimeQueue(queue)} | 🎶: ${queue.songs.length}`, iconURL: requester.avatarURL() }
         };
     }
@@ -44,8 +40,7 @@ namespace EmbedMessages {
         const fields = [{ name: "**Добавлено в очередь**", value: `**❯** **[${replacer.replaceText(title, 40, true)}](${url}})\n**❯** \`\`[${duration.full}]\`\`**` }];
 
         return {
-            color, fields,
-            thumbnail: image.track,
+            color, fields, thumbnail: image.track,
             author: { name: AuthorSong, iconURL: image.author.url, url: author.url },
             footer: { text: `${requester.username} | ${DurationUtils.getTimeQueue(songs)} | 🎶: ${songs.length}`, iconURL: requester.avatarURL() }
         };
@@ -84,7 +79,7 @@ namespace EmbedMessages {
         return {
             color, thumbnail: image.track, timestamp: new Date(),
             description: `\n[${title}](${url})\n\`\`\`js\n${err}...\`\`\``,
-            author: { name: AuthorSong, url: author.url, iconURL: choiceImage(author.isVerified) },
+            author: { name: AuthorSong, url: author.url, iconURL: image.author.url },
             footer: { text: `${requester.username} | ${DurationUtils.getTimeQueue(songs)} | 🎶: ${songs.length}`, iconURL: requester?.avatarURL() ?? client.user.displayAvatarURL() }
         };
     }
@@ -148,10 +143,10 @@ function toString(duration: { seconds: number, full: string }, playDuration: num
     if (duration.full === "Live" || !Music.ProgressBar.enable) return `\`\`[${duration}]\`\``;
 
     const parsedDuration = DurationUtils.ParsingTimeToString(playDuration);
-    const progress = matchBar(playDuration, duration.seconds, 20);
-    const string = `**❯** \`\`[${parsedDuration} \\ ${duration.full}]\`\` \n\`\``;
+    const progress = matchBar(playDuration, duration.seconds);
+    const string = `**❯** \`\`[${parsedDuration} \\ ${duration.full}]\`\``;
 
-    return `${string}${progress}\`\``;
+    return `${string}\n\`\`${progress}\`\``;
 }
 //====================== ====================== ====================== ======================
 /**
@@ -160,7 +155,7 @@ function toString(duration: { seconds: number, full: string }, playDuration: num
  * @param maxTime {number} Макс времени
  * @param size {number} Кол-во символов
  */
-function matchBar(currentTime: number, maxTime: number, size: number = 15): string {
+function matchBar(currentTime: number, maxTime: number, size: number = 25): string {
     try {
         const CurrentDuration = isNaN(currentTime) ? 0 : currentTime;
         const progressSize = Math.round(size * (CurrentDuration / maxTime));
@@ -172,14 +167,4 @@ function matchBar(currentTime: number, maxTime: number, size: number = 15): stri
         if (err === "RangeError: Invalid count value") return "**❯** \`\`[Error value]\`\`";
         return "**❯** \`\`[Loading]\`\`";
     }
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Выдаем иконку проверки автора музыки
- * @param isVer {boolean} Подтвержденный пользователь?
- */
-function choiceImage(isVer: boolean): string {
-    if (isVer === undefined) return Music.images._found;
-    else if (isVer) return Music.images.ver;
-    return Music.images._ver;
 }
