@@ -121,14 +121,8 @@
              "volume": 100, //Громкость аудио  
              "bitrate": "256k" //Битрейт аудио
          },
-        //Если у трека, плейлиста, альбома нет картинки будет выбрана _found или _image
-        //Если автор трека верифицированный то будет выбрана ver, если нет то _ver
-        "images": {
-            "ver": "https://media.discordapp.net/attachments/815897363188154408/1028014390299082852/Ok.png",
-            "_ver": "https://media.discordapp.net/attachments/815897363188154408/1028014389934174308/Not.png",
-            "_found": "https://media.discordapp.net/attachments/815897363188154408/1028014390752055306/WTF.png",
-            "_image": "https://media.discordapp.net/attachments/815897363188154408/1028014391146328124/MusciNote.png"
-        },
+        //Если нет картинки у плейлиста или автора
+        "note": "https://raw.githubusercontent.com/SNIPPIK/WatKLOK/main/.github/resource/Icons/Note.png",
         //Кнопки под сообщение о текущем треке
         //Вариации [{id: "ID emoji"}] или [{name: "emoji"}]
         //Поддержка больших кол-во кнопок будет введена позже
