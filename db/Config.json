@@ -47,8 +47,6 @@
       "bitrate": "256k"
     },
     "images": {
-      "ver": "https://raw.githubusercontent.com/SNIPPIK/WatKLOK/main/.github/resource/Icons/Ok.png",
-      "_ver": "https://raw.githubusercontent.com/SNIPPIK/WatKLOK/main/.github/resource/Icons/Not.png",
       "_found": "https://raw.githubusercontent.com/SNIPPIK/WatKLOK/main/.github/resource/Icons/WTF.png",
       "_image": "https://raw.githubusercontent.com/SNIPPIK/WatKLOK/main/.github/resource/Icons/Note.png"
     },
