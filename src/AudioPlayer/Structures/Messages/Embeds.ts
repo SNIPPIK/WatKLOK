@@ -22,7 +22,7 @@ export namespace EmbedMessages {
 
         return {
             color, image: image.track, thumbnail: image.author, fields,
-            author: { name: AuthorSong, url: author.url, iconURL: Music.images._image },
+            author: { name: AuthorSong, url: author.url, iconURL: Music.note },
             footer: { text: `${requester.username} | ${DurationUtils.getTimeQueue(queue)} | 🎶: ${queue.songs.length}`, iconURL: requester.avatarURL() }
         };
     }
@@ -59,7 +59,7 @@ export namespace EmbedMessages {
         return {
             color: Colors.Blue, timestamp: new Date(),
             author: { name: author?.title, iconURL: author?.image?.url, url: author?.url },
-            thumbnail: typeof image === "string" ? { url: image } : image ?? { url: Music.images._image },
+            thumbnail: typeof image === "string" ? { url: image } : image ?? { url: Music.note },
             description: `Найден плейлист **[${title}](${url})**`,
             footer: { text: `${DisAuthor.username} | ${DurationUtils.getTimeQueue(items)} | 🎶: ${items?.length}`, iconURL: DisAuthor.displayAvatarURL({}) }
         };

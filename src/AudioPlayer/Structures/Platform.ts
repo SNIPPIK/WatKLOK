@@ -175,7 +175,7 @@ const Platforms: { audio: platform[], auth: platform[], all: platformData[] } = 
                                     if (!trackInfo) return null;
 
                                     return resolve({
-                                        url, author: null, image: { url: Music.images._image },
+                                        url, author: null, image: { url: Music.note },
                                         title: url.split("/").pop(),
                                         duration: { seconds: trackInfo.format.duration },
                                         format: { url: trackInfo.format.filename }
