@@ -6,7 +6,6 @@ import { Colors } from "discord.js";
 import { env } from "@env";
 
 export { Platform, platform, callback };
-//====================== ====================== ====================== ======================
 
 const Platforms: { audio: platform[], auth: platform[], all: platformData[] } = {
     //Платформы у которых нет возможности получить доступ к аудио

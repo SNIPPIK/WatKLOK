@@ -5,7 +5,6 @@ import { Music } from "@db/Config.json";
 
 export { Song, ISong };
 
-
 class Song {
     /**
      * @description Название трека

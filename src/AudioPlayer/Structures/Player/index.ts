@@ -5,8 +5,6 @@ import { OpusAudio } from "@Media/OpusAudio";
 import { Music } from "@db/Config.json";
 
 export { AudioPlayer, SilenceFrame };
-//====================== ====================== ====================== ======================
-
 
 const SilenceFrame = Buffer.from([0xf8, 0xff, 0xfe, 0xfae]);
 const packetSender = Music.AudioPlayer.methodSendPackets;

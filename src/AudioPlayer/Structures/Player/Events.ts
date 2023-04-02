@@ -1,12 +1,8 @@
 import { MessagePlayer } from "@Structures/Messages";
 import { Queue } from "@Queue/Queue";
 
-export { PlayerEvents };
-//====================== ====================== ====================== ======================
-
-
 //Ивенты плеера для всех серверов
-namespace PlayerEvents {
+export namespace PlayerEvents {
     /**
      * @description Когда плеер завершит песню, он возвратит эту функцию
      * @param queue {Queue} Сама очередь

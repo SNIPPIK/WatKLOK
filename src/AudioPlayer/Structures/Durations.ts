@@ -1,11 +1,7 @@
 import { ISong, Song } from "@Queue/Song";
 import { Queue } from "@Queue/Queue";
 
-export { DurationUtils };
-//====================== ====================== ====================== ======================
-
-
-namespace DurationUtils {
+export namespace DurationUtils {
     /**
      * @description Совмещаем время всех треков из очереди
      * @param queue {Queue | any[]} Очередь

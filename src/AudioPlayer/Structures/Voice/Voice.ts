@@ -2,8 +2,6 @@ import { ChannelType, Guild, InternalDiscordGatewayAdapterCreator, StageChannel,
 import { VoiceConnection, getVoiceConnection, getVoiceConnections, joinVoiceChannel } from "@discordjs/voice";
 
 export { Voice };
-//====================== ====================== ====================== ======================
-
 
 const VoiceChannelsGroup = "A";
 /**

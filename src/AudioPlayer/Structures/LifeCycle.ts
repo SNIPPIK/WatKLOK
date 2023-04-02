@@ -5,9 +5,6 @@ import { Music } from "@db/Config.json";
 import { Queue } from "@Queue/Queue";
 import { Logger } from "@Logger";
 
-export { PlayerCycle, MessageCycle };
-//====================== ====================== ====================== ======================
-
 //База данных
 const db = {
     // База с плеерами
@@ -26,7 +23,7 @@ const db = {
 //====================== ====================== ====================== ======================
 //                                 -= Players functions =-                                 //
 //====================== ====================== ====================== ======================
-namespace PlayerCycle {
+export namespace PlayerCycle {
     /**
      * @description Добавляем плеер в базу
      * @param player {AudioPlayer}
@@ -66,8 +63,8 @@ namespace PlayerCycle {
     function playerCycleStep(): void {
         const players = db.pls.filter((player) => player.hasPlayable);
 
-        //Добавляем задержку ровно размера пакета
-        db.time += 20;
+        //Добавляем задержку, в размер пакета
+        db.time += 20.00005;
 
         //Если выбран djs тип отправлений пакетов
         if (Music.AudioPlayer.methodSendPackets === "djs") return sendPlayersPackets(players);
@@ -107,7 +104,7 @@ namespace PlayerCycle {
 //====================== ====================== ====================== ======================
 //                                -= Messages functions =-                                 //
 //====================== ====================== ====================== ======================
-namespace MessageCycle {
+export namespace MessageCycle {
     /**
      * @description Добавляем сообщение в <Message[]>
      * @param message {message} Сообщение

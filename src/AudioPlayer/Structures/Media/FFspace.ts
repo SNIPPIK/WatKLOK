@@ -5,7 +5,7 @@ import { Debug } from "@db/Config.json";
 import { Logger } from "@Logger";
 
 export { FFmpeg, FFprobe, Arguments };
-//====================== ====================== ====================== ======================
+
 /**
  * @description Используется для модификации и конвертации потоков
  */

@@ -7,7 +7,6 @@ import { Song } from "@Queue/Song";
 import { Logger } from "@Logger";
 
 export { DownloadManager };
-//====================== ====================== ====================== ======================
 
 type DownloadSong = { title: string, author: string, duration: number, resource: string };
 const QueueDownload: DownloadSong[] = [];
