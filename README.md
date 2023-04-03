@@ -3,8 +3,8 @@
 - Автор: [`SNIPPIK`](https://github.com/SNIPPIK)
 - Лицензия: [`WatKLOK LICENSE`](LICENSE.md)
 - Перейти к [`настройкам`](db/Config.json)
-- Перейти к [`командам`](src/Handler/Commands) | `Slash + Standart`
-- Перейти к [`плееру`](src/AudioPlayer)
+- Перейти к [`командам`](src/Commands) | `Slash + Standart`
+- Перейти к [`плееру`](src/Structures/AudioPlayer)
 - Перейти к [`демонстрации`](https://www.youtube.com/playlist?list=PLrQkedRE9MFvchEkGvt-Tk5jqS5GiS8Kd)
 - Все сообщения удаляются автоматически через время
 
@@ -22,7 +22,7 @@
    - Если серверов более 1к, то `npm run sharder`
 
 ## Поддерживаемые платформы
-[Можно добавить поддержку иных платформ](src/AudioPlayer/Structures/Platform.ts)
+[Можно добавить поддержку иных платформ](src/Structures/AudioPlayer/Core/Platform.ts)
 
 | Теги | Платформы                                    | Что доступно                                 | Аудио                    | Доступ без авторизации |
 |------|----------------------------------------------|----------------------------------------------|--------------------------|------------------------|

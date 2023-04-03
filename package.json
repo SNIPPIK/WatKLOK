@@ -10,7 +10,7 @@
   "devDependencies": {
     "@types/node": "^18.11.18",
     "tsconfig-paths": "^4.1.1",
-    "typescript": "5.0.2"
+    "typescript": "^5.0.3"
   },
   "engines": {
     "node": ">=18"
@@ -21,8 +21,8 @@
     "github": "https://github.com/SNIPPIK/WatKLOK.git"
   },
   "scripts": {
-    "start": "cd build && node -r tsconfig-paths/register src/Client/Client.js",
-    "sharder": "cd build && node -r tsconfig-paths/register src/Client/ShardManager.js",
+    "start": "cd build && node -r tsconfig-paths/register src/Client.js",
+    "sharder": "cd build && node -r tsconfig-paths/register src/main.js",
     "build": "tsc -p ./tsconfig.json"
   },
   "version": "2.6.3"

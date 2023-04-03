@@ -1,22 +1,17 @@
 {
   "compilerOptions": {
     "paths": {
-      "@Client/*": ["src/Client/*", "src/_Handler/Events/Activity/*"],
-      "@Logger": ["src/Structures/Logger/index"],
-
       "@db/*": ["db/*"],
-      "@Handler/*": ["src/_Handler/*"],
-      "@FileSystem": ["src/_Handler/FileSystem/index"],
-      "@env": ["src/_Handler/FileSystem/env"],
+      "@env": ["src/Structures/FileSystem/env"],
+      "@Client": ["src/Client"],
+      "@Client/Message": ["src/Events/Activity/interactionCreate"],
+      "@Utils/*": ["src/Utils/*"],
+      "@Structures/*": ["src/Structures/*"],
 
-      "@Structures/*": ["src/Structures/*", "src/AudioPlayer/Structures/*"],
-      "@Managers/*": ["src/AudioPlayer/Managers/*"],
-      "@httpsClient": ["src/httpsClient/index"],
-
-      "@Media/*": ["src/AudioPlayer/Structures/Media/*"],
-      "@AudioPlayer/*": ["src/AudioPlayer/*"],
-      "@Queue/*": ["src/AudioPlayer/Structures/Queue/*"],
-      "@VoiceManager": ["src/AudioPlayer/Structures/Voice/Voice"]
+      "@Logger": ["src/Utils/Logger/index"],
+      "@Balancer": ["src/Utils/Balancer/index"],
+      "@AudioPlayer/*": ["src/Structures/AudioPlayer/*"], "@AudioPlayer": ["src/Structures/AudioPlayer/index"],
+      "@httpsClient": ["src/Structures/httpsClient/index"]
     },
     "baseUrl": "./",
     // Основные настройки.
