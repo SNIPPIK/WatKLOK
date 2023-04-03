@@ -43,7 +43,7 @@ const Platforms: { audio: platform[], auth: platform[], all: platformData[] } = 
             audio: true,
             color: 16711680,
             prefix: ["yt", "ytb"],
-            reg: /^(https?:\/\/)?(www\.)?(m\.)?(music\.)?( )?(youtube\.com|youtu\.?be)\/.+$/gi
+            filter: /^(https?:\/\/)?(www\.)?(m\.)?(music\.)?( )?(youtube\.com|youtu\.?be)\/.+$/gi
         },
         { //Какие данные можно взять с Spotify
             requests: [
@@ -77,7 +77,7 @@ const Platforms: { audio: platform[], auth: platform[], all: platformData[] } = 
             audio: false,
             color: 1420288,
             prefix: ["sp"],
-            reg: /^(https?:\/\/)?(open\.)?(m\.)?(spotify\.com|spotify\.?ru)\/.+$/gi
+            filter: /^(https?:\/\/)?(open\.)?(m\.)?(spotify\.com|spotify\.?ru)\/.+$/gi
         },
         { //Какие данные можно взять с Soundcloud
             requests: [
@@ -106,7 +106,7 @@ const Platforms: { audio: platform[], auth: platform[], all: platformData[] } = 
             audio: true,
             color: 0xe67e22,
             prefix: ["sc"],
-            reg: /^(https?:\/\/)?((?:www|m)\.)?(api\.soundcloud\.com|soundcloud\.com|snd\.sc)\/.+$/gi
+            filter: /^(https?:\/\/)?((?:www|m)\.)?(api\.soundcloud\.com|soundcloud\.com|snd\.sc)\/.+$/gi
         },
         { //Какие данные можно взять с VK
             requests: [
@@ -130,7 +130,7 @@ const Platforms: { audio: platform[], auth: platform[], all: platformData[] } = 
             audio: true,
             color: 30719,
             prefix: ["vk"],
-            reg: /^(https?:\/\/)?(vk\.com)\/.+$/gi
+            filter: /^(https?:\/\/)?(vk\.com)\/.+$/gi
         },
         {  //Какие данные можно взять с Yandex music
             requests: [
@@ -159,7 +159,7 @@ const Platforms: { audio: platform[], auth: platform[], all: platformData[] } = 
             audio: true,
             color: Colors.Yellow,
             prefix: ["ym", "yandex", "y"],
-            reg: /^(https?:\/\/)?(music\.)?(yandex\.ru)\/.+$/gi
+            filter: /^(https?:\/\/)?(music\.)?(yandex\.ru)\/.+$/gi
         },
         { //Какие данные можно взять с Discord
             requests: [
@@ -189,7 +189,7 @@ const Platforms: { audio: platform[], auth: platform[], all: platformData[] } = 
             name: "DISCORD",
             audio: true,
             color: Colors.Grey,
-            reg: /^(https?:\/\/)?(cdn\.)?( )?(discordapp\.com)\/.+$/gi
+            filter: /^(https?:\/\/)?(cdn\.)?( )?(discordapp\.com)\/.+$/gi
         }
     ]
 };
@@ -276,7 +276,7 @@ namespace Platform {
     export function name(str: string): platform {
         //Если пользователь ищет трек по ссылке
         if (str.match(/^(https?:\/\/)/gi)) {
-            const findPlatform = Platforms.all.filter((info) => str.match(info.reg));
+            const findPlatform = Platforms.all.filter((info) => str.match(info.filter));
 
             //Если нет платформы в базе
             if (!findPlatform.length) return undefined;
@@ -354,7 +354,7 @@ interface platformData {
     prefix?: string[];
 
     //Проверка ссылки
-    reg: RegExp;
+    filter: RegExp;
 
     //Допустимые запросы
     requests: request[];
