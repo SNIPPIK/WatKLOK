@@ -64,7 +64,7 @@ export namespace PlayerCycle {
         const players = db.pls.filter((player) => player.hasPlayable);
 
         //Добавляем задержку, в размер пакета
-        db.time += 20.00005;
+        db.time += 19.99995;
 
         //Если выбран djs тип отправлений пакетов
         if (Music.AudioPlayer.methodSendPackets === "djs") return sendPlayersPackets(players);
