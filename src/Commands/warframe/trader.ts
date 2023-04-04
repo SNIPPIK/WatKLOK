@@ -6,7 +6,6 @@ import { httpsClient } from "@httpsClient";
 import { Colors } from "discord.js";
 
 const TraderApi = "https://api.warframestat.us/pc/ru/voidTrader/";
-const VoidIcon = "https://cdn.discordapp.com/attachments/850775689107865641/996413936595378256/BaroBanner.webp";
 export class VoidTraderCommand extends Command {
     public constructor() {
         super({
@@ -22,12 +21,12 @@ export class VoidTraderCommand extends Command {
 
     public readonly run = async (_: any): Promise<ResolveData> => {
         const result = await httpsClient.get(TraderApi, { resolve: "json" });
-        const pagesInventory = ArraySort<voidTraderItem>(5, result.inventory, (item, index = 1) =>
+        const pagesInventory = !!result?.inventory ? ArraySort<voidTraderItem>(5, result?.inventory, (item, index = 1) =>
             `┌Предмет [**${item.item}**]
              ├ **Номер  :** ${index++}
              ├ **Кредиты:** (${FormatBytes(item.credits)})
              └ **Дукаты :** ${item.ducats ? `(${item.ducats})` : `(Нет)`}`
-        );
+        ) : null;
 
         return this.SendMessage(result, pagesInventory);
     };
@@ -41,7 +40,6 @@ export class VoidTraderCommand extends Command {
     private SendMessage = (res: voidTrader, pagesInventory: string[]): ResolveData => {
         const EmbedVoidTrader: EmbedConstructor = {
             color: Colors.DarkBlue,
-            thumbnail: { url: VoidIcon },
             author: {
                 name: res.character,
                 url: "https://warframe.fandom.com/wiki/Baro_Ki%27Teer"
