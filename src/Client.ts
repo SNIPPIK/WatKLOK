@@ -3,12 +3,11 @@ import { Bot, Channels, APIs } from "@db/Config.json";
 import { Command } from "@Structures/Handle/Command";
 import { FileSystem } from "@Structures/FileSystem";
 import { ClientMessage } from "@Client/Message";
-import { Player } from "@AudioPlayer";
+import { globalPlayer } from "@AudioPlayer";
 import { Logger } from "@Logger";
 import { env } from "@env";
 
 const commands = new Collection<string, Command>(); //База, со всеми командами
-const player = new Player();
 
 export class WatKLOK extends Client {
     /**
@@ -19,7 +18,7 @@ export class WatKLOK extends Client {
     /**
      * @description Плеер
      */
-    public get player() { return player; };
+    public get player() { return globalPlayer; };
     //====================== ====================== ====================== ======================
     /**
      * @description Текущий ID осколка
