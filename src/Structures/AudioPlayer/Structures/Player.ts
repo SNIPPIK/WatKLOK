@@ -2,7 +2,6 @@ import { PlayerCycle } from "@Utils/PlayerLifeCycle";
 import { VoiceConnection } from "@discordjs/voice";
 import { TypedEmitter } from "tiny-typed-emitter";
 import { OpusAudio } from "./Media/OpusAudio";
-import { Music } from "@db/Config.json";
 
 export { AudioPlayer, SilenceFrame };
 
