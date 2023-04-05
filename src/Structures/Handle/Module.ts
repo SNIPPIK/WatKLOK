@@ -1,4 +1,4 @@
-import {WatKLOK} from "@Client";
+import { WatKLOK } from "@Client";
 
 export class Module {
     //Включать модуль

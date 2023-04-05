@@ -189,7 +189,7 @@ const Platforms: { audio: platform[], auth: platform[], all: platformData[] } = 
             name: "DISCORD",
             audio: true,
             color: Colors.Grey,
-            filter: /^(https?:\/\/)?(cdn\.)?( )?(discordapp\.com)\/.+$/gi
+            filter: /^(https?:\/\/)?(cdn\.)?( )?(discordapp\.com|discord\.gg)\/.+$/gi
         }
     ]
 };

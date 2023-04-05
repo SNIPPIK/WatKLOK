@@ -1,5 +1,5 @@
-import { EmbedConstructor } from "@Client/Message";
 import { Command, ResolveData } from "@Structures/Handle/Command";
+import { EmbedConstructor } from "@Client/Message";
 import { httpsClient } from "@httpsClient";
 import { Colors } from "discord.js";
 

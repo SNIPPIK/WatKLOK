@@ -1,9 +1,10 @@
-import {BrotliDecompress, createBrotliDecompress, createDeflate, createGunzip, Deflate, Gunzip} from "node:zlib";
-import {request as httpsRequest, RequestOptions as ReqOptions} from "https";
-import {IncomingMessage, request as httpRequest} from "http";
-import {uploadCookie} from "./Cookie";
+import { BrotliDecompress, createBrotliDecompress, createDeflate, createGunzip, Deflate, Gunzip } from "node:zlib";
+import { request as httpsRequest, RequestOptions as ReqOptions } from "https";
+import { IncomingMessage, request as httpRequest } from "http";
+import { uploadCookie } from "./Cookie";
+import { Logger } from "@Utils/Logger";
 
-export {Request, RequestOptions, method};
+export { Request, RequestOptions, method };
 
 const decoderBase = {
     "gzip": createGunzip,
@@ -29,7 +30,7 @@ namespace Request {
         return new Promise((resolve) => {
             const request = protocols[protocol](options, (res: IncomingMessage) => {
                 //Автоматическое перенаправление
-                if ((res.statusCode >= 300 && res.statusCode < 400) && res.headers?.location) return resolve(Request({...options, path: res.headers.location }));
+                if ((res.statusCode >= 300 && res.statusCode < 400) && res.headers?.location) return resolve(Request({ ...options, path: res.headers.location }));
 
                 //Обновляем куки
                 if (options.headers["cookie"] && res.headers && res.headers["set-cookie"]) setImmediate(() => uploadCookie(res.headers["set-cookie"]));
@@ -78,7 +79,7 @@ namespace Request {
             try {
                 return resolve(JSON.parse(body));
             } catch (e) {
-                console.log(`[httpsClient]: Invalid json response body at ${options.host} reason: ${e.message}`);
+                Logger.error(`[httpsClient]: Invalid json response body at ${options.hostname} reason: ${e.message}`);
                 return resolve(null);
             }
         }));

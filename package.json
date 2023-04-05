@@ -1,5 +1,6 @@
 {
   "author": "SNIPPIK",
+  "main": "src/main",
   "dependencies": {
     "@discordjs/voice": "^0.16.0",
     "discord.js": "^14.9.0",
@@ -21,8 +22,8 @@
     "github": "https://github.com/SNIPPIK/WatKLOK.git"
   },
   "scripts": {
-    "start": "cd build && node -r tsconfig-paths/register src/Client.js",
-    "sharder": "cd build && node -r tsconfig-paths/register src/main.js",
+    "start": "cd build && node -r tsconfig-paths/register src/main.js",
+    "sharder": "cd build && node -r tsconfig-paths/register src/main.js --sharder",
     "build": "tsc -p ./tsconfig.json"
   },
   "version": "2.6.4"

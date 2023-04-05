@@ -1,6 +1,6 @@
 import { AudioFilters, Filters } from "./AudioFilters";
-import { FFmpeg, Arguments } from "./FFspace";
 import { Music, Debug } from "@db/Config.json";
+import { FFmpeg, Arguments } from "./FFspace";
 import { opus } from "prism-media";
 import { Readable } from "stream";
 import { Logger } from "@Logger";
@@ -10,7 +10,7 @@ export class OpusAudio {
     /**
      * @description Кодировщик из Ogg в Opus
      */
-    private _opus: opus.OggDemuxer = new opus.OggDemuxer({ autoDestroy: true, highWaterMark: 24 });
+    private _opus: opus.OggDemuxer = new opus.OggDemuxer({ autoDestroy: true, highWaterMark: 86 });
     //====================== ====================== ====================== ======================
     /**
      * @description Дополнительные потоки
@@ -74,7 +74,7 @@ export class OpusAudio {
                 if (typeof resource === "string") return createArgs(path, options?.filters, options?.seek);
                 return createArgs(null, options?.filters, options?.seek);
             }
-        )(), { highWaterMark: 12 });
+        )(), { highWaterMark: 128 });
 
         //Если resource является Readable то загружаем его в FFmpeg
         if (resource instanceof Readable) {

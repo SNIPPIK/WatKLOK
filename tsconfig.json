@@ -3,7 +3,7 @@
     "paths": {
       "@db/*": ["db/*"],
       "@env": ["src/Structures/FileSystem/env"],
-      "@Client": ["src/Client"],
+      "@Client": ["src/Structures/Client"],
       "@Client/Message": ["src/Events/Activity/interactionCreate"],
       "@Utils/*": ["src/Utils/*"],
       "@Structures/*": ["src/Structures/*"],

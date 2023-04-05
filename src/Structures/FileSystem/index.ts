@@ -52,16 +52,18 @@ export namespace FileSystem {
 
         //Загружаем данные
         for (let path of paths) {
-            if (typeof path === "string") {
-                new FileLoader({ path, callback: paths[paths.indexOf(path) + 1] as FileCallback });
+            if (typeof path === "string") new FileLoader({ path, callback: paths[paths.indexOf(path) + 1] as FileCallback });
 
-                //Выводим в консоль статус загрузки
-                Object.entries(tempLogs).forEach(([key, value]) => {
-                    if (client.ShardID === undefined) console.log(`| FileSystem... Loaded ${key} | ${value.length}\n${value.join("\n")}\n`);
+            if (paths.indexOf(path) + 1 === paths.length) {
+                setImmediate((): void => {
+                    //Выводим в консоль статус загрузки
+                    if (client.ShardID === undefined) Object.entries(tempLogs).forEach(([key, value]) => {
+                        console.log(`| FileSystem... Loaded ${key} | ${value.length}\n${value.join("\n")}\n`);
+                    });
                 });
-            }
 
-            if (paths.indexOf(path) + 1 === paths.length) setTimeout(() => tempLogs = null, 7e3);
+                setTimeout(() => tempLogs = null, 7e3);
+            }
         }
     }
 }
@@ -137,7 +139,7 @@ class FileLoader {
  */
 function log(type: "Commands" | "Events", dir: string, file: string, reason?: string): number {
     const Status = `Status: [${reason ? "🟥" : "🟩"}]`;
-    const File = `File: [src/_Handler/${type}/${dir}/${file}]`;
+    const File = `File: [src/${type}/${dir}/${file}]`;
     let EndStr = `${Status} | ${File}`;
 
     if (reason) EndStr += ` | Reason: [${reason}]`; //Если есть ошибка добавляем ее

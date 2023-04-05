@@ -1,10 +1,7 @@
 import { Client, IntentsBitField, Options, Collection, ActivityType } from "discord.js";
-import { Bot, Channels, APIs } from "@db/Config.json";
 import { Command } from "@Structures/Handle/Command";
 import { FileSystem } from "@Structures/FileSystem";
-import { ClientMessage } from "@Client/Message";
 import { globalPlayer } from "@AudioPlayer";
-import { Logger } from "@Logger";
 import { env } from "@env";
 
 const commands = new Collection<string, Command>(); //База, со всеми командами
@@ -109,22 +106,3 @@ export class WatKLOK extends Client {
         return super.login(token);
     };
 }
-const client = new WatKLOK();
-
-client.login().then((): void => {
-    if (Bot.ignoreErrors) process.on("uncaughtException", (err) => {
-        //Если выключено APIs.showErrors, то ошибки не будут отображаться
-        if (!APIs.showErrors && err?.message?.match(/APIs/)) return;
-
-        Logger.error(`\n┌ Name:    ${err.name}\n├ Message: ${err.message}\n└ Stack:   ${err.stack}`);
-
-        //Если выключено APIs.sendErrors, то ошибки не буду отправляться в текстовый канал
-        if (!APIs.sendErrors && err?.message?.match(/APIs/)) return;
-
-        try {
-            const channel = client.channels.cache.get(Channels.sendErrors) as ClientMessage["channel"];
-
-            if (channel) channel.send({ content: `\`\`\`ts\n┌ Name:    ${err.name}\n├ Message: ${err.message}\n└ Stack:   ${err.stack}\n\`\`\`` }).catch(() => null);
-        } catch {/* Continue */ }
-    });
-});

@@ -1,10 +1,10 @@
-import { Command, ResolveData } from "@Structures/Handle/Command";
 import { AudioFilters } from "@AudioPlayer/Structures/Media/AudioFilters";
+import { Command, ResolveData } from "@Structures/Handle/Command";
 import { ClientMessage, EmbedConstructor } from "@Client/Message";
 import { ApplicationCommandOptionType, Colors } from "discord.js";
 import { ReactionMenu } from "@Structures/ReactionMenu";
 import { Queue } from "@AudioPlayer/Structures/Queue";
-import { ArraySort } from "src/Utils/ArraySort";
+import { ArraySort } from "@Utils/ArraySort";
 import Filters from "@db/Filters.json";
 
 export class FilterCommand extends Command {
