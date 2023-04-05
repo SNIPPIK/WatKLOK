@@ -7,7 +7,6 @@ import { Music } from "@db/Config.json";
 export { AudioPlayer, SilenceFrame };
 
 const SilenceFrame = Buffer.from([0xf8, 0xff, 0xfe, 0xfae]);
-const packetSender = Music.AudioPlayer.methodSendPackets;
 const SkippedStatuses = ["read", "pause"];
 const UpdateMessage = ["read"];
 
@@ -141,19 +140,7 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
         const voiceConnection = this.connection;
 
         //Если голосовой канал готов
-        if (voiceConnection.state.status === "ready") {
-            //Пока есть возможность выбрать только 2 (djs, new)
-            switch (packetSender) {
-                //Если пользователь указал старый тип отправки
-                case "djs": {
-                    voiceConnection.dispatchAudio();
-                    voiceConnection.prepareAudioPacket(packet);
-                    break;
-                }
-                //Если пользователь указал что-то угодно кроме djs
-                default: voiceConnection.playOpusPacket(packet);
-            }
-        }
+        if (voiceConnection.state.status === "ready") voiceConnection.playOpusPacket(packet);
     };
     //====================== ====================== ====================== ======================
     /**

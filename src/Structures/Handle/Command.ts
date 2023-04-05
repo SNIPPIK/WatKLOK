@@ -1,23 +1,7 @@
 import { ApplicationCommandOptionType, PermissionResolvable, BaseApplicationCommandOptionsData } from "discord.js";
 import { ClientInteraction, ClientInteractive, ClientMessage, EmbedConstructor } from "@Client/Message";
 
-export { replacer, Command, ResolveData, messageUtilsOptions };
-
-/**
- * @description Изменение данных
- */
-namespace replacer {
-    //Обрезает текст до необходимых значений
-    export function replaceText(text: string, value: number | any, clearText: boolean = false): string {
-        try {
-            if (clearText) text = text.replace(/[\[,\]}{"`'*]()/gi, "");
-            if (text.length > value && value !== false) return `${text.substring(0, value)}...`;
-            return text;
-        } catch { return text; }
-    }
-}
-//====================== ====================== ====================== ======================
-
+export { Command, ResolveData, messageUtilsOptions };
 
 /**
  * @description Как выглядит команда

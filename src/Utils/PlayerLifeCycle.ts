@@ -66,17 +66,7 @@ export namespace PlayerCycle {
         //Добавляем задержку, в размер пакета
         db.time += 19.999995;
 
-        //Если выбран djs тип отправлений пакетов
-        if (Music.AudioPlayer.methodSendPackets === "djs") return sendPlayersPackets(players);
-
-        //Если выбран другой тип отправлений пакетов
-        setImmediate((): void => {
-            try {
-                for (let player of players) player["preparePacket"]();
-            } finally {
-                db.pls_timeout = setTimeout(playerCycleStep, db.time - Date.now());
-            }
-        });
+        return sendPlayersPackets(players);
     }
     //====================== ====================== ====================== ======================
     /**

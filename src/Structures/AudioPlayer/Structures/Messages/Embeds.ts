@@ -1,6 +1,5 @@
 import { ClientMessage, EmbedConstructor } from "@Client/Message";
-import { replacer } from "@Structures/Handle/Command";
-import { DurationUtils } from "../../../../Utils/Durations";
+import { DurationUtils } from "@Utils/Durations";
 import { Platform } from "../../Platform";
 import { Music } from "@db/Config.json";
 import { ISong, Song } from "../Song";
@@ -18,7 +17,7 @@ export namespace EmbedMessages {
     export function toPlaying(queue: Queue): EmbedConstructor {
         const { color, author, image, requester } = queue.song;
         const fields = getFields(queue);
-        const AuthorSong = replacer.replaceText(author.title, 45, false);
+        const AuthorSong = replaceText(author.title, 45, false);
 
         return {
             color, image: image.track, thumbnail: image.author, fields,
@@ -36,8 +35,8 @@ export namespace EmbedMessages {
      */
     export function toPushSong(song: Song, { songs }: Queue): EmbedConstructor {
         const { color, author, image, title, url, duration, requester } = song;
-        const AuthorSong = replacer.replaceText(author.title, 45, false);
-        const fields = [{ name: "**Добавлено в очередь**", value: `**❯** **[${replacer.replaceText(title, 40, true)}](${url}})\n**❯** \`\`[${duration.full}]\`\`**` }];
+        const AuthorSong = replaceText(author.title, 45, false);
+        const fields = [{ name: "**Добавлено в очередь**", value: `**❯** **[${replaceText(title, 40, true)}](${url}})\n**❯** \`\`[${duration.full}]\`\`**` }];
 
         return {
             color, fields, thumbnail: image.track,
@@ -74,7 +73,7 @@ export namespace EmbedMessages {
     */
     export function toError(client: WatKLOK, { songs, song }: Queue, err: Error | string): EmbedConstructor {
         const { color, author, image, title, url, requester } = song;
-        const AuthorSong = replacer.replaceText(author.title, 45, false);
+        const AuthorSong = replaceText(author.title, 45, false);
 
         return {
             color, thumbnail: image.track, timestamp: new Date(),
@@ -99,8 +98,8 @@ export namespace EmbedMessages {
 
             fields: tracks.map((track, index) => {
                 const duration = platform === "YOUTUBE" ? track.duration.seconds : DurationUtils.ParsingTimeToString(parseInt(track.duration.seconds));
-                const title = `[${replacer.replaceText(track.title, 80, true)}](${track.url})`; //Название трека
-                const author = `${replacer.replaceText(track.author.title, 30, true)}`; //Автор трека
+                const title = `[${replaceText(track.title, 80, true)}](${track.url})`; //Название трека
+                const author = `${replaceText(track.author.title, 30, true)}`; //Автор трека
 
                 index++;
 
@@ -127,10 +126,10 @@ function getFields(queue: Queue): EmbedConstructor["fields"] {
     const VisualDuration = toString(song.duration, player.streamDuration);
 
     //Текущий трек
-    const fields = [{ name: `**Сейчас играет**`, value: `**❯** **[${replacer.replaceText(song.title, 29, true)}](${song.url})**\n${VisualDuration}` }];
+    const fields = [{ name: `**Сейчас играет**`, value: `**❯** **[${replaceText(song.title, 29, true)}](${song.url})**\n${VisualDuration}` }];
 
     //Следующий трек
-    if (songs.length > 1) fields.push({ name: `**Следующий трек**`, value: `**❯** **[${replacer.replaceText(songs[1].title, 29, true)}](${songs[1].url})**` });
+    if (songs.length > 1) fields.push({ name: `**Следующий трек**`, value: `**❯** **[${replaceText(songs[1].title, 29, true)}](${songs[1].url})**` });
     return fields;
 }
 //====================== ====================== ====================== ======================
@@ -167,4 +166,18 @@ function matchBar(currentTime: number, maxTime: number, size: number = 25): stri
         if (err === "RangeError: Invalid count value") return "**❯** \`\`[Error value]\`\`";
         return "**❯** \`\`[Loading]\`\`";
     }
+}
+//====================== ====================== ====================== ======================
+/**
+ * @description Обрезает текст до необходимых значений
+ * @param text {string} Текст который надо изменить
+ * @param value {number} До скольки символов надо обрезать текст
+ * @param clearText {boolean} Надо ли очистить от [\[,\]}{"`'*]()
+ */
+function replaceText(text: string, value: number | any, clearText: boolean = false): string {
+    try {
+        if (clearText) text = text.replace(/[\[,\]}{"`'*]()/gi, "");
+        if (text.length > value && value !== false) return `${text.substring(0, value)}...`;
+        return text;
+    } catch { return text; }
 }

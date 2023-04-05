@@ -1,8 +1,8 @@
-import { Command, ResolveData, replacer } from "@Structures/Handle/Command";
-import { DurationUtils } from "@Utils/Durations";
+import { Command, ResolveData } from "@Structures/Handle/Command";
 import { Queue } from "@AudioPlayer/Structures/Queue";
 import { Song } from "@AudioPlayer/Structures/Song";
 import { MessageReaction, User } from "discord.js";
+import { DurationUtils } from "@Utils/Durations";
 import { ClientMessage } from "@Client/Message";
 import { ArraySort } from "@Utils/ArraySort";
 
@@ -28,9 +28,8 @@ export class QueueCommand extends Command {
         //Получаем то что надо было преобразовать в string[]
         const pages = ArraySort<Song>(10, queue.songs, (song, index) => {
             const Duration = song.duration.full;
-            const TitleSong = replacer.replaceText(song.title, 80, true);
 
-            return `[${index + 1}] - [${Duration}] | ${TitleSong}`;
+            return `[${index + 1}] - [${Duration}] | ${song.title}`;
         });
 
         const CurrentPlaying = `Current playing -> [${queue.song.title}]`; //Музыка, которая играет сейчас
