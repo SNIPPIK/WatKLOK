@@ -64,7 +64,7 @@ export namespace PlayerCycle {
         const players = db.pls.filter((player) => player.hasPlayable);
 
         //Добавляем задержку, в размер пакета
-        db.time += 20;
+        db.time += 19.999995;
 
         return sendPlayersPackets(players);
     }
