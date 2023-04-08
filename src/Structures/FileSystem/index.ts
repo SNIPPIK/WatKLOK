@@ -85,6 +85,9 @@ class FileLoader {
         this.readDir();
     };
     private readonly readDir = (): void => {
+        //Если указанного пути нет
+        if (!existsSync(`./src/${this.path}`)) throw Error(`[FileSystem]: Not found path src/${this.path}!`)
+
         //Смотрим что находится в папке
         readdirSync(`./src/${this.path}`).forEach(async (dir: string) => {
             if (dir.endsWith(".js") || dir.endsWith(".ts")) return;

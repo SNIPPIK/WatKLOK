@@ -34,7 +34,7 @@ export namespace MessagePlayer {
         MessageCycle.toRemove(message.channelId);
         const queue: Queue = message.client.player.queue.get(message.guild.id);
 
-        if (!queue?.song) return;
+        if (!queue || !queue?.song) return;
 
         setImmediate((): void => {
             const embedCurrentPlaying = EmbedMessages.toPlaying(queue);

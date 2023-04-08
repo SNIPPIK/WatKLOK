@@ -64,7 +64,7 @@ export namespace PlayerCycle {
         const players = db.pls.filter((player) => player.hasPlayable);
 
         //Добавляем задержку, в размер пакета
-        db.time += 19.999995;
+        db.time += 20;
 
         return sendPlayersPackets(players);
     }
@@ -73,7 +73,7 @@ export namespace PlayerCycle {
      * @description Отправляем пакеты
      * @param players {AudioPlayer[]} Плееры на которых играем музыка 
      */
-    function sendPlayersPackets(players: AudioPlayer[]) {
+    function sendPlayersPackets(players: AudioPlayer[]): void {
         const nextPlayer = players.shift();
 
         //Если нет больше плееров запускаем проверку заново

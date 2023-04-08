@@ -61,7 +61,7 @@ export class Queue {
     /**
      * @description Получаем текущий трек
      */
-    public get song(): Song { return this._songs?.length < 1 ? null : this.songs[0]; };
+    public get song(): Song { return this.songs.at(0); };
     //====================== ====================== ====================== ======================
     /**
      * @description Получаем плеер текущей очереди
