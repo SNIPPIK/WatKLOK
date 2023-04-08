@@ -1,4 +1,4 @@
-import { Event } from "@Structures/Handle/Event";
+import { Event } from "@Structures/Handlers";
 import { Logger } from "@Logger";
 
 export class shardDisconnect extends Event<null, null> {

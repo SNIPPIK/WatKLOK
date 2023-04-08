@@ -1,4 +1,4 @@
-import { Command, ResolveData } from "@Structures/Handle/Command";
+import { Command, ResolveData } from "@Structures/Handlers";
 import { DurationUtils } from "@Utils/Durations";
 import { ClientMessage } from "@Client/Message";
 import { Colors } from "discord.js";

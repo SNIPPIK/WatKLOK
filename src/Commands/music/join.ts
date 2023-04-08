@@ -1,8 +1,8 @@
-import { Command, ResolveData } from "@Structures/Handle/Command";
+import { Command, ResolveData } from "@Structures/Handlers";
 import { StageChannel, VoiceChannel } from "discord.js";
-import { Voice } from "@Utils/Voice";
 import { Queue } from "@AudioPlayer/Structures/Queue";
 import { ClientMessage } from "@Client/Message";
+import { Voice } from "@Utils/Voice";
 
 export class JoinCommand extends Command {
     public constructor() {

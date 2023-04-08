@@ -1,10 +1,8 @@
 import { existsSync, mkdirSync, readdirSync } from "node:fs";
-import { Command } from "@Structures/Handle/Command";
-import { Module } from "@Structures/Handle/Module";
-import { Event } from "@Structures/Handle/Event";
+import { Command, Event } from "@Structures/Handlers";
 import { WatKLOK } from "@Client";
 
-type TypeFileLoad = Command | Event<any, any> | Module;
+type TypeFileLoad = Command | Event<any, any>;
 type FileCallback = (pull: TypeFileLoad, { }: { dir: string, file: string, reason: string }) => void;
 
 let tempLogs: { Commands: string[], Events: string[] } = { Commands: [], Events: [] };

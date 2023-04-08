@@ -1,4 +1,4 @@
-import { Command, ResolveData } from "@Structures/Handle/Command";
+import { Command, ResolveData } from "@Structures/Handlers";
 import { ClientMessage } from "@Client/Message";
 
 export class DeployCommand extends Command {

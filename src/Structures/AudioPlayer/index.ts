@@ -1,5 +1,4 @@
 import { Voting, APIs, Music, Debug } from "@db/Config.json";
-import { ClientMessage, UtilsMsg } from "@Client/Message";
 import { OpusAudio } from "./Structures/Media/OpusAudio";
 import { Filter } from "./Structures/Media/AudioFilters";
 import { MessagePlayer } from "./Structures/Messages";
@@ -8,9 +7,11 @@ import { Collection, VoiceState } from "discord.js";
 import { DurationUtils } from "@Utils/Durations";
 import { Song, ISong } from "./Structures/Song";
 import { Platform, platform } from "./Platform";
-import { Voice } from "../../Utils/Voice";
+import { ClientMessage } from "@Client/Message";
 import { Queue } from "./Structures/Queue";
 import { httpsClient } from "@httpsClient";
+import { UtilsMsg } from "@Utils/Msg";
+import { Voice } from "@Utils/Voice";
 import { Logger } from "@Logger";
 
 //====================== ====================== ====================== ======================

@@ -1,4 +1,4 @@
-import { Command, ResolveData } from "@Structures/Handle/Command";
+import { Command, ResolveData } from "@Structures/Handlers";
 import { ApplicationCommandOptionType } from "discord.js";
 import { Queue } from "@AudioPlayer/Structures/Queue";
 import { Song } from "@AudioPlayer/Structures/Song";

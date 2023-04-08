@@ -1,4 +1,4 @@
-import { Command, ResolveData } from "@Structures/Handle/Command";
+import { Command, ResolveData } from "@Structures/Handlers";
 import { Queue } from "@AudioPlayer/Structures/Queue";
 import { ClientMessage } from "@Client/Message";
 

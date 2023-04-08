@@ -1,5 +1,5 @@
 import { Client, IntentsBitField, Options, Collection, ActivityType } from "discord.js";
-import { Command } from "@Structures/Handle/Command";
+import { Command } from "@Structures/Handlers";
 import { FileSystem } from "@Structures/FileSystem";
 import { globalPlayer } from "@AudioPlayer";
 import { env } from "@env";

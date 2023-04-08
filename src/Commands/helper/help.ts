@@ -1,6 +1,6 @@
-import { Command, ResolveData } from "@Structures/Handle/Command";
 import { ClientMessage, EmbedConstructor } from "@Client/Message";
 import { ApplicationCommandOptionType, Colors } from "discord.js";
+import { Command, ResolveData } from "@Structures/Handlers";
 import { ReactionMenu } from "@Structures/ReactionMenu";
 import { ArraySort } from "src/Utils/ArraySort";
 import { Bot } from "@db/Config.json";

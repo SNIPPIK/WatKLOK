@@ -1,4 +1,4 @@
-import { Command, ResolveData } from "@Structures/Handle/Command";
+import { Command, ResolveData } from "@Structures/Handlers";
 import { ReactionMenu } from "@Structures/ReactionMenu";
 import { EmbedConstructor } from "@Client/Message";
 import { ArraySort } from "src/Utils/ArraySort";

@@ -1,4 +1,4 @@
-import { Command, ResolveData } from "@Structures/Handle/Command";
+import { Command, ResolveData } from "@Structures/Handlers";
 import { EmbedConstructor } from "@Client/Message";
 import { httpsClient } from "@httpsClient";
 import { Colors } from "discord.js";

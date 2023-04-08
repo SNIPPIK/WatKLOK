@@ -1,7 +1,7 @@
-import { Command, ResolveData } from "@Structures/Handle/Command";
-import { Voice } from "@Utils/Voice";
+import { Command, ResolveData } from "@Structures/Handlers";
 import { Queue } from "@AudioPlayer/Structures/Queue";
 import { ClientMessage } from "@Client/Message";
+import { Voice } from "@Utils/Voice";
 
 export class LeaveCommand extends Command {
     public constructor() {

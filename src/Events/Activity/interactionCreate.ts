@@ -1,13 +1,13 @@
-import { ActionRow, ActionRowBuilder, BaseInteraction, BaseMessageOptions, Colors, CommandInteractionOption, DMChannel, EmbedData, GuildMember, Message, MessageEditOptions, MessagePayload, MessageReaction, NewsChannel, PartialDMChannel, TextChannel, ThreadChannel, User } from "discord.js";
-import { Command, messageUtilsOptions, ResolveData } from "@Structures/Handle/Command";
-import { DurationUtils } from "@Utils/Durations";
-import { Event } from "@Structures/Handle/Event";
+import { ActionRow, ActionRowBuilder, BaseInteraction, BaseMessageOptions, CommandInteractionOption, DMChannel, EmbedData, GuildMember, Message, MessageEditOptions, MessagePayload, NewsChannel, PartialDMChannel, TextChannel, ThreadChannel, User } from "discord.js";
+import { Event, Command, ResolveData } from "@Structures/Handlers";
 import { ReactionMenu } from "@Structures/ReactionMenu";
+import { DurationUtils } from "@Utils/Durations";
+import { UtilsMsg } from "@Utils/Msg";
 import { Bot } from '@db/Config.json';
 import { Balancer } from "@Balancer";
 import { WatKLOK } from "@Client";
 
-export { interactionCreate, UtilsMsg, ClientInteraction, ClientMessage, ClientInteractive, EmbedConstructor };
+export { interactionCreate, ClientInteraction, ClientMessage, EmbedConstructor };
 
 //База с пользователями которые слишком часто используют команды
 const CoolDownBase = new Map<string, { time: number }>();
@@ -29,11 +29,11 @@ class interactionCreate extends Event<ClientInteraction, null> {
     //====================== ====================== ====================== ======================
     /**
      * @description Запускаем команду
-     * @param message {ClientInteractive} Сообщение
+     * @param message {ClientMessage | ClientInteraction} Сообщение
      * @param command {Command} Команда
      * @param args {string[]} Аргументы
      */
-    public static runCommand = (message: ClientInteractive, command: Command, args: string[] = []): void => {
+    public static runCommand = (message: ClientMessage | ClientInteraction, command: Command, args: string[] = []): void => {
         const { author } = message;
 
         Balancer.push(() => {
@@ -65,10 +65,10 @@ class interactionCreate extends Event<ClientInteraction, null> {
     //====================== ====================== ====================== ======================
     /**
      * @description Отправляем сообщение
-     * @param message {ClientInteractive} Сообщение
+     * @param message {ClientMessage | ClientInteraction} Сообщение
      * @param command {ResolveData} Данные для отправки сообщения
      */
-    private static sendMessage = (message: ClientInteractive, command: ResolveData): void => {
+    private static sendMessage = (message: ClientMessage | ClientInteraction, command: ResolveData): void => {
         //Запускаем ReactionMenu
         if ("callbacks" in command && command?.callbacks !== undefined) ReactionMenu.create(command.embed, message, command.callbacks);
 
@@ -81,10 +81,10 @@ class interactionCreate extends Event<ClientInteraction, null> {
     //====================== ====================== ====================== ======================
     /**
      * @description Проверяем права бота и пользователя
-     * @param message {ClientInteractive} Сообщение
+     * @param message {ClientMessage | ClientInteraction} Сообщение
      * @param command {Command} Команда
      */
-    private static checkPermissions = (command: Command, message: ClientInteractive): ResolveData => {
+    private static checkPermissions = (command: Command, message: ClientMessage | ClientInteraction): ResolveData => {
         const { guild, member, author } = message;
         const permissions = command.permissions;
 
@@ -135,104 +135,11 @@ class interactionCreate extends Event<ClientInteraction, null> {
         return;
     };
 }
-
-/**
- * @description Взаимодействия с сообщениями
- */
-namespace UtilsMsg {
-    /**
-     * @description Удаляем сообщение в зависимости от типа
-     * @param message {ClientInteractive} Сообщение
-     * @param time {number} Через сколько удалить сообщение
-     */
-    export function deleteMessage(message: ClientInteractive, time: number = 15e3): void {
-        //Удаляем сообщение
-        if ("deletable" in message) setTimeout(() => message.deletable ? message.delete().catch(() => null) : null, time);
-
-        //Удаляем ответ пользователю
-        else if ("isRepliable" in message) setTimeout(() => message.isRepliable() ? message.deleteReply().catch((): null => null) : null, time);
-    }
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Создаем сборщик сообщений
-     * @param channel {ClientMessage["channel"]} Канал на котором будет создан сборщик
-     * @param filter {Function} Как фильтровать сообщения
-     * @param max {number} Сколько раз можно уловить сообщение
-     * @param time {number} Через сколько удалить сообщение
-     */
-    export function createCollector(channel: ClientMessage["channel"], filter: (m: ClientMessage) => boolean, max: number = 1, time: number = 20e3) {
-        return channel.createMessageCollector({ filter: filter as any, max, time });
-    }
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Добавляем реакцию к сообщению + сборщик реакций
-     * @param message {ClientMessage} Сообщение
-     * @param emoji {string} Реакция
-     * @param filter {Function} Как фильтровать сообщения
-     * @param callback {Function} Что делать при нажатии на реакцию
-     * @param time {number} Через сколько удалить сообщение
-     */
-    export function createReaction(message: ClientMessage, emoji: string, filter: (reaction: MessageReaction, user: User) => boolean, callback: (reaction: MessageReaction) => any, time = 35e3): void {
-        deleteMessage(message, time);
-        const createReactionCollector = () => message.createReactionCollector({ filter, time }).on("collect", (reaction: MessageReaction) => callback(reaction));
-        message.react(emoji).then(createReactionCollector);
-    }
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Отправляем сообщение в тестовый канал по опциям
-     * @param options {messageUtilsOptions} Опции для отправления сообщения
-     */
-    export function createMessage(options: messageUtilsOptions): void {
-        const { message } = options;
-        const Args = sendArgs(options);
-        const channelSend = sendMessage(message, "isButton" in message, Args as any) as Promise<ClientMessage>;
-
-        channelSend.then(deleteMessage);
-        channelSend.catch((err: Error) => console.log(`[Discord Error]: [Send message] ${err}`));
-    }
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Создаем аргумент сообщения
- * @param options {messageUtilsOptions} Опции для отправления сообщения
- * @private
- */
-function sendArgs(options: messageUtilsOptions): { content: string } | { embeds: [EmbedConstructor] } {
-    const { color, text, codeBlock, notAttachEmbed } = options;
-
-    if (typeof text === "string") {
-        const description = typeof codeBlock === "string" ? `\`\`\`${codeBlock}\n${text}\n\`\`\`` : text;
-        if (!notAttachEmbed) {
-            const embed: EmbedConstructor = { color: typeof color === "number" ? color : Colors[color] ?? 258044, description };
-
-            return { embeds: [embed] };
-        }
-        return { content: description };
-    }
-    return { embeds: [text] };
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Варианты отправления сообщения
- * @param message {ClientInteractive} Сообщение
- * @param isSlash {boolean} Это запрос от пользователя
- * @param args {string} Аргументы для создания сообщения
- * @private
- */
-function sendMessage(message: ClientMessage | ClientInteraction, isSlash: boolean, args: any) {
-    if (isSlash) return message.reply({ ...args, fetchReply: true });
-    return (message as ClientMessage).channel.send({ ...args, fetchReply: true });
-}
 //====================== ====================== ====================== ======================
 /**
  * @description Все доступные каналы
  */
 type Channels = DMChannel | PartialDMChannel | NewsChannel | TextChannel | ThreadChannel;
-//====================== ====================== ====================== ======================
-/**
- * @description Необходимо для некоторых функций (для совместного применения)
- */
-type ClientInteractive = ClientMessage | ClientInteraction;
 //====================== ====================== ====================== ======================
 /**
  * @description Embed, format JSON

@@ -1,6 +1,7 @@
-import {ClientMessage, EmbedConstructor, ClientInteractive, UtilsMsg} from "@Client/Message";
-import {ReactionMenuSettings} from "@db/Config.json";
-import {MessageReaction, User} from "discord.js";
+import { ClientInteraction, ClientMessage, EmbedConstructor } from "@Client/Message";
+import { ReactionMenuSettings } from "@db/Config.json";
+import { MessageReaction, User } from "discord.js";
+import { UtilsMsg } from "@Utils/Msg";
 
 const emojis = ReactionMenuSettings.emojis;
 
@@ -19,14 +20,14 @@ export namespace ReactionMenu {
      * @param isSlash
      * @requires {reaction}
      */
-    export function create(embed: EmbedConstructor | string, message: ClientInteractive, callbacks: ReactionCallbacks, isSlash: boolean = false): void {
+    export function create(embed: EmbedConstructor | string, message: ClientMessage | ClientInteraction, callbacks: ReactionCallbacks, isSlash: boolean = false): void {
         const promise = (msg: ClientMessage) => Object.entries(callbacks).forEach(([key, value]) => {
             const callback = (reaction: MessageReaction) => value(reaction, message.author, message, msg);
             const emoji = emojis[key as "back" | "next" | "cancel"];
 
             return UtilsMsg.createReaction(msg, emoji, (reaction, user) => reaction.emoji.name === emoji && user.id !== message.client.user.id, callback, 60e3);
         });
-        const args = typeof embed === "string" ? {content: embed, fetchReply: true} : {embeds: [embed], fetchReply: true};
+        const args = typeof embed === "string" ? { content: embed, fetchReply: true } : { embeds: [embed], fetchReply: true };
 
         setImmediate((): void => {
             if (isSlash) message.reply(args).then(promise);
@@ -43,15 +44,15 @@ export namespace ReactionMenu {
     export function DefaultCallbacks(page: number, pages: string[], embed: EmbedConstructor): ReactionCallbacks {
         return {
             //При нажатии на 1 эмодзи, будет выполнена эта функция
-            back: ({users}: MessageReaction, user: User, message: ClientMessage, msg: ClientMessage): void => {
+            back: ({ users }: MessageReaction, user: User, message: ClientMessage, msg: ClientMessage): void => {
                 setImmediate(() => {
                     users.remove(user).catch((err) => console.log(err));
 
                     if (page === 1 || !msg.editable) return null;
                     page--;
-                    embed = { ...embed, description: pages[page - 1], footer: { ...embed.footer, text: `${message.author.username} | Лист ${page} из ${pages.length}` }};
+                    embed = { ...embed, description: pages[page - 1], footer: { ...embed.footer, text: `${message.author.username} | Лист ${page} из ${pages.length}` } };
 
-                    return msg.edit({embeds: [embed]});
+                    return msg.edit({ embeds: [embed] });
                 });
             },
             //При нажатии на 2 эмодзи, будет выполнена эта функция
@@ -61,15 +62,15 @@ export namespace ReactionMenu {
                 });
             },
             //При нажатии на 3 эмодзи, будет выполнена эта функция
-            next: ({users}: MessageReaction, user: User, message: ClientMessage, msg: ClientMessage): void => {
+            next: ({ users }: MessageReaction, user: User, message: ClientMessage, msg: ClientMessage): void => {
                 setImmediate(() => {
                     users.remove(user).catch((err) => console.log(err));
 
                     if (page === pages.length || !msg.editable) return null;
                     page++;
-                    embed = { ...embed, description: pages[page - 1], footer: { ...embed.footer, text: `${message.author.username} | Лист ${page} из ${pages.length}` }};
+                    embed = { ...embed, description: pages[page - 1], footer: { ...embed.footer, text: `${message.author.username} | Лист ${page} из ${pages.length}` } };
 
-                    return msg.edit({embeds: [embed]});
+                    return msg.edit({ embeds: [embed] });
                 });
             }
         };

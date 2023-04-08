@@ -1,5 +1,6 @@
-import { ClientMessage, interactionCreate, UtilsMsg } from "./interactionCreate";
-import { Event } from "@Structures/Handle/Event";
+import { ClientMessage, interactionCreate } from "./interactionCreate";
+import { Event } from "@Structures/Handlers";
+import { UtilsMsg } from "@Utils/Msg";
 import { Bot } from "@db/Config.json";
 import { Logger } from "@Logger";
 
