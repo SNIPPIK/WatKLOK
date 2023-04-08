@@ -8,7 +8,7 @@ import { Collection, VoiceState } from "discord.js";
 import { DurationUtils } from "@Utils/Durations";
 import { Song, ISong } from "./Structures/Song";
 import { Platform, platform } from "./Platform";
-import { Voice } from "./Structures/Voice";
+import { Voice } from "../../Utils/Voice";
 import { Queue } from "./Structures/Queue";
 import { httpsClient } from "@httpsClient";
 import { Logger } from "@Logger";

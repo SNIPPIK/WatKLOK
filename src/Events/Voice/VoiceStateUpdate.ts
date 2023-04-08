@@ -1,8 +1,8 @@
-import { Voice } from "@AudioPlayer/Structures/Voice";
 import { Queue } from "@AudioPlayer/Structures/Queue";
 import { Event } from "@Structures/Handle/Event";
 import { Debug } from "@db/Config.json";
 import { VoiceState } from "discord.js";
+import { Voice } from "@Utils/Voice";
 import { WatKLOK } from "@Client";
 import { Logger } from "@Logger";
 

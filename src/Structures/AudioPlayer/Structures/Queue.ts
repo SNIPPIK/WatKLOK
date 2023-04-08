@@ -1,7 +1,7 @@
 import { MessagePlayer } from "./Messages";
 import { AudioPlayer } from "./Player";
 import { globalPlayer } from "@AudioPlayer";
-import { Voice } from "./Voice";
+import { Voice } from "../../../Utils/Voice";
 import { Song } from "./Song";
 
 import { ClientMessage } from "@Client/Message";

@@ -101,17 +101,14 @@ namespace construct {
                 if (!api || api instanceof Error) return resolve(Error("[APIs]: Not found links for track!"));
 
                 const track = api?.pop() ?? api;
-                const body = await httpsClient.get(track.downloadInfoUrl, { resolve: "string" });
+                const xml = await httpsClient.parseXML(track.downloadInfoUrl) as Error | string[0];
 
-                if (body instanceof Error) return resolve(body);
+                if (xml instanceof Error) return resolve(xml);
 
-                const host = body.split("<host>")[1].split("</host>")[0];
-                const path = body.split("<path>")[1].split("</path>")[0];
-                const ts = body.split("<ts>")[1].split("</ts>")[0];
-                const s = body.split("<s>")[1].split("</s>")[0];
-                const sign = crypto.createHash("md5").update("XGRlBW9FXlekgbPrRHuSiA" + path.slice(1) + s).digest("hex");
+                const path = xml[1];
+                const sign = crypto.createHash("md5").update("XGRlBW9FXlekgbPrRHuSiA" + path.slice(1) + xml[4]).digest("hex");
 
-                return resolve(`https://${host}/get-mp3/${sign}/${ts}${path}`);
+                return resolve(`https://${xml[0]}/get-mp3/${sign}/${xml[2]}${path}`);
             } catch (e) { return resolve(Error(e)); }
         });
     }

@@ -1,7 +1,7 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, CacheType, ComponentType, User } from "discord.js";
 import { Music, ReactionMenuSettings } from "@db/Config.json";
 import { ClientMessage, UtilsMsg } from "@Client/Message";
-import { MessageCycle } from "@Utils/PlayerLifeCycle";
+import { MessageCycle } from "@Utils/LifeCycles";
 import { EmbedMessages } from "./Embeds";
 import { ISong, Song } from "../Song";
 import { Queue } from "../Queue";

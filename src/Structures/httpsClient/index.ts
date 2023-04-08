@@ -55,6 +55,22 @@ export namespace httpsClient {
             return false; //Если прошлые варианты не подходят, то эта ссылка не рабочая
         });
     }
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Парсим XML страницу в string[]
+     * @param url {string} Ссылка на xml
+     */
+    export function parseXML(url: string) {
+        return new Promise(async (resolve) => {
+            const body: string | Error = await get(url, { resolve: "string" });
+
+            if (body instanceof Error) return resolve(Error(`Not found XML data!`));
+
+            const filter = body.split(/<[a-zA-Z]+>(.*?)<\/[a-zA-Z]+>/g).filter(text => text !== "" && !text.match(/xml version/g) && !text.match(/<\//));
+
+            return resolve(filter);
+        });
+    }
 }
 //====================== ====================== ====================== ======================
 /**

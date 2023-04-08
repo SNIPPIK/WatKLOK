@@ -6,15 +6,13 @@ import { httpsClient } from "@httpsClient";
 import { IncomingMessage } from "http";
 import { Logger } from "@Logger";
 
-export { DownloadManager };
-
 type DownloadSong = { title: string, author: string, duration: number, resource: string };
 const QueueDownload: DownloadSong[] = [];
 
 //Убираем в конце / чтобы не мешало
 if (Music.CacheDir.endsWith("/")) Music.CacheDir.slice(Music.CacheDir.length - 1);
 
-namespace DownloadManager {
+export namespace DownloadManager {
     /**
     * @description Добавление трека в очередь для плавного скачивания
     * @param track {Song} Трек который будет скачен

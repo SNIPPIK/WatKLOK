@@ -1,3 +1,10 @@
+/**
+ * @description Превращаем Array в Array<Array>
+ * @param number {number} Сколько блоков будет в Array
+ * @param array {Array} Сам Array
+ * @param callback {Function} Как фильтровать
+ * @param joined {string} Что добавить в конце
+ */
 export function ArraySort<V>(number: number = 5, array: V[], callback: (value: V, index?: number) => string, joined: string = "\n\n"): string[] {
     const pages: string[] = [];
 

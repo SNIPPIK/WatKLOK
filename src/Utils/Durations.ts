@@ -1,5 +1,5 @@
-import { ISong, Song } from "../Structures/AudioPlayer/Structures/Song";
-import { Queue } from "../Structures/AudioPlayer/Structures/Queue";
+import { ISong, Song } from "@AudioPlayer/Structures/Song";
+import { Queue } from "@AudioPlayer/Structures/Queue";
 
 export namespace DurationUtils {
     /**
@@ -10,7 +10,7 @@ export namespace DurationUtils {
         let Timer: number = 0;
 
         if (queue instanceof Queue) queue.songs.forEach((song: Song) => Timer += song.duration.seconds);
-        else queue.forEach((song) => Timer += parseInt(song.duration.seconds as any));
+        else queue.forEach((song) => Timer += parseInt(song.duration.seconds as string));
 
         return ParsingTimeToString(Timer);
     }
