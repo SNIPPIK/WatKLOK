@@ -1,6 +1,6 @@
 import { AudioFilters, Filters } from "./AudioFilters";
 import { Music, Debug } from "@db/Config.json";
-import { FFmpeg, Arguments } from "./FFspace";
+import { FFmpeg } from "./FFspace";
 import { opus } from "prism-media";
 import { Readable } from "stream";
 import { Logger } from "@Logger";
@@ -63,16 +63,26 @@ export class OpusAudio {
      * @param path {string} Ссылка или путь до файла. Условие чтоб в конце пути был .opus
      * @param options {FFmpegOptions} Настройки FFmpeg, такие, как seek, filter
      */
-    public constructor(path: string, options: FFmpegOptions) {
+    public constructor(path: string, options: { seek?: number, filters?: Filters }) {
         const resource = path.endsWith("opus") ? fs.createReadStream(path) : path
 
         //Создаем ffmpeg
         this._ffmpeg = new FFmpeg((
-
             //Подготавливаем аргументы для FFmpeg
             () => {
-                if (typeof resource === "string") return createArgs(path, options?.filters, options?.seek);
-                return createArgs(null, options?.filters, options?.seek);
+                const seek = options?.seek;
+                const Filters = options?.filters;
+                const reconnect = ["-reconnect", 1, "-reconnect_streamed", 1, "-reconnect_delay_max", 5];
+                const Audio = ["-c:a", "libopus", "-f", "opus", "-b:a", Music.Audio.bitrate];
+                const filters = AudioFilters.getVanilaFilters(Filters, seek);
+
+                if (seek) reconnect.push("-ss", seek ?? 0);
+                if (typeof resource === "string") reconnect.push("-i", path);
+
+                if (filters.length > 0) reconnect.push("-af", filters);
+
+                //Всегда есть один фильтр <AudioFade>
+                return [...reconnect, "-compression_level", 12, ...Audio, "-preset:a", "ultrafast"];
             }
         )(), { highWaterMark: 128 });
 
@@ -136,28 +146,3 @@ export class OpusAudio {
         if (Debug) Logger.debug(`[AudioPlayer]: [OpusAudio]: Destroying!`);
     };
 }
-//====================== ====================== ====================== ======================
-/**
- * @description Создаем аргументы для FFmpeg
- * @param Filters {Filters} Аудио фильтры которые включил пользователь
- * @param url {string} Ссылка
- * @param seek {number} Пропуск музыки до 00:00:00
- */
-function createArgs(url: string, Filters: Filters, seek: number): Arguments {
-    const reconnect = ["-reconnect", 1, "-reconnect_streamed", 1, "-reconnect_delay_max", 5];
-    const Audio = ["-c:a", "libopus", "-f", "opus", "-b:a", Music.Audio.bitrate];
-    const filters = AudioFilters.getVanilaFilters(Filters, seek);
-
-    if (seek) reconnect.push("-ss", seek ?? 0);
-    if (url) reconnect.push("-i", url);
-
-    if (filters.length > 0) reconnect.push("-af", filters);
-
-    //Всегда есть один фильтр <AudioFade>
-    return [...reconnect, "-compression_level", 12, ...Audio, "-preset:a", "ultrafast"];
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Модификаторы для FFmpeg
- */
-type FFmpegOptions = { seek?: number, filters?: Filters };

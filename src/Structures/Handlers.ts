@@ -1,6 +1,6 @@
 import { ApplicationCommandOptionType, PermissionResolvable, BaseApplicationCommandOptionsData } from "discord.js";
 import { ClientInteraction, ClientMessage, EmbedConstructor } from "@Client/Message";
-import { colors } from "@Utils/Msg";
+import { colors } from "@Utils/Message";
 import { WatKLOK } from "@Client";
 
 /**

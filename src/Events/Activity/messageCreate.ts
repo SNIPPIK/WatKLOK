@@ -1,6 +1,6 @@
 import { ClientMessage, interactionCreate } from "./interactionCreate";
 import { Event } from "@Structures/Handlers";
-import { UtilsMsg } from "@Utils/Msg";
+import { UtilsMsg } from "@Utils/Message";
 import { Bot } from "@db/Config.json";
 import { Logger } from "@Logger";
 

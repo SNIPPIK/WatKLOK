@@ -2,7 +2,7 @@ import { ActionRow, ActionRowBuilder, BaseInteraction, BaseMessageOptions, Comma
 import { Event, Command, ResolveData } from "@Structures/Handlers";
 import { ReactionMenu } from "@Structures/ReactionMenu";
 import { DurationUtils } from "@Utils/Durations";
-import { UtilsMsg } from "@Utils/Msg";
+import { UtilsMsg } from "@Utils/Message";
 import { Bot } from '@db/Config.json';
 import { Balancer } from "@Balancer";
 import { WatKLOK } from "@Client";

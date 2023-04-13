@@ -1,10 +1,11 @@
 import { Client, IntentsBitField, Options, Collection, ActivityType } from "discord.js";
 import { FileSystem } from "@Structures/FileSystem";
 import { Command } from "@Structures/Handlers";
-import { globalPlayer } from "@AudioPlayer";
+import { Player } from "@AudioPlayer";
 import { env } from "@env";
 
 const commands = new Collection<string, Command>(); //База, со всеми командами
+const AudioPlayer = new Player();
 
 export class WatKLOK extends Client {
     /**
@@ -15,7 +16,7 @@ export class WatKLOK extends Client {
     /**
      * @description Плеер
      */
-    public get player() { return globalPlayer; };
+    public get player() { return AudioPlayer; };
     //====================== ====================== ====================== ======================
     /**
      * @description Текущий ID осколка

@@ -1,6 +1,7 @@
 import { SoundCloud, Spotify, VK, YandexMusic, YouTube } from "./APIs";
 import { FFprobe } from "./Structures/Media/FFspace";
-import { ISong } from "./Structures/Song";
+import { DurationUtils } from "@Utils/Durations";
+import { ISong, Song } from "./Structures/Song";
 import { Music } from "@db/Config.json";
 import { Colors } from "discord.js";
 import { env } from "@env";
@@ -317,6 +318,59 @@ namespace Platform {
      */
     export function full(platform: platform) {
         return Platforms.all.find((pl) => pl.name === platform);
+    }
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Получаем данные о треке заново
+     * @param song {Song} Трек который надо найти по новой
+     */
+    export function searchResource({ platform, url, author, title, duration }: Song): Promise<string> {
+        if (!isAudio(platform)) {
+            const callback = Platform.callback(platform, "track");
+
+            //Если нет такой платформы или нет callbacks.track
+            if (typeof callback === "string") return null;
+
+            //Выдаем ссылку
+            return (callback(url) as Promise<ISong.track>).then((track: ISong.track) => track?.format?.url);
+        }
+        //Ищем трек
+        let track = searchTrack(`${author.title} ${title}`, duration.seconds, platform);
+
+        //Если трек не найден пробуем 2 вариант без автора
+        if (!track) track = searchTrack(title, duration.seconds, platform);
+
+        return track;
+    }
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Ищем трек на yandex music, если нет токена yandex music или yandex зажмотил ссылку то ищем на YouTube
+     * @param nameSong {string} Название трека
+     * @param duration {number} Длительность трека
+     * @param platform {platform} Платформа
+     */
+    function searchTrack(nameSong: string, duration: number, platform: platform): Promise<string> {
+        const exPlatform = isFailed(platform) || isAudio(platform) ? isFailed("YANDEX") ? "YOUTUBE" : "YANDEX" : platform;
+        const callbacks = full(exPlatform).requests;
+
+        const seacrh = callbacks.find((req) => req.type === "search");
+        const track = callbacks.find((req) => req.type === "track");
+
+        return (seacrh.run(nameSong) as Promise<ISong.track[]>).then((tracks: ISong.track[]) => {
+            //Фильтруем треки оп времени
+            const FindTracks: ISong.track[] = tracks.filter((track: ISong.track) => {
+                const DurationSong: number = (exPlatform === "YOUTUBE" ? DurationUtils.ParsingTimeToNumber : parseInt)(track.duration.seconds);
+
+                //Как надо фильтровать треки
+                return DurationSong === duration || DurationSong < duration + 7 && DurationSong > duration - 5 || DurationSong < duration + 27 && DurationSong > duration - 27;
+            });
+
+            //Если треков нет
+            if (FindTracks?.length < 1) return null;
+
+            //Получаем данные о треке
+            return (track.run(FindTracks[0].url) as Promise<ISong.track>).then((video: ISong.track) => video?.format?.url) as Promise<string>;
+        });
     }
 }
 

@@ -1,14 +1,14 @@
 import { ClientInteraction, ClientMessage, EmbedConstructor } from "@Client/Message";
 import { ReactionMenuSettings } from "@db/Config.json";
 import { MessageReaction, User } from "discord.js";
-import { UtilsMsg } from "@Utils/Msg";
+import { UtilsMsg } from "@Utils/Message";
 
 const emojis = ReactionMenuSettings.emojis;
 
 interface ReactionCallbacks {
-    back: (reaction: MessageReaction, user: User, message: ClientMessage, msg: ClientMessage) => any;
-    next: (reaction: MessageReaction, user: User, message: ClientMessage, msg: ClientMessage) => any;
-    cancel: (reaction: MessageReaction, user: User, message: ClientMessage, msg: ClientMessage) => any;
+    back: (reaction: MessageReaction, user: User, message: ClientMessage, msg: ClientMessage) => void;
+    next: (reaction: MessageReaction, user: User, message: ClientMessage, msg: ClientMessage) => void;
+    cancel: (reaction: MessageReaction, user: User, message: ClientMessage, msg: ClientMessage) => void;
 }
 
 export namespace ReactionMenu {

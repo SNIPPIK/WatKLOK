@@ -2,7 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, CacheT
 import { Music, ReactionMenuSettings } from "@db/Config.json";
 import { ClientMessage } from "@Client/Message";
 import { MessageCycle } from "@Utils/LifeCycles";
-import { UtilsMsg } from "@Utils/Msg";
+import { UtilsMsg } from "@Utils/Message";
 import { EmbedMessages } from "./Embeds";
 import { ISong, Song } from "../Song";
 import { Queue } from "../Queue";

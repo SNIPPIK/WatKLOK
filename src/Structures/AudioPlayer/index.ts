@@ -1,27 +1,26 @@
-import { Voting, APIs, Music, Debug } from "@db/Config.json";
-import { Collection, VoiceState } from "discord.js";
+import { Voting, APIs, Music } from "@db/Config.json";
 import { DurationUtils } from "@Utils/Durations";
 import { ClientMessage } from "@Client/Message";
-import { httpsClient } from "@httpsClient";
-import { UtilsMsg } from "@Utils/Msg";
+import { UtilsMsg } from "@Utils/Message";
+import { VoiceState } from "discord.js";
 import { Voice } from "@Utils/Voice";
-import { Logger } from "@Logger";
 
 //AudioPlayer
-import { OpusAudio } from "./Structures/Media/OpusAudio";
+import { CollectionQueue, Queue } from "./Structures/Queue";
 import { Filter } from "./Structures/Media/AudioFilters";
 import { MessagePlayer } from "./Structures/Messages";
-import { DownloadManager } from "./Plugins/Download";
 import { Song, ISong } from "./Structures/Song";
-import { Platform, platform } from "./Platform";
-import { Queue } from "./Structures/Queue";
+import { Platform } from "./Platform";
 
-
+/**
+ * @description Храним все очереди здесь
+ */
+const _queue = new CollectionQueue();
 //====================== ====================== ====================== ======================
 /**
  * @description Все доступные взаимодействия с плеером через client.player
  */
-class Player {
+export class Player {
     /**
      * @description Получение всех очередей
      */
@@ -237,7 +236,7 @@ class Player {
         //Запускаем голосование
         Vote(message, queue, (win) => {
             if (win) {
-                queue.callback()
+                queue.callback();
 
                 //Сообщаем о том что музыка начата с начала
                 return UtilsMsg.createMessage({ text: `🔂 | Replay | ${title}`, message, color: "Green", codeBlock: "css" });
@@ -367,206 +366,4 @@ function Vote(message: ClientMessage, queue: Queue, callback: (win: boolean) => 
             setTimeout(() => callback(Yes >= No), 5e3);
         });
     });
-}
-export const globalPlayer = new Player();
-
-
-//====================== ====================== ====================== ======================
-/**
- * @description Collection Queue, содержит в себе все очереди
- */
-class CollectionQueue<V, K> extends Collection<V, K> {
-    /**
-    * @description Создаем очереди или добавляем в нее обьект или обьекты
-    * @param message {ClientMessage} Сообщение с сервера
-    * @param VoiceChannel {Voice.Channels} К какому голосовому каналу надо подключатся
-    * @param info {ISong.track | ISong.playlist} Входные данные это трек или плейлист?
-    * @requires {CreateQueue}
-    */
-    public create = (message: ClientMessage, VoiceChannel: Voice.Channels, info: ISong.track | ISong.playlist): void => {
-        const { queue, status } = this.CreateQueue(message, VoiceChannel);
-        const requester = message.author;
-
-        //Запускаем callback плеера, если очередь была создана, а не загружена!
-        if (status === "create") setImmediate(() => this.playCallback(message.guild.id));
-
-        //Зугружаем плейлисты или альбомы
-        if ("items" in info) {
-            //Отправляем сообщение о том что плейлист будет добавлен в очередь
-            MessagePlayer.toPushPlaylist(message, info);
-
-            //Зугрежаем треки из плейлиста в очередь
-            for (let track of info.items) queue.songs.push(new Song(track, requester));
-            return;
-        }
-
-        //Добавляем трек в очередь
-        const song = new Song(info, requester);
-        if (queue.songs.length >= 1) MessagePlayer.toPushSong(queue, song);
-
-        queue.songs.push(song);
-    };
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Запуск проигрывания трека
-     * @param QueueID {string} Номер очереди или ID сервера
-     * @param seek {number} До скольки надо пропустить
-     */
-    protected playCallback = (QueueID: string, seek: number = 0): void => {
-        const queue = _queue.get(QueueID);
-        const song = queue.song;
-
-        //Если треков в очереди больше нет
-        if (!song) return queue.cleanup();
-
-        setImmediate((): void => {
-            //Отправляем сообщение с авто обновлением
-            if (!seek) MessagePlayer.toPlay(queue.message);
-
-            new Promise<string>((resolve) => {
-                //Если пользователь включил кеширование музыки
-                if (Music.CacheMusic) {
-                    const info = DownloadManager.getNames(song);
-
-                    //Если есть файл выдаем путь до него
-                    if (info.status === "final") return resolve(info.path);
-                }
-
-                //Проверяем ссылку на работоспособность
-                return findSong.checkingLink(song.link, song).then((url: string) => {
-                    if (!url) return resolve(null);
-
-                    //Если включено кеширование музыки то скачиваем
-                    if (Music.CacheMusic) setImmediate(() => DownloadManager.download(song, url));
-
-                    song.link = url;
-                    return resolve(url);
-                });
-            }).then((url: string) => {
-                //Если ссылка не была найдена
-                if (!url) return void queue.player.emit("error", Error(`Link to resource, not found`), true);
-
-                //Создаем поток
-                const stream = new OpusAudio(url, { seek, filters: queue.song.options.isLive ? [] : queue.filters });
-
-                //Отправляем поток в плеер
-                return queue.player.readStream(stream);
-
-                //Если получение ссылки вызывает ошибку
-            }).catch((err: string) => queue.player.emit("error", Error(err), true));
-
-            //Если включен режим отладки показывает что сейчас играет и где
-            if (Debug) {
-                if (!seek && !queue.filters.length) Logger.debug(`[Queue]: [${QueueID}]: Play: [${song.duration.full}] - [${song.author.title} - ${song.title}]`);
-                else Logger.debug(`[Queue]: [${QueueID}]: Play: [seek: ${seek} | filters: ${queue.filters.length}] | [${song.duration.full}] - [${song.author.title} - ${song.title}]`);
-            }
-        });
-    };
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Создаем очереди или если она есть выдаем
-     * @param message {ClientMessage} Сообщение с сервера
-     * @param VoiceChannel {Voice.Channels} К какому голосовому каналу надо подключатся
-     */
-    private CreateQueue = (message: ClientMessage, VoiceChannel: Voice.Channels): { status: "create" | "load", queue: Queue } => {
-        const { client, guild } = message;
-        const queue = client.player.queue.get(guild.id);
-
-        if (queue) return { queue, status: "load" };
-
-        //Создаем очередь
-        const GuildQueue = new Queue(message, VoiceChannel);
-
-        //Подключаемся к голосовому каналу
-        GuildQueue.player.connection = Voice.Join(VoiceChannel); //Добавляем подключение в плеер
-        client.player.queue.set(guild.id, GuildQueue); //Записываем очередь в <client.queue>
-
-        return { queue: GuildQueue, status: "create" };
-    };
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Храним все очереди здесь
- */
-const _queue = new CollectionQueue<string | number, Queue>();
-//====================== ====================== ====================== ======================
-/*                             Namespace for find url resource                             */
-//====================== ====================== ====================== ======================
-namespace findSong {
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Получаем исходник трека
-     * @param req {number} Кол-во повторных запросов (не менять)
-     */
-    export function checkingLink(url: string, song: Song, req = 0): Promise<string> {
-        return new Promise(async (resolve) => {
-            if (req > 3) return resolve(null);
-
-            //Если нет ссылки, то ищем трек
-            if (!url) url = await getLink(song);
-
-            //Проверяем ссылку на работоспособность
-            const check = await httpsClient.checkLink(url);
-
-            //Если ссылка работает
-            if (check) return resolve(url);
-
-            //Если ссылка не работает, то удаляем ссылку и делаем новый запрос
-            req++;
-            return resolve(checkingLink(null, song, req));
-        });
-    }
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Получаем данные о треке заново
-     * @param song {Song} Трек который надо найти по новой
-     */
-    function getLink({ platform, url, author, title, duration }: Song): Promise<string> {
-        if (!Platform.isAudio(platform)) {
-            const callback = Platform.callback(platform, "track");
-
-            //Если нет такой платформы или нет callbacks.track
-            if (typeof callback === "string") return null;
-
-            //Выдаем ссылку
-            return (callback(url) as Promise<ISong.track>).then((track: ISong.track) => track?.format?.url);
-        }
-        //Ищем трек
-        let track = searchTracks(`${author.title} ${title}`, duration.seconds, platform);
-
-        //Если трек не найден пробуем 2 вариант без автора
-        if (!track) track = searchTracks(title, duration.seconds, platform);
-
-        return track;
-    }
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Ищем трек на yandex music, если нет токена yandex music или yandex зажмотил ссылку то ищем на YouTube
-     * @param nameSong {string} Название трека
-     * @param duration {number} Длительность трека
-     * @param platform {platform} Платформа
-     */
-    function searchTracks(nameSong: string, duration: number, platform: platform): Promise<string> {
-        const exPlatform = Platform.isFailed(platform) || Platform.isAudio(platform) ? Platform.isFailed("YANDEX") ? "YOUTUBE" : "YANDEX" : platform;
-        const callbacks = Platform.full(exPlatform).requests;
-
-        const seacrh = callbacks.find((req) => req.type === "search");
-        const track = callbacks.find((req) => req.type === "track");
-
-        return (seacrh.run(nameSong) as Promise<ISong.track[]>).then((tracks: ISong.track[]) => {
-            //Фильтруем треки оп времени
-            const FindTracks: ISong.track[] = tracks.filter((track: ISong.track) => {
-                const DurationSong: number = (exPlatform === "YOUTUBE" ? DurationUtils.ParsingTimeToNumber : parseInt)(track.duration.seconds);
-
-                //Как надо фильтровать треки
-                return DurationSong === duration || DurationSong < duration + 7 && DurationSong > duration - 5 || DurationSong < duration + 27 && DurationSong > duration - 27;
-            });
-
-            //Если треков нет
-            if (FindTracks?.length < 1) return null;
-
-            //Получаем данные о треке
-            return (track.run(FindTracks[0].url) as Promise<ISong.track>).then((video: ISong.track) => video?.format?.url) as Promise<string>;
-        });
-    }
 }
