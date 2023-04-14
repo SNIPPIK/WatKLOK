@@ -44,7 +44,7 @@ export class JoinCommand extends Command {
 
             queue.player.connection = connection; //Подключаем голосовой канал к плееру
 
-            queue.TimeDestroying("cancel"); //Отменяем удаление очереди
+            client.player.queue.timeDestroying(guild.id, "cancel"); //Отменяем удаление очереди
             return;
         }
 

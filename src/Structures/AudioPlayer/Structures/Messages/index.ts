@@ -1,7 +1,7 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, CacheType, ComponentType, User } from "discord.js";
 import { Music, ReactionMenuSettings } from "@db/Config.json";
-import { ClientMessage } from "@Client/Message";
 import { MessageCycle } from "@Utils/LifeCycles";
+import { ClientMessage } from "@Client/Message";
 import { UtilsMsg } from "@Utils/Message";
 import { EmbedMessages } from "./Embeds";
 import { ISong, Song } from "../Song";
@@ -204,7 +204,7 @@ class ButtonCollector {
             //Повторно включить текущую музыку
             case "replay": return void client.player.replay(message);
             //Включить последнею из списка музыку
-            case "last": return queue?.swapSongs();
+            case "last": return client.player.queue?.swapSongs(guild.id);
         }
     };
     //====================== ====================== ====================== ======================

@@ -22,7 +22,7 @@ export class CollectionQueue extends Collection<string, Queue> {
     * @param info {ISong.track | ISong.playlist} Входные данные это трек или плейлист?
     * @requires {CreateQueue}
     */
-    public create = (message: ClientMessage, VoiceChannel: Voice.Channels, info: ISong.track | ISong.playlist): void => {
+    public readonly create = (message: ClientMessage, VoiceChannel: Voice.Channels, info: ISong.track | ISong.playlist): void => {
         const { queue, status } = this.createQueue(message, VoiceChannel);
         const requester = message.author;
 
@@ -51,7 +51,7 @@ export class CollectionQueue extends Collection<string, Queue> {
      * @param message {ClientMessage} Сообщение с сервера
      * @param VoiceChannel {Voice.Channels} К какому голосовому каналу надо подключатся
      */
-    private createQueue = (message: ClientMessage, VoiceChannel: Voice.Channels): { status: "create" | "load", queue: Queue } => {
+    private readonly createQueue = (message: ClientMessage, VoiceChannel: Voice.Channels): { status: "create" | "load", queue: Queue } => {
         const { client, guild } = message;
         const queue = client.player.queue.get(guild.id);
 
@@ -72,7 +72,7 @@ export class CollectionQueue extends Collection<string, Queue> {
      * @param QueueID {string} Номер очереди или ID сервера
      * @param seek {number} До скольки надо пропустить
      */
-    protected playCallback = (QueueID: string, seek: number = 0): void => {
+    protected readonly playCallback = (QueueID: string, seek: number = 0): void => {
         const queue = this.get(QueueID);
         const song = queue.song;
 
@@ -101,7 +101,7 @@ export class CollectionQueue extends Collection<string, Queue> {
      * @param url {string} Ссылка или путь до файла
      * @param seek {number} До скольки пропускаем трек
      */
-    private constructStream = (queue: Queue, url: string, seek: number = 0): void => {
+    private readonly constructStream = (queue: Queue, url: string, seek: number = 0): void => {
         //Если ссылка не была найдена
         if (!url) return void queue.player.emit("error", Error(`Link to resource, not found`), true);
 
@@ -116,7 +116,7 @@ export class CollectionQueue extends Collection<string, Queue> {
      * @description Получаем ссылку на исходный ресурс
      * @param song {Song} Какой трек буде включен
      */
-    private gettingResource = (song: Song): Promise<string> => {
+    private readonly gettingResource = (song: Song): Promise<string> => {
         return new Promise<string>((resolve) => {
             //Если пользователь включил кеширование музыки
             if (Music.CacheMusic) {
@@ -127,9 +127,11 @@ export class CollectionQueue extends Collection<string, Queue> {
             }
 
             //Проверяем ссылку на работоспособность
-            this.checkingLink(song).then((url: string) => {
+            this.checkingLink(song.link, song).then((url: string) => {
                 //Если включено кеширование музыки то скачиваем
                 if (Music.CacheMusic && url) setImmediate(() => DownloadManager.download(song, url));
+
+                song.link = url;
                 return resolve(url);
             });
         });
@@ -139,23 +141,60 @@ export class CollectionQueue extends Collection<string, Queue> {
      * @description Получаем исходник файл трека
      * @param song {Song} Трек который надо найти заново
      */
-    private checkingLink = (song: Song, req = 0): Promise<string> => {
+    private readonly checkingLink = (url: string, song: Song, req = 0): Promise<string> => {
         return new Promise(async (resolve) => {
             if (req > 3) return resolve(null);
 
             //Если нет ссылки, то ищем трек
-            if (!song.link) song.link = await Platform.searchResource(song);
+            if (!url) url = await Platform.searchResource(song);
 
             //Проверяем ссылку на работоспособность
-            const check = await httpsClient.checkLink(song.link);
+            const check = await httpsClient.checkLink(url);
 
             //Если ссылка работает
-            if (check) return resolve(song.link);
+            if (check) return resolve(url);
 
             //Если ссылка не работает, то удаляем ссылку и делаем новый запрос
             req++;
-            return resolve(this.checkingLink(song, req));
+            return resolve(this.checkingLink(null, song, req));
         });
+    };
+
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Удаление очереди через время
+     * @param state {string} Что делать с очередью. Запуск таймера или отмена
+     * @constructor
+     */
+    public readonly timeDestroying = (QueueID: string, state: "start" | "cancel"): void => {
+        const queue = this.get(QueueID);
+        const player = queue.player;
+
+        //Запускаем таймер по истечению которого очереди будет удалена!
+        if (state === "start" && !queue._timer) {
+            queue._timer = setTimeout(queue.cleanup, 10e3);
+            player.pause();
+        } else {
+            player.resume();
+            clearTimeout(queue._timer);
+        }
+    };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Меняет местами треки
+     * @param num {number} Если есть номер для замены
+     */
+    public readonly swapSongs = (QueueID: string, num?: number): void => {
+        const { songs, player } = this.get(QueueID);
+
+        if (songs.length === 1) return player.stop();
+
+        const first = songs[0];
+        const position = num ?? songs.length - 1;
+
+        songs[0] = songs[position];
+        songs[position] = first;
+        player.stop();
     };
 }
 //====================== ====================== ====================== ======================
@@ -166,7 +205,7 @@ export class Queue {
     /**
      * @description Таймер удаления, нужен для авто удаления очереди
      */
-    private _timer: NodeJS.Timeout = null;
+    public _timer: NodeJS.Timeout = null;
     //====================== ====================== ====================== ======================
     /**
      * @description Array<Song> база с треками
@@ -285,7 +324,7 @@ export class Queue {
             //Выбираем случайный номер трека, просто меняем их местами
             if (this?.options?.random) {
                 const RandomNumSong = Math.floor(Math.random() * this.songs.length)
-                this.swapSongs(RandomNumSong);
+                msg.client.player.queue.swapSongs(this.guild.id, RandomNumSong);
             }
 
             //Включаем трек
@@ -307,42 +346,9 @@ export class Queue {
     };
     //====================== ====================== ====================== ======================
     /**
-     * @description Меняет местами треки
-     * @param num {number} Если есть номер для замены
-     */
-    public swapSongs = (num?: number): void => {
-        if (this.songs.length === 1) return this.player.stop();
-
-        const first = this.songs[0];
-        const position = num ?? this.songs.length - 1;
-
-        this.songs[0] = this.songs[position];
-        this.songs[position] = first;
-        this.player.stop();
-    };
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Удаление очереди через время
-     * @param state {string} Что делать с очередью. Запуск таймера или отмена
-     * @constructor
-     */
-    public TimeDestroying = (state: "start" | "cancel"): void => {
-        const player = this.player;
-
-        //Запускаем таймер по истечению которого очереди будет удалена!
-        if (state === "start" && !this._timer) {
-            this._timer = setTimeout(this.cleanup, 10e3);
-            player.pause();
-        } else {
-            player.resume();
-            clearTimeout(this._timer);
-        }
-    };
-    //====================== ====================== ====================== ======================
-    /**
      * @description Удаляем не используемые объекты
      */
-    public cleanup = (): void => {
+    public readonly cleanup = (): void => {
         const message = this.message;
         const { client, guild } = message;
 
