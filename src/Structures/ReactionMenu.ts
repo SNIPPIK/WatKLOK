@@ -1,4 +1,4 @@
-import { ClientInteraction, ClientMessage, EmbedConstructor } from "@Client/Message";
+import { ClientMessage, EmbedConstructor } from "@Client/Message";
 import { ReactionMenuSettings } from "@db/Config.json";
 import { MessageReaction, User } from "discord.js";
 import { UtilsMsg } from "@Utils/Message";
@@ -11,29 +11,26 @@ interface ReactionCallbacks {
     cancel: (reaction: MessageReaction, user: User, message: ClientMessage, msg: ClientMessage) => void;
 }
 
-export namespace ReactionMenu {
-    /**
-     * @description Создаем menu emoji
-     * @param embed {EmbedConstructor | string} MessageEmbed или текст
-     * @param message {ClientMessage} Сообщение с сервера
-     * @param callbacks {Callbacks} Функции
-     * @param isSlash
-     * @requires {reaction}
-     */
-    export function create(embed: EmbedConstructor | string, message: ClientMessage | ClientInteraction, callbacks: ReactionCallbacks, isSlash: boolean = false): void {
-        const promise = (msg: ClientMessage) => Object.entries(callbacks).forEach(([key, value]) => {
-            const callback = (reaction: MessageReaction) => value(reaction, message.author, message, msg);
-            const emoji = emojis[key as "back" | "next" | "cancel"];
-
-            return UtilsMsg.createReaction(msg, emoji, (reaction, user) => reaction.emoji.name === emoji && user.id !== message.client.user.id, callback, 60e3);
-        });
+export class ReactionMenu {
+    public constructor(embed: EmbedConstructor | string, message: ClientMessage, callbacks: ReactionCallbacks, isSlash: boolean = false) {
         const args = typeof embed === "string" ? { content: embed, fetchReply: true } : { embeds: [embed], fetchReply: true };
 
-        setImmediate((): void => {
-            if (isSlash) message.reply(args).then(promise);
-            else (message as ClientMessage).channel.send(args).then(promise);
-        });
-    }
+        setImmediate(() => (isSlash ? message.reply : message.channel.send)(args).then((msg) => this.createRections(msg, message, callbacks)));
+    };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Создаем реакции под сообщением
+     * @param msg {ClientMessage} Сообщение бота
+     * @param message {ClientMessage} Сообщение пользователя
+     * @param callbacks {ReactionCallbacks} Что делать при взаимодействии с реакциями
+     * @returns 
+     */
+    private readonly createRections = (msg: ClientMessage, message: ClientMessage, callbacks: ReactionCallbacks) => Object.entries(callbacks).forEach(([key, value]) => {
+        const callback = (reaction: MessageReaction) => value(reaction, message.author, message, msg);
+        const emoji = emojis[key as "back" | "next" | "cancel"];
+
+        return UtilsMsg.createReaction(msg, emoji, (reaction, user) => reaction.emoji.name === emoji && user.id !== message.client.user.id, callback, 60e3);
+    });
     //====================== ====================== ====================== ======================
     /**
      * @description Функции для управления <CollectorSortReaction>
@@ -41,7 +38,7 @@ export namespace ReactionMenu {
      * @param pages {Array<string>} страницы
      * @param embed {EmbedConstructor} Json<Embed>
      */
-    export function DefaultCallbacks(page: number, pages: string[], embed: EmbedConstructor): ReactionCallbacks {
+    public static DefaultCallbacks = (page: number, pages: string[], embed: EmbedConstructor): ReactionCallbacks => {
         return {
             //При нажатии на 1 эмодзи, будет выполнена эта функция
             back: ({ users }: MessageReaction, user: User, message: ClientMessage, msg: ClientMessage): void => {

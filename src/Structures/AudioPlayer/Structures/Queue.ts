@@ -149,7 +149,7 @@ export class CollectionQueue extends Collection<string, Queue> {
             if (!url) url = await Platform.searchResource(song);
 
             //Проверяем ссылку на работоспособность
-            const check = await httpsClient.checkLink(url);
+            const check = await httpsClient.statusCode(url);
 
             //Если ссылка работает
             if (check) return resolve(url);

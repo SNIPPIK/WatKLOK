@@ -101,8 +101,20 @@ function extractPage(decoder: Decoder | IncomingMessage): Promise<string> {
         });
     });
 }
+//====================== ====================== ====================== =======================
+/**
+ * @description Допустимые запросы
+ */
 type method = "POST" | "GET" | "HEAD";
+//====================== ====================== ====================== ======================
+/**
+ * @description Варианты расшифоровки
+ */
 type Decoder = BrotliDecompress | Gunzip | Deflate;
+//====================== ====================== ====================== ======================
+/**
+ * @description Опции запроса
+ */
 interface RequestOptions extends ReqOptions {
     body?: string;
     method?: method;

@@ -46,7 +46,7 @@ export namespace httpsClient {
      * @param url {string} Ссылка
      * @requires {Request}
      */
-    export function checkLink(url: string): Promise<boolean> | false {
+    export function statusCode(url: string): Promise<boolean> | false {
         if (!url) return false;
 
         return head(url, { resolve: "full", useragent: true }).then((resource: IncomingMessage) => {

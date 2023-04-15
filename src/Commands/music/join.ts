@@ -31,7 +31,7 @@ export class JoinCommand extends Command {
         if (!member?.voice?.channel || !member?.voice) return { text: `${author}, Подключись к голосовому каналу!`, color: "Yellow" };
 
         //Если пользователь пытается подключить бота к тому же каналу
-        if (voiceChannel.id === guild.members.me.voice.id) return { text: `${author}, Я уже в этом канале <#${queue.voice.id}>.`, color: "Yellow" };
+        if (voiceChannel.id === guild.members.me.voice.id || queue && voiceChannel.id === queue.voice.id) return { text: `${author}, Я уже в этом канале <#${voiceChannel}>.`, color: "Yellow" };
 
         if (queue) { //Если есть очередь, то
             //Если включен режим радио
@@ -45,11 +45,11 @@ export class JoinCommand extends Command {
             queue.player.connection = connection; //Подключаем голосовой канал к плееру
 
             client.player.queue.timeDestroying(guild.id, "cancel"); //Отменяем удаление очереди
-            return;
+            return { text: `${author}, Переподключение к ${queue.voice}!`, color: "Yellow" };
         }
 
         //Просто подключаемся к голосовому каналу
         Voice.Join(voiceChannel);
-        return;
+        return { text: `${author}, Подключение к ${voiceChannel}!`, color: "Yellow" };
     };
 }

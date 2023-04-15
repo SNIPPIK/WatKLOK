@@ -1,11 +1,9 @@
-import {existsSync, readFileSync, writeFile} from 'node:fs';
-
-export {getCookies, uploadCookie};
+import { existsSync, readFileSync, writeFile } from 'node:fs';
 
 /**
  * @description Получаем куки из json файла
  */
-function getCookies(): string {
+export function getCookies(): string {
     try {
         if (!existsSync(`db/Cookie.json`)) return null;
         return JSON.parse(readFileSync(`db/Cookie.json`, "utf8")).cookie;
@@ -16,14 +14,14 @@ function getCookies(): string {
  * @description Сохраняем куки в json файл
  * @param Cookie {string | string[]} Что нужно добавить к текущему куки
  */
-function uploadCookie(Cookie: string | string[]): void {
+export function uploadCookie(Cookie: string | string[]): void {
     if (!existsSync(`db/Cookie.json`)) return null;
 
     try {
-        const CookieFile: {cookie: string} = JSON.parse(readFileSync(`db/Cookie.json`, "utf8"));
-        const newCookie: string = ParsingCookieToString({...ParsingCookieToJson(CookieFile.cookie), ...ParsingCookieToJson(Cookie)});
+        const CookieFile: { cookie: string } = JSON.parse(readFileSync(`db/Cookie.json`, "utf8"));
+        const newCookie: string = ParsingCookieToString({ ...ParsingCookieToJson(CookieFile.cookie), ...ParsingCookieToJson(Cookie) });
 
-        writeFile('db/Cookie.json', JSON.stringify({cookie: newCookie}, null, `\t`), () => null);
+        writeFile('db/Cookie.json', JSON.stringify({ cookie: newCookie }, null, `\t`), () => null);
     } catch (err) { throw Error("[APIs]: Cookie file has damaged!"); }
 }
 //====================== ====================== ====================== ======================
@@ -44,7 +42,7 @@ function ParsingCookieToJson(headCookie: string[] | string): {} {
         const key: string = arrayCookie.shift()?.trim().toUpperCase();
         const value: string = arrayCookie.join("=").trim();
 
-        Json = {...Json, [key]: value};
+        Json = { ...Json, [key]: value };
     });
 
     if (typeof headCookie === "string") filteredCookie(headCookie);
