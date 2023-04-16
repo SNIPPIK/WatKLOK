@@ -1,4 +1,4 @@
-import { Client, IntentsBitField, Options, Collection, ActivityType } from "discord.js";
+import { Client, IntentsBitField, Options, Collection } from "discord.js";
 import { FileSystem } from "@Structures/FileSystem";
 import { Command } from "@Structures/Handlers";
 import { Player } from "@AudioPlayer";
@@ -87,13 +87,7 @@ export class WatKLOK extends Client {
                 //IntentsBitField.Flags.GuildMembers,
 
             ],
-            shards: "auto",
-            presence: {
-                activities: [{
-                    name: "музыку",
-                    type: ActivityType.Listening
-                }]
-            }
+            shards: "auto"
         });
     };
     //====================== ====================== ====================== ======================

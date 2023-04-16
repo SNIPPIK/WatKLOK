@@ -2,6 +2,8 @@ import { platform, Platform } from "../Platform";
 import { DurationUtils } from "@Utils/Durations";
 import { ClientMessage } from "@Client/Message";
 import { Music } from "@db/Config.json";
+import { DownloadManager } from "../Plugins/Download";
+import { httpsClient } from "@Structures/httpsClient";
 
 export { Song, ISong };
 
@@ -105,12 +107,36 @@ class Song {
     /**
      * @description Получаем ссылку на исходный файл
      */
-    public get link() { return this._link; };
+    private get link() { return this._link; };
     //====================== ====================== ====================== ======================
     /**
      * @description Изменяем данные ссылки
      */
-    public set link(link) { this._link = link; };
+    private set link(link) { this._link = link; };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Получаем ссылку на исходный ресурс
+     */
+    public get resource() {
+        return new Promise<string>((resolve) => {
+            //Если пользователь включил кеширование музыки
+            if (Music.CacheMusic) {
+                const info = DownloadManager.getNames(this);
+
+                //Если есть файл выдаем путь до него
+                if (info.status === "final") return resolve(info.path);
+            }
+
+            //Проверяем ссылку на работоспособность
+            checkingLink(this.link, this).then((url: string) => {
+                //Если включено кеширование музыки то скачиваем
+                if (Music.CacheMusic && url) setImmediate(() => DownloadManager.download(this, url));
+
+                this.link = url;
+                return resolve(url);
+            });
+        });
+    }
     //====================== ====================== ====================== ======================
     /**
      * @description Подгоняем трек под общую сетку
@@ -155,6 +181,30 @@ class Song {
         if (validURL(track.format)) this._link = track.format.url;
     };
 }
+//====================== ====================== ====================== ======================
+/**
+ * @description Получаем исходник файл трека
+ * @param song {Song} Трек который надо найти заново
+ */
+function checkingLink(url: string, song: Song, req = 0): Promise<string> {
+    return new Promise(async (resolve) => {
+        if (req > 3) return resolve(null);
+
+        //Если нет ссылки, то ищем трек
+        if (!url) url = await Platform.searchResource(song);
+
+        //Проверяем ссылку на работоспособность
+        const check = await httpsClient.statusCode(url);
+
+        //Если ссылка работает
+        if (check) return resolve(url);
+
+        //Если ссылка не работает, то удаляем ссылку и делаем новый запрос
+        req++;
+        return resolve(checkingLink(null, song, req));
+    });
+};
+
 //====================== ====================== ====================== ======================
 /**
  * @description Проверка является ли ссылка ссылкой

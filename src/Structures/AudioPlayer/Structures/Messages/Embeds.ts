@@ -57,9 +57,10 @@ export namespace EmbedMessages {
 
         return {
             color: Colors.Blue, timestamp: new Date(),
-            author: { name: author?.title, iconURL: author?.image?.url, url: author?.url },
-            thumbnail: typeof image === "string" ? { url: image } : image ?? { url: Music.note },
-            description: `Найден плейлист **[${title}](${url})**`,
+            author: { name: author?.title, url: author?.url },
+            thumbnail: { url: author?.image?.url ?? Music.note },
+            image: typeof image === "string" ? { url: image } : image ?? { url: Music.note },
+            fields: [{ name: `**Найден плейлист**`, value: `**❯** **[${title}](${url})**\n**❯** **Всего треков: ${playlist.items.length}**` }],
             footer: { text: `${DisAuthor.username} | ${DurationUtils.getTimeQueue(items)} | 🎶: ${items?.length}`, iconURL: DisAuthor.displayAvatarURL({}) }
         };
     }

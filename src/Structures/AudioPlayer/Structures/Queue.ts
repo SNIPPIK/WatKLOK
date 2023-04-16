@@ -82,11 +82,8 @@ export class CollectionQueue extends Collection<string, Queue> {
         //Отправляем сообщение с авто обновлением
         if (!seek) MessagePlayer.toPlay(queue.message);
 
-        //Получаем ссылку на исходный файл
-        const resource = this.gettingResource(song);
-
-        resource.then((url) => this.constructStream(queue, url, seek));
-        resource.catch((err: string) => queue.player.emit("error", Error(err), true));
+        //Создаем поток
+        queue.createStream = seek;
 
         //Если включен режим отладки показывает что сейчас играет и где
         if (Debug) {
@@ -94,72 +91,6 @@ export class CollectionQueue extends Collection<string, Queue> {
             else Logger.debug(`[Queue]: [${QueueID}]: Play: [seek: ${seek} | filters: ${queue.filters.length}] | [${song.duration.full}] - [${song.author.title} - ${song.title}]`);
         }
     };
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Создаем потоковое вещание при помощи FFmpeg и prism-media OggEncoder'a
-     * @param queue {Queue} Очередь на которой будет запущено потоковое вещание
-     * @param url {string} Ссылка или путь до файла
-     * @param seek {number} До скольки пропускаем трек
-     */
-    private readonly constructStream = (queue: Queue, url: string, seek: number = 0): void => {
-        //Если ссылка не была найдена
-        if (!url) return void queue.player.emit("error", Error(`Link to resource, not found`), true);
-
-        //Создаем поток
-        const stream = new OpusAudio(url, { seek, filters: queue.song.options.isLive ? [] : queue.filters });
-
-        //Отправляем поток в плеер
-        return queue.player.readStream(stream);
-    };
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Получаем ссылку на исходный ресурс
-     * @param song {Song} Какой трек буде включен
-     */
-    private readonly gettingResource = (song: Song): Promise<string> => {
-        return new Promise<string>((resolve) => {
-            //Если пользователь включил кеширование музыки
-            if (Music.CacheMusic) {
-                const info = DownloadManager.getNames(song);
-
-                //Если есть файл выдаем путь до него
-                if (info.status === "final") return resolve(info.path);
-            }
-
-            //Проверяем ссылку на работоспособность
-            this.checkingLink(song.link, song).then((url: string) => {
-                //Если включено кеширование музыки то скачиваем
-                if (Music.CacheMusic && url) setImmediate(() => DownloadManager.download(song, url));
-
-                song.link = url;
-                return resolve(url);
-            });
-        });
-    };
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Получаем исходник файл трека
-     * @param song {Song} Трек который надо найти заново
-     */
-    private readonly checkingLink = (url: string, song: Song, req = 0): Promise<string> => {
-        return new Promise(async (resolve) => {
-            if (req > 3) return resolve(null);
-
-            //Если нет ссылки, то ищем трек
-            if (!url) url = await Platform.searchResource(song);
-
-            //Проверяем ссылку на работоспособность
-            const check = await httpsClient.statusCode(url);
-
-            //Если ссылка работает
-            if (check) return resolve(url);
-
-            //Если ссылка не работает, то удаляем ссылку и делаем новый запрос
-            req++;
-            return resolve(this.checkingLink(null, song, req));
-        });
-    };
-
     //====================== ====================== ====================== ======================
     /**
      * @description Удаление очереди через время
@@ -293,9 +224,25 @@ export class Queue {
     public get options() { return this._options; };
     //====================== ====================== ====================== ======================
     /**
-     * @description Запускаем проигрывание трека из текущей очереди
+     * @description Создаем поток и передаем его в плеер
      */
-    public get callback() { return (seek: number = 0) => this.message.client.player.queue["playCallback"](this.guild.id, seek); };
+    public set createStream(seek: number) {
+        //Если нет трека
+        if (!this.song) return;
+
+        this.song.resource.then((url) => {
+            if (!url) {
+                this.player.emit("error", Error(`[${this.song.url}] Link to resource, not found`), true);
+                return;
+            }
+
+            //Создаем поток
+            const stream = new OpusAudio(url, { seek, filters: this.song.options.isLive ? [] : this.filters });
+
+            //Отправляем поток в плеер
+            this.player.readStream(stream);
+        });
+    }
     //====================== ====================== ====================== ======================
     /**
      * @description Создаем очередь для сервера
@@ -328,7 +275,7 @@ export class Queue {
             }
 
             //Включаем трек
-            setTimeout(this.callback, 1500);
+            setTimeout(() => this.createStream = 0, 1500);
         });
 
         //Если в плеере возникнет ошибка
@@ -339,7 +286,7 @@ export class Queue {
             setTimeout((): void => {
                 if (isSkip) {
                     this.songs.shift();
-                    setTimeout(this.callback, 1e3);
+                    setTimeout(() => this.createStream = 0, 1e3);
                 }
             }, 1200);
         });
