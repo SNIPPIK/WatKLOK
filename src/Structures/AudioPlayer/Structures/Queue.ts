@@ -1,12 +1,9 @@
 import { StageChannel, Collection } from "discord.js";
-import { DownloadManager } from "../Plugins/Download";
-import { httpsClient } from "@Structures/httpsClient";
 import { ClientMessage } from "@Client/Message";
 import { Debug, Music } from "@db/Config.json";
 import { OpusAudio } from "./Media/OpusAudio";
 import { AudioPlayer } from "./AudioPlayer";
 import { MessagePlayer } from "./Messages";
-import { Platform } from "../Platform";
 import { Voice } from "@Utils/Voice";
 import { Song, ISong } from "./Song";
 import { Logger } from "@Logger";

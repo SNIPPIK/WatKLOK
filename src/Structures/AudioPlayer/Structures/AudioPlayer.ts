@@ -3,7 +3,7 @@ import { TypedEmitter } from "tiny-typed-emitter";
 import { PlayerCycle } from "@Utils/LifeCycles";
 import { OpusAudio } from "./Media/OpusAudio";
 
-export { AudioPlayer, SilenceFrame };
+export { AudioPlayer };
 
 const SilenceFrame = Buffer.from([0xf8, 0xff, 0xfe, 0xfae]);
 const SkippedStatuses = ["read", "pause"];

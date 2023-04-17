@@ -1,9 +1,10 @@
+import { DownloadManager } from "../Plugins/Download";
+import { httpsClient } from "@Structures/httpsClient";
 import { platform, Platform } from "../Platform";
 import { DurationUtils } from "@Utils/Durations";
 import { ClientMessage } from "@Client/Message";
 import { Music } from "@db/Config.json";
-import { DownloadManager } from "../Plugins/Download";
-import { httpsClient } from "@Structures/httpsClient";
+
 
 export { Song, ISong };
 
