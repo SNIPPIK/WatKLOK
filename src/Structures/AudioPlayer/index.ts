@@ -66,9 +66,7 @@ export class Player {
         }
 
         //Вызываем функцию для получения данных
-        return new Promise<void>(async () => {
-            const info = await callback(Platform.filterArg(args));
-
+        return callback(Platform.filterArg(args)).then((info) => {
             //Если данных нет
             if (!info) return UtilsMsg.createMessage({ text: `⚠️ Warning | [${platform}.${type}]\n\nДанные не были получены!`, codeBlock: "css", color: "DarkRed", message });
 
