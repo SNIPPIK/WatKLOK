@@ -1,5 +1,6 @@
 import { ChannelType, Guild, InternalDiscordGatewayAdapterCreator, StageChannel, VoiceChannel, VoiceState } from "discord.js";
 import { VoiceConnection, getVoiceConnection, getVoiceConnections, joinVoiceChannel } from "@discordjs/voice";
+import {Logger} from "@Logger";
 
 const VoiceChannelsGroup = "A";
 /**
@@ -22,7 +23,7 @@ export namespace Voice {
         });
 
         //Для голосовых трибун
-        if (type !== ChannelType.GuildVoice && me) me?.voice?.setRequestToSpeak(true);
+        if (type !== ChannelType.GuildVoice && me) me?.voice?.setRequestToSpeak(true).catch(Logger.error);
 
         return JoinVoice;
     }
@@ -39,7 +40,7 @@ export namespace Voice {
             VoiceConnection.removeAllListeners();
             VoiceConnection.disconnect();
 
-            //Удаляем канал из базы @discordjs/voice
+            //Удаляем канал из базы
             getVoiceConnections(VoiceChannelsGroup).delete(VoiceConnection.joinConfig.guildId);
         }
     }

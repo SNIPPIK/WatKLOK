@@ -14,7 +14,8 @@ namespace AudioFilters {
     //====================== ====================== ====================== ======================
     /**
      * @description Получаем множитель времени для правильного отображения. При добавлении новых аргументов в Filters.json<FilterConfigurator>, их нужно тоже добавить сюда!
-     * @param AudioFilters {AudioFilters} Аудио фильтры которые включил пользователь
+     * @param filters {AudioFilters} Аудио фильтры которые включил пользователь
+     * @param duration {number} Время по умолчанию
      */
     export function getDuration(filters: Filters, duration: number = 20) {
         if (!filters) return duration;
@@ -38,10 +39,10 @@ namespace AudioFilters {
     //====================== ====================== ====================== ======================
     /**
      * @description Из названий фильтров получаем настоящие фильтры
-     * @param AudioFilters {AudioFilters} Аудио фильтры которые включил пользователь
+     * @param filters {AudioFilters} Аудио фильтры которые включил пользователь
      * @param seek {number} Нужен для определения впервые включен ли поток
      */
-    export function getVanilaFilters(filters: Filters, seek: number): string {
+    export function getVanillaFilters(filters: Filters, seek: number): string {
         const response: Array<string> = [];
 
         //Включать более плавное включение музыки
@@ -63,7 +64,7 @@ namespace AudioFilters {
 //====================== ====================== ====================== ======================
 /**
 * @description Создаем фильтры для FFmpeg
-* @param AudioFilters {Filters} Аудио фильтры которые включил пользователь
+* @param filters {Filters} Аудио фильтры которые включил пользователь
 * @param callback {Function}
 */
 function filtersForEach(filters: Filters, callback: (fl: string, filter: Filter) => void): void {
@@ -99,4 +100,4 @@ interface Filter {
 
     //Меняется ли скорость
     speed?: null | number
-};
+}

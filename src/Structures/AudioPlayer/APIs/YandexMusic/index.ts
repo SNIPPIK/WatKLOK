@@ -50,7 +50,7 @@ namespace API {
 namespace construct {
     /**
      * @description Из полученных данных заготовляваем трек для AudioPlayer<Queue>
-     * @param video {any} Любой трек с Yandex Music
+     * @param track {any} Любой трек с Yandex Music
      */
     export function track(track: any): ISong.track {
         const author = track.artists?.length ? track.artists?.pop() : track.artists;
@@ -146,7 +146,7 @@ export namespace YandexMusic {
     /**
      * @description Получаем данные об альбоме
      * @param url {string} Ссылка на альбом
-     * @param options {limit: number} Настройки
+     * @param options {limit: number} Опции для запроса
      */
     export function getAlbum(url: string, options = { limit: APIs.limits.playlist }): Promise<ISong.playlist> {
         const ID = url.split(/[^0-9]/g).find(str => str !== "");
@@ -165,7 +165,7 @@ export namespace YandexMusic {
 
                 const findTracks = (api.duplicates ?? api.volumes)?.pop();
                 const AlbumImage = construct.onImage(api?.ogImage ?? api?.coverUri);
-                const tracks: ISong.track[] = findTracks.splice(0, options.limit);;
+                const tracks: ISong.track[] = findTracks.splice(0, options.limit);
                 const Author = await getAuthor(api.artists[0]?.id);
 
                 return resolve({ url, title: api.title, image: AlbumImage, author: Author, items: tracks.map(construct.track) });
@@ -176,6 +176,7 @@ export namespace YandexMusic {
     /**
      * @description Получаем 5 популярных треков автора
      * @param url {string} Ссылка на автора
+     * @param options {limit: number} Опции для запроса
      */
     export function getArtistTracks(url: string, options = { limit: APIs.limits.author }): Promise<ISong.track[]> {
         const ID = url.split(/[^0-9]/g).find(str => str !== "");
@@ -200,6 +201,7 @@ export namespace YandexMusic {
     /**
      * @description Ищем треки на yandex music
      * @param str {string} Что надо искать
+     * @param options {limit: number} Опции для запроса
      * @constructor
      */
     export function SearchTracks(str: string, options = { limit: APIs.limits.search }): Promise<ISong.track[]> {

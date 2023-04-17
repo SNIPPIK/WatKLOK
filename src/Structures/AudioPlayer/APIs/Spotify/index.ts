@@ -174,6 +174,7 @@ export namespace Spotify {
     /**
      * @description Получаем 5 популярных треков автора
      * @param url {string} Ссылка на автора
+     * @param options {limit: number} Опции для запроса
      */
     export function getAuthorTracks(url: string, options = { limit: APIs.limits.author }): Promise<ISong.track[]> {
         const ID = getID(url);

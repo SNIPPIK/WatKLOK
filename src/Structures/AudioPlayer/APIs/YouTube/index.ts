@@ -120,6 +120,7 @@ export namespace YouTube {
     /**
      * @description Получаем данные о плейлисте
      * @param url {string} Ссылка на плейлист
+     * @param options {limit: number} Опции для запроса
      */
     export function getPlaylist(url: string, options = { limit: APIs.limits.playlist }): Promise<ISong.playlist> {
         const ID = getID(url, true);
@@ -201,6 +202,7 @@ export namespace YouTube {
     /**
      * @description Получаем 5 последних треков автора
      * @param url {string} Ссылка на автора
+     * @param options {limit: number} Опции для запроса
      */
     export function getChannelVideos(url: string, options = { limit: APIs.limits.author }): Promise<ISong.track[]> {
         return new Promise(async (resolve, reject) => {

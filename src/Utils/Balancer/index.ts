@@ -13,7 +13,7 @@ export namespace Balancer {
      * @returns 
      */
     export function push(callback: callback): void {
-        //Если выключено создаение очереди, то выполняем функцию незамедлительно
+        //Если выключено создание очереди, то выполняем функцию незамедлительно
         if (!QueueCallbacks) return callback();
 
         db.queue.push(callback);
@@ -33,7 +33,7 @@ function cycleStep(): void {
         if (!callback) return;
         
         try { callback(); } 
-        finally { return cycleStep(); }
+        finally { cycleStep(); }
     });
 }
 

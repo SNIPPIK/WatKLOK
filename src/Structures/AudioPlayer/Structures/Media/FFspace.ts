@@ -87,14 +87,14 @@ class FFmpeg extends Duplex {
  * @param url {string} Ссылка
  */
 function FFprobe(url: string): Promise<JSON> {
-    const ffprobe = runProcess(FFprobeName, ["-print_format", "json", "-show_format", "-i", url]);
+    const process = runProcess(FFprobeName, ["-print_format", "json", "-show_format", "-i", url]);
     let information = "";
-    const cleanup = () => { if (!ffprobe.killed) ffprobe.kill("SIGKILL"); }
+    const cleanup = () => { if (!process.killed) process.kill("SIGKILL"); }
 
     return new Promise((resolve) => {
-        ffprobe.once("close", () => { cleanup(); return resolve(JSON.parse(information + "}")) });
-        ffprobe.stdout.once("data", (data) => information += data.toString());
-        ffprobe.once("error", cleanup);
+        process.once("close", () => { cleanup(); return resolve(JSON.parse(information + "}")) });
+        process.stdout.once("data", (data) => information += data.toString());
+        process.once("error", cleanup);
     });
 }
 //====================== ====================== ====================== ======================
@@ -143,7 +143,7 @@ if (!FFprobeName) {
 }
 //====================== ====================== ====================== ======================
 /**
- * @description Провеерка на наличие файла
+ * @description Проверка на наличие файла
  * @param names Имена процесса
  * @param error Ошибка если имя не найдено
  */

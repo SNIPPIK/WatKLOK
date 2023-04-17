@@ -31,7 +31,7 @@ export namespace MessagePlayer {
      * @requires {MessageCycle, Message}
      */
     export function toPlay(message: ClientMessage): void {
-        //Если уже есть сообщение то удаляем
+        //Если уже есть сообщение, то удаляем
         MessageCycle.toRemove(message.channelId);
         const queue: Queue = message.client.player.queue.get(message.guild.id);
 
@@ -170,7 +170,7 @@ class ButtonCollector {
      */
     public constructor(message: ClientMessage) {
         this._collector = message.createMessageComponentCollector({ filter: (i) => ButtonIDs.includes(i.customId), componentType: ComponentType.Button, time: 60e5 });
-        this._collector.on("collect", (i: ButtonInteraction<CacheType>) => this.onCollect(i, message));
+        this._collector.on("collect", (i: ButtonInteraction) => this.onCollect(i, message));
     };
     //====================== ====================== ====================== ======================
     /**
@@ -179,14 +179,14 @@ class ButtonCollector {
      * @param message {ClientMessage} Сообщение с сервера
      * @returns 
      */
-    private onCollect = (i: ButtonInteraction<CacheType>, message: ClientMessage) => {
+    private onCollect = (i: ButtonInteraction, message: ClientMessage) => {
         const { client, guild } = message;
         const queue = client.player.queue.get(guild.id);
         const { player } = queue;
 
         message.author = i?.member?.user as User ?? i?.user;
 
-        try { i.deferReply(); i.deleteReply(); } catch (e) {/*Notfing*/ }
+        try { i.deferReply().catch(() => {}); i.deleteReply().catch(() => {}); } catch (e) {/*Notfing*/ }
 
         //Если вдруг пользователь будет нажимать на кнопки после выключения плеера
         if (!player?.state || !player?.state?.status) return;
@@ -204,7 +204,7 @@ class ButtonCollector {
             //Повторно включить текущую музыку
             case "replay": return void client.player.replay(message);
             //Включить последнею из списка музыку
-            case "last": return queue.swapSongs = 0;;
+            case "last": return queue.swapSongs = 0;
         }
     };
     //====================== ====================== ====================== ======================

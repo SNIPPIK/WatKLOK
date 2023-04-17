@@ -49,7 +49,7 @@ namespace API {
 namespace construct {
     /**
      * @description Из полученных данных заготовляваем трек для AudioPlayer<Queue>
-     * @param video {Track["response"][0]} Любой трек из VK
+     * @param track {Track["response"][0]} Любой трек из VK
      */
     export function track(track: Track["response"][0]): ISong.track {
         const image = track?.album?.thumb;

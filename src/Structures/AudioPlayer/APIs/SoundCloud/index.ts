@@ -134,6 +134,7 @@ export namespace SoundCloud {
     /**
      * @description Получаем плейлист
      * @param url {string} Ссылка на плейлист
+     * @param options {limit: number} Опции для запроса
      */
     export function getPlaylist(url: string, options = { limit: APIs.limits.playlist }): Promise<ISong.playlist> {
         return new Promise<ISong.playlist>(async (resolve, reject) => {

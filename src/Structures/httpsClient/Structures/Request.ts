@@ -20,7 +20,6 @@ const protocols = {
 namespace Request {
     /**
      * @description Создаем запрос по ссылке, модифицируем по необходимости
-     * @param url {string} Ссылка
      * @param options {httpsClientOptions} Настройки запроса
      * @requires {uploadCookie, getCookies}
      */
@@ -50,7 +49,6 @@ namespace Request {
     //====================== ====================== ====================== ======================
     /**
      * @description Получаем страницу в формате string
-     * @param url {string} Ссылка
      * @param options {httpsClientOptions} Настройки запроса
      * @requires {Request}
      */
@@ -68,7 +66,6 @@ namespace Request {
     //====================== ====================== ====================== ======================
     /**
      * @description Получаем со страницы JSON (Работает только тогда когда все страница JSON)
-     * @param url {string} Ссылка
      * @param options {httpsClientOptions} Настройки запроса
      * @requires {parseBody}
      */

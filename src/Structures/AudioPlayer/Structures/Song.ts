@@ -12,47 +12,47 @@ class Song {
     /**
      * @description Название трека
      */
-    private _title: string;
+    private readonly _title: string;
     //====================== ====================== ====================== ======================
     /**
      * @description Ссылка на трек
      */
-    private _url: string;
+    private readonly _url: string;
     //====================== ====================== ====================== ======================
     /**
      * @description Автор трека
      */
-    private _author: { url: string, title: string, isVerified?: boolean };
+    private readonly _author: { url: string, title: string, isVerified?: boolean };
     //====================== ====================== ====================== ======================
     /**
      * @description Пользователь который включил трек
      */
-    private _requester: ISong.requester;
+    private readonly _requester: ISong.requester;
     //====================== ====================== ====================== ======================
     /**
      * @description Платформа трека
      */
-    private _platform: platform;
+    private readonly _platform: platform;
     //====================== ====================== ====================== ======================
     /**
      * @description Время длительности трека
      * @param seconds {number} В секундах
      * @param full {string} В формате 00:00:00
      */
-    private _duration: { seconds: number, full: string };
+    private readonly _duration: { seconds: number, full: string };
     //====================== ====================== ====================== ======================
     /**
      * @description Изображение трека и автора
      * @param track {ISong.image} Картинка трека
      * @param author {ISong.image} Картинка автора
      */
-    private _images: { track: ISong.image, author: ISong.image };
+    private readonly _images: { track: ISong.image, author: ISong.image };
     //====================== ====================== ====================== ======================
     /**
      * @description Прочие модификаторы
-     * @param isLive {boolean} Если трек является стримом
+     * @param isLive {boolean} Если трек является live
      */
-    private _other: { isLive: boolean };
+    private readonly _other: { isLive: boolean };
     //====================== ====================== ====================== ======================
     /**
      * @description Ссылка на исходный ресурс или путь до файла
@@ -86,7 +86,7 @@ class Song {
     public get requester() { return this._requester; };
     //====================== ====================== ====================== ======================
     /**
-     * @description Получаем платформу с который был взят трек
+     * @description Получаем платформу у которого был взят трек
      */
     public get platform() { return this._platform; };
     //====================== ====================== ====================== ======================
@@ -130,7 +130,7 @@ class Song {
 
             //Проверяем ссылку на работоспособность
             checkingLink(this.link, this).then((url: string) => {
-                //Если включено кеширование музыки то скачиваем
+                //Если включено кеширование музыки, то скачиваем
                 if (Music.CacheMusic && url) setImmediate(() => DownloadManager.download(this, url));
 
                 this.link = url;
@@ -173,7 +173,7 @@ class Song {
             full: seconds > 0 ? DurationUtils.ParsingTimeToString(seconds) : "Live", seconds
         };
 
-        //Пользователь который включил трек
+        //Пользователь, который включил трек
         this._requester = {
             username, id,
             avatarURL: () => `https://cdn.discordapp.com/avatars/${id}/${avatar}.webp`
@@ -185,7 +185,9 @@ class Song {
 //====================== ====================== ====================== ======================
 /**
  * @description Получаем исходник файл трека
+ * @param url {string} Ссылка на исходный файл музыки
  * @param song {Song} Трек который надо найти заново
+ * @param req {number} Номер запроса
  */
 function checkingLink(url: string, song: Song, req = 0): Promise<string> {
     return new Promise(async (resolve) => {
@@ -204,12 +206,12 @@ function checkingLink(url: string, song: Song, req = 0): Promise<string> {
         req++;
         return resolve(checkingLink(null, song, req));
     });
-};
+}
 
 //====================== ====================== ====================== ======================
 /**
  * @description Проверка является ли ссылка ссылкой
- * @param image {{url: string}} Обьекст с ссылкой
+ * @param image {{url: string}} Объект со ссылкой
  */
 function validURL(image: { url: string }): boolean {
     return image && image.url && image.url.length > 0;
@@ -220,13 +222,7 @@ function validURL(image: { url: string }): boolean {
  */
 namespace ISong {
     /**
-     * @description Все доступные запросы
-     */
-    export type SupportRequest = ISong.track | ISong.track[] | ISong.playlist;
-    //====================== ====================== ====================== ======================
-    /**
      * @description Какие данные доступны в <song>.requester
-     * @type interface
      */
     export interface requester {
         //ID Пользователя
@@ -241,7 +237,6 @@ namespace ISong {
     //====================== ====================== ====================== ======================
     /**
      * @description Пример получаемого трека
-     * @type interface
      */
     export interface track {
         //Название трека
@@ -274,7 +269,6 @@ namespace ISong {
     //====================== ====================== ====================== ======================
     /**
      * @description Пример получаемого автора трека
-     * @type interface
      */
     export interface author {
         //Имя автора
@@ -288,7 +282,6 @@ namespace ISong {
     //====================== ====================== ====================== ======================
     /**
      * @description Пример получаемого плейлиста
-     * @type interface
      */
     export interface playlist {
         url: string;
@@ -300,7 +293,6 @@ namespace ISong {
     //====================== ====================== ====================== ======================
     /**
      * @description Параметры картинки
-     * @type interface
      */
     export interface image {
         //Ссылка на картинку

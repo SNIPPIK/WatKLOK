@@ -4,7 +4,7 @@ import { colors } from "@Utils/Message";
 import { WatKLOK } from "@Client";
 
 /**
- * @description Класс для ивентов
+ * @description Класс для событий
  */
 export class Event<K, P> {
     //Название ивента Discord.<Client>
@@ -15,7 +15,7 @@ export class Event<K, P> {
 
     //Функция, которая будет запущена при вызове ивента
     public readonly run: (f: K, f2: P, client: WatKLOK) => void;
-};
+}
 //====================== ====================== ====================== ======================
 /**
  * @description Как выглядит команда
@@ -45,7 +45,7 @@ export class Command {
         //Включить команду
         isEnable?: boolean;
 
-        //Ограничение по времени для того что-бы пользователь не спамил командами
+        //Ограничение по времени
         isCLD?: number;
     }) {
         Object.keys(options).forEach((key) => {
@@ -70,7 +70,7 @@ export class Command {
 
     public readonly isCLD: number = 5;
     public readonly type: string;
-};
+}
 //====================== ====================== ====================== ======================
 /**
  * @description Как выглядит аргумент для SlashCommand

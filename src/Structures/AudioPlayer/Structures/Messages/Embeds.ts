@@ -11,7 +11,6 @@ import { Queue } from "../Queue";
 export namespace EmbedMessages {
     /**
     * @description JSON<EMBED> для отображения текущего трека
-    * @param client {WatKLOK} Клиент
     * @param queue {Queue} Очередь
     */
     export function toPlaying(queue: Queue): EmbedConstructor {
@@ -28,8 +27,6 @@ export namespace EmbedMessages {
     //====================== ====================== ====================== ======================
     /**
      * @description JSON<EMBED> для отображения добавленного трека
-     * @param client {WatKLOK} Клиент
-     * @param color {Song<color>} Цвет
      * @param song {Song} Трек который был добавлен
      * @param songs {Queue<songs>} Все треки
      */
@@ -47,10 +44,8 @@ export namespace EmbedMessages {
     //====================== ====================== ====================== ======================
     /**
      * @description JSON<EMBED> для отображения данных плейлиста
-     * @param client {WatKLOK} Бот
      * @param DisAuthor {ClientMessage.author} Автор сообщения
      * @param playlist {ISong.playlist} Плейлист
-     * @param author {ISong.author} Автор плейлиста
      */
     export function toPushPlaylist({ author: DisAuthor }: ClientMessage, playlist: ISong.playlist): EmbedConstructor {
         const { author, image, url, title, items } = playlist;
@@ -86,7 +81,7 @@ export namespace EmbedMessages {
     //====================== ====================== ====================== ======================
     /**
      * @description JSON<Embed> для отображения найденных треков
-     * @param tracks {inTracks[]} Найденные треки
+     * @param tracks {ISong.track[]} Найденные треки
      * @param platform {platform} Платформа на которой ищем
      * @param author {message.author} Автор запроса
      */
@@ -120,7 +115,6 @@ export namespace EmbedMessages {
 /**
  * @description Создаем Message<Fields>
  * @param queue {Queue} Очередь
- * @param client {WatKLOK} Клиент
  */
 function getFields(queue: Queue): EmbedConstructor["fields"] {
     const { songs, song, player } = queue;
@@ -177,7 +171,7 @@ function matchBar(currentTime: number, maxTime: number, size: number = 25): stri
  */
 function replaceText(text: string, value: number | any, clearText: boolean = false): string {
     try {
-        if (clearText) text = text.replace(/[\[,\]}{"`'*]()/gi, "");
+        if (clearText) text = text.replace(/[\[,\]}{"`'*()]/gi, "");
         if (text.length > value && value !== false) return `${text.substring(0, value)}...`;
         return text;
     } catch { return text; }

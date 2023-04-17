@@ -202,8 +202,8 @@ if (Platforms.audio.length === 0) (() => {
     if (!env.get("YANDEX")) Platforms.auth.push("YANDEX");
 
     //Если платформа не поддерживает получение аудио
-    for (let platfrom of Platforms.all) {
-        if (!platfrom.audio) Platforms.audio.push(platfrom.name);
+    for (let platform of Platforms.all) {
+        if (!platform.audio) Platforms.audio.push(platform.name);
     }
 })();
 //====================== ====================== ====================== ======================
@@ -284,7 +284,7 @@ namespace Platform {
 
             return findPlatform[0].name;
         } else { //Если пользователь ищет трек по названию
-            const prefixs = str.split(' '), platform = prefixs[0].toLowerCase();
+            const prefix = str.split(' '), platform = prefix[0].toLowerCase();
             const findPlatform = Platforms.all.find((info) => info.prefix && info.prefix.includes(platform));
 
             if (findPlatform) return findPlatform.name;
@@ -344,7 +344,7 @@ namespace Platform {
     }
     //====================== ====================== ====================== ======================
     /**
-     * @description Ищем трек на yandex music, если нет токена yandex music или yandex зажмотил ссылку то ищем на YouTube
+     * @description Ищем трек на yandex music, если нет токена yandex music или yandex не дал ссылку то ищем на YouTube
      * @param nameSong {string} Название трека
      * @param duration {number} Длительность трека
      * @param platform {platform} Платформа
@@ -353,10 +353,10 @@ namespace Platform {
         const exPlatform = isFailed(platform) || isAudio(platform) ? isFailed("YANDEX") ? "YOUTUBE" : "YANDEX" : platform;
         const callbacks = full(exPlatform).requests;
 
-        const seacrh = callbacks.find((req) => req.type === "search");
+        const search = callbacks.find((req) => req.type === "search");
         const track = callbacks.find((req) => req.type === "track");
 
-        return (seacrh.run(nameSong) as Promise<ISong.track[]>).then((tracks: ISong.track[]) => {
+        return (search.run(nameSong) as Promise<ISong.track[]>).then((tracks: ISong.track[]) => {
             //Фильтруем треки оп времени
             const FindTracks: ISong.track[] = tracks.filter((track: ISong.track) => {
                 const DurationSong: number = (exPlatform === "YOUTUBE" ? DurationUtils.ParsingTimeToNumber : parseInt)(track.duration.seconds);
@@ -381,7 +381,7 @@ type platform = "YOUTUBE" | "SPOTIFY" | "VK" | "SOUNDCLOUD" | "DISCORD" | "YANDE
 //Поддерживаемые типы для этих платформ
 type callback = "track" | "playlist" | "search" | "album" | "artist";
 
-//Как должен выглядить один запрос
+//Как должен выглядеть один запрос
 interface request {
     //Имя запроса
     type: callback;
@@ -395,7 +395,7 @@ interface request {
 
 //Данные которые хранит Platforms.all в формате Array
 interface platformData {
-    //Низвание платформы
+    //Название платформы
     name: platform;
 
     //Возможно ли получить исходный файл трека

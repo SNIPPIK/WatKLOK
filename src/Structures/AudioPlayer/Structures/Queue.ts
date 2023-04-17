@@ -24,7 +24,7 @@ export class CollectionQueue extends Collection<string, Queue> {
     };
     //====================== ====================== ====================== ======================
     /**
-     * @description Создаем очереди или добавляем в нее обьект или обьекты
+     * @description Создаем очереди или добавляем в нее объект или объекты
      */
     public set create(options: { message: ClientMessage, VoiceChannel: Voice.Channels, info: ISong.track | ISong.playlist }) {
         const { message, VoiceChannel, info } = options;
@@ -53,12 +53,12 @@ export class CollectionQueue extends Collection<string, Queue> {
         const { message } = queue;
         const requester = message.author;
 
-        //Зугружаем плейлисты или альбомы
+        //Загружаем плейлисты или альбомы
         if ("items" in info) {
             //Отправляем сообщение о том что плейлист будет добавлен в очередь
             MessagePlayer.toPushPlaylist(message, info);
 
-            //Зугрежаем треки из плейлиста в очередь
+            //Загружаем треки из плейлиста в очередь
             for (let track of info.items) queue.songs.push(new Song(track, requester));
             return;
         }
@@ -267,10 +267,7 @@ export class Queue {
             }
 
             //Выбираем случайный номер трека, просто меняем их местами
-            if (this?.options?.random) {
-                const RandomNumSong = Math.floor(Math.random() * this.songs.length)
-                this.swapSongs = RandomNumSong;
-            }
+            if (this?.options?.random) this.swapSongs = Math.floor(Math.random() * this.songs.length);
 
             //Включаем трек
             setTimeout(() => this.playCallback = 0, 1500);

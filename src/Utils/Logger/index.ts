@@ -4,7 +4,6 @@ export namespace Logger {
     /**
      * @description Отправляем лог с временем
      * @param text {string} Текст лога
-     * @param isDebug {boolean} Добавить префикс Debug
      */
     export function log(text: string): void {
         const Time = currentTime();
@@ -25,7 +24,6 @@ export namespace Logger {
     /**
      * @description Отправляем лог с временем
      * @param text {string} Текст лога
-     * @param isDebug {boolean} Добавить префикс Debug
      */
     export function debug(text: string): void {
         const Time = currentTime();

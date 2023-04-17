@@ -46,7 +46,7 @@ export class Player {
         //Тип запроса
         const type = Platform.type(args, platform);
 
-        //Ищем функцию которая вернет данные или ошибку
+        //Ищем функцию, которая вернет данные или ошибку
         const callback = Platform.callback(platform, type);
 
         //Если нет функции запроса
@@ -66,18 +66,17 @@ export class Player {
         }
 
         //Вызываем функцию для получения данных
-        return new Promise<void | null>(async (resolve) => {
+        return new Promise<void>(async () => {
             const info = await callback(Platform.filterArg(args));
 
             //Если данных нет
-            if (!info) return resolve(UtilsMsg.createMessage({ text: `⚠️ Warning | [${platform}.${type}]\n\nДанные не были получены!`, codeBlock: "css", color: "DarkRed", message }));
+            if (!info) return UtilsMsg.createMessage({ text: `⚠️ Warning | [${platform}.${type}]\n\nДанные не были получены!`, codeBlock: "css", color: "DarkRed", message });
 
             //Если пользователь ищет трек и кол-во треков больше одного
-            if (info instanceof Array && info.length > 1) return resolve(MessagePlayer.toSearch(info, platform, message));
+            if (info instanceof Array && info.length > 1) return MessagePlayer.toSearch(info, platform, message);
 
             //Загружаем трек или плейлист в Queue<GuildID>
             this.queue.create = { message, VoiceChannel, info: info instanceof Array ? info[0] : info };
-            return resolve(null);
         }).catch((e: any) => {
             if (e.length > 2e3) UtilsMsg.createMessage({ text: `⛔️ Error | [${platform}.${type}]\n\nПроизошла ошибка при получении данных!\n${e.message}`, color: "DarkRed", codeBlock: "css", message });
             else UtilsMsg.createMessage({ text: `⛔️ Error | [${platform}.${type}]\n\nПроизошла ошибка при получении данных!\n${e}`, color: "DarkRed", codeBlock: "css", message });

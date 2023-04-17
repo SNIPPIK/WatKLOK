@@ -124,7 +124,7 @@ export namespace MessageCycle {
 
         //Если в базе больше нет сообщений
         if (db.msg.length === 0) {
-            //Если таймер еще работает то удаляем его
+            //Если таймер еще работает, то удаляем его
             if (db.msg_timeout) {
                 clearTimeout(db.msg_timeout);
 
@@ -160,7 +160,7 @@ export namespace MessageCycle {
     }
     //====================== ====================== ====================== ======================
     /**
-     * @description Жизненый цикл сообщений
+     * @description Жизненный цикл сообщений
      */
     function messageCycleStep(): void {
         const messages = db.msg.filter(msg => !!msg.edit);
@@ -171,12 +171,12 @@ export namespace MessageCycle {
     //====================== ====================== ====================== ======================
     /**
      * @description Обновляем сообщения
-     * @param messages {ClientMessages} Сообщение которые надо обновлять
+     * @param messages {ClientMessage[]} Сообщение которые надо обновлять
      */
     function sendMessage(messages: ClientMessage[]): void {
         const message = messages.shift();
 
-        //Если не больше сообщений то через время начинаем заново
+        //Если не больше сообщений, то через время начинаем заново
         if (!message) {
             db.msg_timeout = setTimeout(messageCycleStep, Music.AudioPlayer.updateMessage < 10 ? 15e3 : Music.AudioPlayer.updateMessage * 1e3);
             return;

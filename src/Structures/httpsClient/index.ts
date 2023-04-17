@@ -104,6 +104,8 @@ function runRequest(url: string, method: method, type: RequestType, options: htt
         headers = { ...headers, 'Content-Type': 'application/json' };
     }
 
+    reqOptions = {...reqOptions, headers};
+
     return RequestType[type](reqOptions);
 }
 

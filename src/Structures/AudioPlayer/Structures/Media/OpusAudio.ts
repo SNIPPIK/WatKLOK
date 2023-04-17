@@ -54,14 +54,14 @@ export class OpusAudio {
     public get destroyed() { return this._opus?.destroyed ?? true; };
     //====================== ====================== ====================== ======================
     /**
-     * @description Получаем декодировщик
+     * @description Получаем конвертер в opus из Ogg/opus
      */
     public get opus() { return this._opus; };
     //====================== ====================== ====================== ======================
     /**
      * @description Создаем поток при помощи ffmpeg конвертируем любой файл в opus
      * @param path {string} Ссылка или путь до файла. Условие чтоб в конце пути был .opus
-     * @param options {FFmpegOptions} Настройки FFmpeg, такие, как seek, filter
+     * @param options {seek?: number, filters?: Filters} Настройки FFmpeg, такие, как seek, filter
      */
     public constructor(path: string, options: { seek?: number, filters?: Filters }) {
         const resource = path.endsWith("opus") ? fs.createReadStream(path) : path
@@ -74,7 +74,7 @@ export class OpusAudio {
                 const Filters = options?.filters;
                 const reconnect = ["-reconnect", 1, "-reconnect_streamed", 1, "-reconnect_delay_max", 5];
                 const Audio = ["-c:a", "libopus", "-f", "opus", "-b:a", Music.Audio.bitrate];
-                const filters = AudioFilters.getVanilaFilters(Filters, seek);
+                const filters = AudioFilters.getVanillaFilters(Filters, seek);
 
                 if (seek) reconnect.push("-ss", seek ?? 0);
                 if (typeof resource === "string") reconnect.push("-i", path);

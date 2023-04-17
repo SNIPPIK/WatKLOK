@@ -84,7 +84,7 @@ function sendArgs(options: messageUtilsOptions): { content: string } | { embeds:
 //====================== ====================== ====================== ======================
 /**
  * @description Варианты отправления сообщения
- * @param message {ClientInteractive} Сообщение
+ * @param message {ClientMessage | ClientInteraction} Сообщение
  * @param isSlash {boolean} Это запрос от пользователя
  * @param args {string} Аргументы для создания сообщения
  * @private

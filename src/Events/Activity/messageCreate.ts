@@ -1,4 +1,4 @@
-import { ClientMessage, interactionCreate } from "./interactionCreate";
+import { ClientMessage, interactionCreate } from "@Client/Message";
 import { Event } from "@Structures/Handlers";
 import { UtilsMsg } from "@Utils/Message";
 import { Bot } from "@db/Config.json";
@@ -23,7 +23,7 @@ export class messageCreate extends Event<ClientMessage, null> {
             const commandName = (message as ClientMessage).content?.split(" ")[0]?.slice(Bot.prefix.length)?.toLowerCase();
             const command = message.client.commands.get(commandName) ?? message.client.commands.find(cmd => cmd.aliases.includes(commandName));
 
-            //Заставляем бота делать вид что он что-то печатает
+            //Заставляем бота делать вид, что он что-то печатает
             if (Bot.TypingMessage) return message.channel.sendTyping().then(() => runCommand(message, command, args));
             return runCommand(message, command, args);
         } catch (e) {
