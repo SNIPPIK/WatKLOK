@@ -13,7 +13,6 @@ export class voiceStateUpdate extends Event<VoiceState, VoiceState> {
     public readonly run = (oldState: VoiceState, newState: VoiceState, client: WatKLOK): void => {
         const queue: Queue = client.player.queue.get(newState.guild.id); //Очередь сервера
         const ChannelID = oldState?.channel?.id || newState?.channel?.id;
-        const player = client.player.queue;
         const Guild = oldState.guild;
 
         setImmediate(() => {
@@ -27,8 +26,8 @@ export class voiceStateUpdate extends Event<VoiceState, VoiceState> {
             if (queue && !queue?.options?.radioMode) {
                 const isBotVoice = !!(newState.channel?.members ?? oldState.channel?.members)?.find((member) => member.user.id === client.user.id);
 
-                if (usersSize < 1 && !isBotVoice) player.timeDestroying(queue.guild.id, "start"); //Если есть очередь сервера, удаляем!
-                else if (usersSize > 0) player.timeDestroying(queue.guild.id, "cancel"); //Если есть очередь сервера, отмена удаления!
+                if (usersSize < 1 && !isBotVoice) queue.timeDestroying = "start"; //Если есть очередь сервера, удаляем!
+                else if (usersSize > 0) queue.timeDestroying = "cancel"; //Если есть очередь сервера, отмена удаления!
 
                 if (Debug) Logger.debug(`[Event]: [voiceStateUpdate]: [ID: ${ChannelID} | Voice: ${!!voice} | inVoice: ${isBotVoice} | Users: ${usersSize} | Queue: ${!!queue}]`);
             }

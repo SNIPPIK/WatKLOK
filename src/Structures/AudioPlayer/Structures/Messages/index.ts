@@ -204,7 +204,7 @@ class ButtonCollector {
             //Повторно включить текущую музыку
             case "replay": return void client.player.replay(message);
             //Включить последнею из списка музыку
-            case "last": return client.player.queue?.swapSongs(guild.id);
+            case "last": return queue.swapSongs = 0;;
         }
     };
     //====================== ====================== ====================== ======================

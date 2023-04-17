@@ -24,7 +24,7 @@ export class CollectionQueue extends Collection<string, Queue> {
         const requester = message.author;
 
         //Запускаем callback плеера, если очередь была создана, а не загружена!
-        if (status === "create") setImmediate(() => this.playCallback(message.guild.id));
+        if (status === "create") setImmediate(() => queue.playCallback = 0);
 
         //Зугружаем плейлисты или альбомы
         if ("items" in info) {
@@ -62,67 +62,6 @@ export class CollectionQueue extends Collection<string, Queue> {
         client.player.queue.set(guild.id, GuildQueue); //Записываем очередь в <client.queue>
 
         return { queue: GuildQueue, status: "create" };
-    };
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Запуск проигрывания трека
-     * @param QueueID {string} Номер очереди или ID сервера
-     * @param seek {number} До скольки надо пропустить
-     */
-    protected readonly playCallback = (QueueID: string, seek: number = 0): void => {
-        const queue = this.get(QueueID);
-        const song = queue.song;
-
-        //Если треков в очереди больше нет
-        if (!song) return queue.cleanup();
-
-        //Отправляем сообщение с авто обновлением
-        if (!seek) MessagePlayer.toPlay(queue.message);
-
-        //Создаем поток
-        queue.createStream = seek;
-
-        //Если включен режим отладки показывает что сейчас играет и где
-        if (Debug) {
-            if (!seek && !queue.filters.length) Logger.debug(`[Queue]: [${QueueID}]: Play: [${song.duration.full}] - [${song.author.title} - ${song.title}]`);
-            else Logger.debug(`[Queue]: [${QueueID}]: Play: [seek: ${seek} | filters: ${queue.filters.length}] | [${song.duration.full}] - [${song.author.title} - ${song.title}]`);
-        }
-    };
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Удаление очереди через время
-     * @param state {string} Что делать с очередью. Запуск таймера или отмена
-     * @constructor
-     */
-    public readonly timeDestroying = (QueueID: string, state: "start" | "cancel"): void => {
-        const queue = this.get(QueueID);
-        const player = queue.player;
-
-        //Запускаем таймер по истечению которого очереди будет удалена!
-        if (state === "start" && !queue._timer) {
-            queue._timer = setTimeout(queue.cleanup, 10e3);
-            player.pause();
-        } else {
-            player.resume();
-            clearTimeout(queue._timer);
-        }
-    };
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Меняет местами треки
-     * @param num {number} Если есть номер для замены
-     */
-    public readonly swapSongs = (QueueID: string, num?: number): void => {
-        const { songs, player } = this.get(QueueID);
-
-        if (songs.length === 1) return player.stop();
-
-        const first = songs[0];
-        const position = num ?? songs.length - 1;
-
-        songs[0] = songs[position];
-        songs[position] = first;
-        player.stop();
     };
 }
 //====================== ====================== ====================== ======================
@@ -223,10 +162,30 @@ export class Queue {
     /**
      * @description Создаем поток и передаем его в плеер
      */
-    public set createStream(seek: number) {
-        //Если нет трека
-        if (!this.song) return;
+    public set playCallback(seek: number) {
+        //Если треков в очереди больше нет
+        if (!this.song) {
+            this.cleanup();
+            return;
+        }
 
+        //Отправляем сообщение с авто обновлением
+        if (!seek) MessagePlayer.toPlay(this.message);
+
+        //Запускаем чтение потока
+        this.readStream = seek;
+
+        //Если включен режим отладки показывает что сейчас играет и где
+        if (Debug) {
+            if (!seek && !this.filters.length) Logger.debug(`[Queue]: [${this.guild.id}]: Play: [${this.song.duration.full}] - [${this.song.author.title} - ${this.song.title}]`);
+            else Logger.debug(`[Queue]: [${this.guild.id}]: Play: [seek: ${seek} | filters: ${this.filters.length}] | [${this.song.duration.full}] - [${this.song.author.title} - ${this.song.title}]`);
+        }
+    };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Начинаем чтение потока
+     */
+    private set readStream(seek: number) {
         this.song.resource.then((url) => {
             if (!url) {
                 this.player.emit("error", Error(`[${this.song.url}] Link to resource, not found`), true);
@@ -239,7 +198,43 @@ export class Queue {
             //Отправляем поток в плеер
             this.player.readStream(stream);
         });
-    }
+    };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Удаление очереди через время
+     * @param state {string} Что делать с очередью. Запуск таймера или отмена
+     * @constructor
+     */
+    public set timeDestroying(state: "start" | "cancel") {
+        const player = this.player;
+
+        //Запускаем таймер по истечению которого очереди будет удалена!
+        if (state === "start" && !this._timer) {
+            this._timer = setTimeout(this.cleanup, 10e3);
+            player.pause();
+        } else {
+            player.resume();
+            clearTimeout(this._timer);
+        }
+    };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Меняет местами треки
+     * @param num {number} Если есть номер для замены
+     */
+    public set swapSongs(num: number) {
+        if (this.songs.length === 1) {
+            this.player.stop();
+            return;
+        }
+
+        const first = this.songs[0];
+        const position = num ?? this.songs.length - 1;
+
+        this.songs[0] = this.songs[position];
+        this.songs[position] = first;
+        this.player.stop();
+    };
     //====================== ====================== ====================== ======================
     /**
      * @description Создаем очередь для сервера
@@ -268,11 +263,11 @@ export class Queue {
             //Выбираем случайный номер трека, просто меняем их местами
             if (this?.options?.random) {
                 const RandomNumSong = Math.floor(Math.random() * this.songs.length)
-                msg.client.player.queue.swapSongs(this.guild.id, RandomNumSong);
+                this.swapSongs = RandomNumSong;
             }
 
             //Включаем трек
-            setTimeout(() => this.createStream = 0, 1500);
+            setTimeout(() => this.playCallback = 0, 1500);
         });
 
         //Если в плеере возникнет ошибка
@@ -283,7 +278,7 @@ export class Queue {
             setTimeout((): void => {
                 if (isSkip) {
                     this.songs.shift();
-                    setTimeout(() => this.createStream = 0, 1e3);
+                    setTimeout(() => this.playCallback = 0, 1e3);
                 }
             }, 1200);
         });

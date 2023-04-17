@@ -214,7 +214,7 @@ export class Player {
         Vote(message, queue, (win) => {
             if (win) {
                 //Начинаем проигрывание трека с <пользователем указанного тайм кода>
-                queue.createStream = seek;
+                queue.playCallback = seek;
 
                 //Отправляем сообщение о пропуске времени
                 return UtilsMsg.createMessage({ text: `⏭️ | Seeking to [${DurationUtils.ParsingTimeToString(seek)}] song | ${title}`, message, codeBlock: "css", color: "Green" });
@@ -235,7 +235,7 @@ export class Player {
         //Запускаем голосование
         Vote(message, queue, (win) => {
             if (win) {
-                queue.createStream = 0;
+                queue.playCallback = 0;
 
                 //Сообщаем о том что музыка начата с начала
                 return UtilsMsg.createMessage({ text: `🔂 | Replay | ${title}`, message, color: "Green", codeBlock: "css" });
@@ -275,7 +275,7 @@ export class Player {
                     if (win) {
                         queue.filters[index + 1] = arg;
 
-                        queue.createStream = seek;
+                        queue.playCallback = seek;
 
                         return UtilsMsg.createMessage({ text: `${author.username} | Filter: ${name} был изменен аргумент на ${arg}!`, message, codeBlock: "css", color: "Green" });
                     } else return UtilsMsg.createMessage({ text: `${author.username}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color: "Yellow" });
@@ -289,7 +289,7 @@ export class Player {
                         if (filter.args) queue.filters.splice(index, 2); //Удаляем фильтр и аргумент
                         else queue.filters.splice(index, 1); //Удаляем только фильтр
 
-                        queue.createStream = seek;
+                        queue.playCallback = seek;
 
                         return UtilsMsg.createMessage({ text: `${author.username} | Filter: ${name} отключен!`, color: "Green", message, codeBlock: "css" });
                     } else return UtilsMsg.createMessage({ text: `${author.username}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color: "Yellow" });
@@ -305,7 +305,7 @@ export class Player {
                         queue.filters.push(name);
                         queue.filters.push(arg as any);
 
-                        queue.createStream = seek;
+                        queue.playCallback = seek;
 
                         return UtilsMsg.createMessage({ text: `${author.username} | Filter: ${name}:${arg} включен!`, color: "Green", message, codeBlock: "css" });
                     } else return UtilsMsg.createMessage({ text: `${author.username}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color: "Yellow" });
@@ -317,7 +317,7 @@ export class Player {
                     if (win) {
                         queue.filters.push(name);
 
-                        queue.createStream = seek;
+                        queue.playCallback = seek;
 
                         return UtilsMsg.createMessage({ text: `${author.username} | Filter: ${name} включен!`, color: "Green", message, codeBlock: "css" });
                     } else return UtilsMsg.createMessage({ text: `${author.username}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color: "Yellow" });
