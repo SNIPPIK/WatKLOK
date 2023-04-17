@@ -13,18 +13,45 @@ import { Logger } from "@Logger";
  */
 export class CollectionQueue extends Collection<string, Queue> {
     /**
-    * @description Создаем очереди или добавляем в нее обьект или обьекты
-    * @param message {ClientMessage} Сообщение с сервера
-    * @param VoiceChannel {Voice.Channels} К какому голосовому каналу надо подключатся
-    * @param info {ISong.track | ISong.playlist} Входные данные это трек или плейлист?
-    * @requires {CreateQueue}
-    */
-    public readonly create = (message: ClientMessage, VoiceChannel: Voice.Channels, info: ISong.track | ISong.playlist): void => {
-        const { queue, status } = this.createQueue(message, VoiceChannel);
-        const requester = message.author;
+     * @description Записываем очередь в this
+     */
+    private set setQueue(queue: Queue) {
+        //Запускаем callback для проигрывания треков
+        setImmediate(() => queue.playCallback = 0);
 
-        //Запускаем callback плеера, если очередь была создана, а не загружена!
-        if (status === "create") setImmediate(() => queue.playCallback = 0);
+        //Добавляем очередь в базу
+        this.set(queue.guild.id, queue);
+    };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Создаем очереди или добавляем в нее обьект или обьекты
+     */
+    public set create(options: { message: ClientMessage, VoiceChannel: Voice.Channels, info: ISong.track | ISong.playlist }) {
+        const { message, VoiceChannel, info } = options;
+        const queue = this.get(message.guild.id);
+
+        if (!queue) {
+            //Создаем очередь
+            const GuildQueue = new Queue(message, VoiceChannel);
+
+            //Подключаемся к голосовому каналу
+            GuildQueue.player.connection = Voice.Join(VoiceChannel); //Добавляем подключение в плеер
+
+            this.setQueue = GuildQueue;
+        }
+
+        //Добавляем плейлист или трек в очередь
+        this.addTracks = { queueID: message.guild.id, info };
+    };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Добавляем трек или плейлист
+     */
+    private set addTracks(options: { queueID: string, info: ISong.track | ISong.playlist }) {
+        const queue = this.get(options.queueID);
+        const info = options.info;
+        const { message } = queue;
+        const requester = message.author;
 
         //Зугружаем плейлисты или альбомы
         if ("items" in info) {
@@ -41,28 +68,7 @@ export class CollectionQueue extends Collection<string, Queue> {
         if (queue.songs.length >= 1) MessagePlayer.toPushSong(queue, song);
 
         queue.songs.push(song);
-    };
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Создаем очереди или если она есть выдаем
-     * @param message {ClientMessage} Сообщение с сервера
-     * @param VoiceChannel {Voice.Channels} К какому голосовому каналу надо подключатся
-     */
-    private readonly createQueue = (message: ClientMessage, VoiceChannel: Voice.Channels): { status: "create" | "load", queue: Queue } => {
-        const { client, guild } = message;
-        const queue = client.player.queue.get(guild.id);
-
-        if (queue) return { queue, status: "load" };
-
-        //Создаем очередь
-        const GuildQueue = new Queue(message, VoiceChannel);
-
-        //Подключаемся к голосовому каналу
-        GuildQueue.player.connection = Voice.Join(VoiceChannel); //Добавляем подключение в плеер
-        client.player.queue.set(guild.id, GuildQueue); //Записываем очередь в <client.queue>
-
-        return { queue: GuildQueue, status: "create" };
-    };
+    }
 }
 //====================== ====================== ====================== ======================
 /**
