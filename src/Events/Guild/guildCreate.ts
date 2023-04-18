@@ -23,7 +23,7 @@ export class guildCreate extends Event<Guild, null> {
             author: { name: client.user.username, iconURL: client.user.displayAvatarURL() },
             thumbnail: { url: guild.bannerURL({ size: 4096 }) },
             timestamp: new Date(),
-            description: `Приветствую всех пользователей ${guild} сервера. Я просто музыкальный бот, спасибо что добавили меня к себе 🥰`,
+            description: `Приветствую всех пользователей ${guild} сервера. Я просто музыкальный бот, спасибо что добавили меня к себе 🥰`
         };
 
         // @ts-ignore

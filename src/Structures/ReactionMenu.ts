@@ -15,7 +15,7 @@ export class ReactionMenu {
     public constructor(embed: EmbedConstructor | string, message: ClientMessage, callbacks: ReactionCallbacks, isSlash: boolean = false) {
         const args = typeof embed === "string" ? { content: embed, fetchReply: true } : { embeds: [embed], fetchReply: true };
 
-        setImmediate(() => (isSlash ? message.reply : message.channel.send)(args).then((msg) => this.createRections(msg, message, callbacks)));
+        setImmediate(() => (isSlash ? message.reply : message.channel.send)(args).then((msg) => this.createReactions(msg, message, callbacks)));
     };
     //====================== ====================== ====================== ======================
     /**
@@ -25,7 +25,7 @@ export class ReactionMenu {
      * @param callbacks {ReactionCallbacks} Что делать при взаимодействии с реакциями
      * @returns 
      */
-    private readonly createRections = (msg: ClientMessage, message: ClientMessage, callbacks: ReactionCallbacks) => Object.entries(callbacks).forEach(([key, value]) => {
+    private readonly createReactions = (msg: ClientMessage, message: ClientMessage, callbacks: ReactionCallbacks) => Object.entries(callbacks).forEach(([key, value]) => {
         const callback = (reaction: MessageReaction) => value(reaction, message.author, message, msg);
         const emoji = emojis[key as "back" | "next" | "cancel"];
 

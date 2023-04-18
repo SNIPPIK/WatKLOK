@@ -72,7 +72,7 @@ export class OpusAudio {
             () => {
                 const seek = options?.seek;
                 const Filters = options?.filters;
-                const reconnect = ["-reconnect", 1, "-reconnect_streamed", 1, "-reconnect_delay_max", 5];
+                const reconnect = ["-vn", "-sn", "-dn", "-reconnect", 1, "-reconnect_streamed", 1, "-reconnect_delay_max", 5];
                 const Audio = ["-c:a", "libopus", "-f", "opus", "-b:a", Music.Audio.bitrate];
                 const filters = AudioFilters.getVanillaFilters(Filters, seek);
 
