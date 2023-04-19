@@ -29,13 +29,13 @@ export class Player {
     /**
      * @description Получаем данные из базы по данным
      * @param message {ClientMessage} Сообщение с сервера
-     * @param args {string} Что требует пользователь
+     * @param argument {string} Что требует пользователь
      */
-    public readonly play = (message: ClientMessage, args: string): void => {
+    public readonly play = (message: ClientMessage, argument: string): void => {
         const VoiceChannel = message.member?.voice?.channel;
 
         //Платформа с которой будем взаимодействовать
-        const platform = Platform.name(args);
+        const platform = Platform.name(argument);
 
         //Если нет такой платформы 
         if (!platform) return UtilsMsg.createMessage({ text: `⚠️ Warning\n\nУ меня нет поддержки этой платформы!`, codeBlock: "css", color: "Yellow", message });
@@ -44,7 +44,7 @@ export class Player {
         if (Platform.isFailed(platform)) return UtilsMsg.createMessage({ text: `⚠️ Warning | [${platform}]\n\nНет данных для авторизации, запрос не может быть выполнен!`, codeBlock: "css", color: "Yellow", message });
 
         //Тип запроса
-        const type = Platform.type(args, platform);
+        const type = Platform.type(argument, platform);
 
         //Ищем функцию, которая вернет данные или ошибку
         const callback = Platform.callback(platform, type);
@@ -66,7 +66,7 @@ export class Player {
         }
 
         //Вызываем функцию для получения данных
-        callback(Platform.filterArg(args)).then((info) => {
+        callback(Platform.filterArg(argument)).then((info) => {
             //Если данных нет
             if (!info) return UtilsMsg.createMessage({ text: `⚠️ Warning | [${platform}.${type}]\n\nДанные не были получены!`, codeBlock: "css", color: "DarkRed", message });
 
