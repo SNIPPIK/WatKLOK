@@ -203,7 +203,7 @@ export class Queue {
 
             //Отправляем поток в плеер
             this.player.readStream(stream);
-        });
+        }).catch((e) => this.player.emit("error", Error(e), true));
     };
     //====================== ====================== ====================== ======================
     /**

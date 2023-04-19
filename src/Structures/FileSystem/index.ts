@@ -90,11 +90,12 @@ class FileLoader {
         readdirSync(`./src/${this.path}`).forEach(async (dir: string) => {
             if (dir.endsWith(".js") || dir.endsWith(".ts")) return;
 
+            let reason: string = null;
+
             //Берем файлы мз папки
             const files = readdirSync(`./src/${this.path}/${dir}/`).filter((file: string) => (file.endsWith(".js") || file.endsWith(".ts")));
 
             for (let file of files) {
-                let reason: string = null;
                 const pull = await this.findExport(`../../${this.path}/${dir}/${file}`);
 
                 //После загрузки удаляем

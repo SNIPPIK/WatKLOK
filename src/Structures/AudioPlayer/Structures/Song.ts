@@ -1,6 +1,6 @@
 import { DownloadManager } from "../Plugins/Download";
 import { httpsClient } from "@Structures/httpsClient";
-import { platform, Platform } from "../Platform";
+import { platform, Platform } from "@Structures/APIs";
 import { DurationUtils } from "@Utils/Durations";
 import { ClientMessage } from "@Client/Message";
 import { Music } from "@db/Config.json";

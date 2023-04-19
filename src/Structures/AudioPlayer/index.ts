@@ -10,7 +10,7 @@ import { CollectionQueue, Queue } from "./Structures/Queue";
 import { Filter } from "./Structures/Media/AudioFilters";
 import { MessagePlayer } from "./Structures/Messages";
 import { Song } from "./Structures/Song";
-import { Platform } from "./Platform";
+import { Platform } from "../APIs";
 
 /**
  * @description Храним все очереди здесь
@@ -31,7 +31,7 @@ export class Player {
      * @param message {ClientMessage} Сообщение с сервера
      * @param args {string} Что требует пользователь
      */
-    public readonly play = (message: ClientMessage, args: string): void | Promise<void> => {
+    public readonly play = (message: ClientMessage, args: string): void => {
         const VoiceChannel = message.member?.voice?.channel;
 
         //Платформа с которой будем взаимодействовать
@@ -66,7 +66,7 @@ export class Player {
         }
 
         //Вызываем функцию для получения данных
-        return callback(Platform.filterArg(args)).then((info) => {
+        callback(Platform.filterArg(args)).then((info) => {
             //Если данных нет
             if (!info) return UtilsMsg.createMessage({ text: `⚠️ Warning | [${platform}.${type}]\n\nДанные не были получены!`, codeBlock: "css", color: "DarkRed", message });
 

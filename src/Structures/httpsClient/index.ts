@@ -76,7 +76,7 @@ export namespace httpsClient {
 /**
  * @description Создаем запрос из требований
  * @param url {string} Ссылка
- * @param method {string} Метод зпроса
+ * @param method {string} Метод запроса
  * @param type {string} Тип выдачи данных
  * @param options {httpsClientOptions} Доп настройки
  */

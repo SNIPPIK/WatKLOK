@@ -9,6 +9,8 @@ const SilenceFrame = Buffer.from([0xf8, 0xff, 0xfe, 0xfae]);
 const SkippedStatuses = ["read", "pause"];
 const UpdateMessage = ["read"];
 
+const CyclePlayers = new PlayerCycle();
+
 class AudioPlayer extends TypedEmitter<PlayerEvents> {
     /**
      * @description Голосовое подключение к каналу
@@ -80,12 +82,12 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
 
         //Фильтруем статусы бота что в emit не попало что не надо
         if (oldStatus !== newStatus || oldStatus !== "idle" && newStatus === "read") {
-            PlayerCycle.toRemove(this);
+            CyclePlayers.remove = this;
             this.emit(newStatus);
         }
 
         //Добавляем плеер в CycleStep
-        PlayerCycle.toPush(this);
+        CyclePlayers.push = this;
     };
     //====================== ====================== ====================== ======================
     /**
@@ -180,7 +182,7 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
             this._connection = null;
             this._state = null;
 
-            PlayerCycle.toRemove(this);
+            CyclePlayers.remove = this;
         } else {
             if (this.state?.stream) {
                 if (this.state.stream?.opus) {

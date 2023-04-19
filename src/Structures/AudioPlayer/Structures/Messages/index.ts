@@ -22,6 +22,7 @@ const Buttons = new ActionRowBuilder().addComponents(
     ]
 );
 const emoji: string = ReactionMenuSettings.emojis.cancel;
+const CycleMessages = new MessageCycle();
 
 //Сообщения, которые отправляет плеер
 export namespace MessagePlayer {
@@ -32,7 +33,7 @@ export namespace MessagePlayer {
      */
     export function toPlay(message: ClientMessage): void {
         //Если уже есть сообщение, то удаляем
-        MessageCycle.toRemove(message.channelId);
+        CycleMessages.toRemove = message.channelId;
         const queue: Queue = message.client.player.queue.get(message.guild.id);
 
         if (!queue || !queue?.song) return;
@@ -50,7 +51,7 @@ export namespace MessagePlayer {
                 queue.player.once("idle", () => collector?.destroy());
 
                 //Добавляем сообщение к CycleStep
-                MessageCycle.toPush(msg);
+                CycleMessages.toPush = msg;
             });
         });
     }
