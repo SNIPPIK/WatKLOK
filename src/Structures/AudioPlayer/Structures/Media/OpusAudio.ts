@@ -59,6 +59,17 @@ export class OpusAudio {
     public get opus() { return this._opus; };
     //====================== ====================== ====================== ======================
     /**
+     * @description Выдаем пакет, добавляем время
+     */
+    public get read(): Buffer | null {
+        const packet: Buffer = this.opus?.read();
+
+        if (packet) this._duration += this._durFrame;
+
+        return packet;
+    };
+    //====================== ====================== ====================== ======================
+    /**
      * @description Создаем поток при помощи ffmpeg конвертируем любой файл в opus
      * @param path {string} Ссылка или путь до файла. Условие чтоб в конце пути был .opus
      * @param options {seek?: number, filters?: Filters} Настройки FFmpeg, такие, как seek, filter
@@ -109,18 +120,7 @@ export class OpusAudio {
         //Когда можно будет читать поток записываем его в <this._readable>
         this.opus.once("readable", () => (this._readable = true));
 
-        if (Debug) Logger.debug(`[AudioPlayer]: [OpusAudio]: Decoding [${path}]`);
-    };
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Выдаем пакет, добавляем время
-     */
-    public read = (): Buffer | null => {
-        const packet: Buffer = this.opus?.read();
-
-        if (packet) this._duration += this._durFrame;
-
-        return packet;
+        if (Debug) Logger.debug(`[AudioPlayer]: [OpusAudio]:\n┌ Status:       [Encoding]\n├ Modification: [Filters: ${options?.filters?.length} | Seek: ${options?.seek}]\n└ File:         [${path}]`);
     };
     //====================== ====================== ====================== ======================
     /**

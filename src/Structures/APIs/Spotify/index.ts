@@ -216,7 +216,6 @@ function getAuthor(url: string, isUser: boolean = false): Promise<ISong.author> 
             return resolve({ // @ts-ignore
                 title: api?.name ?? api?.display_name, url,
                 image: api.images[0]
-                //isVerified: api.followers.total >= 500
             });
         } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
     });

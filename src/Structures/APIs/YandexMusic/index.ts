@@ -137,7 +137,10 @@ export namespace YandexMusic {
                 track.author = await getAuthor(track?.artists[0].id);
 
                 if (audio instanceof Error) return resolve(construct.track(track));
-                return resolve({ ...construct.track(track), format: { url: audio } });
+
+                const _track = construct.track(track);
+                _track.format = { url: audio };
+                return resolve(_track);
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }

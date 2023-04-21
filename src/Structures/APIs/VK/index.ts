@@ -97,7 +97,9 @@ export namespace VK {
                 //Если запрос выдал ошибку то
                 if (api instanceof Error) return reject(api);
 
-                return resolve(construct.track(api.response.pop()));
+                const track = construct.track(api.response.pop());
+
+                return resolve(track);
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }
@@ -151,9 +153,9 @@ export namespace VK {
 
                 //Если запрос выдал ошибку то
                 if (api instanceof Error) return reject(api);
-                const tracks = api.response.items.splice(0, options.limit);
+                const tracks = (api.response.items.splice(0, options.limit)).map(construct.track);
 
-                return resolve(tracks.map(construct.track));
+                return resolve(tracks);
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }

@@ -105,7 +105,7 @@ function extractPage(decoder: Decoder | IncomingMessage): Promise<string> {
 type method = "POST" | "GET" | "HEAD";
 //====================== ====================== ====================== ======================
 /**
- * @description Варианты расшифоровки
+ * @description Варианты расшифровки
  */
 type Decoder = BrotliDecompress | Gunzip | Deflate;
 //====================== ====================== ====================== ======================

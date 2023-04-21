@@ -5,7 +5,6 @@ import { DurationUtils } from "@Utils/Durations";
 import { ClientMessage } from "@Client/Message";
 import { Music } from "@db/Config.json";
 
-
 export { Song, ISong };
 
 class Song {

@@ -8,7 +8,6 @@ const db = {
     link: "https://www.youtube.com",
     short: "https://youtu.be"
 };
-
 //====================== ====================== ====================== ======================
 /**
  * @description Формирование общих данных
@@ -265,13 +264,12 @@ function getChannel({ id, name }: { id: string, name?: string }): Promise<ISong.
 
         const data = channel[1]?.response ?? channel?.response ?? null as any;
         const info = data?.header?.c4TabbedHeaderRenderer, Channel = data?.metadata?.channelMetadataRenderer,
-            avatar = info?.avatar//, badges = info?.badges;
+            avatar = info?.avatar;
 
         return resolve({
             title: Channel?.title ?? name ?? "Not found name",
             url: `${db.link}/channel/${id}`,
             image: avatar?.thumbnails.pop() ?? null
-            //isVerified: !!badges?.find((badge: any) => ["Verified", "Official Artist Channel"].includes(badge?.metadataBadgeRenderer?.tooltip))
         });
     });
 }

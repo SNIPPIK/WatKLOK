@@ -12,9 +12,9 @@ export class ShardManager extends ShardingManager {
 
         //Ивент создания дубликата
         this.on("shardCreate", (shard: Shard) => {
-            shard.once("spawn", () => Logger.log(`[ShardID: ${shard.id}]: spawning...`));
-            shard.once("ready", () => Logger.log(`[ShardID: ${shard.id}]: ready...`));
-            shard.once("death", () => Logger.log(`[ShardID: ${shard.id}]: killed...`));
+            shard.once("spawn", () => Logger.log(`[${shard.id}]: spawning...`));
+            shard.once("ready", () => Logger.log(`[${shard.id}]: ready...`));
+            shard.once("death", () => Logger.log(`[${shard.id}]: killed...`));
         });
 
         //Создаем дубликат

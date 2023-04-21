@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, readdirSync } from "node:fs";
 import { Command, Event } from "@Structures/Handlers";
+import { existsSync, readdirSync } from "fs";
 import { WatKLOK } from "@Client";
 
 type TypeFileLoad = Command | Event<any, any>;
@@ -8,18 +8,6 @@ type FileCallback = (pull: TypeFileLoad, { }: { dir: string, file: string, reaso
 let tempLogs: { Commands: string[], Events: string[] } = { Commands: [], Events: [] };
 
 export namespace FileSystem {
-    /**
-     * @description Создаем полноценный путь
-     * @param dir {string} dir/dir/dir
-     */
-    export function createDirs(dir: string): void {
-        let dirs = dir.split("/"), currentDir = "";
-
-        if (!dir.endsWith("/")) dirs.splice(dirs.length - 1);
-
-        for (let i in dirs) { currentDir += `${dirs[i]}/`; if (!existsSync(currentDir)) mkdirSync(currentDir); }
-    }
-    //====================== ====================== ====================== ======================
     /**
      * @description Загружаем файлы в FileBase<type>
      * @param client {WatKLOK} Бот

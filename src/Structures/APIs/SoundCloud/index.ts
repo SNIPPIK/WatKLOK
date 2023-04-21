@@ -85,7 +85,6 @@ namespace construct {
             url: user.permalink_url,
             title: user.username,
             image: parseImage(user.avatar_url)
-            //isVerified: user.verified
         }
     }
     //====================== ====================== ====================== ======================
@@ -126,7 +125,10 @@ export namespace SoundCloud {
                 const { result, ClientID } = api;
                 const format = await API.getFormat(result.media.transcodings, ClientID); //Получаем исходный файл музыки
 
-                return resolve({ ...construct.track(result, url), format: { url: format } });
+                const track = construct.track(result, url);
+                track.format = { url: format };
+
+                return resolve(track);
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     }

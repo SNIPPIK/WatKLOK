@@ -1,5 +1,4 @@
-import { existsSync, createWriteStream, rename } from "fs";
-import { FileSystem } from "@Structures/FileSystem";
+import { existsSync, createWriteStream, rename, mkdirSync } from "fs";
 import { Song } from "@AudioPlayer/Structures/Song";
 import { Music, Debug } from "@db/Config.json";
 import { httpsClient } from "@httpsClient";
@@ -25,7 +24,7 @@ export namespace DownloadManager {
         if (findSong || track.duration.seconds > 800 || names.status !== "not") return;
 
         //Проверяем путь на наличие директорий
-        FileSystem.createDirs(names.path);
+        if (!existsSync(names.path)) mkdirSync(names.path);
 
         //Добавляем трек в очередь для скачивания
         QueueDownload.push({ title: track.title, author: track.author.title, duration: track.duration.seconds, resource });
@@ -90,7 +89,7 @@ function downloadTrack(song: DownloadSong, path: string) {
                 if (Debug) Logger.debug(`[DownloadManager]: [download]: in ${refreshName}.opus`);
 
                 rename(path, `${refreshName}.opus`, () => null);
-                void setTimeout(() => cycleStep(), 2e3);
+                setTimeout(() => cycleStep(), 2e3);
             });
         }
     });

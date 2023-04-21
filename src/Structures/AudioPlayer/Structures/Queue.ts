@@ -1,12 +1,12 @@
-import { StageChannel, Collection } from "discord.js";
-import { ClientMessage } from "@Client/Message";
-import { Debug, Music } from "@db/Config.json";
-import { OpusAudio } from "./Media/OpusAudio";
-import { AudioPlayer } from "./AudioPlayer";
-import { MessagePlayer } from "./Messages";
-import { Voice } from "@Utils/Voice";
-import { Song, ISong } from "./Song";
-import { Logger } from "@Logger";
+import {Collection, StageChannel} from "discord.js";
+import {ClientMessage} from "@Client/Message";
+import {Debug, Music} from "@db/Config.json";
+import {OpusAudio} from "./Media/OpusAudio";
+import {AudioPlayer} from "./AudioPlayer";
+import {MessagePlayer} from "./Messages";
+import {Voice} from "@Utils/Voice";
+import {ISong, Song} from "./Song";
+import {Logger} from "@Logger";
 
 /**
  * @description Collection Queue, содержит в себе все очереди
@@ -182,10 +182,7 @@ export class Queue {
         this.readStream = seek;
 
         //Если включен режим отладки показывает что сейчас играет и где
-        if (Debug) {
-            if (!seek && !this.filters.length) Logger.debug(`[Queue]: [${this.guild.id}]: Play: [${this.song.duration.full}] - [${this.song.author.title} - ${this.song.title}]`);
-            else Logger.debug(`[Queue]: [${this.guild.id}]: Play: [seek: ${seek} | filters: ${this.filters.length}] | [${this.song.duration.full}] - [${this.song.author.title} - ${this.song.title}]`);
-        }
+        if (Debug) Logger.debug(`[Queue]: [${this.guild.id}]: Play: [${this.song.duration.full}] - [${this.song.author.title} - ${this.song.title}]`);
     };
     //====================== ====================== ====================== ======================
     /**
@@ -198,11 +195,8 @@ export class Queue {
                 return;
             }
 
-            //Создаем поток
-            const stream = new OpusAudio(url, { seek, filters: this.song.options.isLive ? [] : this.filters });
-
             //Отправляем поток в плеер
-            this.player.readStream(stream);
+            this.player.readStream = new OpusAudio(url, {seek, filters: this.song.options.isLive ? [] : this.filters});
         }).catch((e) => this.player.emit("error", Error(e), true));
     };
     //====================== ====================== ====================== ======================

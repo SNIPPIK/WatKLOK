@@ -32,6 +32,20 @@ class FFmpeg extends Duplex {
     public get stdin() { return this?.process?.stdin; };
     //====================== ====================== ====================== ======================
     /**
+     * @description Создаем "привязанные функции"
+     * @param options {methods: string[], target: Readable | Writable}
+     */
+    private set setter({methods, target}: {methods: string[], target?: Readable | Writable}) {
+        // @ts-ignore
+        if (target) return methods.forEach((method) => this[method] = target[method].bind(target));
+        else {
+            const EVENTS = { readable: this.stdout, data: this.stdout, end: this.stdout, unpipe: this.stdout, finish: this.stdin, close: this.stdin, drain: this.stdin };
+            // @ts-ignore
+            methods.forEach((method) => this[method] = (ev, fn) => EVENTS[ev] ? EVENTS[ev][method](ev, fn) : Duplex.prototype[method].call(this, ev, fn));
+        }
+    };
+    //====================== ====================== ====================== ======================
+    /**
      * @description Создаем FFmpeg 
      * @param args {Arguments} Аргументы запуска
      * @param options {DuplexOptions} Модификации потока
@@ -45,24 +59,9 @@ class FFmpeg extends Duplex {
 
         if (Debug) Logger.debug(`[AudioPlayer]: [FFmpeg lib]: running ffmpeg`);
 
-        this.setter(["write", "end"], this.stdin);
-        this.setter(["read", "setEncoding", "pipe", "unpipe"], this.stdout);
-        this.setter(["on", "once", "removeListener", "removeListeners", "listeners"]);
-    }
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Создаем "привязанные функции" (ПФ - термин из ECMAScript 6)
-     * @param methods {string[]}
-     * @param target {Readable | Writable}
-     */
-    private setter = (methods: string[], target?: Readable | Writable): void => {
-        // @ts-ignore
-        if (target) return methods.forEach((method) => this[method] = target[method].bind(target));
-        else {
-            const EVENTS = { readable: this.stdout, data: this.stdout, end: this.stdout, unpipe: this.stdout, finish: this.stdin, close: this.stdin, drain: this.stdin };
-            // @ts-ignore
-            methods.forEach((method) => this[method] = (ev, fn) => EVENTS[ev] ? EVENTS[ev][method](ev, fn) : Duplex.prototype[method].call(this, ev, fn));
-        }
+        this.setter = {methods: ["write", "end"], target: this.stdin};
+        this.setter = {methods: ["read", "setEncoding", "pipe", "unpipe"], target: this.stdout};
+        this.setter = {methods: ["on", "once", "removeListener", "removeListeners", "listeners"]};
     }
     //====================== ====================== ====================== ======================
     /**
