@@ -17,7 +17,7 @@ export class CollectionQueue extends Collection<string, Queue> {
      */
     private set setQueue(queue: Queue) {
         //Запускаем callback для проигрывания треков
-        setImmediate(() => queue.playCallback = 0);
+        setImmediate(() => queue.play = 0);
 
         //Добавляем очередь в базу
         this.set(queue.guild.id, queue);
@@ -168,36 +168,23 @@ export class Queue {
     /**
      * @description Создаем поток и передаем его в плеер
      */
-    public set playCallback(seek: number) {
+    public set play(seek: number) {
         //Если треков в очереди больше нет
-        if (!this.song) {
-            this.cleanup();
-            return;
-        }
+        if (!this.song) { this.cleanup(); return; }
 
         //Отправляем сообщение с авто обновлением
-        if (!seek) MessagePlayer.toPlay(this.message);
+        if (!seek || !this.filters.length) MessagePlayer.toPlay(this.message);
 
         //Запускаем чтение потока
-        this.readStream = seek;
-
-        //Если включен режим отладки показывает что сейчас играет и где
-        if (Debug) Logger.debug(`[Queue]: [${this.guild.id}]: Play: [${this.song.duration.full}] - [${this.song.author.title} - ${this.song.title}]`);
-    };
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Начинаем чтение потока
-     */
-    private set readStream(seek: number) {
         this.song.resource.then((url) => {
-            if (!url) {
-                this.player.emit("error", Error(`[${this.song.url}] Link to resource, not found`), true);
-                return;
-            }
+            if (!url) { this.player.emit("error", Error(`[${this.song.url}] Link to resource, not found`), true); return; }
 
             //Отправляем поток в плеер
             this.player.readStream = new OpusAudio(url, {seek, filters: this.song.options.isLive ? [] : this.filters});
         }).catch((e) => this.player.emit("error", Error(e), true));
+
+        //Если включен режим отладки показывает что сейчас играет и где
+        if (Debug) Logger.debug(`[Queue]: [${this.guild.id}]: Play: [${this.song.duration.full}] - [${this.song.author.title} - ${this.song.title}]`);
     };
     //====================== ====================== ====================== ======================
     /**
@@ -264,7 +251,7 @@ export class Queue {
             if (this?.options?.random) this.swapSongs = Math.floor(Math.random() * this.songs.length);
 
             //Включаем трек
-            setTimeout(() => this.playCallback = 0, 1500);
+            setTimeout(() => this.play = 0, 1500);
         });
 
         //Если в плеере возникнет ошибка
@@ -275,7 +262,7 @@ export class Queue {
             setTimeout((): void => {
                 if (isSkip) {
                     this.songs.shift();
-                    setTimeout(() => this.playCallback = 0, 1e3);
+                    setTimeout(() => this.play = 0, 1e3);
                 }
             }, 1200);
         });

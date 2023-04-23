@@ -118,7 +118,7 @@ export namespace EmbedMessages {
  */
 function getFields(queue: Queue): EmbedConstructor["fields"] {
     const { songs, song, player } = queue;
-    const VisualDuration = toString(song.duration, player.streamDuration);
+    const VisualDuration = toString(song.duration, player.duration);
 
     //Текущий трек
     const fields = [{ name: `**Сейчас играет**`, value: `**❯** **[${replaceText(song.title, 29, true)}](${song.url})**\n${VisualDuration}` }];
