@@ -43,7 +43,7 @@ export namespace FileSystem {
             if (paths.indexOf(path) + 1 === paths.length) {
                 setImmediate((): void => {
                     //Выводим в консоль статус загрузки
-                    if (client.ShardID === undefined) Object.entries(tempLogs).forEach(([key, value]) => {
+                    if (client.shardID === undefined) Object.entries(tempLogs).forEach(([key, value]) => {
                         console.log(`| FileSystem... Loaded ${key} | ${value.length}\n${value.join("\n")}\n`);
                     });
                 });

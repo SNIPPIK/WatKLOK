@@ -21,7 +21,7 @@ export class WatKLOK extends Client {
     /**
      * @description Текущий ID осколка
      */
-    public get ShardID() { return this.shard?.ids[0] ?? undefined; };
+    public get shardID() { return this.shard?.ids[0] ?? undefined; };
     //====================== ====================== ====================== ======================
     /**
      * @description Создаем класс бота и затем запускаем

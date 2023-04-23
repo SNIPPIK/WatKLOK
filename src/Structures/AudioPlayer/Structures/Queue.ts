@@ -192,7 +192,7 @@ export class Queue {
      * @param state {string} Что делать с очередью. Запуск таймера или отмена
      * @constructor
      */
-    public set timeDestroying(state: "start" | "cancel") {
+    public set timer(state: "start" | "cancel") {
         const player = this.player;
 
         //Запускаем таймер по истечению которого очереди будет удалена!
@@ -209,7 +209,7 @@ export class Queue {
      * @description Меняет местами треки
      * @param num {number} Если есть номер для замены
      */
-    public set swapSongs(num: number) {
+    public set swap(num: number) {
         if (this.songs.length === 1) {
             this.player.stop();
             return;
@@ -248,7 +248,7 @@ export class Queue {
             }
 
             //Выбираем случайный номер трека, просто меняем их местами
-            if (this?.options?.random) this.swapSongs = Math.floor(Math.random() * this.songs.length);
+            if (this?.options?.random) this.swap = Math.floor(Math.random() * this.songs.length);
 
             //Включаем трек
             setTimeout(() => this.play = 0, 1500);
