@@ -26,5 +26,5 @@
     "sharder": "cd build && node -r tsconfig-paths/register src/main.js --sharder",
     "build": "tsc -p ./tsconfig.json"
   },
-  "version": "2.6.5"
+  "version": "2.7.0"
 }
