@@ -195,11 +195,13 @@ function checkingLink(url: string, song: Song, req = 0): Promise<string> {
         //Если нет ссылки, то ищем трек
         if (!url) url = await Platform.searchResource(song);
 
-        //Проверяем ссылку на работоспособность
-        const check = await httpsClient.statusCode(url);
+        if (url) {
+            //Проверяем ссылку на работоспособность
+            const check = await new httpsClient(url).status;
 
-        //Если ссылка работает
-        if (check) return resolve(url);
+            //Если ссылка работает
+            if (check) return resolve(url);
+        }
 
         //Если ссылка не работает, то удаляем ссылку и делаем новый запрос
         req++;

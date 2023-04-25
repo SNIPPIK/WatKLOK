@@ -33,7 +33,7 @@ export namespace MessagePlayer {
      */
     export function toPlay(message: ClientMessage): void {
         //Если уже есть сообщение, то удаляем
-        CycleMessages.toRemove = message.channelId;
+        CycleMessages.remove = message.channelId;
         const queue: Queue = message.client.player.queue.get(message.guild.id);
 
         if (!queue || !queue?.song) return;
@@ -51,7 +51,7 @@ export namespace MessagePlayer {
                 queue.player.once("idle", () => collector?.destroy());
 
                 //Добавляем сообщение к CycleStep
-                CycleMessages.toPush = msg;
+                CycleMessages.push = msg;
             });
         });
     }

@@ -41,7 +41,7 @@ export class PlayerCycle {
             this.time = null;
             this._timeout = null;
         }
-    }
+    };
     //====================== ====================== ====================== ======================
     /**
      * @description Жизненный цикл плееров
@@ -53,7 +53,7 @@ export class PlayerCycle {
         this.time += 19.999995;
 
         return this.sendPlayersPackets(players);
-    }
+    };
     //====================== ====================== ====================== ======================
     /**
      * @description Отправляем пакеты
@@ -73,7 +73,7 @@ export class PlayerCycle {
 
         //Запускаем следующий плеер
         setImmediate(() => this.sendPlayersPackets(players));
-    }
+    };
 }
 
 export class MessageCycle {
@@ -86,19 +86,19 @@ export class MessageCycle {
      * @description Добавляем сообщение в <Message[]>
      * @param message {message} Сообщение
      */
-    public set toPush(message: ClientMessage) {
+    public set push(message: ClientMessage) {
         if (this._messages.find(msg => message.channelId === msg.channelId)) return; //Если сообщение уже есть в базе, то ничего не делаем
         this._messages.push(message); //Добавляем сообщение в базу
 
         //Если в базе есть хоть одно сообщение, то запускаем таймер
         if (this._messages.length === 1) setImmediate(this.messageCycleStep);
-    }
+    };
     //====================== ====================== ====================== ======================
     /**
      * @description Удаляем сообщение из <Message[]>, так-же проверяем отключить ли таймер
      * @param channelID {string} ID канала
      */
-    public set toRemove(channelID: string) {
+    public set remove(channelID: string) {
         const Find = this._messages.find(msg => msg.channelId === channelID); //Ищем сообщение е базе
         if (!Find) return; //Если его нет ничего не делаем
 
@@ -116,7 +116,7 @@ export class MessageCycle {
                 this._timeout = null;
             }
         }
-    }
+    };
     //====================== ====================== ====================== ======================
     /**
      * @description Обновляем сообщение
@@ -128,7 +128,7 @@ export class MessageCycle {
 
         //Если очереди нет или сообщение нельзя отредактировать, то удаляем сообщение
         if (!queue || !queue?.song) {
-            this.toRemove = message.channelId;
+            this.remove = message.channelId;
             return;
         }
 
@@ -140,11 +140,11 @@ export class MessageCycle {
 
             //Обновляем сообщение
             message.edit({ embeds: [CurrentPlayEmbed] }).catch((e) => {
-                if (e.message === "Unknown Message") this.toRemove = message.channelId;
+                if (e.message === "Unknown Message") this.remove = message.channelId;
                 Logger.log(`[MessageEmitter]: [function: UpdateMessage]: ${e.message}`);
             });
         });
-    }
+    };
     //====================== ====================== ====================== ======================
     /**
      * @description Жизненный цикл сообщений
@@ -154,7 +154,7 @@ export class MessageCycle {
 
         //Запускаем отправку сообщений
         this.sendMessage(messages);
-    }
+    };
     //====================== ====================== ====================== ======================
     /**
      * @description Обновляем сообщения
@@ -174,5 +174,5 @@ export class MessageCycle {
 
         //Продолжаем обновление
         setImmediate(() => this.sendMessage(messages));
-    }
+    };
 }

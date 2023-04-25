@@ -31,14 +31,14 @@ namespace API {
             const isLoggedIn = db.token !== undefined && db.time > Date.now() + 2;
             if (!isLoggedIn) await getToken();
 
-            const api = await httpsClient.get(`${db.api}/${method}`, {
-                resolve: "json", headers: {
+            const api = await new httpsClient(`${db.api}/${method}`, {
+                headers: {
                     "Accept": "application/json",
                     "Content-Type": "application/x-www-form-urlencoded",
                     "Authorization": "Bearer " + db.token,
                     "accept-encoding": "gzip, deflate, br"
                 }
-            }) as SpotifyRes;
+            }).toJson as SpotifyRes;
 
             if (!api) return resolve(Error("[APIs]: Не удалось получить данные!"));
             else if (api.error) return resolve(Error(`[APIs]: ${api.error.message}`));
@@ -225,16 +225,16 @@ function getAuthor(url: string, isUser: boolean = false): Promise<ISong.author> 
  * @description Получаем токен
  */
 function getToken(): Promise<void> {
-    return httpsClient.post(`${db.account}/token`, {
-        resolve: "json",
+    return new httpsClient(`${db.account}/token`, {
         headers: {
             "Accept": "application/json",
             "Authorization": `Basic ${db.aut}`,
             "Content-Type": "application/x-www-form-urlencoded",
             "accept-encoding": "gzip, deflate, br"
         },
-        body: "grant_type=client_credentials"
-    }).then((result) => {
+        body: "grant_type=client_credentials",
+        method: "POST"
+    }).toJson.then((result) => {
         db.time = Date.now() + result.expires_in;
         db.token = result.access_token;
     });

@@ -72,7 +72,7 @@ function downloadTrack(song: DownloadSong, path: string) {
     if (Debug) Logger.debug(`[DownloadManager]: [start]: [${song.duration}]: [${song.author}] - [${song.title}]`);
 
     //Скачиваем трек
-    httpsClient.get(song.resource, { resolve: "full", useragent: true }).then((req: IncomingMessage) => {
+    new httpsClient(song.resource, { useragent: true }).Request.then((req: IncomingMessage) => {
         if (req instanceof Error) return;
 
         if (req.pipe) {

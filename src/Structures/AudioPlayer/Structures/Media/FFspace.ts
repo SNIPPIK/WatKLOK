@@ -13,7 +13,7 @@ class FFmpeg extends Duplex {
     /**
      * @description Процесс 
      */
-    private process;
+    private process: ChildProcessWithoutNullStreams;
     //====================== ====================== ====================== ======================
     //====================== ====================== ====================== ======================
     /**
@@ -46,6 +46,20 @@ class FFmpeg extends Duplex {
     };
     //====================== ====================== ====================== ======================
     /**
+     * @description Создаем процесс
+     * @param args {Arguments} Аргументы для запуска
+     */
+    private set spawning(args: Arguments) {
+        //Используется для загрузки потока в ffmpeg. Необходимо не указывать параметр -i
+        if (!args.includes("-i")) args = ["-i", "-", ...args];
+
+        //Создаем процесс
+        this.process = spawn(FFmpegName, [...args, "pipe:1"] as any);
+
+        if (Debug) Logger.debug(`[AudioPlayer]: [FFmpeg lib]: running ffmpeg`);
+    };
+    //====================== ====================== ====================== ======================
+    /**
      * @description Создаем FFmpeg 
      * @param args {Arguments} Аргументы запуска
      * @param options {DuplexOptions} Модификации потока
@@ -53,16 +67,11 @@ class FFmpeg extends Duplex {
     public constructor(args: Arguments, options: DuplexOptions = {}) {
         super({ autoDestroy: true, objectMode: true, ...options });
 
-        //Используется для загрузки потока в ffmpeg. Необходимо не указывать параметр -i
-        if (!args.includes("-i")) args = ["-i", "-", ...args];
-        this.process = runProcess(FFmpegName, [...args, "pipe:1"]);
-
-        if (Debug) Logger.debug(`[AudioPlayer]: [FFmpeg lib]: running ffmpeg`);
-
+        this.spawning = args;
         this.setter = {methods: ["write", "end"], target: this.stdin};
         this.setter = {methods: ["read", "setEncoding", "pipe", "unpipe"], target: this.stdout};
         this.setter = {methods: ["on", "once", "removeListener", "removeListeners", "listeners"]};
-    }
+    };
     //====================== ====================== ====================== ======================
     /**
      * @description Удаляем все что не нужно
@@ -86,7 +95,7 @@ class FFmpeg extends Duplex {
  * @param url {string} Ссылка
  */
 function FFprobe(url: string): Promise<JSON> {
-    const process = runProcess(FFprobeName, ["-print_format", "json", "-show_format", "-i", url]);
+    const process = spawn(FFprobeName, ["-print_format", "json", "-show_format", "-i", url]);
     let information = "";
     const cleanup = () => { if (!process.killed) process.kill("SIGKILL"); }
 
@@ -95,15 +104,6 @@ function FFprobe(url: string): Promise<JSON> {
         process.stdout.once("data", (data) => information += data.toString());
         process.once("error", cleanup);
     });
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Запускаем процесс
- * @param name {string} Имя процесса
- * @param args {string[]} Аргументы процесса
- */
-function runProcess(name: string, args: any[]): ChildProcessWithoutNullStreams & { stdout: { _readableState: Readable }, stdin: { _writableState: Writable } } {
-    return spawn(name, args) as any;
 }
 
 

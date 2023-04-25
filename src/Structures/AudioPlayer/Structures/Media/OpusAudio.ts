@@ -70,32 +70,31 @@ export class OpusAudio {
     };
     //====================== ====================== ====================== ======================
     /**
-     * @description Создаем поток при помощи ffmpeg конвертируем любой файл в opus
-     * @param path {string} Ссылка или путь до файла. Условие чтоб в конце пути был .opus
-     * @param options {seek?: number, filters?: Filters} Настройки FFmpeg, такие, как seek, filter
+     * @description Создаем аргументы для FFmpeg
      */
-    public constructor(path: string, options: { seek?: number, filters?: Filters }) {
-        const resource = path.endsWith("opus") ? fs.createReadStream(path) : path
+    private get args() {
+        const reconnect = ["-vn", "-sn", "-dn", "-reconnect", 1, "-reconnect_streamed", 1, "-reconnect_delay_max", 5];
+        const Audio = ["-compression_level", 12, "-c:a", "libopus", "-f", "opus", "-b:a", Music.Audio.bitrate, "-preset:a", "ultrafast"];
+
+        return (path: string, seek: number, filters: string) => {
+            if (seek) reconnect.push("-ss", seek ?? 0);
+            if (path) reconnect.push("-i", path);
+            if (filters) reconnect.push("-af", filters);
+
+            return [...reconnect, ...Audio];
+        }
+    };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Создаем FFmpeg, opus.OggDemuxer
+     * @param options { seek?: number, filters?: Filters, path: string } Аргументы запуска
+     */
+    private set pushStreams(options: { seek?: number, filters?: Filters, path: string }) {
+        const resource = options.path.endsWith("opus") ? fs.createReadStream(options.path) : options.path
+        const filters = AudioFilters.getVanillaFilters(options?.filters, options?.seek);
 
         //Создаем ffmpeg
-        this._ffmpeg = new FFmpeg((
-            //Подготавливаем аргументы для FFmpeg
-            () => {
-                const seek = options?.seek;
-                const Filters = options?.filters;
-                const reconnect = ["-vn", "-sn", "-dn", "-reconnect", 1, "-reconnect_streamed", 1, "-reconnect_delay_max", 5];
-                const Audio = ["-c:a", "libopus", "-f", "opus", "-b:a", Music.Audio.bitrate];
-                const filters = AudioFilters.getVanillaFilters(Filters, seek);
-
-                if (seek) reconnect.push("-ss", seek ?? 0);
-                if (typeof resource === "string") reconnect.push("-i", path);
-
-                if (filters.length > 0) reconnect.push("-af", filters);
-
-                //Всегда есть один фильтр <AudioFade>
-                return [...reconnect, "-compression_level", 12, ...Audio, "-preset:a", "ultrafast"];
-            }
-        )(), { highWaterMark: 128 });
+        this._ffmpeg = new FFmpeg(this.args(typeof resource === "string" ? options.path : null, options?.seek, filters), { highWaterMark: 128 });
 
         //Если resource является Readable то загружаем его в FFmpeg
         if (resource instanceof Readable) {
@@ -104,12 +103,16 @@ export class OpusAudio {
         }
         this._ffmpeg.pipe(this.opus); //Загружаем из FFmpeg'a в opus.OggDemuxer
 
-        //Проверяем сколько времени длится пакет
-        if (options?.filters?.length > 0) this._durFrame = AudioFilters.getDuration(options?.filters);
-        if (options.seek > 0) this._duration = options.seek * 1e3;
-
+        if (Debug) Logger.debug(`[AudioPlayer]: [OpusAudio]:\n┌ Status:       [Encoding]\n├ Modification: [Filters: ${options?.filters?.length} | Seek: ${options?.seek}]\n└ File:         [${options.path}]`);
+    };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Создаем ивенты для отслеживания
+     * @param events {string[]} Ивенты отслеживания
+     */
+    private set createEvents(events: string[]) {
         //Если в <this> будет один из этих статусов, чистим память!
-        ["end", "close", "error"].forEach((event: string) => {
+        events.forEach((event: string) => {
             //Добавляем ивенты для декодера
             this.opus.once(event, this.destroy);
 
@@ -119,8 +122,22 @@ export class OpusAudio {
 
         //Когда можно будет читать поток записываем его в <this._readable>
         this.opus.once("readable", () => (this._readable = true));
+    }
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Создаем поток при помощи ffmpeg конвертируем любой файл в opus
+     * @param path {string} Ссылка или путь до файла. Условие чтоб в конце пути был .opus
+     * @param options {seek?: number, filters?: Filters} Настройки FFmpeg, такие, как seek, filter
+     */
+    public constructor(path: string, options: { seek?: number, filters?: Filters }) {
+        //Задаем старт
+        this.pushStreams = {...options, path};
 
-        if (Debug) Logger.debug(`[AudioPlayer]: [OpusAudio]:\n┌ Status:       [Encoding]\n├ Modification: [Filters: ${options?.filters?.length} | Seek: ${options?.seek}]\n└ File:         [${path}]`);
+        //Проверяем сколько времени длится пакет
+        if (options?.filters?.length > 0) this._durFrame = AudioFilters.getDuration(options?.filters);
+        if (options.seek > 0) this._duration = options.seek * 1e3;
+
+        this.createEvents = ["end", "close", "error"];
     };
     //====================== ====================== ====================== ======================
     /**

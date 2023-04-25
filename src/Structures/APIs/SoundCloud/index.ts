@@ -31,7 +31,7 @@ namespace API {
 
             if (ClientID instanceof Error || !ClientID) return resolve(Error("[APIs]: Невозможно получить ID клиента!"));
 
-            const result = await httpsClient.get(`${db.api}/${method}&client_id=${ClientID}`, { resolve: "json" });
+            const result = await new httpsClient(`${db.api}/${method}&client_id=${ClientID}`).toJson;
 
             if (!result) return resolve(Error("[APIs]: Невозможно найти данные!"));
 
@@ -48,7 +48,7 @@ namespace API {
         const filterFormats = formats.filter((d) => d.format.protocol === "progressive").pop() ?? formats[0];
 
         return new Promise(async (resolve) => {
-            const EndFormat = await httpsClient.get(`${filterFormats.url}?client_id=${ClientID}`, { resolve: "json" });
+            const EndFormat = await new httpsClient(`${filterFormats.url}?client_id=${ClientID}`).toJson;
 
             return resolve(EndFormat.url);
         });
@@ -193,12 +193,12 @@ function getClientID(): Promise<string | Error> | string {
     if (db.clientID) return db.clientID;
 
     return new Promise(async (resolve) => {
-        const parsedPage = await httpsClient.get("https://soundcloud.com/", {
-            resolve: "string", useragent: true, headers: {
+        const parsedPage = await new httpsClient("https://soundcloud.com/", {
+            useragent: true, headers: {
                 "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7",
                 "accept-encoding": "gzip, deflate, br"
             }
-        });
+        }).toJson;
 
         if (!parsedPage || parsedPage instanceof Error) return resolve(Error("[APIs]: Не удалось получить ClientID!"));
 
@@ -207,7 +207,7 @@ function getClientID(): Promise<string | Error> | string {
 
         split.forEach((r: any) => r.startsWith("https") ? urls.push(r.split("\"")[0]) : null);
 
-        const parsedPage2 = await httpsClient.get(urls.pop(), { resolve: "string" });
+        const parsedPage2 = await new httpsClient(urls.pop()).toJson;
 
         if (parsedPage2 instanceof Error) return resolve(Error("[APIs]: Не удалось получить ClientID!"));
         return resolve(parsedPage2.split(",client_id:\"")[1].split("\"")[0]);

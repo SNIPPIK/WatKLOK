@@ -42,7 +42,7 @@ export function extractSignature(formats: YouTubeFormat[], html5player: string):
                 else { format.url = url; break; }
             }
         } catch (e) { //Если 1 способ не помог пробуем 2
-            const page = await httpsClient.get(html5player, { resolve: "string" }) as string;
+            const page = await new httpsClient(html5player).toString as string;
             const tokens = parseTokens(page);
 
             for (let format of sortingQuality) {
@@ -66,7 +66,7 @@ export function extractSignature(formats: YouTubeFormat[], html5player: string):
  */
 function extractFunctions(html5Link: string): Promise<string[]> {
     const functions: string[] = [];
-    return new Promise((resolve, reject) => httpsClient.get(html5Link, { resolve: "string" }).then((body: string) => {
+    return new Promise((resolve, reject) => new httpsClient(html5Link).toString.then((body: string) => {
         if (!body) return;
 
         const decipherName = body.split(`a.set("alr","yes");c&&(c=`)[1].split(`(decodeURIC`)[0];

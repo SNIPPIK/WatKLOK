@@ -21,6 +21,8 @@ export class CollectionQueue extends Collection<string, Queue> {
 
         //Добавляем очередь в базу
         this.set(queue.guild.id, queue);
+
+        if (Debug) Logger.debug(`[Queue]: [${queue.guild.id}]: has create`);
     };
     //====================== ====================== ====================== ======================
     /**

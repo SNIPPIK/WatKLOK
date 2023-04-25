@@ -28,12 +28,11 @@ namespace API {
     export function Request(method: string): Promise<any> {
         return new Promise<any | Error>(async (resolve) => {
 
-            const req = await httpsClient.get(`${db.api}/${method}`, {
-                resolve: "json",
+            const req = await new httpsClient(`${db.api}/${method}`, {
                 headers: {
                     "Authorization": "OAuth " + db.token
                 }
-            });
+            }).toJson;
 
             if (!req) return resolve(Error("[APIs]: Не удалось получить данные!"));
             else if (!db.token) return resolve(Error("[APIs]: Не удалось залогиниться!"));
@@ -100,7 +99,7 @@ namespace construct {
                 if (!api || api instanceof Error) return resolve(Error("[APIs]: Not found links for track!"));
 
                 const track = api?.pop() ?? api;
-                const xml = await httpsClient.parseXML(track.downloadInfoUrl) as Error | string[];
+                const xml = await new httpsClient(track.downloadInfoUrl).toXML as Error | string[];
 
                 if (xml instanceof Error) return resolve(xml);
 

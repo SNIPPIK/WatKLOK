@@ -64,7 +64,7 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
      * @description Передача пакетов в голосовые каналы
      * @param packet {null} Пакет
      */
-    private set packet(packet: Buffer) {
+    private set sendPacket(packet: Buffer) {
         const voiceConnection = this.connection;
 
         //Если голосовой канал готов
@@ -104,18 +104,13 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
      * @description Начинаем чтение стрима
      */
     public set readStream(stream: PlayerStatus["stream"]) {
-        if (!stream) {
-            this.emit("error", Error(`Stream is null`), true);
-            return;
-        }
+        if (!stream) { this.emit("error", Error(`Stream is null`), true); return; }
 
         //Если прочитать возможно
         if (stream.readable) this.state = { status: "read", stream };
         else {
             //Включаем поток когда можно будет начать читать
-            stream.opus.once("readable", () => {
-                this.state = { status: "read", stream };
-            });
+            stream.opus.once("readable", () => { this.state = { status: "read", stream }; });
             //Если происходит ошибка, то продолжаем читать этот же поток
             stream.opus.once("error", () => this.emit("error", Error("Fail read stream"), true));
         }
@@ -155,10 +150,7 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
         if (state?.status === "idle" || state?.status === "pause" || !state?.status || this.connection?.state?.status !== "ready") return;
 
         //Если вдруг нет голосового канала
-        if (!this.connection) {
-            this.state = { ...state, status: "pause" };
-            return;
-        }
+        if (!this.connection) { this.state = { ...state, status: "pause" }; return; }
 
         //Отправка музыкального пакета
         if (state.status === "read") {
@@ -169,7 +161,7 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
                 this.stop();
             }
 
-            this.packet = packet;
+            this.sendPacket = packet;
         }
     };
     //====================== ====================== ====================== ======================
@@ -196,7 +188,7 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
                     this.state.stream.opus.read(); //Устраняем утечку памяти
 
                     //Устраняем фриз после смены потока
-                    this.packet = SilenceFrame;
+                    this.sendPacket = SilenceFrame;
                 }
 
                 this.state.stream.destroy();
