@@ -13,7 +13,7 @@
 <img align="center" alt="Bot Permissions" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/main/.github/resource/Bot Permissions.png?raw=true" />
 
 ## Гайд по запуску
-1. [`Node.js`](https://nodejs.org/ru/) 18-19
+1. [`Node.js`](https://nodejs.org/ru/) 20
 2. [`FFmpeg & FFprobe`](https://ffmpeg.org/) или npm install (ffmpeg-static и ffprobe-static)
 3. Запускаем `npm run build`
 4. Указываем данные в [`build/.env`](build/.env) | `Ps если его нет, то надо создать`
@@ -22,16 +22,16 @@
    - Если серверов более 1к, то `npm run sharder`
 
 ## Поддерживаемые платформы
-[Можно добавить поддержку иных платформ](src/Structures/AudioPlayer/Platform.ts)
+[Можно добавить поддержку иных платформ](src/Structures/APIs)
 
-| Теги | Платформы                                    | Что доступно                                 | Аудио      | Доступ без авторизации |
-|------|----------------------------------------------|----------------------------------------------|------------|------------------------|
-| #YT  | [**YouTube**](https://www.youtube.com/)      | **видео, плейлисты, поиск, стримы, каналы**  | ✔          | ✔                      |
-| #SP  | [**Spotify**](https://open.spotify.com/)     | **треки, плейлисты, поиск, альбомы, авторы** | ✔ (YM, YT) | ❌                      |
-| #YM  | [**Yandex Music**](https://music.yandex.ru/) | **треки, альбомы, поиск, авторы**            | ✔          | ❌                      |
-| #SC  | [**SoundCloud**](https://soundcloud.com/)    | **треки, плейлисты, поиск, альбомы**         | ✔          | ✔                      |
-| #VK  | [**VK**](https://vk.com/)                    | **треки, ~~плейлисты~~, поиск**              | ✔          | ❌                      |
-| #D   | [**Discord**](https://discord.com/)          | **ссылки, файлы**                            | ✔          | ✔                      |
+| Теги | Платформы                                    | Аудио      | Что доступно                                 | Доступ без авторизации |
+|------|----------------------------------------------|------------|----------------------------------------------|------------------------|
+| #YT  | [**YouTube**](https://www.youtube.com/)      | ✔          | **видео, плейлисты, поиск, стримы, каналы**  | ✔                      |
+| #SP  | [**Spotify**](https://open.spotify.com/)     | ✔ (YM, YT) | **треки, плейлисты, поиск, альбомы, авторы** | ❌                      |
+| #YM  | [**Yandex Music**](https://music.yandex.ru/) | ✔          | **треки, альбомы, поиск, авторы**            | ❌                      |
+| #SC  | [**SoundCloud**](https://soundcloud.com/)    | ✔          | **отключен (временно)**                      | ✔                      |
+| #VK  | [**VK**](https://vk.com/)                    | ✔          | **треки, ~~плейлисты~~, поиск**              | ❌                      |
+| #D   | [**Discord**](https://discord.com/)          | ✔          | **ссылки, файлы**                            | ✔                      |
 
 <details>
   <summary>Показать настройки</summary>
@@ -98,7 +98,7 @@
          "CacheMusic": false, //Кешировать музыку? (Значительно ускоряет работу фильтров и seek, как уменьшает кол-во запросов на сервера), могут быть ошибки c seek
          "CacheDir": "AudioCache", //Путь, где будет сохраниться кеш музыки
 
-         //Отправить ли сообщение о том что производится запрос на <platform>.<type>
+         //Отправить ли сообщение о том что производится запрос на <index>.<type>
          //Параметр игнорирует что в APIs<showWarningAudio>. Если этот параметр выключен, то showWarningAudio будет неактивен независимо от аргумента
          "showGettingData": false,
    
