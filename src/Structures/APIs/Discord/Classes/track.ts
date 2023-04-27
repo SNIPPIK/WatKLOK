@@ -5,7 +5,7 @@ import {API} from "@Structures/APIs";
 
 export class Discord_track implements API.track {
     public readonly type = "track";
-    public readonly filter = /1/;
+    public readonly filter = /attachments/;
 
     public readonly callback = (url: string) => {
         return new Promise<ISong.track>((resolve, reject) => {
