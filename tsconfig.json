@@ -42,6 +42,6 @@
     "importHelpers": false,              // Имортировать созданные хелперы (__extends, __rest и так далее) из "tslib".
     "noImplicitAny": true                // Запрет на использование any
   },
-  "include": ["tsconfig.json", "src", "db", "package.json", "Pkg.ts"],
+  "include": ["tsconfig.json", "src", "db", "package.json"],
   "exclude": ["node_modules"]
 }
