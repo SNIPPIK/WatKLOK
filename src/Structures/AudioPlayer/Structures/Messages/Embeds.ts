@@ -1,6 +1,6 @@
 import { ClientMessage, EmbedConstructor } from "@Client/Message";
 import { DurationUtils } from "@Utils/Durations";
-import { Platform } from "../../../APIs";
+import { Platform } from "@Structures/APIs";
 import { Music } from "@db/Config.json";
 import { ISong, Song } from "../Song";
 import { Colors } from "discord.js";

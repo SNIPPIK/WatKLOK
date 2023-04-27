@@ -10,7 +10,7 @@ import { CollectionQueue, Queue } from "./Structures/Queue";
 import { Filter } from "./Structures/Media/AudioFilters";
 import { MessagePlayer } from "./Structures/Messages";
 import { Song } from "./Structures/Song";
-import { Platform } from "../APIs";
+import { Platform } from "@Structures/APIs";
 
 /**
  * @description Храним все очереди здесь
@@ -67,6 +67,8 @@ export class Player {
 
         //Вызываем функцию для получения данных
         callback(Platform.filterArg(argument)).then((info) => {
+            if (info instanceof Error) return;
+
             //Если данных нет
             if (!info) return UtilsMsg.createMessage({ text: `⚠️ Warning | [${platform}.${type}]\n\nДанные не были получены!`, codeBlock: "css", color: "DarkRed", message });
 

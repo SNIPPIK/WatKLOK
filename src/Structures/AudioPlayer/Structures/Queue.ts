@@ -56,7 +56,7 @@ export class CollectionQueue extends Collection<string, Queue> {
         const requester = message.author;
 
         //Загружаем плейлисты или альбомы
-        if ("items" in info) {
+        if ("items" in info && info.items.length > 1) {
             //Отправляем сообщение о том что плейлист будет добавлен в очередь
             MessagePlayer.toPushPlaylist(message, info);
 
@@ -66,7 +66,8 @@ export class CollectionQueue extends Collection<string, Queue> {
         }
 
         //Добавляем трек в очередь
-        const song = new Song(info, requester);
+        // @ts-ignore
+        const song = new Song(info ?? info?.items[0], requester);
         if (queue.songs.length >= 1) MessagePlayer.toPushSong(queue, song);
 
         queue.songs.push(song);
