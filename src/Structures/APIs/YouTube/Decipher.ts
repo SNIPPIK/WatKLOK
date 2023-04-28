@@ -27,11 +27,10 @@ export interface YouTubeFormat {
  * @param {string} html5player
  */
 export function extractSignature(format: YouTubeFormat, html5player: string): Promise<YouTubeFormat> {
-
     return new Promise<YouTubeFormat>((resolve) => {
         //Пробуем 1 способ получения ссылки
         try {
-            extractFunctions(html5player).then((functions) => {
+            return extractFunctions(html5player).then((functions) => {
                 const url = setDownloadURL(format, functions.length ? new vm.Script(functions[0]) : null, functions.length > 1 ? new vm.Script(functions[1]) : null);
 
                 if (url) format.url = url;
@@ -39,7 +38,7 @@ export function extractSignature(format: YouTubeFormat, html5player: string): Pr
                 return resolve(format);
             });
         } catch (e) { //Если 1 способ не помог пробуем 2
-            new httpsClient(html5player).toString.then((page: string) => {
+            return new httpsClient(html5player).toString.then((page: string) => {
                 const tokens = parseTokens(page);
                 const url = setDownload(format, tokens);
 

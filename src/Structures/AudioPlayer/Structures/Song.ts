@@ -204,7 +204,7 @@ function checkingLink(url: string, song: Song, req = 0): Promise<string> {
 
         //Если ссылка не работает, то удаляем ссылку и делаем новый запрос
         req++;
-        return resolve(checkingLink(null, song, req));
+        return resolve(checkingLink(url ?? null, song, req));
     });
 }
 
@@ -214,7 +214,7 @@ function checkingLink(url: string, song: Song, req = 0): Promise<string> {
  * @param image {{url: string}} Объект со ссылкой
  */
 function validURL(image: { url: string }): boolean {
-    return image && image.url && image.url.length > 0;
+    return !!image && !!image.url;
 }
 //====================== ====================== ====================== ======================
 /**

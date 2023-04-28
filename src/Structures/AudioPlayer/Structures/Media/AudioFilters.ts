@@ -21,7 +21,6 @@ namespace AudioFilters {
         if (!filters) return duration;
 
         filtersForEach(filters, (fl, filter: Filter) => {
-
             //Если у фильтра есть модификатор скорости
             if (filter?.speed) {
                 if (typeof filter.speed === "number") duration *= Number(filter.speed);
