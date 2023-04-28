@@ -48,25 +48,25 @@ export class YouTube_Artist implements API.array {
  * @param ID {string} ID автора
  */
 function API_get(ID: string): Promise<Error | any> {
-    return new Promise(async (resolve) => {
+    return new Promise((resolve) => {
         //Создаем запрос
-        const channel = await new httpsClient(`https://www.youtube.com/${ID}/videos`, {
+        return new httpsClient(`https://www.youtube.com/${ID}/videos`, {
             cookie: true, useragent: true,
             headers: {
                 "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7",
                 "accept-encoding": "gzip, deflate, br"
             }
-        }).toString as string | Error;
+        }).toString.then((channel) => {
+            if (channel instanceof Error) return resolve(Error("[APIs]: Не удалось получить данные!"));
 
-        if (channel instanceof Error) return resolve(Error("[APIs]: Не удалось получить данные!"));
+            const info = channel.split("var ytInitialData = ")[1]?.split(";</script><script nonce=")[0];
 
-        const info = channel.split("var ytInitialData = ")[1]?.split(";</script><script nonce=")[0];
+            //Если нет данных на странице
+            if (!info) return resolve(Error("[APIs]: Не удалось получить данные!"));
 
-        //Если нет данных на странице
-        if (!info) return resolve(Error("[APIs]: Не удалось получить данные!"));
+            const details = JSON.parse(info);
 
-        const details = JSON.parse(info);
-
-        return resolve(details);
+            return resolve(details);
+        }).catch((err) => resolve(Error(`[APIs]: ${err}`)));
     });
 }

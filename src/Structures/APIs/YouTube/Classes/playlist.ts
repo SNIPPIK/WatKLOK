@@ -47,25 +47,25 @@ export class YouTube_playlist implements API.list {
  * @param ID {string} ID плейлиста
  */
 function API_get(ID: string): Promise<Error | any> {
-    return new Promise(async (resolve) => {
-        const page = await new httpsClient(`https://www.youtube.com/playlist?list=${ID}`, {
+    return new Promise((resolve) => {
+        return new httpsClient(`https://www.youtube.com/playlist?list=${ID}`, {
             cookie: true, useragent: true,
             headers: {
                 "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7",
                 "accept-encoding": "gzip, deflate, br"
             }
-        }).toString as string | Error;
+        }).toString.then((page) => {
+            if (page instanceof Error) return resolve(Error("[APIs]: Не удалось получить данные!"));
 
-        if (page instanceof Error) return resolve(Error("[APIs]: Не удалось получить данные!"));
+            const result = page.split('var ytInitialData = ')[1].split(';</script>')[0].split(/;\s*(var|const|let)\s/)[0];
 
-        const result = page.split('var ytInitialData = ')[1].split(';</script>')[0].split(/;\s*(var|const|let)\s/)[0];
+            //Если нет данных на странице
+            if (!result) return resolve(new Error("[APIs]: Не удалось получить данные!"));
 
-        //Если нет данных на странице
-        if (!result) return resolve(new Error("[APIs]: Не удалось получить данные!"));
+            const jsonResult = JSON.parse(result);
 
-        const jsonResult = JSON.parse(result);
-
-        return resolve(jsonResult);
+            return resolve(jsonResult);
+        }).catch((err) => resolve(Error(`[APIs]: ${err}`)));
     });
 }
 //====================== ====================== ====================== ======================

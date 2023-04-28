@@ -21,15 +21,16 @@ export namespace VkUtils {
      * @param options {string} Параметры через &
      */
     export function API(method: methodType, type: requestType, options: string): Promise<any | Error> {
-        return new Promise(async (resolve) => {
+        return new Promise((resolve) => {
             const url = `${db.api}/${method}.${type}${db.token}${options}&v=5.131`;
-            const api = await new httpsClient(url).toJson;
 
-            if (!api || !api?.response) return resolve(Error("[APIs]: Невозможно найти данные!"));
-            else if (api?.error) return resolve(Error(`[APIs]: ${api.error_msg}`));
-            else if (api?.error_code) return resolve(Error(`[APIs]: ${api?.error_msg}`));
+            return new httpsClient(url).toJson.then((api) => {
+                if (!api || !api?.response) return resolve(Error("[APIs]: Невозможно найти данные!"));
+                else if (api?.error) return resolve(Error(`[APIs]: ${api.error_msg}`));
+                else if (api?.error_code) return resolve(Error(`[APIs]: ${api?.error_msg}`));
 
-            return resolve(api);
+                return resolve(api);
+            }).catch((err) => resolve(Error(`[APIs]: ${err}`)));
         });
     }
     //====================== ====================== ====================== ======================

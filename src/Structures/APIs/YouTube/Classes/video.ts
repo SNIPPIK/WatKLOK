@@ -23,7 +23,6 @@ export class YouTube_Video implements API.track {
                 if (result instanceof Error) return reject(Error);
 
                 const video = await constructVideo(result);
-                video.format = await extractSignature(result.originalFormats, result.htmlPlayer);
 
                 return resolve(video);
             } catch (e) { return reject(Error(`[APIs]: ${e}`)); }
@@ -36,39 +35,39 @@ export class YouTube_Video implements API.track {
  * @param ID {string} ID Видео
  */
 function API_get(ID: string): Promise<Error | any> {
-    return new Promise(async (resolve) => {
-        const page = await new httpsClient(`https://www.youtube.com/watch?v=${ID}&has_verified=1`, {
+    return new Promise((resolve) => {
+        return new httpsClient(`https://www.youtube.com/watch?v=${ID}&has_verified=1`, {
             cookie: true, useragent: true,
             headers: {
                 "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7",
                 "accept-encoding": "gzip, deflate, br"
             }
-        }).toString;
+        }).toString.then((page) => {
+            if (page instanceof Error) return resolve(Error("[APIs]: Не удалось получить данные!"));
 
-        if (page instanceof Error) return resolve(Error("[APIs]: Не удалось получить данные!"));
+            const result = JSON.parse(page?.split("var ytInitialPlayerResponse = ")?.[1]?.split(";</script>")[0]?.split(/(?<=}}});\s*(var|const|let)\s/)[0]);
 
-        const result = JSON.parse(page?.split("var ytInitialPlayerResponse = ")?.[1]?.split(";</script>")[0]?.split(/(?<=}}});\s*(var|const|let)\s/)[0]);
+            //Если нет данных на странице
+            if (!result) return resolve(Error("[APIs]: Не удалось получить данные!"));
 
-        //Если нет данных на странице
-        if (!result) return resolve(Error("[APIs]: Не удалось получить данные!"));
+            const details = result.videoDetails;
 
-        //Если статус получения данные не OK
-        if (result.playabilityStatus?.status === "LOGIN_REQUIRED") return resolve(Error(`[APIs]: Данное видео невозможно включить из-за проблем с авторизацией!`));
-        else if (result.playabilityStatus?.status !== "OK") return resolve(Error(`[APIs]: Не удалось получить данные! Status: ${result?.playabilityStatus?.status}`));
+            //Если статус получения данные не OK
+            if (result.playabilityStatus?.status === "LOGIN_REQUIRED") return resolve(Error(`[APIs]: Данное видео невозможно включить из-за проблем с авторизацией!`));
+            else if (result.playabilityStatus?.status !== "OK") return resolve(Error(`[APIs]: Не удалось получить данные! Status: ${result?.playabilityStatus?.status}`));
 
-        result.videoDetails.htmlPlayer = `https://www.youtube.com${page.split('"jsUrl":"')[1].split('"')[0]}`;
-        result.videoDetails.originalFormats = [] as YouTubeFormat[];
+            if (details.isLiveContent) {
+                details.format = {url: details.streamingData?.dashManifestUrl ?? null};
+                return resolve(details);
+            }
 
-        //Если видео является потоком
-        if (result.videoDetails.isLiveContent) result.videoDetails.originalFormats.push({url: result.videoDetails.streamingData?.dashManifestUrl ?? null});
-        else {
-            const format: YouTubeFormat = (result.streamingData?.formats && result.streamingData?.adaptiveFormats).
-            find((format: YouTubeFormat) => format.mimeType.match(/opus/));
+            const format: YouTubeFormat = (result.streamingData?.formats && result.streamingData?.adaptiveFormats).find((format: YouTubeFormat) => format.mimeType.match(/opus/));
+            return extractSignature([format], `https://www.youtube.com${page.split('"jsUrl":"')[1].split('"')[0]}`).then((format) => {
+                details.format = {url: format.url };
 
-            result.videoDetails.originalFormats.push(format);
-        }
-
-        return resolve(result.videoDetails);
+                return resolve(details);
+            });
+        }).catch((err) => resolve(Error(`[APIs]: ${err}`)));
     });
 }
 //====================== ====================== ====================== ======================
@@ -77,14 +76,17 @@ function API_get(ID: string): Promise<Error | any> {
  * @param video {any} Видео
  */
 function constructVideo(video: any): Promise<ISong.track> {
-    return new Promise(async (resolve) => {
-        return resolve({
-            url: `https://youtu.be/${video.videoId}`,
-            title: video.title,
-            duration: {seconds: video.lengthSeconds},
-            image: video.thumbnail.thumbnails.pop(),
-            author: await YouTubeUtils.getChannel({id: video.channelId, name: video.author}),
-            isLive: video.isLiveContent
-        });
+    return new Promise((resolve) => {
+        return YouTubeUtils.getChannel({id: video.channelId, name: video.author}).then((channel) => {
+            return resolve({
+                url: `https://youtu.be/${video.videoId}`,
+                title: video.title,
+                duration: {seconds: video.lengthSeconds},
+                image: video.thumbnail.thumbnails.pop(),
+                author: channel,
+                isLive: video.isLiveContent,
+                format: video.format
+            });
+        }).catch(() => resolve(null))
     });
 }

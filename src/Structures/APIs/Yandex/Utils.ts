@@ -18,19 +18,18 @@ export namespace YandexMusicUtils {
      * @constructor
      */
     export function API(method: string): Promise<any> {
-        return new Promise<any | Error>(async (resolve) => {
-
-            const req = await new httpsClient(`${db.api}/${method}`, {
+        return new Promise<any | Error>((resolve) => {
+            return new httpsClient(`${db.api}/${method}`, {
                 headers: {
                     "Authorization": "OAuth " + db.token
                 }
-            }).toJson;
+            }).toJson.then((req) => {
+                if (!req) return resolve(Error("[APIs]: Не удалось получить данные!"));
+                else if (!db.token) return resolve(Error("[APIs]: Не удалось залогиниться!"));
 
-            if (!req) return resolve(Error("[APIs]: Не удалось получить данные!"));
-            else if (!db.token) return resolve(Error("[APIs]: Не удалось залогиниться!"));
-
-            if (req?.result) return resolve(req?.result);
-            return resolve(req);
+                if (req?.result) return resolve(req?.result);
+                return resolve(req);
+            }).catch((err) => resolve(Error(`[APIs]: ${err}`)));
         });
     }
     //====================== ====================== ====================== ======================
@@ -62,14 +61,14 @@ export namespace YandexMusicUtils {
                 if (!api || api instanceof Error) return resolve(Error("[APIs]: Not found links for track!"));
 
                 const track = api?.pop() ?? api;
-                const xml = await new httpsClient(track.downloadInfoUrl).toXML as Error | string[];
+                return new httpsClient(track.downloadInfoUrl).toXML.then((xml) => {
+                    if (xml instanceof Error) return resolve(xml);
 
-                if (xml instanceof Error) return resolve(xml);
+                    const path = xml[1];
+                    const sign = crypto.createHash("md5").update("XGRlBW9FXlekgbPrRHuSiA" + path.slice(1) + xml[4]).digest("hex");
 
-                const path = xml[1];
-                const sign = crypto.createHash("md5").update("XGRlBW9FXlekgbPrRHuSiA" + path.slice(1) + xml[4]).digest("hex");
-
-                return resolve(`https://${xml[0]}/get-mp3/${sign}/${xml[2]}${path}`);
+                    return resolve(`https://${xml[0]}/get-mp3/${sign}/${xml[2]}${path}`);
+                }).catch((e) => resolve(Error(e)));
             } catch (e) { return resolve(Error(e)); }
         });
     }
@@ -99,7 +98,7 @@ export namespace YandexMusicUtils {
             } catch (e) { return null }
         });
     }
-
+    //====================== ====================== ====================== ======================
     /**
      * @description Из полученных данных подготавливаем трек для Player<Queue>
      * @param track {any} Любой трек с Yandex Music

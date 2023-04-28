@@ -32,32 +32,33 @@ export class YouTube_Search implements API.array {
  * @param search {string} Что ищем
  */
 function API_get(search: string): Promise<Error | any> {
-    return new Promise(async (resolve) => {
-        const page = await new httpsClient(`https://www.youtube.com/results?search_query=${search.split(" ").join("+")}`, {
+    return new Promise((resolve) => {
+        return new httpsClient(`https://www.youtube.com/results?search_query=${search.split(" ").join("+")}`, {
             cookie: true, useragent: true,
             headers: {
                 "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7",
                 "accept-encoding": "gzip, deflate, br"
             }
-        }).toString;
+        }).toString.then((page) => {
 
-        if (page instanceof Error) return resolve(Error("[APIs]: Не удалось получить данные!"));
+            if (page instanceof Error) return resolve(Error("[APIs]: Не удалось получить данные!"));
 
-        const result = (page.split("var ytInitialData = ")[1].split("}};")[0] + '}}').split(';</script><script')[0];
+            const result = (page.split("var ytInitialData = ")[1].split("}};")[0] + '}}').split(';</script><script')[0];
 
-        //Если нет данных на странице
-        if (!result) return resolve(Error("[APIs]: Не удалось получить данные!"));
+            //Если нет данных на странице
+            if (!result) return resolve(Error("[APIs]: Не удалось получить данные!"));
 
-        const details = JSON.parse(result)?.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents[0]?.itemSectionRenderer?.contents;
+            const details = JSON.parse(result)?.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents[0]?.itemSectionRenderer?.contents;
 
-        //Если нет данных на странице (если нет результатов поиска)
-        if (!details) return resolve(Error(`[APIs]: Не удалось найти: ${search}`));
+            //Если нет данных на странице (если нет результатов поиска)
+            if (!details) return resolve(Error(`[APIs]: Не удалось найти: ${search}`));
 
-        const videos = details?.filter((video: any) => video && video?.videoRenderer && video?.videoRenderer?.videoId)?.splice(0, Limit);
+            const videos = details?.filter((video: any) => video && video?.videoRenderer && video?.videoRenderer?.videoId)?.splice(0, Limit);
 
-        if (videos.length < 1) return resolve(Error(`[APIs]: Не удалось найти: ${search}`));
+            if (videos.length < 1) return resolve(Error(`[APIs]: Не удалось найти: ${search}`));
 
-        return resolve(videos);
+            return resolve(videos);
+        }).catch((err) => resolve(Error(`[APIs]: ${err}`)));
     });
 }
 //====================== ====================== ====================== ======================

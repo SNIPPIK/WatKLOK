@@ -24,19 +24,19 @@ export namespace SpotifyUtils {
             const isLoggedIn = db.token !== undefined && db.time > Date.now() + 2;
             if (!isLoggedIn) await getToken();
 
-            const api = await new httpsClient(`${db.api}/${method}`, {
+            return new httpsClient(`${db.api}/${method}`, {
                 headers: {
                     "Accept": "application/json",
                     "Content-Type": "application/x-www-form-urlencoded",
                     "Authorization": "Bearer " + db.token,
                     "accept-encoding": "gzip, deflate, br"
                 }
-            }).toJson as SpotifyRes;
+            }).toJson.then((api) => {
+                if (!api) return resolve(Error("[APIs]: Не удалось получить данные!"));
+                else if (api.error) return resolve(Error(`[APIs]: ${api.error.message}`));
 
-            if (!api) return resolve(Error("[APIs]: Не удалось получить данные!"));
-            else if (api.error) return resolve(Error(`[APIs]: ${api.error.message}`));
-
-            return resolve(api);
+                return resolve(api);
+            }).catch((err) => resolve(Error(`[APIs]: ${err}`)));
         });
     }
     //====================== ====================== ====================== ======================
