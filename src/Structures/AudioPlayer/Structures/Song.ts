@@ -194,8 +194,7 @@ function checkingLink(url: string, song: Song, req = 0): Promise<string> {
 
         //Если нет ссылки, то ищем трек
         if (!url) url = await Platform.searchResource(song);
-
-        if (url) {
+        else {
             //Проверяем ссылку на работоспособность
             const check = await new httpsClient(url).status;
 

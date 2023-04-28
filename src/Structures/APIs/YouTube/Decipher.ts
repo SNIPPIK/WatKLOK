@@ -23,38 +23,31 @@ export interface YouTubeFormat {
 //====================== ====================== ====================== ======================
 /**
  * @description Применяет преобразование параметра расшифровки и n ко всем URL-адресам формата.
- * @param {Array.<Object>} formats
+ * @param {Array.<Object>} format
  * @param {string} html5player
  */
-export function extractSignature(formats: YouTubeFormat[], html5player: string): Promise<YouTubeFormat> {
-    //Делаем сортировку (получаем самый лучший формат по качеству)
-    const sortingQuality = formats.filter((format: YouTubeFormat) => (format.mimeType?.match(/opus/) || format?.mimeType?.match(/audio/)) && format.bitrate > 100);
+export function extractSignature(format: YouTubeFormat, html5player: string): Promise<YouTubeFormat> {
 
     return new Promise<YouTubeFormat>((resolve) => {
         //Пробуем 1 способ получения ссылки
         try {
             extractFunctions(html5player).then((functions) => {
-                for (let format of sortingQuality) {
-                    const url = setDownloadURL(format, functions.length ? new vm.Script(functions[0]) : null, functions.length > 1 ? new vm.Script(functions[1]) : null);
+                const url = setDownloadURL(format, functions.length ? new vm.Script(functions[0]) : null, functions.length > 1 ? new vm.Script(functions[1]) : null);
 
-                    if (!url) sortingQuality.shift();
-                    else { format.url = url; break; }
-                }
+                if (url) format.url = url;
+
+                return resolve(format);
             });
         } catch (e) { //Если 1 способ не помог пробуем 2
             new httpsClient(html5player).toString.then((page: string) => {
                 const tokens = parseTokens(page);
+                const url = setDownload(format, tokens);
 
-                for (let format of sortingQuality) {
-                    const url = setDownload(format, tokens);
+                if (url) format.url = url;
 
-                    if (!url) sortingQuality.shift();
-                    else { format.url = url; break; }
-                }
+                return resolve(format);
             });
         }
-
-        return resolve(sortingQuality[0]);
     });
 }
 //====================== ====================== ====================== ======================

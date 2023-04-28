@@ -62,7 +62,7 @@ function API_get(ID: string): Promise<Error | any> {
             }
 
             const format: YouTubeFormat = (result.streamingData?.formats && result.streamingData?.adaptiveFormats).find((format: YouTubeFormat) => format.mimeType.match(/opus/));
-            return extractSignature([format], `https://www.youtube.com${page.split('"jsUrl":"')[1].split('"')[0]}`).then((format) => {
+            return extractSignature(format, `https://www.youtube.com${page.split('"jsUrl":"')[1].split('"')[0]}`).then((format) => {
                 details.format = {url: format.url };
 
                 return resolve(details);
