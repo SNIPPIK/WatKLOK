@@ -118,7 +118,7 @@ class Song {
      * @description Получаем ссылку на исходный ресурс
      */
     public get resource() {
-        return new Promise<string>((resolve) => {
+        return new Promise<string>(async (resolve) => {
             //Если пользователь включил кеширование музыки
             if (Music.CacheMusic) {
                 const info = DownloadManager.getNames(this);
@@ -127,14 +127,22 @@ class Song {
                 if (info.status === "final") return resolve(info.path);
             }
 
-            //Проверяем ссылку на работоспособность
-            checkingLink(this.link, this).then((url: string) => {
-                //Если включено кеширование музыки, то скачиваем
-                if (Music.CacheMusic && url) setImmediate(() => DownloadManager.download(this, url));
+            let reqs = 0;
+            while (reqs < 3) {
+                //Если нет ссылки, то ищем трек
+                if (!this.link) this.link = await Platform.searchResource(this);
+                else {
+                    //Проверяем ссылку на работоспособность
+                    const status = new httpsClient(this.link).status;
 
-                this.link = url;
-                return resolve(url);
-            });
+                    //Если ссылка работает
+                    if (status) break;
+                }
+
+                reqs++;
+            }
+
+            return resolve(this.link);
         });
     }
     //====================== ====================== ====================== ======================
@@ -180,32 +188,6 @@ class Song {
 
         if (validURL(track.format)) this._link = track.format.url;
     };
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Получаем исходник файл трека
- * @param url {string} Ссылка на исходный файл музыки
- * @param song {Song} Трек который надо найти заново
- * @param req {number} Номер запроса
- */
-function checkingLink(url: string, song: Song, req = 0): Promise<string> {
-    return new Promise(async (resolve) => {
-        if (req > 3) return resolve(null);
-
-        //Если нет ссылки, то ищем трек
-        if (!url) url = await Platform.searchResource(song);
-        else {
-            //Проверяем ссылку на работоспособность
-            const check = await new httpsClient(url).status;
-
-            //Если ссылка работает
-            if (check) return resolve(url);
-        }
-
-        //Если ссылка не работает, то удаляем ссылку и делаем новый запрос
-        req++;
-        return resolve(checkingLink(url ?? null, song, req));
-    });
 }
 
 //====================== ====================== ====================== ======================

@@ -25,11 +25,11 @@ export class YouTube_playlist implements API.list {
 
                 const info = details.sidebar.playlistSidebarRenderer.items[0].playlistSidebarPrimaryInfoRenderer;
                 const author = details.sidebar.playlistSidebarRenderer.items[1].playlistSidebarSecondaryInfoRenderer.videoOwner.videoOwnerRenderer;
-                const videos: any[] = details.contents.twoColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents[0]
+                const contents: any[] = details.contents.twoColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents[0]
                     .itemSectionRenderer.contents[0].playlistVideoListRenderer.contents.splice(0, Limit);
 
                 //Модифицируем видео
-                videos.map(({ playlistVideoRenderer }) => constructVideo(playlistVideoRenderer));
+                const videos = contents.map(({ playlistVideoRenderer }) => constructVideo(playlistVideoRenderer));
 
                 return resolve({
                     title: info.title.runs[0].text, url,

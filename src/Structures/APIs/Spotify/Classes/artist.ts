@@ -7,6 +7,7 @@ const Limit = APIs.limits.author;
 
 export class Spotify_artist implements API.array {
     public readonly type = "artist";
+    public readonly filter = /artist/;
 
     public readonly callback = (url: string) => {
         const ID = SpotifyUtils.getID(url);
@@ -23,7 +24,7 @@ export class Spotify_artist implements API.array {
                 if (api instanceof Error) return reject(api);
 
                 // @ts-ignore
-                return resolve(await Promise.all((api.tracks?.items as SpotifyTrack[] ?? api.tracks as SpotifyTrack[]).map(construct.track)));
+                return resolve(await Promise.all((api.tracks?.items ?? api.tracks).map(SpotifyUtils.track)));
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     };

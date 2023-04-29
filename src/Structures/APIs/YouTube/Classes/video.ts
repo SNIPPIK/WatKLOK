@@ -6,7 +6,7 @@ import {API} from "@Structures/APIs";
 
 export class YouTube_Video implements API.track {
     public readonly type = "track";
-    public readonly filter = /(watch)?(embed)?(be)/gi;
+    public readonly filter = /(watch)?(embed)?(youtu\.be)/gi;
 
     public readonly callback = (url: string) => {
         const ID = YouTubeUtils.getID(url);
@@ -61,7 +61,7 @@ function API_get(ID: string): Promise<Error | any> {
                 return resolve(details);
             }
 
-            const format: YouTubeFormat = (result.streamingData?.formats && result.streamingData?.adaptiveFormats).find((format: YouTubeFormat) => format.mimeType.match(/opus/) || format.mimeType.match(/audio/));
+            const format: YouTubeFormat = (result.streamingData?.formats && result.streamingData?.adaptiveFormats).find((format: YouTubeFormat) => format.mimeType.match(/(opus)?(audio)/));
             return extractSignature(format, `https://www.youtube.com${page.split('"jsUrl":"')[1].split('"')[0]}`).then((format) => {
                 details.format = {url: format.url };
 

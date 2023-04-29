@@ -7,7 +7,7 @@ const Limit = APIs.limits.author;
 
 export class YouTube_Artist implements API.array {
     public readonly type = "artist";
-    public readonly filter = /(channel)?(@)/gi;
+    public readonly filter = /(channel)/gi || /@/gi;
 
     public callback = (url: string) => {
         return new Promise<ISong.track[]>(async (resolve, reject) => {
@@ -24,11 +24,11 @@ export class YouTube_Artist implements API.array {
 
                 const author = details.microformat.microformatDataRenderer;
                 const tabs: any[] = details?.contents?.twoColumnBrowseResultsRenderer?.tabs;
-                const videos = (tabs[1] ?? tabs[2]).tabRenderer?.content?.richGridRenderer?.contents
+                const contents = (tabs[1] ?? tabs[2]).tabRenderer?.content?.richGridRenderer?.contents
                     ?.filter((video: any) => video?.richItemRenderer?.content?.videoRenderer)?.splice(0, Limit);
 
                 //Модифицируем видео
-                videos.map(({richItemRenderer}: any) => {
+                const videos = contents.map(({richItemRenderer}: any) => {
                     const video = richItemRenderer?.content?.videoRenderer;
 
                     return {
