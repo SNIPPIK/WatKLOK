@@ -28,12 +28,12 @@ export class YandexMusic_album implements API.list {
                 const tracks: ISong.track[] = findTracks.splice(0, Limit);
                 const Author = await YandexMusicUtils.getAuthor(api.artists[0]?.id);
 
-                tracks.map((track) => {
+                const songs = tracks.map((track) => {
                     track.author = Author;
-                    YandexMusicUtils.track(track);
+                    return YandexMusicUtils.track(track);
                 });
 
-                return resolve({ url, title: api.title, image: AlbumImage, author: Author, items: tracks });
+                return resolve({ url, title: api.title, image: AlbumImage, author: Author, items: songs });
             } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
         });
     };

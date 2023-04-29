@@ -20,9 +20,7 @@ export namespace YandexMusicUtils {
     export function API(method: string): Promise<any> {
         return new Promise<any | Error>((resolve) => {
             return new httpsClient(`${db.api}/${method}`, {
-                headers: {
-                    "Authorization": "OAuth " + db.token
-                }
+                headers: { "Authorization": "OAuth " + db.token }
             }).toJson.then((req) => {
                 if (!req) return resolve(Error("[APIs]: Не удалось получить данные!"));
                 else if (!db.token) return resolve(Error("[APIs]: Не удалось залогиниться!"));
