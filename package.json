@@ -3,7 +3,7 @@
   "main": "src/main",
   "dependencies": {
     "@discordjs/voice": "^0.16.0",
-    "discord.js": "^14.9.0",
+    "discord.js": "14.10",
     "dotenv": "^16.0.2",
     "sodium-native": "^4.0.0",
     "tiny-typed-emitter": "^2.1.0"

@@ -2,7 +2,7 @@
   "compilerOptions": {
     "paths": {
       "@db/*": ["db/*"],
-      "@env": ["src/Structures/FileSystem/env"],
+      "@Fs": ["src/Structures/FileSystem/index"],
       "@Client": ["src/Structures/Client"],
       "@Client/Message": ["src/Events/Activity/interactionCreate"],
       "@Utils/*": ["src/Utils/*"],
