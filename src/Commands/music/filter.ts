@@ -1,4 +1,4 @@
-import { AudioFilters } from "@AudioPlayer/Audio/Media/AudioFilters";
+import { AudioFilters } from "@AudioPlayer/Audio/AudioFilters";
 import { ClientMessage, EmbedConstructor } from "@Client/Message";
 import { ApplicationCommandOptionType, Colors } from "discord.js";
 import { Command, ResolveData } from "@Structures/Handlers";

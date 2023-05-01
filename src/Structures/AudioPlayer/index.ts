@@ -6,7 +6,7 @@ import { VoiceState } from "discord.js";
 import { Voice } from "@Utils/Voice";
 
 //AudioPlayer
-import { Filter } from "./Audio/Media/AudioFilters";
+import { Filter } from "./Audio/AudioFilters";
 import {CollectionQueue} from "./Queue/Collection";
 import { Platform } from "@Structures/APIs";
 import { MessagePlayer } from "./Message";
