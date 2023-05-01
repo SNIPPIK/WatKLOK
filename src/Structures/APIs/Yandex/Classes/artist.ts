@@ -1,4 +1,4 @@
-import {ISong} from "@AudioPlayer/Structures/Song";
+import {ISong} from "@AudioPlayer/Queue/Song";
 import {YandexMusicUtils} from "../Utils";
 import {API} from "@Structures/APIs";
 import {APIs} from "@db/Config.json";

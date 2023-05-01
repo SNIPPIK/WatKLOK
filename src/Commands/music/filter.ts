@@ -1,9 +1,9 @@
-import { AudioFilters } from "@Structures/AudioPlayer/Structures/Media/AudioFilters";
+import { AudioFilters } from "@AudioPlayer/Audio/Media/AudioFilters";
 import { ClientMessage, EmbedConstructor } from "@Client/Message";
 import { ApplicationCommandOptionType, Colors } from "discord.js";
 import { Command, ResolveData } from "@Structures/Handlers";
 import { ReactionMenu } from "@Structures/ReactionMenu";
-import { Queue } from "@AudioPlayer/Structures/Queue";
+import { Queue } from "@AudioPlayer/Queue/Queue";
 import { ArraySort } from "@Utils/ArraySort";
 import Filters from "@db/Filters.json";
 

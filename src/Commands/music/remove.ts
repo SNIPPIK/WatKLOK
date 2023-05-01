@@ -1,6 +1,6 @@
 import { Command, ResolveData } from "@Structures/Handlers";
 import { ApplicationCommandOptionType } from "discord.js";
-import { Queue } from "@AudioPlayer/Structures/Queue";
+import { Queue } from "@AudioPlayer/Queue/Queue";
 import { ClientMessage } from "@Client/Message";
 
 export class RemoveCommand extends Command {

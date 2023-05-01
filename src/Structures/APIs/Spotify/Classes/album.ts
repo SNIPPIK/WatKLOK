@@ -1,5 +1,5 @@
 import {SpotifyUtils} from "../Utils";
-import {ISong} from "@AudioPlayer/Structures/Song";
+import {ISong} from "@AudioPlayer/Queue/Song";
 import {API} from "@Structures/APIs";
 import {APIs} from "@db/Config.json";
 

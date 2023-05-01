@@ -1,5 +1,5 @@
-import {FFprobe} from "@AudioPlayer/Structures/Media/FFspace";
-import {ISong} from "@AudioPlayer/Structures/Song";
+import {FFprobe} from "@AudioPlayer/Audio/Media/FFspace";
+import {ISong} from "@AudioPlayer/Queue/Song";
 import {Music} from "@db/Config.json";
 import {API} from "@Structures/APIs";
 

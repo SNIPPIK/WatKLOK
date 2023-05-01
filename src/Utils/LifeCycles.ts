@@ -1,6 +1,6 @@
-import { EmbedMessages } from "@AudioPlayer/Structures/Messages/Embeds";
-import { AudioPlayer } from "@Structures/AudioPlayer/Structures/AudioPlayer";
-import { Queue } from "@AudioPlayer/Structures/Queue";
+import { EmbedMessages } from "@AudioPlayer/Message/Embeds";
+import { AudioPlayer } from "@AudioPlayer/Audio/AudioPlayer";
+import { Queue } from "@AudioPlayer/Queue/Queue";
 import { ClientMessage } from "@Client/Message";
 import { Music } from "@db/Config.json";
 import { Logger } from "@Logger";

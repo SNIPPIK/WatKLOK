@@ -2,7 +2,7 @@ import { Client, IntentsBitField, Options, Collection } from "discord.js";
 import { FileSystem } from "@Structures/FileSystem";
 import { Command } from "@Structures/Handlers";
 import { Player } from "@AudioPlayer";
-import { env } from "@env";
+import { env } from "@Fs";
 
 const commands = new Collection<string, Command>(); //База, со всеми командами
 const AudioPlayer = new Player();

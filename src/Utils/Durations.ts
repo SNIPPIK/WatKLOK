@@ -1,5 +1,5 @@
-import { ISong, Song } from "@AudioPlayer/Structures/Song";
-import { Queue } from "@AudioPlayer/Structures/Queue";
+import { ISong, Song } from "@AudioPlayer/Queue/Song";
+import { Queue } from "@AudioPlayer/Queue/Queue";
 
 export namespace DurationUtils {
     /**

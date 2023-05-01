@@ -6,7 +6,7 @@ import { WatKLOK } from "@Client";
 /**
  * @description Класс для событий
  */
-export class Event<K, P> {
+export abstract class Event<K, P> {
     //Название ивента Discord.<Client>
     public readonly name: string = "undefined";
 
@@ -20,8 +20,8 @@ export class Event<K, P> {
 /**
  * @description Как выглядит команда
  */
-export class Command {
-    public constructor(options: {
+export abstract class Command {
+    protected constructor(options: {
         //Название команды
         name: string;
         //Доп названия для команды

@@ -1,5 +1,5 @@
 import {VkUtils} from "../Utils";
-import {ISong} from "@AudioPlayer/Structures/Song";
+import {ISong} from "@AudioPlayer/Queue/Song";
 import {API} from "@Structures/APIs";
 
 export class VK_track implements API.track {

@@ -1,4 +1,4 @@
-import { Queue } from "@AudioPlayer/Structures/Queue";
+import { Queue } from "@AudioPlayer/Queue/Queue";
 import { Event } from "@Structures/Handlers";
 import { Debug } from "@db/Config.json";
 import { VoiceState } from "discord.js";

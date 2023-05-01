@@ -1,7 +1,7 @@
 import { Command, ResolveData } from "@Structures/Handlers";
 import { ApplicationCommandOptionType } from "discord.js";
-import { Queue } from "@AudioPlayer/Structures/Queue";
-import { Song } from "@AudioPlayer/Structures/Song";
+import { Queue } from "@AudioPlayer/Queue/Queue";
+import { Song } from "@AudioPlayer/Queue/Song";
 import { ClientMessage } from "@Client/Message";
 
 export class ShuffleCommand extends Command {

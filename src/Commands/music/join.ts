@@ -1,6 +1,6 @@
 import { Command, ResolveData } from "@Structures/Handlers";
 import { StageChannel, VoiceChannel } from "discord.js";
-import { Queue } from "@AudioPlayer/Structures/Queue";
+import { Queue } from "@AudioPlayer/Queue/Queue";
 import { ClientMessage } from "@Client/Message";
 import { Voice } from "@Utils/Voice";
 

@@ -1,7 +1,7 @@
-import {env} from "@env";
 import {httpsClient} from "@httpsClient";
-import {ISong} from "@AudioPlayer/Structures/Song";
+import {ISong} from "@AudioPlayer/Queue/Song";
 import crypto from "node:crypto";
+import {env} from "@Fs";
 
 //Локальная база данных
 const db = {

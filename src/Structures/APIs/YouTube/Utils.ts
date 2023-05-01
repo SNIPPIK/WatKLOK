@@ -1,4 +1,4 @@
-import {ISong} from "@AudioPlayer/Structures/Song";
+import {ISong} from "@AudioPlayer/Queue/Song";
 import {httpsClient} from "@httpsClient";
 
 

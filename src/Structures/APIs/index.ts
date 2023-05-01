@@ -1,8 +1,8 @@
-import {ISong, Song} from "@AudioPlayer/Structures/Song";
+import {DurationUtils} from "@Utils/Durations";
+import {ISong, Song} from "@AudioPlayer/Queue/Song";
 import {Colors} from "discord.js";
 import {readdirSync} from "fs";
-import {env} from "@env";
-import {DurationUtils} from "@Utils/Durations";
+import {env} from "@Fs";
 
 export { Platform, platform, callback };
 

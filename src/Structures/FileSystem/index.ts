@@ -2,10 +2,6 @@ import { Command, Event } from "@Structures/Handlers";
 import { existsSync, readdirSync } from "fs";
 import { WatKLOK } from "@Client";
 
-type TypeFileLoad = Command | Event<any, any>;
-type FileCallback = (pull: TypeFileLoad, { }: { dir: string, file: string, reason: string }) => void;
-
-let tempLogs: { Commands: string[], Events: string[] } = { Commands: [], Events: [] };
 
 export namespace FileSystem {
     /**
@@ -43,17 +39,32 @@ export namespace FileSystem {
             if (paths.indexOf(path) + 1 === paths.length) {
                 setImmediate((): void => {
                     //Выводим в консоль статус загрузки
-                    if (client.shardID === undefined) Object.entries(tempLogs).forEach(([key, value]) => {
+                    if (client.shardID === undefined) Object.entries(TempLogsData).forEach(([key, value]) => {
                         console.log(`| FileSystem... Loaded ${key} | ${value.length}\n${value.join("\n")}\n`);
                     });
                 });
 
-                setTimeout(() => tempLogs = null, 7e3);
+                setTimeout(() => TempLogsData = null, 7e3);
             }
         }
     }
 }
+
 //====================== ====================== ====================== ======================
+/**
+ -  Loading files
+ - Commands, Events
+ */
+let TempLogsData: { Commands: string[], Events: string[] } = {
+    Commands: [],
+    Events: []
+};
+
+/**
+ @description Как загружать команды или ивенты
+ */
+type FileCallback = (pull: Command | Event<any, any>, {}: {dir: string, file: string, reason: string}) => void;
+
 /**
  * @description Загрузчик (загрузит необходимые файлы из главной директории)
  */
@@ -119,7 +130,7 @@ class FileLoader {
         return new importFile[keysFile[0]];
     };
 }
-//====================== ====================== ====================== ======================
+
 /**
  * @description Создаем и добавляем лог
  * @param type {"Commands" | "Events"} Куда надо добавить
@@ -134,5 +145,13 @@ function log(type: "Commands" | "Events", dir: string, file: string, reason?: st
 
     if (reason) EndStr += ` | Reason: [${reason}]`; //Если есть ошибка добавляем ее
 
-    return tempLogs[type].push(EndStr);
+    return TempLogsData[type].push(EndStr);
+}
+//====================== ====================== ====================== ======================
+require("dotenv").config();
+/**
+ * @description Env
+ */
+export namespace env {
+    export function get(name: string): string { return process.env[name]; }
 }

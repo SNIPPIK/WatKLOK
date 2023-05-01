@@ -1,5 +1,5 @@
 import {extractSignature, YouTubeFormat} from "../Decipher";
-import {ISong} from "@AudioPlayer/Structures/Song";
+import {ISong} from "@AudioPlayer/Queue/Song";
 import {httpsClient} from "@httpsClient";
 import {YouTubeUtils} from "../Utils";
 import {API} from "@Structures/APIs";

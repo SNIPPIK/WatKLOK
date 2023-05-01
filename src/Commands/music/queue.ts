@@ -1,6 +1,6 @@
 import { Command, ResolveData } from "@Structures/Handlers";
-import { Queue } from "@AudioPlayer/Structures/Queue";
-import { Song } from "@AudioPlayer/Structures/Song";
+import { Queue } from "@AudioPlayer/Queue/Queue";
+import { Song } from "@AudioPlayer/Queue/Song";
 import { MessageReaction, User } from "discord.js";
 import { DurationUtils } from "@Utils/Durations";
 import { ClientMessage } from "@Client/Message";

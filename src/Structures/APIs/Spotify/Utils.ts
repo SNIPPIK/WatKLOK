@@ -1,6 +1,6 @@
 import {httpsClient} from "@httpsClient";
-import {env} from "@env";
-import {ISong} from "@AudioPlayer/Structures/Song";
+import {ISong} from "@AudioPlayer/Queue/Song";
+import {env} from "@Fs";
 
 
 //Локальная база данных
