@@ -176,7 +176,7 @@ export class Queue {
         if (!this.song) { this.cleanup(); return; }
 
         //Отправляем сообщение с авто обновлением
-        if (!seek || !this.filters.length) MessagePlayer.toPlay(this.message);
+        if (seek === 0 && this.filters.length === 0) MessagePlayer.toPlay(this.message);
 
         //Запускаем чтение потока
         this.song.resource.then((url) => {
