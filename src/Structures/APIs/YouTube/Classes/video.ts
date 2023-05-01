@@ -6,7 +6,7 @@ import {API} from "@Structures/APIs";
 
 export class YouTube_Video implements API.track {
     public readonly type = "track";
-    public readonly filter = /(watch)?(embed)?(youtu\.be)/gi;
+    public readonly filter = /(watch|embed|youtu\.be)/gi;
 
     public readonly callback = (url: string) => {
         const ID = YouTubeUtils.getID(url);

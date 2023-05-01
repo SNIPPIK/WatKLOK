@@ -8,7 +8,7 @@ const Limit = APIs.limits.playlist;
 
 export class YouTube_playlist implements API.list {
     public readonly type = "playlist";
-    public readonly filter = /playlist/gi;
+    public readonly filter = /playlist\?list=/gi;
 
     public readonly callback = (url: string) => {
         const ID = YouTubeUtils.getID(url, true);
