@@ -4,7 +4,7 @@ import {API} from "@Structures/APIs";
 
 export class YandexMusic_track implements API.track {
     public readonly type = "track";
-    public readonly filter = /album/ && /track/;
+    public readonly filter = /(album)?(track)/;
 
     public readonly callback = (url: string) => {
         const ID = url.split(/[^0-9]/g).filter(str => str !== "");
