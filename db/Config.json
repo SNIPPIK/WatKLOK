@@ -22,7 +22,6 @@
     "TypingMessage": true
   },
   "Debug": false,
-  "QueueCallbacks": false,
 
   "Music": {
     "LeaveInEnd": false,
