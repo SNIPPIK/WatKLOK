@@ -1,17 +1,21 @@
 {
   "compilerOptions": {
     "paths": {
-      "@db/*": ["db/*"],
-      "@Fs": ["src/Structures/FileSystem/index"],
-      "@Client": ["src/Structures/Client"],
-      "@Client/Message": ["src/Events/Activity/interactionCreate"],
-      "@Utils/*": ["src/Utils/*"],
-      "@Structures/*": ["src/Structures/*"],
+      "@db/*": ["db/*", "data/Structures/*"],
+      "@APIs": ["data/APIs/index"],
+      "@env": ["resource/env"],
 
-      "@Logger": ["src/Utils/Logger/index"],
-      "@Balancer": ["src/Utils/Balancer/index"],
-      "@AudioPlayer/*": ["src/Structures/AudioPlayer/*"], "@AudioPlayer": ["src/Structures/AudioPlayer/index"],
-      "@httpsClient": ["src/Structures/httpsClient/index"]
+      "@Client": ["resource/Client/Client"],
+      "@Client/Event": ["data/Structures/Abstracts/Event"],
+      "@Client/Command": ["data/Structures/Abstracts/Command"],
+      "@Client/Message": ["data/Events/Activity/interactionCreate"],
+
+      "@AudioPlayer": ["resource/Modules/AudioPlayer/index"],
+      "@AudioPlayer/*": ["resource/Modules/AudioPlayer/*"],
+
+      "@Utils/*": ["resource/Utils/*"],
+      "@Logger": ["resource/Utils/Logger"],
+      "@httpsClient": ["resource/Modules/httpsClient/index"]
     },
     "baseUrl": "./",
     // Основные настройки.
@@ -42,6 +46,6 @@
     "importHelpers": false,              // Имортировать созданные хелперы (__extends, __rest и так далее) из "tslib".
     "noImplicitAny": true                // Запрет на использование any
   },
-  "include": ["tsconfig.json", "src", "db", "package.json"],
+  "include": ["tsconfig.json", "resource", "data", "db", "package.json"],
   "exclude": ["node_modules"]
 }

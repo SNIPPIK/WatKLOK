@@ -1,16 +1,16 @@
 [<img align="right" alt="Avatar bot" width="350px" src="https://media.discordapp.net/attachments/1016995045783633940/1080964769927942234/Icon.png" />](https://discordapp.com/users/623170593268957214)
 # WatKLOK
 - Автор: [`SNIPPIK`](https://github.com/SNIPPIK)
-- Лицензия: [`WatKLOK LICENSE`](LICENSE.md)
+- Лицензия: [`MIT`](LICENSE.md)
 - Перейти к [`настройкам`](db/Config.json)
-- Перейти к [`командам`](src/Commands) | `Slash + Standart`
-- Перейти к [`плееру`](src/Structures/AudioPlayer)
+- Перейти к [`командам`](data/Commands) | `Slash + Standart`
+- Перейти к [`плееру`](resource/Modules/AudioPlayer)
 - Перейти к [`демонстрации`](https://www.youtube.com/playlist?list=PLrQkedRE9MFvchEkGvt-Tk5jqS5GiS8Kd)
 - Все сообщения удаляются автоматически через время
 
-<img align="center" alt="PGI Settings" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/main/.github/resource/PGI.png?raw=true" />
+<img align="center" alt="PGI Settings" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/v2/.github/resource/PGI.png?raw=true" />
 
-<img align="center" alt="Bot Permissions" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/main/.github/resource/Bot Permissions.png?raw=true" />
+<img align="center" alt="Bot Permissions" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/v2/.github/resource/Bot Permissions.png?raw=true" />
 
 ## Гайд по запуску
 1. [`Node.js`](https://nodejs.org/ru/) 20
@@ -22,16 +22,16 @@
    - Если серверов более 1к, то `npm run sharder`
 
 ## Поддерживаемые платформы
-[Можно добавить поддержку иных платформ](src/Structures/APIs)
+[Можно добавить поддержку иных платформ](data/APIs)
 
-| Теги | Платформы                                    | Аудио      | Что доступно                                 | Доступ без авторизации |
-|------|----------------------------------------------|------------|----------------------------------------------|------------------------|
-| #YT  | [**YouTube**](https://www.youtube.com/)      | ✔          | **видео, плейлисты, поиск, стримы, каналы**  | ✔                      |
-| #SP  | [**Spotify**](https://open.spotify.com/)     | ✔ (YM, YT) | **треки, плейлисты, поиск, альбомы, авторы** | ❌                      |
-| #YM  | [**Yandex Music**](https://music.yandex.ru/) | ✔          | **треки, альбомы, поиск, авторы**            | ❌                      |
-| #SC  | [**SoundCloud**](https://soundcloud.com/)    | ✔          | **отключен (временно)**                      | ✔                      |
-| #VK  | [**VK**](https://vk.com/)                    | ✔          | **треки, ~~плейлисты~~, поиск**              | ❌                      |
-| #D   | [**Discord**](https://discord.com/)          | ✔          | **ссылки, файлы**                            | ✔                      |
+| Платформы                                    | Аудио      | Что доступно                                 | Доступ без авторизации |
+|----------------------------------------------|------------|----------------------------------------------|------------------------|
+| [**YouTube**](https://www.youtube.com/)      | ✔          | **видео, плейлисты, поиск, стримы, каналы**  | ✔                      |
+| [**Spotify**](https://open.spotify.com/)     | ✔ (YM, YT) | **треки, плейлисты, поиск, альбомы, авторы** | ❌                      |
+| [**Yandex Music**](https://music.yandex.ru/) | ✔          | **треки, альбомы, поиск, авторы**            | ❌                      |
+| [**SoundCloud**](https://soundcloud.com/)    | ✔          | **треки, плейлисты, поиск, альбомы**         | ✔                      |
+| [**VK**](https://vk.com/)                    | ✔          | **треки, ~~плейлисты~~, поиск**              | ❌                      |
+| [**Discord**](https://discord.com/)          | ✔          | **ссылки, файлы**                            | ✔                      |
 
 <details>
   <summary>Показать настройки</summary>
@@ -89,8 +89,6 @@
       },
       //Режим отладки
       "Debug": false,
-      //[Beta] Режим общей обработки (все команды, некторые функции будут обрабатыватся постепенно)
-      "QueueCallbacks": true,
 
       //Настройки музыки
       "Music": {
