@@ -7,7 +7,7 @@ import { Voice } from "@Utils/Voice";
 
 //AudioPlayer
 import { Filter } from "./Audio/AudioFilters";
-import {CollectionQueue} from "./Queue/Collection";
+import { CollectionQueue } from "./Queue/Collection";
 import { Platform } from "@APIs";
 import { MessagePlayer } from "./Message";
 import { Queue } from "./Queue/Queue";

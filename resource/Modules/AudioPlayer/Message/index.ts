@@ -1,13 +1,14 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } from "discord.js";
-import {MessageCycle} from "resource/Structures/Classes/Cycle/Messages";
 import { Music, ReactionMenuSettings } from "@db/Config.json";
-import {ButtonCollector} from "./ButtonCollector";
 import { ClientMessage } from "@Client/Message";
+import { MessageCycle } from "@Client/Cycles/Messages";
+import { Queue } from "../Queue/Queue"
 import { ISong, Song } from "../Queue/Song";
-import { msgUtil } from "@db/Message";
 import { EmbedMessages } from "./Embeds";
-import { Queue } from "../Queue/Queue";
+import { ButtonCollector } from "./ButtonCollector";
+import { msgUtil } from "@db/Message";
 import { Logger } from "@Logger";
+
 
 if (Music.Buttons.length < 4) Error(`[Config]: Buttons has not found, find ${Music.Buttons.length}, need 4`);
 

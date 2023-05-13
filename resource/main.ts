@@ -1,6 +1,6 @@
-import { ShardManager } from "./Structures/Classes/ShardManager";
+import { ShardManager } from "@Client/Shard";
 import { Bot, APIs, Channels } from "@db/Config.json";
-import { WatKLOK } from "./Structures/Classes/Client";
+import { WatKLOK } from "@Client";
 import { Logger } from "@Logger";
 import {env} from "@env";
 

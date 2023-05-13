@@ -1,4 +1,4 @@
-import { URL, URLSearchParams } from 'node:url';
+import { URL, URLSearchParams } from "node:url";
 import * as querystring from "querystring";
 import { httpsClient } from "@httpsClient";
 import * as vm from "vm";

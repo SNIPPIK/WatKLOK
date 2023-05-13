@@ -1,11 +1,12 @@
 import { ClientMessage } from "@Client/Message";
-import { DurationUtils } from "@Utils/Durations";
-import { Platform } from "@APIs";
-import { Music } from "@db/Config.json";
-import { ISong, Song } from "../Queue/Song";
 import {Colors, EmbedData} from "discord.js";
-import { WatKLOK } from "../../../Structures/Classes/Client";
+import { WatKLOK } from "@Client";
+import { Platform } from "@APIs";
 import { Queue } from "../Queue/Queue";
+import { ISong, Song } from "../Queue/Song";
+import { DurationUtils } from "@Utils/Durations";
+import { Music } from "@db/Config.json";
+
 
 //Здесь хранятся все EMBED данные о сообщениях (Используется в Managers/Player/Messages)
 export namespace EmbedMessages {

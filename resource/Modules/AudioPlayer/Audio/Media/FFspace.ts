@@ -152,7 +152,7 @@ function checkName(names: string[], error: string) {
         if (process.error) continue;
         return name;
     }
-    Logger.error(error);
+    console.log(error);
 }
 //====================== ====================== ====================== ======================
 /**

@@ -1,6 +1,8 @@
 import {ActionRowBuilder, ButtonBuilder, ButtonStyle, Colors, EmbedData, Guild, Message} from "discord.js";
+
+//Client imports
 import { Event } from "@Client/Event";
-import { WatKLOK } from "../../../resource/Structures/Classes/Client";
+import { WatKLOK } from "@Client";
 
 const Buttons = () => {
     const Buttons = {

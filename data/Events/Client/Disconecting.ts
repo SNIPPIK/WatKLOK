@@ -1,6 +1,8 @@
-import { Event } from "@Client/Event";
 import { Logger } from "@Logger";
-import {WatKLOK} from "../../../resource/Structures/Classes/Client";
+
+//Client imports
+import { Event } from "@Client/Event";
+import {WatKLOK} from "@Client";
 
 export class shardDisconnect extends Event<null, null> {
     public readonly name: string = "shardDisconnect";

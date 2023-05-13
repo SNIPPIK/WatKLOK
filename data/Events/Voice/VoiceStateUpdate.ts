@@ -1,10 +1,12 @@
 import { Queue } from "@AudioPlayer/Queue/Queue";
-import { Event } from "@Client/Event";
 import { Debug } from "@db/Config.json";
 import { VoiceState } from "discord.js";
 import { Voice } from "@Utils/Voice";
-import { WatKLOK } from "../../../resource/Structures/Classes/Client";
 import { Logger } from "@Logger";
+
+//Client imports
+import { WatKLOK } from "@Client";
+import { Event } from "@Client/Event"
 
 export class voiceStateUpdate extends Event<VoiceState, VoiceState> {
     public readonly name: string = "voiceStateUpdate";

@@ -1,12 +1,15 @@
 import { ActionRow, ActionRowBuilder, BaseInteraction, BaseMessageOptions, CommandInteractionOption, DMChannel, EmbedData, GuildMember, Message, MessageEditOptions, MessagePayload, NewsChannel, PartialDMChannel, TextChannel, ThreadChannel, User } from "discord.js";
-import { Command, ResolveData } from "@Client/Command";
-import { Event } from "@Client/Event";
 import { ReactionMenu } from "@db/Classes/ReactionMenu";
 import { DurationUtils } from "@Utils/Durations";
 import { msgUtil } from "@db/Message";
 import { Bot } from '@db/Config.json';
-import { WatKLOK } from "../../../resource/Structures/Classes/Client";
 
+//Client imports
+import { Command, ResolveData } from "@Client/Command";
+import { Event } from "@Client/Event";
+import { WatKLOK } from "@Client";
+
+//Exports
 export { interactionCreate, ClientInteraction, ClientMessage };
 
 //База с пользователями которые слишком часто используют команды

@@ -1,8 +1,11 @@
-import { ClientMessage, interactionCreate } from "@Client/Message";
-import { Event } from "@Client/Event";
 import { msgUtil } from "@db/Message";
 import { Bot } from "@db/Config.json";
 import { Logger } from "@Logger";
+
+//Client imports
+import { ClientMessage, interactionCreate } from "@Client/Message";
+import { Event } from "@Client/Event";
+
 
 const { runCommand } = interactionCreate;
 

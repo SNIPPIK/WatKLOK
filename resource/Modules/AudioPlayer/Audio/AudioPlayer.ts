@@ -1,7 +1,7 @@
 import { VoiceConnection } from "@discordjs/voice";
 import { TypedEmitter } from "tiny-typed-emitter";
 import { OpusAudio } from "./Media/OpusAudio";
-import {PlayerCycle} from "resource/Structures/Classes/Cycle/Players";
+import {PlayerCycle} from "@Client/Cycles/Players";
 
 export { AudioPlayer };
 
@@ -91,10 +91,7 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
         this._state = newState;
 
         //Фильтруем статусы бота что в emit не попало что не надо
-        if (oldStatus !== newStatus || oldStatus !== "idle" && newStatus === "read") {
-            CyclePlayers.remove = this;
-            this.emit(newStatus);
-        }
+        if (oldStatus !== newStatus || oldStatus !== "idle" && newStatus === "read") this.emit(newStatus);
 
         //Добавляем плеер в CycleStep
         CyclePlayers.push = this;
@@ -178,6 +175,7 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
             this._connection = null;
             this._state = null;
 
+            //Удаляем плеер из CycleStep
             CyclePlayers.remove = this;
         } else {
             if (this.state?.stream) {

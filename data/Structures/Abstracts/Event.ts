@@ -1,4 +1,4 @@
-import {WatKLOK} from "../../../resource/Structures/Classes/Client";
+import {WatKLOK} from "@Client";
 
 /**
  * @description Класс для событий

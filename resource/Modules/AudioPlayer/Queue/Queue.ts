@@ -114,7 +114,7 @@ export class Queue {
 
         //Запускаем чтение потока
         this.song.resource.then((url) => {
-            if (!url) { this.player.emit("error", Error(`[${this.song.url}] Link to resource, not found`), true); return; }
+            if (!url) { this.player.emit("error", Error(`[${this.song.url}] не найдена ссылка на исходный файл!`), true); return; }
 
             //Отправляем поток в плеер
             this.player.readStream = new OpusAudio(url, {seek, filters: this.song.options.isLive ? [] : this.filters});

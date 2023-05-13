@@ -3,7 +3,7 @@ import { request as httpsRequest, RequestOptions as ReqOptions } from "https";
 import { IncomingMessage, request as httpRequest } from "http";
 import {getCookies, uploadCookie} from "./Structures/Cookie";
 import {getUserAgent} from "./Structures/Utils";
-import { Logger } from "@Utils/Logger";
+import { Logger } from "@Logger";
 
 //====================== ====================== ====================== ======================
 /**
