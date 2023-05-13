@@ -46,7 +46,7 @@ export class httpsClient {
                 }
 
                 //Обновляем куки
-                if (this._options.headers["cookie"] && res.headers && res.headers["set-cookie"]) setImmediate(() => uploadCookie(res.headers["set-cookie"]));
+                if (this._options?.headers["cookie"] && res.headers && res.headers["set-cookie"]) setImmediate(() => uploadCookie(res.headers["set-cookie"]));
 
                 return resolve(res);
             });
