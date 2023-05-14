@@ -107,7 +107,7 @@ class Song {
     /**
      * @description Получаем ссылку на исходный файл
      */
-    private get link() { return this._link; };
+    public get link() { return this._link; };
     //====================== ====================== ====================== ======================
     /**
      * @description Изменяем данные ссылки
@@ -121,7 +121,7 @@ class Song {
         return new Promise<string>(async (resolve) => {
             //Если пользователь включил кеширование музыки
             if (Music.CacheMusic) {
-                const info = DownloadManager.getNames(this);
+                const info = DownloadManager.status(this);
 
                 //Если есть файл выдаем путь до него
                 if (info.status === "final") return resolve(info.path);
@@ -141,6 +141,9 @@ class Song {
 
                 reqs++;
             }
+
+            //Если включено кеширование музыки, то скачиваем
+            if (Music.CacheMusic && this.link.length > 10) DownloadManager.addTrack = this;
 
             return resolve(this.link);
         });

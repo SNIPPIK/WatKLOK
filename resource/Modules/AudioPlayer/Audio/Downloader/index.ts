@@ -1,96 +1,97 @@
-import { existsSync, createWriteStream, rename, mkdirSync } from "fs";
-import { Song } from "@AudioPlayer/Queue/Song";
-import { Music, Debug } from "@db/Config.json";
-import { httpsClient } from "@httpsClient";
-import { IncomingMessage } from "http";
-import { Logger } from "@Logger";
+import {createWriteStream, existsSync, mkdirSync, rename} from "fs";
+import {Song} from "@AudioPlayer/Queue/Song";
+import {Debug, Music} from "@db/Config.json";
+import {httpsClient} from "@httpsClient";
+import {Logger} from "@Logger";
 
-type DownloadSong = { title: string, author: string, duration: number, resource: string };
-const QueueDownload: DownloadSong[] = [];
+/**
+ * @description Класс для кеширования треков, при использовании будет использоваться больше памяти и будут выполниться доп запросы
+ */
+class Downloader {
+    private _songs: Song[] = [];
 
-//Убираем в конце / чтобы не мешало
-if (Music.CacheDir.endsWith("/")) Music.CacheDir.slice(Music.CacheDir.length - 1);
-
-export namespace DownloadManager {
+    //====================== ====================== ====================== ======================
     /**
-    * @description Добавление трека в очередь для плавного скачивания
-    * @param track {Song} Трек который будет скачен
-    * @param resource {string} Ссылка на ресурс
-    */
-    export function download(track: Song, resource: string): void {
-        const findSong = QueueDownload.find((song) => song.title === track.title);
-        const names = getNames(track);
+     * @description Добавляем трек в локальную базу
+     * @param track {Song}
+     */
+    public set addTrack(track: Song) {
+        const names = this.status(track);
+        const findSong = this._songs.find((song) => track.url === song.url || song.title === track.title);
 
-        if (findSong || track.duration.seconds > 800 || names.status !== "not") return;
+        if (findSong || track.duration.seconds >= 800 || names.status !== "not") return;
 
         //Проверяем путь на наличие директорий
-        if (!existsSync(names.path)) mkdirSync(names.path);
+        if (!existsSync(names.path)) {
+            let dirs = names.path.split("/"), currentDir = "";
 
-        //Добавляем трек в очередь для скачивания
-        QueueDownload.push({ title: track.title, author: track.author.title, duration: track.duration.seconds, resource });
-        if (QueueDownload.length === 1) setImmediate(cycleStep);
-    }
+            if (!names.path.endsWith("/")) dirs.splice(dirs.length - 1);
+
+            for (let i in dirs) {
+                currentDir += `${dirs[i]}/`;
+                if (!existsSync(currentDir)) mkdirSync(currentDir);
+            }
+        }
+
+        this._songs.push(track);
+
+        //Запускаем скачивание
+        if (this._songs.length === 1) this.cycleStep();
+    };
     //====================== ====================== ====================== ======================
     /**
      * @description Получаем статус скачивания и путь до файла
-     * @param track {Song | DownloadSong} Трек
+     * @param track {Song}
      */
-    export function getNames(track: DownloadSong | Song): { status: "download" | "final" | "not", path: string } {
-        const author = ((track as Song)?.author?.title ?? (track as DownloadSong)?.author).replace(/[|,'";*/\\{}!?.:<>]/gi, "");
+    public readonly status = (track: Song): {status: "not" | "final" | "download", path: string} => {
+        const author = track.author.title.replace(/[|,'";*/\\{}!?.:<>]/gi, "");
         const song = track.title.replace(/[|,'";*/\\{}!?.:<>]/gi, "");
         const fullPath = `${Music.CacheDir}/[${author}]/[${song}]`;
 
         if (existsSync(`${fullPath}.opus`)) return { status: "final", path: `${fullPath}.opus` };
         else if (existsSync(`${fullPath}.raw`)) return { status: "download", path: `${fullPath}.raw` };
         return { status: "not", path: `${fullPath}.raw` };
-    }
+    };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Запускаем цикл
+     */
+    private readonly cycleStep = () => {
+        if (this._songs.length === 0) return;
+
+        this.download = this._songs?.shift();
+    };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Скачиваем трек
+     * @param track {Song} Сам трек
+     * @private
+     */
+    private set download(track: Song) {
+        if (Debug) Logger.debug(`[AudioPlayer]: [Download]: ${track.url}`);
+
+        new httpsClient(track.link).Request.then((req) => {
+            if (req instanceof Error) return setTimeout(this.cycleStep, 2e3);
+
+            if (req.pipe) {
+                const status = this.status(track);
+                const file = createWriteStream(status.path);
+
+                file.once("ready", () => req.pipe(file));
+                file.once("error", console.warn);
+                file.once("finish", () => {
+                    const refreshName = this.status(track).path.split(".raw")[0];
+
+                    if (!req.destroyed) req.destroy();
+                    if (!file.destroyed) file.destroy();
+
+                    if (Debug) Logger.debug(`[AudioPlayer]: [Download]: in ${refreshName}.opus`);
+
+                    rename(status.path, `${refreshName}.opus`, () => null);
+                    setTimeout(this.cycleStep, 2e3);
+                });
+            }
+        });
+    };
 }
-//====================== ====================== ====================== ======================
-/**
- * @description Выбираем трек для скачивания
- */
-function cycleStep(): void {
-    setImmediate((): void => {
-        const song = QueueDownload[0];
-
-        if (!song) return;
-        QueueDownload.shift();
-
-        const names = DownloadManager.getNames(song);
-        if (names.status === "final") return void setTimeout(() => cycleStep(), 2e3);
-
-        return downloadTrack(song, names.path);
-    });
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Скачиваем трек по пути
- * @param song {DownloadSong} Сам трек
- * @param path {string} Путь для скачивания
- */
-function downloadTrack(song: DownloadSong, path: string) {
-    if (Debug) Logger.debug(`[DownloadManager]: [start]: [${song.duration}]: [${song.author}] - [${song.title}]`);
-
-    //Скачиваем трек
-    new httpsClient(song.resource, { useragent: true }).Request.then((req: IncomingMessage) => {
-        if (req instanceof Error) return;
-
-        if (req.pipe) {
-            const file = createWriteStream(`./${path}`);
-
-            file.once("ready", () => req.pipe(file));
-            file.once("error", console.warn);
-            file.once("finish", () => {
-                const refreshName = DownloadManager.getNames(song).path.split(".raw")[0];
-
-                if (!req.destroyed) req.destroy();
-                if (!file.destroyed) file.destroy();
-
-                if (Debug) Logger.debug(`[DownloadManager]: [download]: in ${refreshName}.opus`);
-
-                rename(path, `${refreshName}.opus`, () => null);
-                setTimeout(() => cycleStep(), 2e3);
-            });
-        }
-    });
-}
+export const DownloadManager = new Downloader();

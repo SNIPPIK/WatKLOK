@@ -46,6 +46,7 @@ export namespace YouTubeUtils {
 
             if (parsedLink.searchParams.get("list") && isPlaylist) return parsedLink.searchParams.get("list");
             else if (parsedLink.searchParams.get("v") && !isPlaylist) return parsedLink.searchParams.get("v");
+            else if (url.match(/shorts/)) return parsedLink.pathname.split("/").pop();
             return parsedLink.pathname.split("/")[1];
         } catch (err) { return null; }
     }
