@@ -23,14 +23,10 @@ class Downloader {
 
         //Проверяем путь на наличие директорий
         if (!existsSync(names.path)) {
-            let dirs = names.path.split("/"), currentDir = "";
+            let dirs = names.path.split("/");
 
             if (!names.path.endsWith("/")) dirs.splice(dirs.length - 1);
-
-            for (let i in dirs) {
-                currentDir += `${dirs[i]}/`;
-                if (!existsSync(currentDir)) mkdirSync(currentDir);
-            }
+            mkdirSync(dirs.join("/"), {recursive: true});
         }
 
         this._songs.push(track);
