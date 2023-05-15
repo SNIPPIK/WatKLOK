@@ -17,10 +17,13 @@ export namespace msgUtil {
      */
     export function deleteMessage(message: ClientMessage | ClientInteraction, time: number = 15e3): void {
         //Удаляем сообщение
-        if ("deletable" in message) setTimeout(() => message.deletable ? message.delete().catch(() => null) : null, time);
+        if ("deletable" in message && message.deletable) {
+            setTimeout(() => message.delete().catch(() => {}), time);
 
         //Удаляем ответ пользователю
-        else if ("isRepliable" in message) setTimeout(() => message.isRepliable() ? message.deleteReply().catch((): null => null) : null, time);
+        } else if ("isRepliable" in message && message.isRepliable()) {
+            setTimeout(() => message.deleteReply().catch(() => {}), time);
+        }
     }
     //====================== ====================== ====================== ======================
     /**
@@ -58,7 +61,7 @@ export namespace msgUtil {
         const channelSend = sendMessage(message, "isButton" in message, Args as any) as Promise<ClientMessage>;
 
         channelSend.then(deleteMessage);
-        channelSend.catch((err: Error) => console.log(`[Discord Error]: [Send message] ${err}`));
+        channelSend.catch((e) => console.log(`[Discord Error]: [Send message] ${e}`));
     }
 }
 //====================== ====================== ====================== ======================
@@ -90,8 +93,12 @@ function sendArgs(options: messageUtilsOptions): { content: string } | { embeds:
  * @private
  */
 function sendMessage(message: ClientMessage | ClientInteraction, isSlash: boolean, args: any) {
-    if (isSlash) return message.reply({ ...args, fetchReply: true });
-    return (message as ClientMessage).channel.send({ ...args, fetchReply: true });
+    try {
+        if (isSlash && (message as ClientInteraction).isRepliable()) return message.reply({...args, fetchReply: true});
+        return (message as ClientMessage).channel.send({...args, fetchReply: true});
+    } catch (e) {
+        console.log(`[Discord Error]: [Send message] ${e}`);
+    }
 }
 //====================== ====================== ====================== ======================
 /**
