@@ -1,12 +1,15 @@
 import { EmbedMessages } from "@AudioPlayer/Message/Embeds";
 import { Queue } from "@AudioPlayer/Queue/Queue";
 import { ClientMessage } from "@Client/Message";
-import { Music, Debug } from "@db/Config.json";
 import { Logger } from "@Logger";
+import {env} from "@env";
+
+const durationMessage = parseInt(env.get("music.player.message"));
+const debug = env.get("debug.cycle");
 
 export class MessageCycle {
     private readonly _messages: ClientMessage[] = [];
-    private readonly time: number = Music.AudioPlayer.updateMessage < 10 ? 15e3 : Music.AudioPlayer.updateMessage * 1e3;
+    private readonly time: number = durationMessage < 10 ? 15e3 : durationMessage * 1e3;
     private _timeout: NodeJS.Timeout = null;
 
     //====================== ====================== ====================== ======================
@@ -20,11 +23,11 @@ export class MessageCycle {
         //Если это-же сообщение есть в базе, то удаляем его
         if (old) this.remove = message;
         else {
-            if (Debug) Logger.debug(`[Cycle]: [Messages]: Start cycle`);
+            if (debug) Logger.debug(`[Cycle]: [Messages]: Start cycle`);
 
             //Если в базе есть хоть одно сообщение, то запускаем таймер
             setImmediate(() => {
-                if (this._messages.length === 1) this.messageCycleStep;
+                if (this._messages.length === 1 && !this._timeout) this.messageCycleStep;
             });
         }
 
@@ -49,7 +52,7 @@ export class MessageCycle {
     private get messageCycleStep(): void {
         //Если в базе больше нет сообщений
         if (this._messages.length === 0) {
-            if (Debug) Logger.debug(`[Cycle]: [Messages]: Stop cycle`);
+            if (debug) Logger.debug(`[Cycle]: [Messages]: Stop cycle`);
 
             //Если таймер еще работает, то удаляем его
             if (this._timeout) {

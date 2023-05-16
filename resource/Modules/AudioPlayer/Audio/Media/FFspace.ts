@@ -1,10 +1,12 @@
 import { ChildProcessWithoutNullStreams, spawn, spawnSync } from "child_process";
 import { Duplex, DuplexOptions, Readable, Writable } from "stream";
 import { dependencies } from "package.json";
-import { Debug } from "@db/Config.json";
 import { Logger } from "@Logger";
+import {env} from "@env";
 
 export { FFmpeg, FFprobe, Arguments };
+
+const debug = env.get("debug.player");
 
 /**
  * @description Используется для модификации и конвертации потоков
@@ -56,7 +58,7 @@ class FFmpeg extends Duplex {
         //Создаем процесс
         this.process = spawn(FFmpegName, [...args, "pipe:1"] as any);
 
-        if (Debug) Logger.debug(`[AudioPlayer]: [FFmpeg lib]: running ffmpeg`);
+        if (debug) Logger.debug(`[AudioPlayer]: [FFmpeg lib]: running ffmpeg`);
     };
     //====================== ====================== ====================== ======================
     /**
@@ -86,7 +88,7 @@ class FFmpeg extends Duplex {
         }
         this.process = null;
 
-        if (Debug) Logger.debug(`[AudioPlayer]: [FFmpeg lib]: Destroying!`);
+        if (debug) Logger.debug(`[AudioPlayer]: [FFmpeg lib]: Destroying!`);
     };
 }
 //====================== ====================== ====================== ======================

@@ -1,5 +1,6 @@
 import {httpsClient} from "@httpsClient";
 import {ISong} from "@AudioPlayer/Queue/Song";
+import * as process from "process";
 import {env} from "@env";
 
 
@@ -11,7 +12,7 @@ const db = {
     api: "https://api.spotify.com/v1",
     link: "https://open.spotify.com",
     account: "https://accounts.spotify.com/api",
-    aut: Buffer.from(env.get("SPOTIFY_ID") + ":" + env.get("SPOTIFY_SECRET")).toString("base64")
+    aut: Buffer.from(env.get("bot.token.spotify")).toString("base64")
 };
 
 export namespace SpotifyUtils {

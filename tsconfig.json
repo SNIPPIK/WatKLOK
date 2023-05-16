@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "paths": {
-      "@db/*": ["db/*", "data/Structures/*"],
+      "@db/*": ["data/Json/*", "data/Structures/*"],
       "@APIs": ["data/APIs/index"],
       "@env": ["resource/env"],
 

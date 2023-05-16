@@ -1,9 +1,10 @@
 import { BrotliDecompress, createBrotliDecompress, createDeflate, createGunzip, Deflate, Gunzip } from "node:zlib";
 import { request as httpsRequest, RequestOptions as ReqOptions } from "https";
 import { IncomingMessage, request as httpRequest } from "http";
-import {getCookies, uploadCookie} from "./Structures/Cookie";
+import {uploadCookie} from "./Structures/Cookie";
 import {getUserAgent} from "./Structures/Utils";
 import { Logger } from "@Logger";
+import {env} from "@env";
 
 //====================== ====================== ====================== ======================
 /**
@@ -23,6 +24,8 @@ const protocols = {
     "https": httpsRequest //https запрос
 };
 
+const debug = env.get("debug.request");
+
 export class httpsClient {
     private _options: RequestOptions;
 
@@ -34,11 +37,20 @@ export class httpsClient {
     //====================== ====================== ====================== ======================
     /**
      * @description Создаем запрос по ссылке, модифицируем по необходимости
-     * @requires {uploadCookie, getCookies}
+     * @requires {uploadCookie}
      */
     public get Request(): Promise<IncomingMessage | Error> {
         return new Promise((resolve) => {
-            const request = protocols[this.protocol](this._options, (res: IncomingMessage) => {
+            const protocol = this.protocol;
+
+            if (debug) {
+                let path = this._options.path;
+
+                if (path.length > 60) path = `${path.slice(0, 60)}...`
+                Logger.debug(`[httpsClient]: [${!!this._options.body} | ${this._options.method}] | [${protocol}://${this._options.hostname}${path}]`);
+            }
+
+            const request = protocols[protocol](this._options, (res: IncomingMessage) => {
                 //Автоматическое перенаправление
                 if ((res.statusCode >= 300 && res.statusCode < 400) && res.headers?.location) {
                     this._options = {...this._options, path: res.headers.location };
@@ -116,7 +128,9 @@ export class httpsClient {
 
             if (body instanceof Error) return resolve(Error(`Not found XML data!`));
 
-            const filter = body.split(/<[a-zA-Z]+>(.*?)<\/[a-zA-Z]+>/g).filter((text) => text !== "" && !text.match(/xml version/g) && !text.match(/<\//));
+            const filter = body.split(/<[a-zA-Z]+>(.*?)<\/[a-zA-Z]+>/g).filter((text) =>
+                text !== "" && !text.match(/xml version/g) && !text.match(/<\//)
+            );
 
             return resolve(filter);
         });
@@ -142,7 +156,7 @@ export class httpsClient {
 
         //Добавляем куки
         if (options?.cookie) {
-            const cookie = getCookies();
+            const cookie = env.get("bot.youtube.cookie");
 
             if (cookie) headers = { ...headers, "cookie": cookie };
         }

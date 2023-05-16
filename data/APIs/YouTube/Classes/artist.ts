@@ -1,9 +1,9 @@
 import {httpsClient} from "@httpsClient";
 import {ISong} from "@AudioPlayer/Queue/Song";
 import {API} from "@APIs";
-import {APIs} from "@db/Config.json";
+import {env} from "@env";
 
-const Limit = APIs.limits.author;
+const Limit = env.get("APIs.limit.author")
 
 export class YouTube_Artist implements API.array {
     public readonly type = "artist";

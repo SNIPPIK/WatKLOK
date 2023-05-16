@@ -1,6 +1,5 @@
 import {FFprobe} from "@AudioPlayer/Audio/Media/FFspace";
 import {ISong} from "@AudioPlayer/Queue/Song";
-import {Music} from "@db/Config.json";
 import {API} from "@APIs";
 
 export class Discord_track implements API.track {
@@ -15,7 +14,7 @@ export class Discord_track implements API.track {
                     if (!trackInfo) return null;
 
                     return resolve({
-                        url, author: null, image: { url: Music.note },
+                        url, author: null, image: { url: null },
                         title: url.split("/").pop(),
                         duration: { seconds: trackInfo.format.duration },
                         format: { url: trackInfo.format.filename }

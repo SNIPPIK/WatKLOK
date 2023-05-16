@@ -1,12 +1,12 @@
 import {StageChannel} from "discord.js";
 import {ClientMessage} from "@Client/Message";
-import {Debug, Music} from "@db/Config.json";
 import {OpusAudio} from "@AudioPlayer/Audio/Media/OpusAudio";
 import {AudioPlayer} from "../Audio/AudioPlayer";
 import {MessagePlayer} from "../Message";
 import {Voice} from "@Utils/Voice";
 import {Song} from "./Song";
 import {Logger} from "@Logger";
+import {env} from "@env";
 
 /**
  * @description Очередь сервера
@@ -121,7 +121,7 @@ export class Queue {
         }).catch((e) => this.player.emit("error", Error(e), true));
 
         //Если включен режим отладки показывает что сейчас играет и где
-        if (Debug) Logger.debug(`[Queue]: [${this.guild.id}]: Play: [${this.song.duration.full}] - [${this.song.author.title} - ${this.song.title}]`);
+        if (env.get("debug.client")) Logger.debug(`[Queue]: [${this.guild.id}]: Play: [${this.song.duration.full}] - [${this.song.author.title} - ${this.song.title}]`);
     };
     //====================== ====================== ====================== ======================
     /**
@@ -232,7 +232,7 @@ export class Queue {
 
         client.player.queue.delete(guild.id);
 
-        if (Music.LeaveInEnd) Voice.Disconnect(message.guild.id);
-        if (Debug) Logger.debug(`[Queue]: [${message.guild.id}]: has deleted`);
+        if (env.get("music.leave")) Voice.Disconnect(message.guild.id);
+        if (env.get("debug.player")) Logger.debug(`[Queue]: [${message.guild.id}]: has deleted`);
     };
 }

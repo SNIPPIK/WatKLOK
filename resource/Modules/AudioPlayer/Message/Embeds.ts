@@ -5,7 +5,16 @@ import { Platform } from "@APIs";
 import { Queue } from "../Queue/Queue";
 import { ISong, Song } from "../Queue/Song";
 import { DurationUtils } from "@Utils/Durations";
-import { Music } from "@db/Config.json";
+import {env} from "@env";
+
+const note = env.get("music.note");
+const Bar = {
+    enable: env.get("bar"),
+    full: env.get("bar.full"),
+    empty: env.get("bar.empty"),
+
+    button: env.get("bar.button")
+}
 
 
 //Здесь хранятся все EMBED данные о сообщениях (Используется в Managers/Player/Messages)
@@ -21,7 +30,7 @@ export namespace EmbedMessages {
 
         return {
             color, image: image.track, thumbnail: image.author, fields,
-            author: { name: AuthorSong, url: author.url, iconURL: Music.note },
+            author: { name: AuthorSong, url: author.url, iconURL: note },
             footer: { text: `${requester.username} | ${DurationUtils.getTimeQueue(queue)} | 🎶: ${queue.songs.length}`, iconURL: requester.avatarURL() }
         };
     }
@@ -54,8 +63,8 @@ export namespace EmbedMessages {
         return {
             color: Colors.Blue, timestamp: new Date(),
             author: { name: author?.title, url: author?.url },
-            thumbnail: { url: author?.image?.url ?? Music.note },
-            image: typeof image === "string" ? { url: image } : image ?? { url: Music.note },
+            thumbnail: { url: author?.image?.url ?? note },
+            image: typeof image === "string" ? { url: image } : image ?? { url: note },
             fields: [{ name: `**Найден плейлист**`, value: `**❯** **[${title}](${url})**\n**❯** **Всего треков: ${playlist.items.length}**` }],
             footer: { text: `${DisAuthor.username} | ${DurationUtils.getTimeQueue(items)} | 🎶: ${items?.length}`, iconURL: DisAuthor.displayAvatarURL({}) }
         };
@@ -135,7 +144,7 @@ function getFields(queue: Queue): EmbedData["fields"] {
  * @param playDuration
  */
 function toString(duration: { seconds: number, full: string }, playDuration: number): string {
-    if (duration.full === "Live" || !Music.ProgressBar.enable) return `\`\`[${duration}]\`\``;
+    if (duration.full === "Live" || !Bar.enable) return `\`\`[${duration.full}]\`\``;
 
     const parsedDuration = DurationUtils.ParsingTimeToString(playDuration);
     const progress = matchBar(playDuration, duration.seconds);
@@ -154,10 +163,10 @@ function matchBar(currentTime: number, maxTime: number, size: number = 25): stri
     try {
         const CurrentDuration = isNaN(currentTime) ? 0 : currentTime;
         const progressSize = Math.round(size * (CurrentDuration / maxTime));
-        const progressText = Music.ProgressBar.full.repeat(progressSize);
-        const emptyText = Music.ProgressBar.empty.repeat(size - progressSize);
+        const progressText = Bar.full.repeat(progressSize);
+        const emptyText = Bar.empty.repeat(size - progressSize);
 
-        return `${progressText}${Music.ProgressBar.button}${emptyText}`;
+        return `${progressText}${Bar.button}${emptyText}`;
     } catch (err) {
         if (err === "RangeError: Invalid count value") return "**❯** \`\`[Error value]\`\`";
         return "**❯** \`\`[Loading]\`\`";

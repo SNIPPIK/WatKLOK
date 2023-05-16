@@ -1,7 +1,9 @@
-import { Music } from "@db/Config.json";
 import Filters from "@db/Filters.json";
+import {env} from "@env";
 
 export { Filter, Filters, AudioFilters };
+
+const volume = parseInt(env.get("music.audio.volume"));
 
 namespace AudioFilters {
     /**
@@ -46,7 +48,7 @@ namespace AudioFilters {
 
         //Включать более плавное включение музыки
         if (seek === 0) response.push("afade=t=in:st=0:d=3.5");
-        response.push(`volume=${Music.Audio.volume / 100}`);
+        response.push(`volume=${volume / 100}`);
 
         if (filters) filtersForEach(filters, (fl, filter: Filter) => {
             if (filter) {

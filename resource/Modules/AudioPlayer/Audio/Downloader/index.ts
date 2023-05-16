@@ -1,8 +1,12 @@
 import {createWriteStream, existsSync, mkdirSync, rename} from "fs";
 import {Song} from "@AudioPlayer/Queue/Song";
-import {Debug, Music} from "@db/Config.json";
 import {httpsClient} from "@httpsClient";
 import {Logger} from "@Logger";
+import {env} from "@env";
+
+
+const debug = env.get("debug.player");
+const dir = env.get("music.cache.dir");
 
 /**
  * @description Класс для кеширования треков, при использовании будет использоваться больше памяти и будут выполниться доп запросы
@@ -42,7 +46,7 @@ class Downloader {
     public readonly status = (track: Song): {status: "not" | "final" | "download", path: string} => {
         const author = track.author.title.replace(/[|,'";*/\\{}!?.:<>]/gi, "");
         const song = track.title.replace(/[|,'";*/\\{}!?.:<>]/gi, "");
-        const fullPath = `${Music.CacheDir}/[${author}]/[${song}]`;
+        const fullPath = `${dir}/[${author}]/[${song}]`;
 
         if (existsSync(`${fullPath}.opus`)) return { status: "final", path: `${fullPath}.opus` };
         else if (existsSync(`${fullPath}.raw`)) return { status: "download", path: `${fullPath}.raw` };
@@ -64,7 +68,7 @@ class Downloader {
      * @private
      */
     private set download(track: Song) {
-        if (Debug) Logger.debug(`[AudioPlayer]: [Download]: ${track.url}`);
+        if (debug) Logger.debug(`[AudioPlayer]: [Download]: ${track.url}`);
 
         new httpsClient(track.link).Request.then((req) => {
             if (req instanceof Error) return setTimeout(this.cycleStep, 2e3);
@@ -81,7 +85,7 @@ class Downloader {
                     if (!req.destroyed) req.destroy();
                     if (!file.destroyed) file.destroy();
 
-                    if (Debug) Logger.debug(`[AudioPlayer]: [Download]: in ${refreshName}.opus`);
+                    if (debug) Logger.debug(`[AudioPlayer]: [Download]: in ${refreshName}.opus`);
 
                     rename(status.path, `${refreshName}.opus`, () => null);
                     setTimeout(this.cycleStep, 2e3);

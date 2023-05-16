@@ -1,6 +1,9 @@
 import { AudioPlayer } from "@AudioPlayer/Audio/AudioPlayer";
-import { Music, Debug } from "@db/Config.json";
 import {Logger} from "@Logger";
+import {env} from "@env";
+
+const debug = env.get("debug.cycle");
+const duration = parseInt(env.get("music.player.duration"));
 
 export class PlayerCycle {
     private readonly _players: AudioPlayer[] = [];
@@ -18,9 +21,9 @@ export class PlayerCycle {
 
         //Запускаем систему
         if (this._players.length === 1) {
-            if (Debug) Logger.debug(`[Cycle]: [Players]: Start cycle`);
+            if (debug) Logger.debug(`[Cycle]: [Players]: Start cycle`);
 
-            this.time = Date.now() + Music.AudioPlayer.sendDuration;
+            this.time = Date.now() + duration;
             setImmediate(() => this.playerCycleStep);
         }
     };
@@ -40,7 +43,7 @@ export class PlayerCycle {
     private get playerCycleStep(): void {
         //Если в базе больше нет плееров
         if (this._players.length === 0) {
-            if (Debug) Logger.debug(`[Cycle]: [Players]: Stop cycle`);
+            if (debug) Logger.debug(`[Cycle]: [Players]: Stop cycle`);
 
             //Если таймер еще работает, то удаляем его
             if (this._timeout) {

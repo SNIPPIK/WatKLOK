@@ -1,7 +1,6 @@
 import {ISong} from "@AudioPlayer/Queue/Song";
 import {httpsClient} from "@httpsClient";
 
-
 export namespace YouTubeUtils {
     /**
      * @description Получаем данные о пользователе

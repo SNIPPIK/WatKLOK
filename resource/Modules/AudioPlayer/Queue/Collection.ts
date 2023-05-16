@@ -2,10 +2,10 @@ import {ISong, Song} from "@AudioPlayer/Queue/Song";
 import {MessagePlayer} from "@AudioPlayer/Message";
 import {Queue} from "@AudioPlayer/Queue/Queue";
 import {ClientMessage} from "@Client/Message";
-import {Debug} from "@db/Config.json";
 import {Collection} from "discord.js";
 import {Voice} from "@Utils/Voice";
 import {Logger} from "@Logger";
+import {env} from "@env";
 
 /**
  * @description Collection Queue, содержит в себе все очереди
@@ -14,14 +14,14 @@ export class CollectionQueue extends Collection<string, Queue> {
     /**
      * @description Записываем очередь в this
      */
-    private set queue(queue: Queue) {
+    private set saveQueue(queue: Queue) {
         //Запускаем callback для проигрывания треков
         setImmediate(() => queue.play = 0);
 
         //Добавляем очередь в базу
         this.set(queue.guild.id, queue);
 
-        if (Debug) Logger.debug(`[Queue]: [${queue.guild.id}]: has create`);
+        if (env.get("debug.player")) Logger.debug(`[Queue]: [${queue.guild.id}]: has create`);
     };
     //====================== ====================== ====================== ======================
     /**
@@ -38,7 +38,7 @@ export class CollectionQueue extends Collection<string, Queue> {
             //Подключаемся к голосовому каналу
             GuildQueue.player.connection = Voice.Join(VoiceChannel); //Добавляем подключение в плеер
 
-            this.queue = GuildQueue;
+            this.saveQueue = GuildQueue;
         }
 
         //Добавляем плейлист или трек в очередь

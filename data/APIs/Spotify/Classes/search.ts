@@ -1,9 +1,9 @@
 import {SpotifyUtils} from "../Utils";
 import {ISong} from "@AudioPlayer/Queue/Song";
-import {APIs} from "@db/Config.json";
 import {API} from "@APIs";
+import {env} from "@env";
 
-const Limit = APIs.limits.search;
+const Limit = env.get("APIs.limit.search");
 
 export class Spotify_search implements API.array {
     public readonly type = "search";

@@ -7,7 +7,7 @@ const db = {
     api: "https://api.vk.com/method",
     link: "https://vk.com",
 
-    token: `?access_token=${env.get("VK_TOKEN")}`
+    token: `?access_token=${env.get("bot.token.vk")}`
 };
 //====================== ====================== ====================== ======================
 /**

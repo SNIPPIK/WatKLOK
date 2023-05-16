@@ -1,9 +1,9 @@
-import { Voting, APIs, Music } from "@db/Config.json";
 import { DurationUtils } from "@Utils/Durations";
 import { ClientMessage } from "@Client/Message";
 import { msgUtil } from "@db/Message";
 import { VoiceState } from "discord.js";
 import { Voice } from "@Utils/Voice";
+import {env} from "@env";
 
 //AudioPlayer
 import { Filter } from "./Audio/AudioFilters";
@@ -13,6 +13,10 @@ import { MessagePlayer } from "./Message";
 import { Queue } from "./Queue/Queue";
 import { Song } from "./Queue/Song";
 
+
+const Voting: string[] = JSON.parse(env.get("voting"));
+const Info = env.get("music.info");
+const Warning = env.get("APIs.warning");
 
 /**
  * @description Храним все очереди здесь
@@ -55,12 +59,12 @@ export class Player {
         if (!callback) return msgUtil.createMessage({ text: `⚠️ Warning | [${platform}]\n\nУ меня нет поддержки этого запроса!`, codeBlock: "css", color: "Yellow", message });
 
         //Если включено показывать запросы
-        if (Music.showGettingData) {
+        if (Info) {
             //Отправляем сообщение о текущем запросе
             msgUtil.createMessage({ text: `${message.author}, производится запрос в **${platform.toLowerCase()}.${type}**`, color: "Grey", message });
 
             //Если у этой платформы нельзя получить исходный файл музыки, то сообщаем
-            if (Platform.isAudio(platform) && APIs.showWarningAudio) {
+            if (Platform.isAudio(platform) && Warning) {
                 const workPlatform = Platform.isFailed("YANDEX") ? "youtube.track" : "yandex.track";
 
                 msgUtil.createMessage({ text: `⚠️ Warning | [${platform}]\n\nЯ не могу получать исходные файлы музыки у этой платформы.\nЗапрос будет произведен в ${workPlatform}`, color: "Yellow", codeBlock: "css", message });

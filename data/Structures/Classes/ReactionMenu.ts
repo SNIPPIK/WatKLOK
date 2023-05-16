@@ -1,9 +1,13 @@
 import { ClientMessage } from "@Client/Message";
-import { ReactionMenuSettings } from "@db/Config.json";
 import {EmbedData, MessageReaction, User} from "discord.js";
 import { msgUtil } from "@db/Message";
+import {env} from "@env";
 
-const emojis = ReactionMenuSettings.emojis;
+const emojis = {
+    back: env.get("reaction.emoji.back"),
+    cancel: env.get("reaction.emoji.cancel"),
+    next: env.get("reaction.emoji.next")
+};
 
 interface ReactionCallbacks {
     back: (reaction: MessageReaction, user: User, message: ClientMessage, msg: ClientMessage) => void;

@@ -1,9 +1,9 @@
 import {SpotifyUtils} from "../Utils";
 import {ISong} from "@AudioPlayer/Queue/Song";
-import {APIs} from "@db/Config.json";
 import {API} from "@APIs";
+import {env} from "@env";
 
-const Limit = APIs.limits.playlist;
+const Limit = env.get("APIs.limit.playlist");
 
 export class Spotify_playlist implements API.list {
     public readonly type = "playlist";

@@ -1,10 +1,13 @@
 import { AudioFilters, Filters } from "../AudioFilters";
-import { Music, Debug } from "@db/Config.json";
 import { FFmpeg } from "./FFspace";
 import { opus } from "prism-media";
 import { Readable } from "stream";
 import { Logger } from "@Logger";
 import fs from "fs";
+import {env} from "@env";
+
+const debug = env.get("debug.player");
+const bitrate = env.get("music.audio.bitrate");
 
 export class OpusAudio {
     /**
@@ -74,7 +77,7 @@ export class OpusAudio {
      */
     private get args() {
         const reconnect = ["-vn", "-sn", "-dn", "-reconnect", 1, "-reconnect_streamed", 1, "-reconnect_delay_max", 5];
-        const Audio = ["-compression_level", 12, "-c:a", "libopus", "-f", "opus", "-b:a", Music.Audio.bitrate, "-preset:a", "ultrafast"];
+        const Audio = ["-compression_level", 12, "-c:a", "libopus", "-f", "opus", "-b:a", bitrate, "-preset:a", "ultrafast"];
 
         return (path: string, seek: number, filters: string) => {
             if (seek) reconnect.push("-ss", seek ?? 0);
@@ -103,7 +106,7 @@ export class OpusAudio {
         }
         this._ffmpeg.pipe(this.opus); //Загружаем из FFmpeg'a в opus.OggDemuxer
 
-        if (Debug) Logger.debug(`[AudioPlayer]: [OpusAudio]:\n┌ Status:       [Encoding]\n├ Modification: [Filters: ${options?.filters?.length} | Seek: ${options?.seek}]\n└ File:         [${options.path}]`);
+        if (debug) Logger.debug(`[AudioPlayer]: [OpusAudio]:\n┌ Status:       [Encoding]\n├ Modification: [Filters: ${options?.filters?.length} | Seek: ${options?.seek}]\n└ File:         [${options.path}]`);
     };
     //====================== ====================== ====================== ======================
     /**
@@ -160,6 +163,6 @@ export class OpusAudio {
         this._opus = null;
         this._streams = null;
 
-        if (Debug) Logger.debug(`[AudioPlayer]: [OpusAudio]: Destroying!`);
+        if (debug) Logger.debug(`[AudioPlayer]: [OpusAudio]: Destroying!`);
     };
 }

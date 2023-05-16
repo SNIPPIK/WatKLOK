@@ -3,9 +3,12 @@ import { httpsClient } from "@httpsClient";
 import { platform, Platform } from "@APIs";
 import { DurationUtils } from "@Utils/Durations";
 import { ClientMessage } from "@Client/Message";
-import { Music } from "@db/Config.json";
+import {env} from "@env";
 
 export { Song, ISong };
+
+const CacheMusic = env.get("music.cache.enable");
+const note = env.get("music.note");
 
 class Song {
     /**
@@ -120,7 +123,7 @@ class Song {
     public get resource() {
         return new Promise<string>(async (resolve) => {
             //Если пользователь включил кеширование музыки
-            if (Music.CacheMusic) {
+            if (CacheMusic) {
                 const info = DownloadManager.status(this);
 
                 //Если есть файл выдаем путь до него
@@ -143,7 +146,7 @@ class Song {
             }
 
             //Если включено кеширование музыки, то скачиваем
-            if (Music.CacheMusic && this.link.length > 10) DownloadManager.addTrack = this;
+            if (CacheMusic && this.link.length > 10) DownloadManager.addTrack = this;
 
             return resolve(this.link);
         });
@@ -174,8 +177,8 @@ class Song {
 
         //Изображения трека и автора
         this._images = {
-            track: validURL(track?.image) ? track?.image : { url: Music.note },
-            author: validURL(track.author?.image) ? track.author?.image : { url: Music.note }
+            track: validURL(track?.image) ? track?.image : { url: note },
+            author: validURL(track.author?.image) ? track.author?.image : { url: note }
         };
 
         //Время трека

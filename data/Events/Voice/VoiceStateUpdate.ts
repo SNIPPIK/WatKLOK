@@ -1,12 +1,14 @@
 import { Queue } from "@AudioPlayer/Queue/Queue";
-import { Debug } from "@db/Config.json";
 import { VoiceState } from "discord.js";
 import { Voice } from "@Utils/Voice";
 import { Logger } from "@Logger";
+import {env} from "@env";
 
 //Client imports
 import { WatKLOK } from "@Client";
 import { Event } from "@Client/Event"
+
+const debug = env.get("debug.client");
 
 export class voiceStateUpdate extends Event<VoiceState, VoiceState> {
     public readonly name: string = "voiceStateUpdate";
@@ -31,7 +33,7 @@ export class voiceStateUpdate extends Event<VoiceState, VoiceState> {
                 if (usersSize < 1 && !isBotVoice) queue.timer = "start"; //Если есть очередь сервера, удаляем!
                 else if (usersSize > 0) queue.timer = "cancel"; //Если есть очередь сервера, отмена удаления!
 
-                if (Debug) Logger.debug(`[Event]: [voiceStateUpdate]: [ID: ${ChannelID} | Voice: ${!!voice} | inVoice: ${isBotVoice} | Users: ${usersSize} | Queue: ${!!queue}]`);
+                if (debug) Logger.debug(`[Event]: [voiceStateUpdate]: [ID: ${ChannelID} | Voice: ${!!voice} | inVoice: ${isBotVoice} | Users: ${usersSize} | Queue: ${!!queue}]`);
             }
         });
     };

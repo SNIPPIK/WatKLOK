@@ -1,27 +1,18 @@
-import { existsSync, readFileSync, writeFile } from 'node:fs';
+import {env} from "@env";
 
-/**
- * @description Получаем куки из json файла
- */
-export function getCookies(): string {
-    try {
-        if (!existsSync(`db/Cookie.json`)) return null;
-        return JSON.parse(readFileSync(`db/Cookie.json`, "utf8")).cookie;
-    } catch { return null; }
-}
-//====================== ====================== ====================== ======================
 /**
  * @description Сохраняем куки в json файл
  * @param Cookie {string | string[]} Что нужно добавить к текущему куки
  */
 export function uploadCookie(Cookie: string | string[]): void {
-    if (!existsSync(`db/Cookie.json`)) return null;
-
     try {
-        const CookieFile: { cookie: string } = JSON.parse(readFileSync(`db/Cookie.json`, "utf8"));
-        const newCookie: string = ParsingCookieToString({ ...ParsingCookieToJson(CookieFile.cookie), ...ParsingCookieToJson(Cookie) });
+        const CookieFile: string = env.get("bot.youtube.cookie");
 
-        writeFile('db/Cookie.json', JSON.stringify({ cookie: newCookie }, null, `\t`), () => null);
+        if (!CookieFile) return;
+
+        const newCookie: string = ParsingCookieToString({ ...ParsingCookieToJson(CookieFile), ...ParsingCookieToJson(Cookie) });
+
+        env.set("bot.youtube.cookie", newCookie);
     } catch (err) { throw Error("[APIs]: Cookie file has damaged!"); }
 }
 //====================== ====================== ====================== ======================

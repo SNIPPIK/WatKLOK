@@ -3,7 +3,9 @@ import { Command, ResolveData } from "@Client/Command";
 import { ClientMessage } from "@Client/Message";
 import { ReactionMenu } from "@db/Classes/ReactionMenu";
 import { ArraySort } from "@db/ArraySort";
-import { Bot } from "@db/Config.json";
+import {env} from "@env";
+
+const prefix = env.get("bot.prefix")
 
 export class HelpCommand extends Command {
     public constructor() {
@@ -46,7 +48,7 @@ export class HelpCommand extends Command {
         const pages = ArraySort<Command>(5, Commands, (command) =>
             `┌Команда [**${command.name}**] | ${command.type}
              ├ **Сокращения:** (${command.aliases.join(", ") ?? `Нет`})
-             ├ **Используется:** ${Bot.prefix}${command.name} ${command.usage}
+             ├ **Используется:** ${prefix}${command.name} ${command.usage}
              └ **Описание:** (${command.description ?? `Нет`})`
         );
         embed.description = pages[0];

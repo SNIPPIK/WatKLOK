@@ -1,5 +1,4 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } from "discord.js";
-import { Music, ReactionMenuSettings } from "@db/Config.json";
 import { ClientMessage } from "@Client/Message";
 import { MessageCycle } from "@Client/Cycles/Messages";
 import { Queue } from "../Queue/Queue"
@@ -8,20 +7,22 @@ import { EmbedMessages } from "./Embeds";
 import { ButtonCollector } from "./ButtonCollector";
 import { msgUtil } from "@db/Message";
 import { Logger } from "@Logger";
+import {env} from "@env";
 
+const MusicButtons = JSON.parse(env.get("buttons"));
 
-if (Music.Buttons.length < 4) Error(`[Config]: Buttons has not found, find ${Music.Buttons.length}, need 4`);
+if (MusicButtons.length < 4) Error(`[Config]: Buttons has not found, find ${MusicButtons.length}, need 4`);
 
 //Кнопки над сообщением о проигрывании трека
 const Buttons = new ActionRowBuilder().addComponents(
     [
-        new ButtonBuilder().setCustomId("last").setEmoji(Music.Buttons[0]).setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId("resume_pause").setEmoji(Music.Buttons[1]).setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId("skip").setEmoji(Music.Buttons[2]).setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId("replay").setEmoji(Music.Buttons[3]).setStyle(ButtonStyle.Secondary)
+        new ButtonBuilder().setCustomId("last").setEmoji(MusicButtons[0]).setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("resume_pause").setEmoji(MusicButtons[1]).setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("skip").setEmoji(MusicButtons[2]).setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("replay").setEmoji(MusicButtons[3]).setStyle(ButtonStyle.Secondary)
     ]
 );
-const emoji: string = ReactionMenuSettings.emojis.cancel;
+const emoji: string = env.get("reaction.emoji.cancel");
 const CycleMessages = new MessageCycle();
 
 //Сообщения, которые отправляет плеер

@@ -2,18 +2,19 @@ import { ActionRow, ActionRowBuilder, BaseInteraction, BaseMessageOptions, Comma
 import { ReactionMenu } from "@db/Classes/ReactionMenu";
 import { DurationUtils } from "@Utils/Durations";
 import { msgUtil } from "@db/Message";
-import { Bot } from '@db/Config.json';
 
 //Client imports
 import { Command, ResolveData } from "@Client/Command";
 import { Event } from "@Client/Event";
 import { WatKLOK } from "@Client";
+import {env} from "@env";
 
 //Exports
 export { interactionCreate, ClientInteraction, ClientMessage };
 
 //База с пользователями которые слишком часто используют команды
 const CoolDownBase = new Map<string, { time: number }>();
+const OwnerIDS: string[] = env.get("bot.owners").split(",") || [env.get("bot.owners")];
 
 class interactionCreate extends Event<ClientInteraction, null> {
     public readonly name = "interactionCreate";
@@ -127,7 +128,7 @@ class interactionCreate extends Event<ClientInteraction, null> {
      * @param command {Command} Команда
      */
     private static checkOwners = (author: User, command: Command): ResolveData => {
-        if (!Bot.OwnerIDs.includes(author.id)) {
+        if (!OwnerIDS.includes(author.id)) {
             //Если команда для разработчиков
             if (command.isOwner) return { text: `${author}, Эта команда не для тебя!`, color: "DarkRed" };
 
@@ -154,7 +155,6 @@ type Channels = DMChannel | PartialDMChannel | NewsChannel | TextChannel | Threa
 interface ClientInteraction extends BaseInteraction {
     client: WatKLOK;
     member: GuildMember; customId: string; commandName: string; commandId: string; author: User;
-    //delete: () => void;
     deferReply: () => Promise<void>; deleteReply: () => Promise<void>; options?: { _hoistedOptions: any[] };
     reply: ClientMessage["channel"]["send"];
 }

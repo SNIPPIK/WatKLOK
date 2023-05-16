@@ -1,9 +1,9 @@
 import {ISong} from "@AudioPlayer/Queue/Song";
 import {YandexMusicUtils} from "../Utils";
 import {API} from "@APIs";
-import {APIs} from "@db/Config.json";
+import {env} from "@env";
 
-const Limit = APIs.limits.playlist;
+const Limit = env.get("APIs.limit.playlist");
 export class YandexMusic_album implements API.list {
     public readonly type = "album";
     public readonly filter = /album/;

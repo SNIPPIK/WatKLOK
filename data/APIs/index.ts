@@ -2,8 +2,9 @@ import {DurationUtils} from "@Utils/Durations";
 import {ISong, Song} from "@AudioPlayer/Queue/Song";
 import {Colors} from "discord.js";
 import {readdirSync} from "fs";
-import {env} from "@env";
 import {Logger} from "@Logger";
+import process from "process";
+import {env} from "@env";
 
 export { Platform, platform, callback };
 
@@ -238,9 +239,9 @@ namespace Platform {
 //====================== ====================== ====================== ======================
 //Проверяем наличие данных авторизации и возможность получить аудио
 if (Platforms.audio.length === 0) (async () => {
-    if (!env.get("SPOTIFY_ID") || !env.get("SPOTIFY_SECRET")) Platforms.auth.push("SPOTIFY");
-    if (!env.get("VK_TOKEN")) Platforms.auth.push("VK");
-    if (!env.get("YANDEX")) Platforms.auth.push("YANDEX");
+    if (!env.get("bot.token.spotify")) Platforms.auth.push("SPOTIFY");
+    if (!env.get("bot.token.vk")) Platforms.auth.push("VK");
+    if (!env.get("bot.token.yandex")) Platforms.auth.push("YANDEX");
 
     //Если платформа не поддерживает получение аудио
     for (let platform of Platforms.all) if (!platform.audio) Platforms.audio.push(platform.name);

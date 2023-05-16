@@ -1,9 +1,9 @@
 import {SpotifyUtils} from "../Utils";
 import {ISong} from "@AudioPlayer/Queue/Song";
-import {APIs} from "@db/Config.json";
 import {API} from "@APIs";
+import {env} from "@env";
 
-const Limit = APIs.limits.author;
+const Limit = env.get("APIs.limit.author");
 
 export class Spotify_artist implements API.array {
     public readonly type = "artist";

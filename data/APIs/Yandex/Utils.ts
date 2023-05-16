@@ -5,7 +5,7 @@ import {env} from "@env";
 
 //Локальная база данных
 const db = {
-    token: env.get("YANDEX"),
+    token: env.get("bot.token.yandex"),
 
     api: "https://api.music.yandex.net",
     link: "https://music.yandex.ru"
