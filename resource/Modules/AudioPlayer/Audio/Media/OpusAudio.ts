@@ -6,7 +6,7 @@ import { Logger } from "@Logger";
 import fs from "fs";
 import {env} from "@env";
 
-const debug = env.get("debug.player");
+const debug = env.get("debug.player.audio");
 const bitrate = env.get("music.audio.bitrate");
 
 export class OpusAudio {

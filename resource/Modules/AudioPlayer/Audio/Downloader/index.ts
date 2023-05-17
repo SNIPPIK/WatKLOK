@@ -5,7 +5,7 @@ import {Logger} from "@Logger";
 import {env} from "@env";
 
 
-const debug = env.get("debug.player");
+const debug = env.get("debug.player.cache");
 const dir = env.get("music.cache.dir");
 
 /**

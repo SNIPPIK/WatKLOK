@@ -6,7 +6,7 @@ import {env} from "@env";
 
 export { FFmpeg, FFprobe, Arguments };
 
-const debug = env.get("debug.player");
+const debug = env.get("debug.ffmpeg");
 
 /**
  * @description Используется для модификации и конвертации потоков
