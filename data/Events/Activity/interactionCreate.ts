@@ -133,7 +133,7 @@ class interactionCreate extends Event<ClientInteraction, null> {
             if (command.isOwner) return { text: `${author}, Эта команда не для тебя!`, color: "DarkRed" };
 
             //Проверяем находится ли пользователь в базе
-            if (CoolDownBase.get(author.id)) return { text: `${author}, ты слишком быстро отправляем сообщения! Подожди ${DurationUtils.ParsingTimeToString(CoolDownBase.get(author.id).time)}`, color: "DarkRed" }
+            if (CoolDownBase.get(author.id)) return { text: `${author}, ты слишком быстро отправляем сообщения! Подожди ${DurationUtils.toString(CoolDownBase.get(author.id).time)}`, color: "DarkRed" }
             else {
                 //Добавляем пользователя в CoolDown базу
                 CoolDownBase.set(author.id, { time: command.isCLD });

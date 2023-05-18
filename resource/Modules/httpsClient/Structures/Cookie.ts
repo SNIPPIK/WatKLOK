@@ -1,54 +1,47 @@
 import {env} from "@env";
 
 /**
- * @description Сохраняем куки в json файл
- * @param Cookie {string | string[]} Что нужно добавить к текущему куки
+ * @description Поддерживается пока только youtube
  */
-export function uploadCookie(Cookie: string | string[]): void {
-    try {
-        const CookieFile: string = env.get("bot.youtube.cookie");
+export class Cookie {
+    /**
+     * @description Обнавляем куки в файле env
+     * @param Cookie {string | string[]} Новый куки или новые данные для замены
+     */
+    public set update(Cookie: string | string[]) {
+        const oldCookie: string = env.get("bot.youtube.cookie");
 
-        if (!CookieFile) return;
+        if (!oldCookie) return;
 
-        const newCookie: string = ParsingCookieToString({ ...ParsingCookieToJson(CookieFile), ...ParsingCookieToJson(Cookie) });
+        //Обьеденяем куки если он имеет формат array
+        const toCookie = typeof Cookie === "string" ? Cookie : Cookie.join("; ");
 
-        env.set("bot.youtube.cookie", newCookie);
-    } catch (err) { throw Error("[APIs]: Cookie file has damaged!"); }
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Создаем из строки json
- * @param headCookie {string[] | string} Что нужно добавить к текущему куки
- */
-function ParsingCookieToJson(headCookie: string[] | string): {} {
-    let Json = {};
+        //Обьеденяем старый и новый куки
+        const joinCookie = this.toString({...this.toJson(oldCookie), ...this.toJson(toCookie)});
 
-    //Разбираем куки в JSON
-    const filteredCookie = (cook: string) => cook.split(";").forEach((cookie) => {
-        const arrayCookie = cookie.split("=");
+        try {
+            env.set("bot.youtube.cookie", joinCookie);
+        } catch (e) {}
+    };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Конвертируем куки в Json
+     * @param Cookie {string} Куки
+     */
+    private readonly toJson = (Cookie: string): {} => {
+        let output: any = {};
 
-        //Если параметра нет, то не добавляем его
-        if (arrayCookie.length <= 1) return;
+        Cookie.split(/\s*;\s*/).forEach((pair) => {
+            const cook = pair.split(/\s*=\s*/);
+            output[cook[0]] = cook.splice(1).join('=');
+        });
 
-        const key: string = arrayCookie.shift()?.trim().toUpperCase();
-        const value: string = arrayCookie.join("=").trim();
-
-        Json = { ...Json, [key]: value };
-    });
-
-    if (typeof headCookie === "string") filteredCookie(headCookie);
-    else headCookie.forEach(filteredCookie);
-
-    return Json;
-}
-//====================== ====================== ====================== ======================
-/**
- * @description Получаем из json формата строку
- * @param JsonCookie {object} Json куки
- */
-function ParsingCookieToString(JsonCookie: {}) {
-    let result: string[] = [];
-
-    for (const [key, value] of Object.entries(JsonCookie)) result.push(`${key}=${value}`);
-    return result.join("; ");
+        return output
+    };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Конвертируем куки в строку для дольнейшего использования
+     * @param Cookie {{}} Совмещенный куки
+     */
+    private readonly toString = (Cookie: {}): string => Object.entries(Cookie).map(([key, value]) => `${key}=${value}`).join("; ");
 }

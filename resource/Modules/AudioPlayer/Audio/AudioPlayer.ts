@@ -73,11 +73,13 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
     //====================== ====================== ====================== ======================
     /**
      * @description Меняем голосовое подключение
+     * @param connection {VoiceConnection} Голосове подключение
      */
     public set connection(connection: VoiceConnection) { this._connection = connection; };
     //====================== ====================== ====================== ======================
     /**
      * @description Меняем статус плеера
+     * @param newState {PlayerStatus} Новый данные плеера
      */
     public set state(newState: PlayerStatus) {
         const oldState = this._state;
@@ -99,8 +101,9 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
     //====================== ====================== ====================== ======================
     /**
      * @description Начинаем чтение стрима
+     * @param stream {OpusAudio} Поток который будет вопроизведен на сервере
      */
-    public set readStream(stream: PlayerStatus["stream"]) {
+    public set readStream(stream: OpusAudio) {
         if (!stream) { this.emit("error", Error(`Stream is null`), true); return; }
 
         //Если прочитать возможно

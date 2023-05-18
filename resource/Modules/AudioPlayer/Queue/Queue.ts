@@ -1,4 +1,4 @@
-import {StageChannel} from "discord.js";
+import {StageChannel, VoiceChannel} from "discord.js";
 import {ClientMessage} from "@Client/Message";
 import {OpusAudio} from "@AudioPlayer/Audio/Media/OpusAudio";
 import {AudioPlayer} from "../Audio/AudioPlayer";
@@ -35,7 +35,7 @@ export class Queue {
     /**
      * @description Каналы для взаимодействия. Каналы (message: TextChannel, voice: VoiceChannel)
      */
-    private _channel: { msg: ClientMessage, voice: Voice.Channels | StageChannel };
+    private _channel: { msg: ClientMessage, voice: VoiceChannel | StageChannel };
     //====================== ====================== ====================== ======================
     /**
      * @description Настройки для очереди. Включен лы повтор, включен ли режим радио
@@ -163,45 +163,15 @@ export class Queue {
     /**
      * @description Создаем очередь для сервера
      * @param msg {ClientMessage} Сообщение с сервера
-     * @param voice {Voice.Channels} Голосовой канал
+     * @param voice {VoiceChannel | StageChannel} Голосовой канал
      */
-    public constructor(msg: ClientMessage, voice: Voice.Channels) {
+    public constructor(msg: ClientMessage, voice: VoiceChannel | StageChannel) {
         this._channel = { msg, voice };
 
-        //Что будет делать плеер если закончит играть
-        this.player.on("idle", () => {
-            //Определяем тип loop
-            if (this?.songs) {
-                const { radioMode, loop } = this.options;
-
-                //Если включен радио мод или тип повтора трек нечего не делаем
-                if (radioMode || loop === "song") return;
-
-                //Убираем текущий трек
-                const shiftSong = this.songs.shift();
-
-                //Если тип повтора треки, то добавляем по новой трек
-                if (loop === "songs") this.songs.push(shiftSong);
-            }
-
-            //Выбираем случайный номер трека, просто меняем их местами
-            if (this?.options?.random) this.swap = Math.floor(Math.random() * this.songs.length);
-
-            //Включаем трек
-            setTimeout(() => this.play = 0, 1500);
-        });
-
-        //Если в плеере возникнет ошибка
-        this.player.on("error", (err, isSkip) => {
-            //Выводим сообщение об ошибке
-            MessagePlayer.toError(this, err);
-
-            setTimeout((): void => {
-                if (isSkip) {
-                    this.songs.shift();
-                    setTimeout(() => this.play = 0, 1e3);
-                }
-            }, 1200);
+        setImmediate(() => {
+            const client = msg.client;
+            client.player.queue.onPlayerIdle = msg.guild.id;
+            client.player.queue.onPlayerError = msg.guild.id;
         });
     };
     //====================== ====================== ====================== ======================
@@ -232,7 +202,7 @@ export class Queue {
 
         client.player.queue.delete(guild.id);
 
-        if (env.get("music.leave")) Voice.Disconnect(message.guild.id);
+        if (env.get("music.leave")) Voice.disconnect(message.guild.id);
         if (env.get("debug.player")) Logger.debug(`[Queue]: [${message.guild.id}]: has deleted`);
     };
 }

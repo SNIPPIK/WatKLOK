@@ -86,10 +86,7 @@ export class MessageCycle {
         const queue: Queue = client.player.queue.get(guild.id);
 
         //Если очереди нет или нет трека в очереди, удаляем сообщение
-        if (!queue || !queue?.song) {
-            this.remove = message;
-            return;
-        }
+        if (!queue || !queue?.song) { this.remove = message; return; }
 
         //Если у плеера статус при котором нельзя обновлять сообщение
         if (!queue.player.hasUpdate) return;

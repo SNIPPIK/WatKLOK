@@ -222,7 +222,7 @@ namespace Platform {
         return (search.callback(nameSong) as Promise<ISong.track[]>).then((tracks: ISong.track[]) => {
             //Фильтруем треки оп времени
             const FindTracks: ISong.track[] = tracks.filter((track: ISong.track) => {
-                const DurationSong: number = (exPlatform === "YOUTUBE" ? DurationUtils.ParsingTimeToNumber : parseInt)(track.duration.seconds);
+                const DurationSong: number = (exPlatform === "YOUTUBE" ? DurationUtils.toInt : parseInt)(track.duration.seconds);
 
                 //Как надо фильтровать треки
                 return DurationSong === duration || DurationSong < duration + 7 && DurationSong > duration - 5 || DurationSong < duration + 27 && DurationSong > duration - 27;

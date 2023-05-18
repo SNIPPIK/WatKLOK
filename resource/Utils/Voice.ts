@@ -2,38 +2,35 @@ import { ChannelType, Guild, InternalDiscordGatewayAdapterCreator, StageChannel,
 import { VoiceConnection, getVoiceConnection, getVoiceConnections, joinVoiceChannel } from "@discordjs/voice";
 import {Logger} from "@Logger";
 
-const VoiceChannelsGroup = "A";
-/**
- * @description Здесь все возможные взаимодействия с голосовым каналом (еще не финал)
- */
-export namespace Voice {
-    //Допустимые голосовые каналы (стандартный и трибуна)
-    export type Channels = VoiceChannel | StageChannel;
+type Channels = VoiceChannel | StageChannel;
+const Group = "A";
+
+class VoiceManager {
     /**
-     * @description Подключаемся к голосовому каналу
-     * @param id {string} ID канала
-     * @param guild {Guild} Сервер
-     * @param type {string} Тип канала
+     * @description Подключение к голосовому каналу
+     * @param channel {Channels} Канал к которому надо подключится
      */
-    export function Join({ id, guild, type }: Channels): VoiceConnection {
-        const me = guild.members?.me;
-        const JoinVoice = joinVoiceChannel({
-            selfDeaf: true, selfMute: false, channelId: id, guildId: guild.id,
-            adapterCreator: guild.voiceAdapterCreator as InternalDiscordGatewayAdapterCreator, group: VoiceChannelsGroup
+    public readonly join = (channel: Channels): VoiceConnection =>{
+        //Подключаемся к голосовому каналу
+        const connection = joinVoiceChannel({
+            selfDeaf: true, selfMute: false, group: Group, channelId: channel.id, guildId: channel.guildId,
+            adapterCreator: channel.guild.voiceAdapterCreator
         });
+        const me = channel.guild.members?.me;
 
         //Для голосовых трибун
-        if (type !== ChannelType.GuildVoice && me) me?.voice?.setRequestToSpeak(true).catch(Logger.error);
+        if (channel.type !== ChannelType.GuildVoice && me) me?.voice?.setRequestToSpeak(true).catch(Logger.error);
 
-        return JoinVoice;
-    }
+        return connection;
+    };
     //====================== ====================== ====================== ======================
     /**
      * @description Отключаемся от канала
      * @param guild {Channels | string} ID канала или сам канал
      */
-    export function Disconnect(guild: Guild | string): void {
-        const VoiceConnection = getVoice(typeof guild === "string" ? guild : guild.id);
+    public readonly disconnect = (guild: Guild | string): void => {
+        const ID = typeof guild === "string" ? guild : guild.id;
+        const VoiceConnection = this.getVoice(ID);
 
         //Если бот подключен к голосовому каналу, то отключаемся!
         if (VoiceConnection) {
@@ -41,16 +38,16 @@ export namespace Voice {
             VoiceConnection.disconnect();
 
             //Удаляем канал из базы
-            getVoiceConnections(VoiceChannelsGroup).delete(VoiceConnection.joinConfig.guildId);
+            getVoiceConnections(Group)?.delete(ID);
         }
-    }
+    };
     //====================== ====================== ====================== ======================
     /**
      * @description Все пользователи в голосовом канале
      * @param Guild {Guild} Сервер с которого надо взять данные
      */
-    export function Members(Guild: Guild): VoiceState[] | "Fail" {
-        const connection = getVoice(Guild.id), Users: VoiceState[] = [];
+    public readonly Members = (Guild: Guild): VoiceState[] | "Fail" => {
+        const connection = this.getVoice(Guild.id), Users: VoiceState[] = [];
 
         if (connection) Guild.voiceStates.cache.forEach((state: VoiceState): void => {
             if (!(state.channelId === connection.joinConfig.channelId && state.guild.id === connection.joinConfig.guildId)) return;
@@ -58,11 +55,12 @@ export namespace Voice {
         });
 
         return Users.length > 0 ? Users : "Fail";
-    }
+    };
     //====================== ====================== ====================== ======================
     /**
      * @description Получаем голосовое подключение
      * @param guildID {string} ID сервера
      */
-    export function getVoice(guildID: string): VoiceConnection { return getVoiceConnection(guildID, VoiceChannelsGroup); }
+    public readonly getVoice = (guildID: string): VoiceConnection => getVoiceConnection(guildID, Group);
 }
+export const Voice = new VoiceManager();

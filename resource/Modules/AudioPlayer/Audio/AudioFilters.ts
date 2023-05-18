@@ -19,7 +19,7 @@ namespace AudioFilters {
      * @param filters {AudioFilters} Аудио фильтры которые включил пользователь
      * @param duration {number} Время по умолчанию
      */
-    export function getDuration(filters: Filters, duration: number = 20) {
+    export function getDuration(filters: Filters, duration: number = 20): number {
         if (!filters) return duration;
 
         filtersForEach(filters, (fl, filter: Filter) => {

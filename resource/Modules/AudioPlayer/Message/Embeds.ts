@@ -31,7 +31,7 @@ export namespace EmbedMessages {
         return {
             color, image: image.track, thumbnail: image.author, fields,
             author: { name: AuthorSong, url: author.url, iconURL: note },
-            footer: { text: `${requester.username} | ${DurationUtils.getTimeQueue(queue)} | 🎶: ${queue.songs.length}`, iconURL: requester.avatarURL() }
+            footer: { text: `${requester.username} | ${DurationUtils.getTracksTime(queue)} | 🎶: ${queue.songs.length}`, iconURL: requester.avatarURL() }
         };
     }
     //====================== ====================== ====================== ======================
@@ -48,7 +48,7 @@ export namespace EmbedMessages {
         return {
             color, fields, thumbnail: image.track,
             author: { name: AuthorSong, iconURL: image.author.url, url: author.url },
-            footer: { text: `${requester.username} | ${DurationUtils.getTimeQueue(songs)} | 🎶: ${songs.length}`, iconURL: requester.avatarURL() }
+            footer: { text: `${requester.username} | ${DurationUtils.getTracksTime(songs)} | 🎶: ${songs.length}`, iconURL: requester.avatarURL() }
         };
     }
     //====================== ====================== ====================== ======================
@@ -66,7 +66,7 @@ export namespace EmbedMessages {
             thumbnail: { url: author?.image?.url ?? note },
             image: typeof image === "string" ? { url: image } : image ?? { url: note },
             fields: [{ name: `**Найден плейлист**`, value: `**❯** **[${title}](${url})**\n**❯** **Всего треков: ${playlist.items.length}**` }],
-            footer: { text: `${DisAuthor.username} | ${DurationUtils.getTimeQueue(items)} | 🎶: ${items?.length}`, iconURL: DisAuthor.displayAvatarURL({}) }
+            footer: { text: `${DisAuthor.username} | ${DurationUtils.getTracksTime(items)} | 🎶: ${items?.length}`, iconURL: DisAuthor.displayAvatarURL({}) }
         };
     }
     //====================== ====================== ====================== ======================
@@ -85,7 +85,7 @@ export namespace EmbedMessages {
             color, thumbnail: image.track, timestamp: new Date(),
             description: `\n[${title}](${url})\n\`\`\`js\n${err}...\`\`\``,
             author: { name: AuthorSong, url: author.url, iconURL: image.author.url },
-            footer: { text: `${requester.username} | ${DurationUtils.getTimeQueue(songs)} | 🎶: ${songs.length}`, iconURL: requester?.avatarURL() ?? client.user.displayAvatarURL() }
+            footer: { text: `${requester.username} | ${DurationUtils.getTracksTime(songs)} | 🎶: ${songs.length}`, iconURL: requester?.avatarURL() ?? client.user.displayAvatarURL() }
         };
     }
     //====================== ====================== ====================== ======================
@@ -103,7 +103,7 @@ export namespace EmbedMessages {
             timestamp: new Date(),
 
             fields: tracks.map((track, index) => {
-                const duration = platform === "YOUTUBE" ? track.duration.seconds : DurationUtils.ParsingTimeToString(parseInt(track.duration.seconds));
+                const duration = platform === "YOUTUBE" ? track.duration.seconds : DurationUtils.toString(parseInt(track.duration.seconds));
                 const title = `[${replaceText(track.title, 80, true)}](${track.url})`; //Название трека
                 const author = `${replaceText(track.author.title, 30, true)}`; //Автор трека
 
@@ -146,7 +146,7 @@ function getFields(queue: Queue): EmbedData["fields"] {
 function toString(duration: { seconds: number, full: string }, playDuration: number): string {
     if (duration.full === "Live" || !Bar.enable) return `\`\`[${duration.full}]\`\``;
 
-    const parsedDuration = DurationUtils.ParsingTimeToString(playDuration);
+    const parsedDuration = DurationUtils.toString(playDuration);
     const progress = matchBar(playDuration, duration.seconds);
     const string = `**❯** \`\`[${parsedDuration} \\ ${duration.full}]\`\``;
 

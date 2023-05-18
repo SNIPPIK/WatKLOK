@@ -7,6 +7,10 @@ import {Event} from "@Client/Event";
 
 const commands = new Collection<string, Command>();
 const player = new Player();
+const DefaultLifeTime = {
+    interval: 1800, // Every 30 min...
+    lifetime: 900	// 15 minutes.
+};
 
 export class WatKLOK extends Client {
     //====================== ====================== ====================== ======================
@@ -32,14 +36,10 @@ export class WatKLOK extends Client {
         super({
             sweepers: {
                 ...Options.DefaultSweeperSettings,
-                messages: {
-                    interval: 1800, // Every 30 min...
-                    lifetime: 900	// 15 minutes.
-                }
+                messages: DefaultLifeTime
             },
             //Запрещаем Discord.js<Client> кешировать некоторые данные
             makeCache: Options.cacheWithLimits({
-                ...Options.DefaultMakeCacheSettings,
                 AutoModerationRuleManager: 0,
 
                 //Бот не может менять статус
@@ -86,8 +86,6 @@ export class WatKLOK extends Client {
 
                 //Guild (Бот может получить данные о серверах)
                 IntentsBitField.Flags.Guilds
-                //IntentsBitField.Flags.GuildMembers,
-
             ],
             shards: "auto"
         });

@@ -31,7 +31,7 @@ export class LeaveCommand extends Command {
         //Если включен режим радио
         if (queue && queue.options.radioMode) return { text: `${author}, я не могу отключится из-за включенного режима радио!` };
 
-        Voice.Disconnect(guild.id);
+        Voice.disconnect(guild.id);
         if (queue) return { text: `${author}, отключение от голосового канала! Очередь будет удалена через **20 сек**!` };
     };
 }

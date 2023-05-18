@@ -183,7 +183,7 @@ class Song {
 
         //Время трека
         this._duration = {
-            full: seconds > 0 ? DurationUtils.ParsingTimeToString(seconds) : "Live", seconds
+            full: seconds > 0 ? DurationUtils.toString(seconds) : "Live", seconds
         };
 
         //Пользователь, который включил трек

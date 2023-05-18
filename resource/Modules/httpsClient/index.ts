@@ -1,8 +1,8 @@
 import { BrotliDecompress, createBrotliDecompress, createDeflate, createGunzip, Deflate, Gunzip } from "node:zlib";
 import { request as httpsRequest, RequestOptions as ReqOptions } from "https";
 import { IncomingMessage, request as httpRequest } from "http";
-import {uploadCookie} from "./Structures/Cookie";
 import {getUserAgent} from "./Structures/Utils";
+import {Cookie} from "./Structures/Cookie";
 import { Logger } from "@Logger";
 import {env} from "@env";
 
@@ -25,6 +25,7 @@ const protocols = {
 };
 
 const debug = env.get("debug.request");
+const CookieManager = new Cookie();
 
 export class httpsClient {
     private _options: RequestOptions;
@@ -37,7 +38,6 @@ export class httpsClient {
     //====================== ====================== ====================== ======================
     /**
      * @description Создаем запрос по ссылке, модифицируем по необходимости
-     * @requires {uploadCookie}
      */
     public get Request(): Promise<IncomingMessage | Error> {
         return new Promise((resolve) => {
@@ -58,7 +58,9 @@ export class httpsClient {
                 }
 
                 //Обновляем куки
-                if (this._options?.headers["cookie"] && res.headers && res.headers["set-cookie"]) setImmediate(() => uploadCookie(res.headers["set-cookie"]));
+                if (this._options?.headers["cookie"] && res.headers && res.headers["set-cookie"]) {
+                    setTimeout(() => CookieManager.update = res.headers["set-cookie"], 200);
+                }
 
                 return resolve(res);
             });

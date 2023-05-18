@@ -24,7 +24,7 @@ export class voiceStateUpdate extends Event<VoiceState, VoiceState> {
             const usersSize = (newState.channel?.members ?? oldState.channel?.members)?.filter((member) => !member.user.bot && member.voice?.channel?.id === ChannelID)?.size;
 
             //Если есть голосовое подключение и пользователей меньше одного и каналы соответствуют и выключен радио режим, то отключаемся от голосового канала
-            if (voice && usersSize < 1 && voice?.joinConfig?.channelId === oldState?.channelId && !queue?.options?.radioMode) Voice.Disconnect(Guild);
+            if (voice && usersSize < 1 && voice?.joinConfig?.channelId === oldState?.channelId && !queue?.options?.radioMode) Voice.disconnect(Guild);
 
             //Если есть очередь и нет радио режима
             if (queue && !queue?.options?.radioMode) {

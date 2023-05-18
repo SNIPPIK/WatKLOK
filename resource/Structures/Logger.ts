@@ -3,7 +3,7 @@ import { DurationUtils } from "@Utils/Durations";
 class Logger_ {
     private get time() {
         const date = new Date();
-        const time = [date.getHours(), date.getMinutes(), date.getSeconds()].map(DurationUtils.toFixed0).join(":");
+        const time = [date.getHours(), date.getMinutes(), date.getSeconds()].map(DurationUtils.toSplit).join(":");
         let ms = `${date.getMilliseconds()}`;
 
         if (ms.length === 1) ms = `00${ms}`;

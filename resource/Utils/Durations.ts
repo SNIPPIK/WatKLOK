@@ -6,13 +6,13 @@ export namespace DurationUtils {
      * @description Совмещаем время всех треков из очереди
      * @param queue {Queue | any[]} Очередь
      */
-    export function getTimeQueue(queue: Queue | Song[] | ISong.track[]): string {
+    export function getTracksTime(queue: Queue | Song[] | ISong.track[]): string {
         let Timer: number = 0;
 
         if (queue instanceof Queue) queue.songs.forEach((song: Song) => Timer += song.duration.seconds);
         else queue.forEach((song) => Timer += parseInt(song.duration.seconds as string));
 
-        return ParsingTimeToString(Timer);
+        return toString(Timer);
     }
     //====================== ====================== ====================== ======================
     /**
@@ -20,11 +20,11 @@ export namespace DurationUtils {
      * @param duration {number} Число
      * @requires {toString}
      */
-    export function ParsingTimeToString(duration: number): string {
-        const days = toFixed0(duration / ((60 * 60) * 24) % 24) as number;
-        const hours = toFixed0(duration / (60 * 60) % 24) as number;
-        const minutes = toFixed0((duration / 60) % 60) as number;
-        const seconds = toFixed0(duration % 60) as number;
+    export function toString(duration: number): string {
+        const days = toSplit(duration / ((60 * 60) * 24) % 24) as number;
+        const hours = toSplit(duration / (60 * 60) % 24) as number;
+        const minutes = toSplit((duration / 60) % 60) as number;
+        const seconds = toSplit(duration % 60) as number;
 
         //Получаем дни, часы, минуты, секунды в формате 00:00
         return (days > 0 ? `${days}:` : "") + (hours > 0 || days > 0 ? `${hours}:` : "") + (minutes > 0 ? `${minutes}:` : "00:") + (seconds > 0 ? `${seconds}` : "00");
@@ -34,7 +34,7 @@ export namespace DurationUtils {
      * @description Из формата 00:00:00:00, получаем секунды
      * @param duration {string} Пример 00:00:00:00
      */
-    export function ParsingTimeToNumber(duration: string): number {
+    export function toInt(duration: string): number {
         if (typeof duration === "number") return duration;
 
         const Splitter = duration?.split(":");
@@ -56,7 +56,7 @@ export namespace DurationUtils {
      * @description Добавляем 0 к числу. Пример: 01:10
      * @param duration {string | number} Число
      */
-    export function toFixed0(duration: string | number): string | number {
+    export function toSplit(duration: string | number): string | number {
         const fixed = parseInt(duration as any);
 
         return (fixed < 10) ? ("0" + fixed) : fixed;

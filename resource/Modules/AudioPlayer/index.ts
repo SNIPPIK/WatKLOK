@@ -220,7 +220,7 @@ export class Player {
                 queue.play = seek;
 
                 //Отправляем сообщение о пропуске времени
-                return msgUtil.createMessage({ text: `⏭️ | Seeking to [${DurationUtils.ParsingTimeToString(seek)}] song | ${title}`, message, codeBlock: "css", color: "Green" });
+                return msgUtil.createMessage({ text: `⏭️ | Seeking to [${DurationUtils.toString(seek)}] song | ${title}`, message, codeBlock: "css", color: "Green" });
             } else return msgUtil.createMessage({ text: `${author}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color: "Yellow" });
         }, "пропуск времени в треке", 1);
     };
