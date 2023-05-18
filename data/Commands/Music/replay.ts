@@ -19,7 +19,7 @@ export class ReplayCommand extends Command {
         const queue: Queue = client.player.queue.get(guild.id);
 
         //Если пользователь не подключен к голосовым каналам
-        if (!member?.voice?.channel || !member?.voice) return { text: `${author}, Подключись к голосовому каналу!`, color: "Yellow" };
+        if (!member?.voice?.channel || !member?.voice) return { text: `${author}, Необходимо подключится к голосовому каналу!`, color: "Yellow" };
 
         //Если есть очередь и пользователь не подключен к тому же голосовому каналу
         if (queue && queue.voice && member?.voice?.channel?.id !== queue.voice.id) return {

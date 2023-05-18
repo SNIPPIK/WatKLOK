@@ -28,7 +28,7 @@ export class JoinCommand extends Command {
         const queue: Queue = client.player.queue.get(guild.id);
 
         //Если пользователь не подключен к голосовым каналам
-        if (!member?.voice?.channel || !member?.voice) return { text: `${author}, Подключись к голосовому каналу!`, color: "Yellow" };
+        if (!member?.voice?.channel || !member?.voice) return { text: `${author}, Необходимо подключится к голосовому каналу!`, color: "Yellow" };
 
         //Если пользователь пытается подключить бота к тому же каналу
         if (voiceChannel.id === guild.members.me.voice.id || queue && voiceChannel.id === queue.voice.id) return { text: `${author}, Я уже в этом канале <#${voiceChannel}>.`, color: "Yellow" };

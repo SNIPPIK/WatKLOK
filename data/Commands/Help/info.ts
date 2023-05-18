@@ -35,7 +35,7 @@ export class InfoCommand extends Command {
                 fields: [
                     {
                         name: "Основные",
-                        value: `**❯ Разработчик: SNIPPIK#4178 **\n**❯ Команд:** ${client.commands.size}\n**❯ Версия:** [${pak.version}]\n**❯ Процессор [${processor}]**`
+                        value: `**❯ Разработчик: [SNIPPIK#4178](https://discordapp.com/users/312909267327778818) **\n**❯ Команд:** ${client.commands.size}\n**❯ Версия:** [${pak.version}]\n**❯ Процессор [${processor}]**`
                     },
                     {
                         name: "Статистика",
@@ -43,7 +43,7 @@ export class InfoCommand extends Command {
                     },
                     {
                         name: "Музыка",
-                        value: `\`\`\`css\n• Queue      => ${queue.size}\n• Player     => ${queue.get(guild.id) ? queue.get(guild.id).player.state.status : 'Is not a work player'}\`\`\``
+                        value: `\`\`\`css\n• Queue      => ${queue.size}\n• Player     => ${queue.get(guild.id) ? queue.get(guild.id).player.state.status : '0'}\`\`\``
                     }
                 ],
                 footer: {

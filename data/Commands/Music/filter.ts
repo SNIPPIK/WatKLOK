@@ -35,11 +35,11 @@ export class FilterCommand extends Command {
         const queue: Queue = client.player.queue.get(guild.id);
 
         //Если нет очереди
-        if (!queue) return { text: `${author}, ⚠ | Музыка щас не играет.`, color: "Yellow" };
+        if (!queue) return { text: `${author}, ⚠ | Музыка сейчас не играет`, color: "Yellow" };
 
         //Если пользователь не подключен к голосовым каналам
         if (!member?.voice?.channel || !member?.voice) return {
-            text: `${author}, Подключись к голосовому каналу!`,
+            text: `${author}, Необходимо подключится к голосовому каналу!`,
             color: "Yellow"
         };
 

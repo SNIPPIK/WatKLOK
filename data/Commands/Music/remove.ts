@@ -31,10 +31,10 @@ export class RemoveCommand extends Command {
         const argsNum = args[0] ? parseInt(args[0]) : 1;
 
         //Если нет очереди
-        if (!queue) return { text: `${author}, ⚠ | Музыка щас не играет.`, color: "Yellow" };
+        if (!queue) return { text: `${author}, ⚠ | Музыка сейчас не играет.`, color: "Yellow" };
 
         //Если пользователь не подключен к голосовым каналам
-        if (!member?.voice?.channel || !member?.voice) return { text: `${author}, Подключись к голосовому каналу!`, color: "Yellow" };
+        if (!member?.voice?.channel || !member?.voice) return { text: `${author}, Необходимо подключится к голосовому каналу!`, color: "Yellow" };
 
         //Если есть очередь и пользователь не подключен к тому же голосовому каналу
         if (queue && queue.voice && member?.voice?.channel?.id !== queue.voice.id) return {

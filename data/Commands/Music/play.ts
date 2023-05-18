@@ -41,7 +41,7 @@ export class PlayCommand extends Command {
         const voiceChannel = member?.voice;
 
         //Если пользователь не подключен к голосовым каналам
-        if (!voiceChannel?.channel || !voiceChannel) return { text: `${author}, Подключись к голосовому каналу!`, color: "Yellow" };
+        if (!voiceChannel?.channel || !voiceChannel) return { text: `${author}, Необходимо подключится к голосовому каналу!`, color: "Yellow" };
 
         //Если есть очередь и пользователь не подключен к тому же голосовому каналу
         if (queue && queue.voice && voiceChannel?.channel?.id !== queue.voice.id) return {
