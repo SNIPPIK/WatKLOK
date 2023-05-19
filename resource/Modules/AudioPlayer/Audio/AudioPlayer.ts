@@ -64,11 +64,11 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
      * @description Передача пакетов в голосовые каналы
      * @param packet {null} Пакет
      */
-    private set sendPacket(packet: Buffer) {
+    public set sendPacket(packet: Buffer) {
         const voiceConnection = this.connection;
 
         //Если голосовой канал готов
-        if (voiceConnection.state.status === "ready") voiceConnection.playOpusPacket(packet);
+        if (voiceConnection?.state?.status === "ready") voiceConnection.playOpusPacket(packet);
     };
     //====================== ====================== ====================== ======================
     /**
@@ -113,30 +113,6 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
             stream.opus.once("readable", () => { this.state = { status: "read", stream }; });
             //Если происходит ошибка, то продолжаем читать этот же поток
             stream.opus.once("error", () => this.emit("error", Error("Fail read stream"), true));
-        }
-    };
-    //====================== ====================== ====================== ======================
-    /**
-     * @description Проверяем можно ли отправить пакет в голосовой канал
-     */
-    public get preparePacket(): void {
-        const state = this.state;
-
-        //Если статус (idle или pause или его нет) прекратить выполнение функции
-        if (state?.status === "idle" || state?.status === "pause" || !state?.status || this.connection?.state?.status !== "ready") return;
-
-        //Если вдруг нет голосового канала
-        if (!this.connection) { this.state = { ...state, status: "pause" }; return; }
-
-        //Отправка музыкального пакета
-        if (state.status === "read") {
-            const packet: Buffer | null = state.stream?.read;
-
-            if (packet) this.sendPacket = packet;
-            else {
-                this.connection.setSpeaking(false);
-                this.stop;
-            }
         }
     };
     //====================== ====================== ====================== ======================

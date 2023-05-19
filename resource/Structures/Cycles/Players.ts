@@ -60,8 +60,8 @@ export class PlayerCycle {
         while (players.length > 0) {
             const player = players.shift();
 
-            //Отправляем пакеты
-            player.preparePacket;
+            //Проверяем можно ли отправлять пакеты
+            this.preparePacket(player);
         }
 
         //Добавляем задержку, в размер пакета
@@ -70,5 +70,29 @@ export class PlayerCycle {
         setImmediate(() => {
             this._timeout = setTimeout(() => this.playerCycleStep, this.time - Date.now());
         });
+    };
+    //====================== ====================== ====================== ======================
+    /**
+     * @description Проверяем можно ли отправить пакет в голосовой канал
+     */
+    private readonly preparePacket = (player: AudioPlayer) => {
+        const state = player.state;
+
+        //Если статус (idle или pause или его нет) прекратить выполнение функции
+        if (state?.status === "idle" || state?.status === "pause" || !state?.status || player.connection?.state?.status !== "ready") return;
+
+        //Если вдруг нет голосового канала
+        if (!player.connection) { player.state = { ...state, status: "pause" }; return; }
+
+        //Отправка музыкального пакета
+        if (state.status === "read") {
+            const packet: Buffer | null = state.stream?.read;
+
+            if (packet) player.sendPacket = packet;
+            else {
+                player.connection.setSpeaking(false);
+                player.stop;
+            }
+        }
     };
 }
