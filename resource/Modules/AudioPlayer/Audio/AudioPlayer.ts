@@ -132,12 +132,11 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
         if (state.status === "read") {
             const packet: Buffer | null = state.stream?.read;
 
-            if (!packet) {
+            if (packet) this.sendPacket = packet;
+            else {
                 this.connection.setSpeaking(false);
                 this.stop;
             }
-
-            this.sendPacket = packet;
         }
     };
     //====================== ====================== ====================== ======================
