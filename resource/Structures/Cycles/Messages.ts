@@ -9,7 +9,7 @@ const debug = env.get("debug.cycle");
 
 export class MessageCycle {
     private readonly _messages: ClientMessage[] = [];
-    private readonly time: number = durationMessage < 10 ? 15e3 : durationMessage * 1e3;
+    private readonly time: number = durationMessage < 20 ? 20e3 : durationMessage * 1e3;
     private _timeout: NodeJS.Timeout = null;
 
     //====================== ====================== ====================== ======================
@@ -47,6 +47,11 @@ export class MessageCycle {
     };
     //====================== ====================== ====================== ======================
     /**
+     * @description Получаем сообщения, в которые можно обновить
+     */
+    private get messages() { return this._messages.filter(msg => !!msg.edit); };
+    //====================== ====================== ====================== ======================
+    /**
      * @description Жизненный цикл сообщений
      */
     private get messageCycleStep(): void {
@@ -62,7 +67,7 @@ export class MessageCycle {
             return;
         }
 
-        const messages = this._messages.filter(msg => !!msg.edit);
+        const messages = this.messages;
 
         //Постепенно обрабатываем сообщения
         while (messages.length > 0) {

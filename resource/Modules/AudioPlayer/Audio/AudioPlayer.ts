@@ -2,14 +2,16 @@ import { VoiceConnection } from "@discordjs/voice";
 import { TypedEmitter } from "tiny-typed-emitter";
 import { OpusAudio } from "./Media/OpusAudio";
 import {PlayerCycle} from "@Client/Cycles/Players";
+import {env} from "@env";
+import {Logger} from "@Logger";
 
 export { AudioPlayer };
 
 const SilenceFrame = Buffer.from([0xf8, 0xff, 0xfe, 0xfae]);
+const CyclePlayers = new PlayerCycle();
 const SkippedStatuses = ["read", "pause"];
 const UpdateMessage = ["read"];
-
-const CyclePlayers = new PlayerCycle();
+const Debug = env.get("debug.player");
 
 class AudioPlayer extends TypedEmitter<PlayerEvents> {
     /**
@@ -93,15 +95,20 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
         this._state = newState;
 
         //Фильтруем статусы бота что в emit не попало что не надо
-        if (oldStatus !== newStatus || oldStatus !== "idle" && newStatus === "read") this.emit(newStatus);
+        if (oldStatus !== newStatus || oldStatus !== "idle" && newStatus === "read") {
+            CyclePlayers.remove = this;
+            this.emit(newStatus);
+        }
 
         //Добавляем плеер в CycleStep
         CyclePlayers.push = this;
+
+        if (Debug) Logger.debug(`[AudioPlayer]: [Status]: [old: ${oldStatus} | new: ${newStatus} | stream: ${!!newState.stream}]`);
     };
     //====================== ====================== ====================== ======================
     /**
      * @description Начинаем чтение стрима
-     * @param stream {OpusAudio} Поток который будет вопроизведен на сервере
+     * @param stream {OpusAudio} Поток который будет воспроизведен на сервере
      */
     public set readStream(stream: OpusAudio) {
         if (!stream) { this.emit("error", Error(`Stream is null`), true); return; }
@@ -156,19 +163,14 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
             //Удаляем плеер из CycleStep
             CyclePlayers.remove = this;
         } else {
-            if (this.state?.stream) {
-                if (this.state.stream?.opus) {
-                    //Очищаемся от прошлого потока
-                    this.state.stream.opus.removeAllListeners();
-                    this.state.stream.opus.destroy();
-                    this.state.stream.opus.read(); //Устраняем утечку памяти
+            if (!this.state?.stream) return;
 
-                    //Устраняем фриз после смены потока
-                    this.sendPacket = SilenceFrame;
-                }
+            //Удаляем стрим из плеера
+            this.state.stream.destroy();
+            delete this._state.stream;
 
-                this.state.stream.destroy();
-            }
+            //Отправляем пустой пакет
+            this.sendPacket = SilenceFrame;
         }
     };
 }

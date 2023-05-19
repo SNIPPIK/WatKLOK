@@ -38,6 +38,11 @@ export class PlayerCycle {
     };
     //====================== ====================== ====================== ======================
     /**
+     * @description Получаем плееры, в которых можно отсылать пакеты
+     */
+    private get players() { return this._players.filter((player) => player.hasPlayable); };
+    //====================== ====================== ====================== ======================
+    /**
      * @description Жизненный цикл плееров
      */
     private get playerCycleStep(): void {
@@ -54,14 +59,14 @@ export class PlayerCycle {
             return;
         }
 
-        const players = this._players.filter((player) => player.hasPlayable);
+        const players = this.players;
 
         //Постепенно обрабатываем плееры
         while (players.length > 0) {
             const player = players.shift();
 
             //Проверяем можно ли отправлять пакеты
-            this.preparePacket(player);
+            this.checkPlayer(player);
         }
 
         //Добавляем задержку, в размер пакета
@@ -75,11 +80,11 @@ export class PlayerCycle {
     /**
      * @description Проверяем можно ли отправить пакет в голосовой канал
      */
-    private readonly preparePacket = (player: AudioPlayer) => {
-        const state = player.state;
+    private readonly checkPlayer = (player: AudioPlayer) => {
+        const state = player?.state;
 
         //Если статус (idle или pause или его нет) прекратить выполнение функции
-        if (state?.status === "idle" || state?.status === "pause" || !state?.status || player.connection?.state?.status !== "ready") return;
+        if (!state || state?.status === "idle" || state?.status === "pause" || !state?.status || player?.connection?.state?.status !== "ready") return;
 
         //Если вдруг нет голосового канала
         if (!player.connection) { player.state = { ...state, status: "pause" }; return; }
