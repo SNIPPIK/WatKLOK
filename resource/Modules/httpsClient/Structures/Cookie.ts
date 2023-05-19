@@ -5,7 +5,7 @@ import {env} from "@env";
  */
 export class Cookie {
     /**
-     * @description Обнавляем куки в файле env
+     * @description Обновляем куки в файле env
      * @param Cookie {string | string[]} Новый куки или новые данные для замены
      */
     public set update(Cookie: string | string[]) {
@@ -13,10 +13,10 @@ export class Cookie {
 
         if (!oldCookie) return;
 
-        //Обьеденяем куки если он имеет формат array
+        //Объединяем куки если он имеет формат array
         const toCookie = typeof Cookie === "string" ? Cookie : Cookie.join("; ");
 
-        //Обьеденяем старый и новый куки
+        //Соединяем старый и новый куки
         const joinCookie = this.toString({...this.toJson(oldCookie), ...this.toJson(toCookie)});
 
         try {
@@ -40,7 +40,7 @@ export class Cookie {
     };
     //====================== ====================== ====================== ======================
     /**
-     * @description Конвертируем куки в строку для дольнейшего использования
+     * @description Конвертируем куки в строку для дальнейшего использования
      * @param Cookie {{}} Совмещенный куки
      */
     private readonly toString = (Cookie: {}): string => Object.entries(Cookie).map(([key, value]) => `${key}=${value}`).join("; ");
