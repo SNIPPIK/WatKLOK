@@ -33,5 +33,7 @@ export class LeaveCommand extends Command {
 
         Voice.disconnect(guild.id);
         if (queue) return { text: `${author}, отключение от голосового канала! Очередь будет удалена через **20 сек**!` };
+
+        return { text: `${author}, отключение от голосового канала!` };
     };
 }
