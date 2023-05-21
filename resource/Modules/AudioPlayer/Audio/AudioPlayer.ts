@@ -84,8 +84,7 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
      * @param newState {PlayerStatus} Новый данные плеера
      */
     public set state(newState: PlayerStatus) {
-        const oldState = this._state;
-        const oldStatus = oldState.status, newStatus = newState.status;
+        const oldState = this._state, oldStatus = oldState.status, newStatus = newState.status;
 
         //Проверяем на нужный статус, удаляем старый поток
         if (oldState.stream && !oldState.stream.destroyed && (newState.status === "idle" || oldState.stream !== newState.stream)) this.destroy("stream");
@@ -93,14 +92,11 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
         //Перезаписываем state
         this._state = newState;
 
-        //Если новй статус idle то удаляем плеер из базы
-        if (newStatus === "idle") CyclePlayers.remove = this;
-
-        //Добавляем плеер в цикл
-        if (newState.stream) CyclePlayers.push = this;
-
         //Фильтруем статусы бота что в emit не попало что не надо
-        if (oldState.status !== newState.status) this.emit(newStatus);
+        if (oldStatus !== newStatus || oldStatus !== "idle" && newStatus === "read") this.emit(newStatus);
+
+        //Добавляем плеер в CycleStep
+        CyclePlayers.push = this;
 
         if (Debug) Logger.debug(`[AudioPlayer]: [Status]: [old: ${oldStatus} | new: ${newStatus} | stream: ${!!newState.stream}]`);
     };
