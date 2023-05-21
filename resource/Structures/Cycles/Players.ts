@@ -91,7 +91,7 @@ export class PlayerCycle {
 
         //Отправка музыкального пакета
         if (state.status === "read") {
-            const packet: Buffer | null = state.stream?.read;
+            const packet: Buffer | null = state.stream?.read();
 
             if (packet) player.sendPacket = packet;
             else {

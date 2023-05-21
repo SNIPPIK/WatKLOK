@@ -40,7 +40,7 @@ export class MessageCycle {
      * @param message {ClientMessage} Сообщение
      */
     public set remove(message: ClientMessage) {
-        if (message.deletable) message.delete().catch(() => undefined);
+        message.delete().catch(() => undefined);
 
         const index = this._messages.indexOf(message);
         if (index != -1) this._messages.splice(index, 1);

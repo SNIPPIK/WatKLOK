@@ -11,7 +11,7 @@ const SilenceFrame = Buffer.from([0xf8, 0xff, 0xfe, 0xfae]);
 const CyclePlayers = new PlayerCycle();
 const SkippedStatuses = ["read", "pause"];
 const UpdateMessage = ["read"];
-const Debug = env.get("debug.player");
+const Debug: boolean = env.get("debug.player");
 
 class AudioPlayer extends TypedEmitter<PlayerEvents> {
     /**
@@ -91,17 +91,16 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
         if (oldState.stream && !oldState.stream.destroyed && (newState.status === "idle" || oldState.stream !== newState.stream)) this.destroy("stream");
 
         //Перезаписываем state
-        this._state = null;
         this._state = newState;
 
-        //Фильтруем статусы бота что в emit не попало что не надо
-        if (oldStatus !== newStatus || oldStatus !== "idle" && newStatus === "read") {
-            CyclePlayers.remove = this;
-            this.emit(newStatus);
-        }
+        //Если новй статус idle то удаляем плеер из базы
+        if (newStatus === "idle") CyclePlayers.remove = this;
 
-        //Добавляем плеер в CycleStep
-        CyclePlayers.push = this;
+        //Добавляем плеер в цикл
+        if (newState.stream) CyclePlayers.push = this;
+
+        //Фильтруем статусы бота что в emit не попало что не надо
+        if (oldState.status !== newState.status) this.emit(newStatus);
 
         if (Debug) Logger.debug(`[AudioPlayer]: [Status]: [old: ${oldStatus} | new: ${newStatus} | stream: ${!!newState.stream}]`);
     };
