@@ -14,53 +14,72 @@ export class OpusAudio {
      * @description Кодировщик из Ogg в Opus
      */
     private _opus: opus.OggDemuxer = new opus.OggDemuxer({ autoDestroy: true, highWaterMark: 86 });
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Дополнительные потоки
      */
     private _streams: Readable[] = [];
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description FFmpeg
      */
     private _ffmpeg: FFmpeg = null;
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Время игры потока
      */
     private _duration: number = 0;
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Возможно ли читать поток
      */
     private _readable: boolean = false;
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Время пакета
      */
     private _durFrame: number = 20;
+
     //====================== ====================== ====================== ======================
-    //====================== ====================== ====================== ======================
+
     /**
      * @description Получаем время в секундах
      */
     public get duration() { return parseInt((this._duration / 1e3).toFixed(0)); };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Можно ли читать поток
      */
     public get readable() { return this._readable; };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Уничтожен ли поток
      */
     public get destroyed() { return this._opus?.destroyed ?? true; };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Получаем конвертер в opus из Ogg/opus
      */
     public get opus() { return this._opus; };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Выдаем пакет, добавляем время
      */
@@ -71,7 +90,9 @@ export class OpusAudio {
 
         return packet;
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Создаем аргументы для FFmpeg
      */
@@ -87,7 +108,9 @@ export class OpusAudio {
             return [...reconnect, ...Audio];
         }
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Создаем FFmpeg, opus.OggDemuxer
      * @param options { seek?: number, filters?: Filters, path: string } Аргументы запуска
@@ -108,7 +131,9 @@ export class OpusAudio {
 
         if (debug) Logger.debug(`[AudioPlayer]: [OpusAudio]:\n┌ Status:       [Encoding]\n├ Modification: [Filters: ${options?.filters?.length} | Seek: ${options?.seek}]\n└ File:         [${options.path}]`);
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Создаем ивенты для отслеживания
      * @param events {string[]} Ивенты отслеживания
@@ -126,7 +151,9 @@ export class OpusAudio {
         //Когда можно будет читать поток записываем его в <this._readable>
         this.opus.once("readable", () => (this._readable = true));
     }
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Создаем поток при помощи ffmpeg конвертируем любой файл в opus
      * @param path {string} Ссылка или путь до файла. Условие чтоб в конце пути был .opus
@@ -142,7 +169,9 @@ export class OpusAudio {
 
         this.createEvents = ["end", "close", "error"];
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Удаляем неиспользованные объекты
      */

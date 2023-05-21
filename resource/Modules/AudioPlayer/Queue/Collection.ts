@@ -12,8 +12,32 @@ import {env} from "@env";
  */
 export class CollectionQueue extends Collection<string, Queue> {
     /**
+     * @description Создаем очереди или добавляем в нее объект или объекты
+     * @param options {message: ClientMessage, VoiceChannel: Voice.Channels, info: ISong.track | ISong.playlist} Параметры для создания очереди
+     */
+    public set create(options: { message: ClientMessage, VoiceChannel: VoiceChannel | StageChannel, info: ISong.track | ISong.playlist }) {
+        const { message, VoiceChannel, info } = options;
+        const queue = this.get(message.guild.id);
+
+        if (!queue) {
+            //Создаем очередь
+            const GuildQueue = new Queue(message, VoiceChannel);
+
+            //Подключаемся к голосовому каналу
+            GuildQueue.player.connection = Voice.join(VoiceChannel); //Добавляем подключение в плеер
+
+            this.saveQueue = GuildQueue;
+        }
+
+        //Добавляем плейлист или трек в очередь
+        this.pushTracks = { queueID: message.guild.id, info };
+    };
+
+    //====================== ====================== ====================== ======================
+
+    /**
      * @description Записываем очередь в this
-     * @param queue {Queue} ОЧередь для сохранения
+     * @param queue {Queue} Очередь для сохранения
      */
     private set saveQueue(queue: Queue) {
         //Запускаем callback для проигрывания треков
@@ -22,9 +46,15 @@ export class CollectionQueue extends Collection<string, Queue> {
         //Добавляем очередь в базу
         this.set(queue.guild.id, queue);
 
+        //Запускаем отслеживание ивентов
+        this.onPlayerIdle = queue.guild.id;
+        this.onPlayerError = queue.guild.id;
+
         if (env.get("debug.player")) Logger.debug(`[Queue]: [${queue.guild.id}]: has create`);
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Добавляем трек или плейлист
      * @param options {queueID: string, info: ISong.track | ISong.playlist} Параметры для добавления в очередь
@@ -52,34 +82,14 @@ export class CollectionQueue extends Collection<string, Queue> {
 
         queue.songs.push(song);
     };
+
     //====================== ====================== ====================== ======================
-    /**
-     * @description Создаем очереди или добавляем в нее объект или объекты
-     * @param options {message: ClientMessage, VoiceChannel: Voice.Channels, info: ISong.track | ISong.playlist} Параметры для создания очереди
-     */
-    public set create(options: { message: ClientMessage, VoiceChannel: VoiceChannel | StageChannel, info: ISong.track | ISong.playlist }) {
-        const { message, VoiceChannel, info } = options;
-        const queue = this.get(message.guild.id);
 
-        if (!queue) {
-            //Создаем очередь
-            const GuildQueue = new Queue(message, VoiceChannel);
-
-            //Подключаемся к голосовому каналу
-            GuildQueue.player.connection = Voice.join(VoiceChannel); //Добавляем подключение в плеер
-
-            this.saveQueue = GuildQueue;
-        }
-
-        //Добавляем плейлист или трек в очередь
-        this.pushTracks = { queueID: message.guild.id, info };
-    };
-    //====================== ====================== ====================== ======================
     /**
      * @description Запускаем отслеживание окончания проигрывания
      * @param QueueID {string} ID сервера
      */
-    public set onPlayerIdle(QueueID: string) {
+    private set onPlayerIdle(QueueID: string) {
         const queue = this.get(QueueID);
 
         //Что будет делать плеер если закончит играть
@@ -102,15 +112,17 @@ export class CollectionQueue extends Collection<string, Queue> {
             if (queue?.options?.random) queue.swap = Math.floor(Math.random() * queue.songs.length);
 
             //Включаем трек
-            setTimeout(() => queue.play = 0, 1500);
+            setTimeout(() => queue.play = 0, 1800);
         });
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Запускаем отслеживание ошибок в плеере
      * @param QueueID {string} ID сервера
      */
-    public set onPlayerError(QueueID: string) {
+    private set onPlayerError(QueueID: string) {
         const queue = this.get(QueueID);
 
         //Если в плеере возникнет ошибка
@@ -118,12 +130,10 @@ export class CollectionQueue extends Collection<string, Queue> {
             //Выводим сообщение об ошибке
             MessagePlayer.toError(queue, err);
 
-            setTimeout((): void => {
-                if (isSkip) {
-                    queue.songs.shift();
-                    setTimeout(() => queue.play = 0, 1e3);
-                }
-            }, 1200);
+            if (isSkip) {
+                queue.songs.shift();
+                setTimeout(() => queue.play = 0, 1800);
+            }
         });
     };
 }

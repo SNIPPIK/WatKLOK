@@ -34,7 +34,9 @@ export namespace EmbedMessages {
             footer: { text: `${requester.username} | ${DurationUtils.getTracksTime(queue)} | 🎶: ${queue.songs.length}`, iconURL: requester.avatarURL() }
         };
     }
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description JSON<EMBED> для отображения добавленного трека
      * @param song {Song} Трек который был добавлен
@@ -51,7 +53,9 @@ export namespace EmbedMessages {
             footer: { text: `${requester.username} | ${DurationUtils.getTracksTime(songs)} | 🎶: ${songs.length}`, iconURL: requester.avatarURL() }
         };
     }
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description JSON<EMBED> для отображения данных плейлиста
      * @param DisAuthor {ClientMessage.author} Автор сообщения
@@ -69,7 +73,9 @@ export namespace EmbedMessages {
             footer: { text: `${DisAuthor.username} | ${DurationUtils.getTracksTime(items)} | 🎶: ${items?.length}`, iconURL: DisAuthor.displayAvatarURL({}) }
         };
     }
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description JSON<EMBED> для отображения ошибки
      * @param client {WatKLOK} Клиент
@@ -88,7 +94,9 @@ export namespace EmbedMessages {
             footer: { text: `${requester.username} | ${DurationUtils.getTracksTime(songs)} | 🎶: ${songs.length}`, iconURL: requester?.avatarURL() ?? client.user.displayAvatarURL() }
         };
     }
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description JSON<Embed> для отображения найденных треков
      * @param tracks {ISong.track[]} Найденные треки
@@ -137,7 +145,9 @@ function getFields(queue: Queue): EmbedData["fields"] {
     if (songs.length > 1) fields.push({ name: `**Следующий трек**`, value: `**❯** **[${replaceText(songs[1].title, 29, true)}](${songs[1].url})**` });
     return fields;
 }
+
 //====================== ====================== ====================== ======================
+
 /**
  * @description Получаем время трека для embed сообщения
  * @param duration
@@ -152,7 +162,9 @@ function toString(duration: { seconds: number, full: string }, playDuration: num
 
     return `${string}\n\`\`${progress}\`\``;
 }
+
 //====================== ====================== ====================== ======================
+
 /**
  * @description Вычисляем прогресс бар
  * @param currentTime {number} Текущие время
@@ -172,7 +184,9 @@ function matchBar(currentTime: number, maxTime: number, size: number = 25): stri
         return "**❯** \`\`[Loading]\`\`";
     }
 }
+
 //====================== ====================== ====================== ======================
+
 /**
  * @description Обрезает текст до необходимых значений
  * @param text {string} Текст который надо изменить

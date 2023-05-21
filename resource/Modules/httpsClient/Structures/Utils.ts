@@ -11,7 +11,9 @@ export function getUserAgent(): { Agent: string, Version: string } {
 
     return { Agent, Version };
 }
+
 //====================== ====================== ====================== ======================
+
 /**
  * @description Получаем случайное число
  * @param max {number} Макс число

@@ -11,16 +11,20 @@ export class ButtonCollector {
      * @description Сборщик
      */
     private _collector: any;
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Создаем сборщик и добавляем ивент
      * @param message {ClientMessage} Сообщение с сервера
      */
     public constructor(message: ClientMessage) {
-        this._collector = message.createMessageComponentCollector({ filter: (i) => ButtonIDs.includes(i.customId), componentType: ComponentType.Button, time: 60e3 });
+        this._collector = message.createMessageComponentCollector({ filter: (i) => ButtonIDs.includes(i.customId), componentType: ComponentType.Button });
         this._collector.on("collect", (i: ButtonInteraction) => this.onCollect(i, message));
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Отслеживаем ивент
      * @param i {ButtonInteraction} Кто взаимодействует с кнопкой
@@ -55,7 +59,9 @@ export class ButtonCollector {
             case "last": return queue.swap = 0;
         }
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Отключаем сборщик и удаляем
      */

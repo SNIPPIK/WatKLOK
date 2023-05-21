@@ -35,26 +35,27 @@ export namespace MessagePlayer {
     export function toPlay(message: ClientMessage): void {
         const queue: Queue = message.client.player.queue.get(message.guild.id);
 
+        //Если музыка не играет, то не отправляем сообщение
         if (!queue || !queue?.song) return;
 
-        setImmediate((): void => {
-            const embedCurrentPlaying = EmbedMessages.toPlaying(queue);
-            const msg = message.channel.send({ embeds: [embedCurrentPlaying as any], components: [Buttons as any] });
+        const Embed = EmbedMessages.toPlaying(queue);
+        const ChannelMessage = message.channel.send({ embeds: [Embed as any], components: [Buttons as any] });
 
-            msg.catch((e) => Logger.error(`[MessagePlayer]: [function: toPlay]: ${e.message}`));
-            msg.then((msg) => {
-                //Добавляем к сообщению кнопки
-                const collector = new ButtonCollector(msg);
+        ChannelMessage.catch((e) => Logger.error(`[MessagePlayer]: [function: toPlay]: ${e.message}`));
+        ChannelMessage.then((message) => {
+            //Добавляем к сообщению кнопки
+            const collector = new ButtonCollector(message);
 
-                //Удаляем сборщик после проигрывания трека
-                queue.player.once("idle", () => collector?.destroy());
+            //Удаляем сборщик после проигрывания трека
+            queue.player.once("idle", () => collector?.destroy());
 
-                //Добавляем сообщение к CycleStep
-                CycleMessages.push = msg;
-            });
+            //Добавляем сообщение к CycleStep
+            CycleMessages.push = message;
         });
     }
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description При ошибке плеер выводит эту функцию
      * @param queue {Queue} Очередь
@@ -74,7 +75,9 @@ export namespace MessagePlayer {
             }
         });
     }
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Сообщение о добавлении трека в очередь сервера
      * @param queue {Queue} Очередь
@@ -94,7 +97,9 @@ export namespace MessagePlayer {
             }
         });
     }
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Отправляем сообщение о том что плейлист был добавлен в очередь
      * @param message {ClientMessage} Сообщение
@@ -114,7 +119,9 @@ export namespace MessagePlayer {
             }
         });
     }
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Оправляем сообщение о том что было найдено
      * @param tracks {ISong.track[]} Найденные треки

@@ -16,27 +16,37 @@ export class Queue {
      * @description Таймер удаления, нужен для авто удаления очереди
      */
     public _timer: NodeJS.Timeout = null;
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Array<Song> база с треками
      */
     private _songs: Array<Song> = [];
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Все включенные фильтры. Фильтры для FFmpeg
      */
     private _filters: Array<string> | Array<string | number> = [];
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Плеер
      */
     private _player: AudioPlayer = new AudioPlayer();
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Каналы для взаимодействия. Каналы (message: TextChannel, voice: VoiceChannel)
      */
     private _channel: { msg: ClientMessage, voice: VoiceChannel | StageChannel };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Настройки для очереди. Включен лы повтор, включен ли режим радио
      */
@@ -45,85 +55,86 @@ export class Queue {
         loop: "off", //Тип повтора (off, song, songs)
         radioMode: false //Режим радио
     };
+
     //====================== ====================== ====================== ======================
-    //====================== ====================== ====================== ======================
+
     /**
      * @description Получаем все треки
      */
     public get songs() { return this._songs; };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Заменяем треки
      */
     public set songs(songs) { this._songs = songs; };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Получаем текущий трек
      */
     public get song(): Song { return this.songs.at(0); };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Получаем плеер текущей очереди
      */
     public get player() { return this._player; };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Получаем голосовой канал
      */
     public get voice() { return this._channel.voice; };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Меняем голосовой канал
      */
     public set voice(voiceChannel) { this._channel.voice = voiceChannel; };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Получаем сообщение из базы
      */
     public get message() { return this._channel.msg; };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Записываем сообщение в базу
      */
     public set message(message) { this._channel.msg = message; };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Получаем данные сервера
      */
     public get guild() { return this.message?.guild ?? undefined; };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Получаем все включенные фильтры
      */
     public get filters() { return this._filters; };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Получаем настройки очереди
      */
     public get options() { return this._options; };
+
     //====================== ====================== ====================== ======================
-    /**
-     * @description Создаем поток и передаем его в плеер
-     */
-    public set play(seek: number) {
-        //Если треков в очереди больше нет
-        if (!this.song) { this.cleanup(); return; }
 
-        //Отправляем сообщение с авто обновлением
-        if (seek === 0 && this.filters.length === 0) MessagePlayer.toPlay(this.message);
-
-        //Запускаем чтение потока
-        this.song.resource.then((url) => {
-            if (!url) { this.player.emit("error", Error(`[${this.song.url}] не найдена ссылка на исходный файл!`), true); return; }
-
-            //Отправляем поток в плеер
-            this.player.readStream = new OpusAudio(url, {seek, filters: this.song.options.isLive ? [] : this.filters});
-        }).catch((e) => this.player.emit("error", Error(e), true));
-
-        //Если включен режим отладки показывает что сейчас играет и где
-        if (env.get("debug.client")) Logger.debug(`[Queue]: [${this.guild.id}]: Play: [${this.song.duration.full}] - [${this.song.author.title} - ${this.song.title}]`);
-    };
-    //====================== ====================== ====================== ======================
     /**
      * @description Удаление очереди через время
      * @param state {string} Что делать с очередью. Запуск таймера или отмена
@@ -141,7 +152,9 @@ export class Queue {
             clearTimeout(this._timer);
         }
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Меняет местами треки
      * @param num {number} Если есть номер для замены
@@ -159,22 +172,52 @@ export class Queue {
         this.songs[position] = first;
         this.player.stop;
     };
+
     //====================== ====================== ====================== ======================
+
+    /**
+     * @description Создаем поток и передаем его в плеер
+     */
+    public set play(seek: number) {
+        //Если треков в очереди больше нет
+        if (!this.song) { this.cleanup(); return; }
+
+        //Отправляем сообщение с авто обновлением
+        if (seek === 0) MessagePlayer.toPlay(this.message);
+
+        this.CreateStream = seek;
+    };
+
+    //====================== ====================== ====================== ======================
+
+    /**
+     * @description Создаем поток для проигрывания на сервера этой очереди
+     * @param seek {number} До скольки надо будет пропустить
+     */
+    private set CreateStream(seek: number) {
+        //Запускаем чтение потока
+        this.song.resource.then((url) => {
+            if (!url) { this.player.emit("error", Error(`[${this.song.url}] не найдена ссылка на исходный файл!`), true); return; }
+
+            //Отправляем поток в плеер
+            this.player.readStream = new OpusAudio(url, {seek, filters: this.song.options.isLive ? [] : this.filters});
+        }).catch((e) => this.player.emit("error", Error(e), true));
+
+        //Если включен режим отладки показывает что сейчас играет и где
+        if (env.get("debug.client")) Logger.debug(`[Queue]: [${this.guild.id}]: Play: [${this.song.duration.full}] - [${this.song.author.title} - ${this.song.title}]`);
+    };
+
+    //====================== ====================== ====================== ======================
+
     /**
      * @description Создаем очередь для сервера
      * @param msg {ClientMessage} Сообщение с сервера
      * @param voice {VoiceChannel | StageChannel} Голосовой канал
      */
-    public constructor(msg: ClientMessage, voice: VoiceChannel | StageChannel) {
-        this._channel = { msg, voice };
+    public constructor(msg: ClientMessage, voice: VoiceChannel | StageChannel) { this._channel = { msg, voice }; };
 
-        setImmediate(() => {
-            const client = msg.client;
-            client.player.queue.onPlayerIdle = msg.guild.id;
-            client.player.queue.onPlayerError = msg.guild.id;
-        });
-    };
     //====================== ====================== ====================== ======================
+
     /**
      * @description Удаляем не используемые объекты
      */

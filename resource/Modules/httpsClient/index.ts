@@ -30,12 +30,13 @@ const CookieManager = new Cookie();
 export class httpsClient {
     private _options: RequestOptions;
 
-    //====================== ====================== ====================== ======================
     /**
      * @description Получаем протокол ссылки
      */
     private get protocol() { return this._options.protocol?.split(":")[0] as "http" | "https"; };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Создаем запрос по ссылке, модифицируем по необходимости
      */
@@ -75,7 +76,9 @@ export class httpsClient {
             request.end();
         });
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Получаем страницу в формате string
      * @requires {Request}
@@ -91,7 +94,9 @@ export class httpsClient {
             return resolve(extractPage(request.pipe(decoder)));
         }));
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Получаем со страницы JSON (Работает только тогда когда все страница JSON)
      * @requires {toString}
@@ -108,7 +113,9 @@ export class httpsClient {
             }
         }));
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Проверяем ссылку на работоспособность
      * @requires {Request}
@@ -120,7 +127,9 @@ export class httpsClient {
             return false; //Если прошлые варианты не подходят, то эта ссылка не рабочая
         });
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Парсим XML страницу в string[]
      */
@@ -137,7 +146,9 @@ export class httpsClient {
             return resolve(filter);
         });
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Инициализируем класс
      * @param url {string} Ссылка
@@ -165,7 +176,9 @@ export class httpsClient {
 
         this._options = {...reqOptions, headers};
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Очищаем класс
      */
@@ -173,7 +186,9 @@ export class httpsClient {
         this._options = null;
     };
 }
+
 //====================== ====================== ====================== ======================
+
 /**
  * @description Получаем всю страницу
  * @param decoder {Decoder | IncomingMessage}

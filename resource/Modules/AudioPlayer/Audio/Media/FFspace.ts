@@ -16,23 +16,30 @@ class FFmpeg extends Duplex {
      * @description Процесс 
      */
     private process: ChildProcessWithoutNullStreams;
+
     //====================== ====================== ====================== ======================
-    //====================== ====================== ====================== ======================
+
     /**
      * @description Жив ли процесс
      */
     public get deletable() { return !this.process?.killed || !this.destroyed || !!this.process; };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Данные выходящие из процесса
      */
     public get stdout() { return this?.process?.stdout; };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Данные входящие в процесс
      */
     public get stdin() { return this?.process?.stdin; };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Создаем "привязанные функции"
      * @param options {methods: string[], target: Readable | Writable}
@@ -46,7 +53,9 @@ class FFmpeg extends Duplex {
             methods.forEach((method) => this[method] = (ev, fn) => EVENTS[ev] ? EVENTS[ev][method](ev, fn) : Duplex.prototype[method].call(this, ev, fn));
         }
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Создаем процесс
      * @param args {Arguments} Аргументы для запуска
@@ -60,7 +69,9 @@ class FFmpeg extends Duplex {
 
         if (debug) Logger.debug(`[AudioPlayer]: [FFmpeg lib]: running ffmpeg`);
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Создаем FFmpeg 
      * @param args {Arguments} Аргументы запуска
@@ -74,7 +85,9 @@ class FFmpeg extends Duplex {
         this.setter = {methods: ["read", "setEncoding", "pipe", "unpipe"], target: this.stdout};
         this.setter = {methods: ["on", "once", "removeListener", "removeListeners", "listeners"]};
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Удаляем все что не нужно
      */
@@ -91,7 +104,9 @@ class FFmpeg extends Duplex {
         if (debug) Logger.debug(`[AudioPlayer]: [FFmpeg lib]: Destroying!`);
     };
 }
+
 //====================== ====================== ====================== ======================
+
 /**
  * @description Получаем данные
  * @param url {string} Ссылка
@@ -119,11 +134,9 @@ function FFprobe(url: string): Promise<JSON> {
 
 
 
-//====================== ====================== ====================== ======================
 /**
  * @description Делаем проверку наличия FFmpeg, FFprobe
  */
-//====================== ====================== ====================== ======================
 const paths = { ffmpeg: ["ffmpeg", "avconv"], ffprobe: ["ffprobe"] };
 let FFmpegName: string, FFprobeName: string;
 
@@ -142,7 +155,9 @@ if (!FFprobeName) {
     FFprobeName = checkName(paths.ffprobe, "FFprobe not found! Discord links and files won't work!");
     delete paths.ffprobe;
 }
+
 //====================== ====================== ====================== ======================
+
 /**
  * @description Проверка на наличие файла
  * @param names Имена процесса
@@ -156,7 +171,10 @@ function checkName(names: string[], error: string) {
     }
     console.log(error);
 }
+
 //====================== ====================== ====================== ======================
+
+
 /**
  * @description Допустимые аргументы для FFmpeg
  */

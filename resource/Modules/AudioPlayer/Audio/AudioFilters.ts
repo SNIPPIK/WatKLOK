@@ -13,7 +13,9 @@ namespace AudioFilters {
     export function get(name: string): Filter {
         return Filters.find((fn) => fn.names.includes(name)) as Filter;
     }
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Получаем множитель времени для правильного отображения. При добавлении новых аргументов в Filters.json<FilterConfigurator>, их нужно тоже добавить сюда!
      * @param filters {AudioFilters} Аудио фильтры которые включил пользователь
@@ -37,7 +39,9 @@ namespace AudioFilters {
 
         return duration;
     }
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Из названий фильтров получаем настоящие фильтры
      * @param filters {AudioFilters} Аудио фильтры которые включил пользователь
@@ -62,7 +66,9 @@ namespace AudioFilters {
         return response.join(",");
     }
 }
+
 //====================== ====================== ====================== ======================
+
 /**
 * @description Создаем фильтры для FFmpeg
 * @param filters {Filters} Аудио фильтры которые включил пользователь
@@ -77,12 +83,16 @@ function filtersForEach(filters: Filters, callback: (fl: string, filter: Filter)
         return callback(filter, findFilter);
     });
 }
+
 //====================== ====================== ====================== ======================
+
 /**
  * @description Допустимые фильтры для Queue
  */
 type Filters = Array<string | number>;
+
 //====================== ====================== ====================== ======================
+
 /**
  * @description Как выглядит фильтр
  */

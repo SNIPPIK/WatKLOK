@@ -18,37 +18,51 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
      * @description Голосовое подключение к каналу
      */
     private _connection: VoiceConnection;
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Статус плеера
      */
     private _state: PlayerStatus = { status: "idle" };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Общее время проигрывания музыки
      */
     public get duration() { return this.state?.stream?.duration ?? 0 };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Текущий статус плеера
      */
     public get state() { return this._state; };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Все голосовые каналы к которым подключен плеер
      */
     public get connection() { return this._connection ?? undefined; };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Возможно ли сейчас пропустить трек
      */
     public get hasSkipped() { return SkippedStatuses.includes(this.state.status); };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Можно ли обновить сообщение
      */
     public get hasUpdate() { return UpdateMessage.includes(this.state.status); };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Проверяем можно ли читать плеер
      */
@@ -61,24 +75,29 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
 
         return true;
     }
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Передача пакетов в голосовые каналы
      * @param packet {null} Пакет
      */
     public set sendPacket(packet: Buffer) {
-        const voiceConnection = this.connection;
+        if (this.connection?.state?.status !== "ready") return;
 
-        //Если голосовой канал готов
-        if (voiceConnection?.state?.status === "ready") voiceConnection.playOpusPacket(packet);
+        if (packet) this.connection.playOpusPacket(packet);
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Меняем голосовое подключение
      * @param connection {VoiceConnection} Голосове подключение
      */
     public set connection(connection: VoiceConnection) { this._connection = connection; };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Меняем статус плеера
      * @param newState {PlayerStatus} Новый данные плеера
@@ -93,14 +112,16 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
         this._state = newState;
 
         //Фильтруем статусы бота что в emit не попало что не надо
-        if (oldStatus !== newStatus || oldStatus !== "idle" && newStatus === "read") this.emit(newStatus);
+        if (oldState.status !== newState.status) this.emit(newStatus);
 
-        //Добавляем плеер в CycleStep
+        //Добавляем плеер в цикл
         CyclePlayers.push = this;
 
         if (Debug) Logger.debug(`[AudioPlayer]: [Status]: [old: ${oldStatus} | new: ${newStatus} | stream: ${!!newState.stream}]`);
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Начинаем чтение стрима
      * @param stream {OpusAudio} Поток который будет воспроизведен на сервере
@@ -117,7 +138,9 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
             stream.opus.once("error", () => this.emit("error", Error("Fail read stream"), true));
         }
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Ставим на паузу плеер
      */
@@ -125,7 +148,9 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
         if (this.state.status !== "read") return;
         this.state = { ...this.state, status: "pause" };
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Убираем с паузы плеер
      */
@@ -133,7 +158,9 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
         if (this.state.status !== "pause") return;
         this.state = { ...this.state, status: "read" };
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Останавливаем воспроизведение текущего трека
      */
@@ -141,7 +168,9 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
         if (this.state.status === "idle") return;
         this.state = { status: "idle" };
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Удаление неиспользованных данных
      */
@@ -159,17 +188,17 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
             CyclePlayers.remove = this;
         } else {
             if (!this.state?.stream) return;
+            this.sendPacket = SilenceFrame;
 
             //Удаляем стрим из плеера
             this.state.stream.destroy();
             delete this._state.stream;
-
-            //Отправляем пустой пакет
-            this.sendPacket = SilenceFrame;
         }
     };
 }
+
 //====================== ====================== ====================== ======================
+
 /**
  * @description Ивенты которые плеер может вернуть
  */
@@ -186,7 +215,9 @@ interface PlayerEvents {
     //Плеер встал на паузу
     pause: () => any;
 }
+
 //====================== ====================== ====================== ======================
+
 /**
  * @description Статусы и тип потока
  */

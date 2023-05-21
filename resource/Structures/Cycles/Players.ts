@@ -10,7 +10,7 @@ export class PlayerCycle {
     private _timeout: NodeJS.Timeout = null;
     private time: number = 0;
 
-    //====================== ====================== ====================== ======================
+
     /**
      * @description Добавляем плеер в базу
      * @param player {AudioPlayer}
@@ -27,7 +27,9 @@ export class PlayerCycle {
             setImmediate(() => this.playerCycleStep);
         }
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Удаляем плеер из базы
      * @param player {AudioPlayer}
@@ -36,12 +38,16 @@ export class PlayerCycle {
         const index = this._players.indexOf(player);
         if (index != -1) this._players.splice(index, 1);
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Получаем плееры, в которых можно отсылать пакеты
      */
     private get players() { return this._players.filter((player) => player.hasPlayable); };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Жизненный цикл плееров
      */
@@ -70,13 +76,15 @@ export class PlayerCycle {
         }
 
         //Добавляем задержку, в размер пакета
-        this.time += 19.999995;
+        this.time += 20;
 
         setImmediate(() => {
             this._timeout = setTimeout(() => this.playerCycleStep, this.time - Date.now());
         });
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Проверяем можно ли отправить пакет в голосовой канал
      */
