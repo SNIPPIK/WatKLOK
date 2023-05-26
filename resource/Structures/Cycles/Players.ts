@@ -57,10 +57,7 @@ export class PlayerCycle {
             if (debug) Logger.debug(`[Cycle]: [Players]: Stop cycle`);
 
             //Если таймер еще работает, то удаляем его
-            if (this._timeout) {
-                clearTimeout(this._timeout);
-                this._timeout = null;
-            }
+            if (this._timeout) { clearTimeout(this._timeout); this._timeout = null; }
             this.time = null;
             return;
         }
@@ -76,11 +73,9 @@ export class PlayerCycle {
         }
 
         //Добавляем задержку, в размер пакета
-        this.time += 20;
+        this.time += 19.999995;
 
-        setImmediate(() => {
-            this._timeout = setTimeout(() => this.playerCycleStep, this.time - Date.now());
-        });
+        this._timeout = setTimeout(() => this.playerCycleStep, this.time - Date.now());
     };
 
     //====================== ====================== ====================== ======================

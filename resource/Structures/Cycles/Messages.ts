@@ -87,9 +87,7 @@ export class MessageCycle {
             this.editMessage(message);
         }
 
-        setImmediate(() => {
-            this._timeout = setTimeout(() => this.messageCycleStep, this.time);
-        });
+        this._timeout = setTimeout(() => this.messageCycleStep, this.time);
     };
 
     //====================== ====================== ====================== ======================

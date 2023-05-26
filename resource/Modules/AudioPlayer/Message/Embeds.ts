@@ -105,7 +105,7 @@ export namespace EmbedMessages {
      */
     export function toSearch(tracks: ISong.track[], platform: string, author: ClientMessage["author"]): EmbedData {
         return {
-            color: Platform.color(platform as any),
+            color: new Platform(platform).color,
             title: `Найдено ${tracks.length}`,
             footer: { text: `${author.username} | Платформа: ${platform}`, iconURL: author.avatarURL() },
             timestamp: new Date(),

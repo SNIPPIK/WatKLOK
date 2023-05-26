@@ -19,7 +19,7 @@ class Downloader {
      * @description Добавляем трек в локальную базу
      * @param track {Song}
      */
-    public set addTrack(track: Song) {
+    public set push(track: Song) {
         const names = this.status(track);
         const findSong = this._songs.find((song) => track.url === song.url || song.title === track.title);
 
@@ -70,7 +70,7 @@ class Downloader {
     private set download(track: Song) {
         if (debug) Logger.debug(`[AudioPlayer]: [Download]: ${track.url}`);
 
-        new httpsClient(track.link).Request.then((req) => {
+        new httpsClient(track.link).request.then((req) => {
             if (req instanceof Error) return setTimeout(this.cycleStep, 2e3);
 
             if (req.pipe) {

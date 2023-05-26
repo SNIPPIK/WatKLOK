@@ -33,29 +33,27 @@ export class httpsClient {
     /**
      * @description Получаем протокол ссылки
      */
-    private get protocol() { return this._options.protocol?.split(":")[0] as "http" | "https"; };
+    private get protocol() { return protocols[this._options.protocol?.split(":")[0] as "http" | "https"]; };
 
     //====================== ====================== ====================== ======================
 
     /**
      * @description Создаем запрос по ссылке, модифицируем по необходимости
      */
-    public get Request(): Promise<IncomingMessage | Error> {
+    public get request(): Promise<IncomingMessage | Error> {
         return new Promise((resolve) => {
-            const protocol = this.protocol;
-
             if (debug) {
                 let path = this._options.path;
 
-                if (path.length > 60) path = `${path.slice(0, 60)}...`
-                Logger.debug(`[httpsClient]: [${!!this._options.body} | ${this._options.method}] | [${protocol}://${this._options.hostname}${path}]`);
+                if (path.length > 60) path = `${path.slice(0, 60)}...`;
+                Logger.debug(`[httpsClient]: [${!!this._options.body} | ${this._options.method}] | [${this._options.hostname}${path}]`);
             }
 
-            const request = protocols[protocol](this._options, (res: IncomingMessage) => {
+            const request = this.protocol(this._options, (res: IncomingMessage) => {
                 //Автоматическое перенаправление
                 if ((res.statusCode >= 300 && res.statusCode < 400) && res.headers?.location) {
                     this._options = {...this._options, path: res.headers.location };
-                    return resolve(this.Request);
+                    return resolve(this.request);
                 }
 
                 //Обновляем куки
@@ -81,10 +79,10 @@ export class httpsClient {
 
     /**
      * @description Получаем страницу в формате string
-     * @requires {Request}
+     * @requires {request}
      */
     public get toString(): Promise<string | Error> {
-        return new Promise((resolve) => this.Request.then((request) => {
+        return new Promise((resolve) => this.request.then((request) => {
             if (request instanceof Error) return resolve(request);
 
             const encoding = request.headers["content-encoding"] as "br" | "gzip" | "deflate";
@@ -118,10 +116,10 @@ export class httpsClient {
 
     /**
      * @description Проверяем ссылку на работоспособность
-     * @requires {Request}
+     * @requires {request}
      */
     public get status(): Promise<boolean> | false {
-        return this.Request.then((resource: IncomingMessage) => {
+        return this.request.then((resource: IncomingMessage) => {
             if (resource instanceof Error) return false; //Если есть ошибка
             if (resource.statusCode >= 200 && resource.statusCode < 400) return true; //Если возможно скачивать ресурс
             return false; //Если прошлые варианты не подходят, то эта ссылка не рабочая

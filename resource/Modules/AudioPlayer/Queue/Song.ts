@@ -82,7 +82,7 @@ class Song {
     /**
      * @description Получаем цвет трека
      */
-    public get color() { return Platform.color(this._platform); };
+    public get color() { return new Platform(this._platform).color; };
 
     //====================== ====================== ====================== ======================
 
@@ -172,7 +172,7 @@ class Song {
             let reqs = 0;
             while (reqs < 3) {
                 //Если нет ссылки, то ищем трек
-                if (!this.link) this.link = await Platform.searchResource(this);
+                if (!this.link) this.link = await Platform.resource(this);
                 else {
                     //Проверяем ссылку на работоспособность
                     const status = new httpsClient(this.link).status;
@@ -185,7 +185,7 @@ class Song {
             }
 
             //Если включено кеширование музыки, то скачиваем
-            if (CacheMusic && this.link.length > 10) DownloadManager.addTrack = this;
+            if (CacheMusic && this.link.length > 10) DownloadManager.push = this;
 
             return resolve(this.link);
         });
@@ -203,7 +203,7 @@ class Song {
 
         this._title = track.title;
         this._url = track.url;
-        this._platform = Platform.name(track.url);
+        this._platform = new Platform(track.url).platform;
 
         //Прочие
         this._other = {

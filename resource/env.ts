@@ -20,14 +20,12 @@ export namespace env {
      * @param key {string} Имя
      * @param value {string} значение
      */
-    export function set(key: string, value: string) {
+    export function set(key: string, value: string): void {
         //Открываем файл env в array
         const envFile = fs.readFileSync("./.env", "utf8").split(os.EOL);
 
         //Ищем имя
-        const target = envFile.indexOf(envFile.find((line) => {
-            return line.match(new RegExp(key));
-        }));
+        const target = envFile.indexOf(envFile.find((line) => line.match(new RegExp(key))));
 
         //Обновляем данные
         envFile.splice(target, 1, `${key}="${value}"`);

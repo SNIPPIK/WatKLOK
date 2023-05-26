@@ -9,7 +9,7 @@ else {
     const client = new WatKLOK();
 
     client.login(env.get("bot.token.discord")).then((): void => {
-        if (env.get("bot.error.ignore")) process.on("uncaughtException", (err) => {
+        if (env.get("bot.error.ignore")) process.on("uncaughtException", (err): void => {
             //Если выключено APIs.showErrors, то ошибки не будут отображаться
             if (!env.get("APIs.error.show") && err?.message?.match(/APIs/)) return;
 
@@ -21,7 +21,7 @@ else {
             try {
                 const channel = client.channels.cache.get(env.get("channel.error.send")) as any;
 
-                if (channel) channel.send({ content: `\`\`\`ts\n┌ Name:    ${err.name}\n├ Message: ${err.message}\n└ Stack:   ${err.stack}\n\`\`\`` }).catch(() => {});
+                if (channel) channel.send({ content: `\`\`\`ts\n┌ Name:    ${err.name}\n├ Message: ${err.message}\n└ Stack:   ${err.stack}\n\`\`\`` }).catch((): void => {});
             } catch {/* Continue */ }
         });
     });

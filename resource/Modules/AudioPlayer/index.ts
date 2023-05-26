@@ -6,12 +6,12 @@ import { Voice } from "@Utils/Voice";
 import {env} from "@env";
 
 //AudioPlayer
-import { Filter } from "./Audio/AudioFilters";
 import { CollectionQueue } from "./Queue/Collection";
-import { Platform } from "@APIs";
+import { Filter } from "./Audio/AudioFilters";
 import { MessagePlayer } from "./Message";
 import { Queue } from "./Queue/Queue";
 import { Song } from "./Queue/Song";
+import { Platform } from "@APIs";
 
 
 const Voting: string[] = JSON.parse(env.get("voting"));
@@ -31,7 +31,9 @@ export class Player {
      * @description Получение всех очередей
      */
     public get queue() { return _queue; };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Получаем данные из базы по данным
      * @param message {ClientMessage} Сообщение с сервера
@@ -41,54 +43,55 @@ export class Player {
         const VoiceChannel = message.member?.voice?.channel;
 
         //Платформа с которой будем взаимодействовать
-        const platform = Platform.name(argument);
+        const platform = new Platform(argument);
 
         //Если нет такой платформы 
-        if (!platform) return msgUtil.createMessage({ text: `⚠️ Warning\n\nУ меня нет поддержки этой платформы!`, codeBlock: "css", color: "Yellow", message });
+        if (!platform.platform) return msgUtil.createMessage({ text: `⚠️ Warning\n\nУ меня нет поддержки этой платформы!`, codeBlock: "css", color: "Yellow", message });
+
+        const platform_name = platform.platform.toLowerCase();
 
         //Если нельзя получить данные с определенной платформы
-        if (Platform.isFailed(platform)) return msgUtil.createMessage({ text: `⚠️ Warning | [${platform}]\n\nНет данных для авторизации, запрос не может быть выполнен!`, codeBlock: "css", color: "Yellow", message });
+        if (platform.auth) return msgUtil.createMessage({ text: `⚠️ Warning | [${platform_name}]\n\nНет данных для авторизации, запрос не может быть выполнен!`, codeBlock: "css", color: "Yellow", message });
 
         //Тип запроса
-        const type = Platform.type(argument, platform);
+        const type = platform.type(argument);
 
         //Ищем функцию, которая вернет данные или ошибку
-        const callback = Platform.callback(platform, type);
+        const callback = platform.callback(type);
 
         //Если нет функции запроса
-        if (!callback) return msgUtil.createMessage({ text: `⚠️ Warning | [${platform}]\n\nУ меня нет поддержки этого запроса!`, codeBlock: "css", color: "Yellow", message });
+        if (!callback) return msgUtil.createMessage({ text: `⚠️ Warning | [${platform_name}]\n\nУ меня нет поддержки этого запроса!`, codeBlock: "css", color: "Yellow", message });
 
         //Если включено показывать запросы
         if (Info) {
             //Отправляем сообщение о текущем запросе
-            msgUtil.createMessage({ text: `${message.author}, производится запрос в **${platform.toLowerCase()}.${type}**`, color: "Grey", message });
+            msgUtil.createMessage({ text: `${message.author}, производится запрос в **${platform_name}.${type}**`, color: "Grey", message });
 
             //Если у этой платформы нельзя получить исходный файл музыки, то сообщаем
-            if (Platform.isAudio(platform) && Warning) {
-                const workPlatform = Platform.isFailed("YANDEX") ? "youtube.track" : "yandex.track";
+            if (platform.audio && Warning) msgUtil.createMessage({ text: `⚠️ Warning | [${platform_name}]\n\nЯ не могу получать исходные файлы музыки у этой платформы.`, color: "Yellow", codeBlock: "css", message });
 
-                msgUtil.createMessage({ text: `⚠️ Warning | [${platform}]\n\nЯ не могу получать исходные файлы музыки у этой платформы.\nЗапрос будет произведен в ${workPlatform}`, color: "Yellow", codeBlock: "css", message });
-            }
         }
 
         //Вызываем функцию для получения данных
-        callback(Platform.filterArg(argument)).then((info) => {
+        callback(platform.filterArgument(argument)).then((info): void => {
             if (info instanceof Error) return;
 
             //Если данных нет
-            if (!info) return msgUtil.createMessage({ text: `⚠️ Warning | [${platform}.${type}]\n\nДанные не были получены!`, codeBlock: "css", color: "DarkRed", message });
+            if (!info) return msgUtil.createMessage({ text: `⚠️ Warning | [${platform_name}.${type}]\n\nДанные не были получены!`, codeBlock: "css", color: "DarkRed", message });
 
             //Если пользователь ищет трек и кол-во треков больше одного
-            if (info instanceof Array && info.length > 1) return MessagePlayer.toSearch(info, platform, message);
+            if (info instanceof Array && info.length > 1) return MessagePlayer.toSearch(info, platform.platform, message);
 
             //Загружаем трек или плейлист в Queue<GuildID>
             this.queue.create = { message, VoiceChannel, info: info instanceof Array ? info[0] : info };
-        }).catch((e: any) => {
+        }).catch((e: any): void => {
             if (e.length > 2e3) msgUtil.createMessage({ text: `⛔️ Error | [${platform}.${type}]\n\nПроизошла ошибка при получении данных!\n${e.message}`, color: "DarkRed", codeBlock: "css", message });
             else msgUtil.createMessage({ text: `⛔️ Error | [${platform}.${type}]\n\nПроизошла ошибка при получении данных!\n${e}`, color: "DarkRed", codeBlock: "css", message });
         });
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Завершает текущую музыку
      * @param message {ClientMessage} Сообщение с сервера
@@ -99,7 +102,9 @@ export class Player {
 
         if (player.hasSkipped) player.stop;
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Пропускает текущую музыку
      * @param message {ClientMessage} Сообщение с сервера
@@ -136,7 +141,9 @@ export class Player {
             }, "пропуск трека", args);
         });
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Приостанавливает воспроизведение музыки
      * @param message {ClientMessage} Сообщение с сервера
@@ -150,7 +157,9 @@ export class Player {
         player.pause;
         return msgUtil.createMessage({ text: `⏸ | Pause song | ${title}`, message, codeBlock: "css", color: "Green" });
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Продолжает воспроизведение музыки
      * @param message {ClientMessage} Сообщение с сервера
@@ -164,7 +173,9 @@ export class Player {
         player.resume;
         return msgUtil.createMessage({ text: `▶️ | Resume song | ${title}`, message, codeBlock: "css", color: "Green" });
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Убираем музыку из очереди
      * @param message {ClientMessage} Сообщение с сервера
@@ -198,7 +209,9 @@ export class Player {
             }, "удаление из очереди", arg);
         });
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Завершает текущую музыку
      * @param message {ClientMessage} Сообщение с сервера
@@ -224,7 +237,9 @@ export class Player {
             } else return msgUtil.createMessage({ text: `${author}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color: "Yellow" });
         }, "пропуск времени в треке", 1);
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Повтор текущей музыки
      * @param message {ClientMessage} Сообщение с сервера
@@ -245,7 +260,9 @@ export class Player {
             } else return msgUtil.createMessage({ text: `${author}, остальные пользователи не согласны с твоим мнением!`, message, codeBlock: "css", color: "Yellow" });
         }, "повторное проигрывание трека", 1);
     };
+
     //====================== ====================== ====================== ======================
+
     /**
      * @description Применяем фильтры для плеера
      * @param message {ClientMessage} Сообщение с сервера
@@ -330,6 +347,7 @@ export class Player {
     };
 }
 //====================== ====================== ====================== ======================
+
 /**
  * @description Голосование за пропуск трека
  * @param message {ClientMessage} Сообщение
