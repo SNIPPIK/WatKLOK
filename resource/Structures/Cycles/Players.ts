@@ -62,18 +62,11 @@ export class PlayerCycle {
             return;
         }
 
-        const players = this.players;
-
-        //Постепенно обрабатываем плееры
-        while (players.length > 0) {
-            const player = players.shift();
-
-            //Проверяем можно ли отправлять пакеты
-            this.checkPlayer(player);
-        }
+        //Заставляем отправлять пакеты
+        for (const player of this.players) this.checkPlayer(player);
 
         //Добавляем задержку, в размер пакета
-        this.time += 19.999995;
+        this.time += 19.99995;
 
         this._timeout = setTimeout(() => this.playerCycleStep, this.time - Date.now());
     };

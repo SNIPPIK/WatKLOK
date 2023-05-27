@@ -1,8 +1,8 @@
-import { EmbedMessages } from "@AudioPlayer/Message/Embeds";
+import { MessageAction } from "@AudioPlayer/Message/Classes/Action";
 import { Queue } from "@AudioPlayer/Queue/Queue";
 import { ClientMessage } from "@Client/Message";
 import { Logger } from "@Logger";
-import {env} from "@env";
+import { env } from "@env";
 
 const durationMessage = parseInt(env.get("music.player.message"));
 const debug = env.get("debug.cycle");
@@ -106,9 +106,9 @@ export class MessageCycle {
         //Если у плеера статус при котором нельзя обновлять сообщение
         if (!queue.player.hasUpdate) return;
 
-        const CurrentPlayEmbed = EmbedMessages.toPlaying(queue);
+        const Action = new MessageAction<"toPlay">("toPlay");
         //Обновляем сообщение
-        message.edit({embeds: [CurrentPlayEmbed as any], components: message.components}).catch((e) => {
+        message.edit({embeds: [new Action.embed(queue).toJson], components: message.components}).catch((e) => {
             if (e.message === "Unknown Message") this.remove = message;
             if (debug) Logger.log(`[Cycle]: [Messages]: [editMessage]: ${e.message}`);
         });

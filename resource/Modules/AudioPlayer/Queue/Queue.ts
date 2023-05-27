@@ -2,7 +2,7 @@ import {StageChannel, VoiceChannel} from "discord.js";
 import {ClientMessage} from "@Client/Message";
 import {OpusAudio} from "@AudioPlayer/Audio/Media/OpusAudio";
 import {AudioPlayer} from "../Audio/AudioPlayer";
-import {MessagePlayer} from "../Message";
+import {PlayerMessage} from "../Message";
 import {Voice} from "@Utils/Voice";
 import {Song} from "./Song";
 import {Logger} from "@Logger";
@@ -183,7 +183,7 @@ export class Queue {
         if (!this.song) { this.cleanup(); return; }
 
         //Отправляем сообщение с авто обновлением
-        if (seek === 0) MessagePlayer.toPlay(this.message);
+        if (seek === 0) PlayerMessage.toPlay(this);
 
         this.CreateStream = seek;
     };

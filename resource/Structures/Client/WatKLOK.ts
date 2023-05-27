@@ -105,9 +105,9 @@ export class WatKLOK extends Client {
     };
 }
 
-class initDataDir {
+class initDataDir<type> {
     private readonly path: string;
-    private readonly type: "event" | "command";
+    private readonly type: type;
     private file: string;
 
     //====================== ====================== ====================== ======================
@@ -122,7 +122,7 @@ class initDataDir {
 
         return new importFile[keysFile[0]];
     };
-    public constructor(path: string, type: "event" | "command") { this.path = path; this.type = type; };
+    public constructor(path: string, type: type) { this.path = path; this.type = type; };
     //====================== ====================== ====================== ======================
     /**
      * @description Начинаем чтение и загрузку команда или ивентов

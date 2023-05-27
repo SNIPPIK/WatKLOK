@@ -25,7 +25,7 @@ export class StopCommand extends Command {
         if (!member.voice?.channel || !member.voice) return { text: `${author}, Необходимо подключится к голосовому каналу!`, color: "Yellow" };
 
         //Если есть очередь и пользователь не подключен к тому же голосовому каналу
-        if (queue.voice && member?.voice?.channel?.id !== queue.voice.id) return {
+        if (queue.voice && member?.voice?.channel?.id !== queue.voice.id && guild.members.me.voice.channel) return {
             text: `${author}, Музыка уже играет в другом голосовом канале!\nМузыка включена тут <#${queue.voice.id}>`, color: "Yellow"
         };
 

@@ -44,7 +44,7 @@ export class FilterCommand extends Command {
         };
 
         //Если есть очередь и пользователь не подключен к тому же голосовому каналу
-        if (queue && queue.voice && member?.voice?.channel?.id !== queue.voice.id) return {
+        if (queue && queue.voice && member?.voice?.channel?.id !== queue.voice.id && guild.members.me.voice.channel) return {
             text: `${author}, Музыка уже играет в другом голосовом канале!\nМузыка включена тут <#${queue.voice.id}>`,
             color: "Yellow"
         };

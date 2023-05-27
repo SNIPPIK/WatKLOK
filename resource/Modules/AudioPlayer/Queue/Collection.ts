@@ -1,5 +1,5 @@
 import {ISong, Song} from "@AudioPlayer/Queue/Song";
-import {MessagePlayer} from "@AudioPlayer/Message";
+import {PlayerMessage} from "@AudioPlayer/Message";
 import {Queue} from "@AudioPlayer/Queue/Queue";
 import {ClientMessage} from "@Client/Message";
 import {Collection, StageChannel, VoiceChannel} from "discord.js";
@@ -68,7 +68,7 @@ export class CollectionQueue extends Collection<string, Queue> {
         //Загружаем плейлисты или альбомы
         if ("items" in info && info.items.length > 1) {
             //Отправляем сообщение о том что плейлист будет добавлен в очередь
-            MessagePlayer.toPushPlaylist(message, info);
+            PlayerMessage.toPushPlaylist(message, info);
 
             //Загружаем треки из плейлиста в очередь
             for (let track of info.items) queue.songs.push(new Song(track, requester));
@@ -78,9 +78,9 @@ export class CollectionQueue extends Collection<string, Queue> {
         //Добавляем трек в очередь
         // @ts-ignore
         const song = new Song(info ?? info?.items[0], requester);
-        if (queue.songs.length >= 1) MessagePlayer.toPushSong(queue, song);
-
         queue.songs.push(song);
+
+        if (queue.songs.length > 1) PlayerMessage.toPush(queue);
     };
 
     //====================== ====================== ====================== ======================
@@ -128,7 +128,7 @@ export class CollectionQueue extends Collection<string, Queue> {
         //Если в плеере возникнет ошибка
         queue.player.on("error", (err, isSkip) => {
             //Выводим сообщение об ошибке
-            MessagePlayer.toError(queue, err);
+            PlayerMessage.toError(queue, err);
 
             if (isSkip) {
                 queue.songs.shift();

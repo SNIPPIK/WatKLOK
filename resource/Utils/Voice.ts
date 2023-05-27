@@ -10,7 +10,7 @@ class VoiceManager {
      * @description Подключение к голосовому каналу
      * @param channel {Channels} Канал к которому надо подключится
      */
-    public readonly join = (channel: Channels): VoiceConnection =>{
+    public readonly join = (channel: Channels): VoiceConnection => {
         //Подключаемся к голосовому каналу
         const connection = joinVoiceChannel({
             selfDeaf: true, selfMute: false, group: Group, channelId: channel.id, guildId: channel.guildId,

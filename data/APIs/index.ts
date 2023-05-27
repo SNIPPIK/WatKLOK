@@ -163,7 +163,7 @@ class Platform {
      * @description Получаем данные о треке заново
      * @param song {Song} Трек который надо найти по новой
      */
-    public static resource = ({ platform, url, author, title, duration }: Song) => {
+    public static resource = ({ platform, url, author, title, duration }: Song): Promise<string> => {
         if (!Platforms.audio.includes(platform)) {
             const callback = new Platform(platform).callback("track");
 

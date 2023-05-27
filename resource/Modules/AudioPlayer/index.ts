@@ -8,7 +8,7 @@ import {env} from "@env";
 //AudioPlayer
 import { CollectionQueue } from "./Queue/Collection";
 import { Filter } from "./Audio/AudioFilters";
-import { MessagePlayer } from "./Message";
+import { PlayerMessage } from "./Message";
 import { Queue } from "./Queue/Queue";
 import { Song } from "./Queue/Song";
 import { Platform } from "@APIs";
@@ -80,7 +80,7 @@ export class Player {
             if (!info) return msgUtil.createMessage({ text: `⚠️ Warning | [${platform_name}.${type}]\n\nДанные не были получены!`, codeBlock: "css", color: "DarkRed", message });
 
             //Если пользователь ищет трек и кол-во треков больше одного
-            if (info instanceof Array && info.length > 1) return MessagePlayer.toSearch(info, platform.platform, message);
+            if (info instanceof Array && info.length > 1) return PlayerMessage.toSearch(info, platform.platform, message);
 
             //Загружаем трек или плейлист в Queue<GuildID>
             this.queue.create = { message, VoiceChannel, info: info instanceof Array ? info[0] : info };

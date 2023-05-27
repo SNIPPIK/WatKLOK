@@ -31,7 +31,7 @@ export class JoinCommand extends Command {
         if (!member?.voice?.channel || !member?.voice) return { text: `${author}, Необходимо подключится к голосовому каналу!`, color: "Yellow" };
 
         //Если пользователь пытается подключить бота к тому же каналу
-        if (voiceChannel.id === guild.members.me.voice.id || queue && voiceChannel.id === queue.voice.id) return { text: `${author}, Я уже в этом канале <#${voiceChannel}>.`, color: "Yellow" };
+        if (voiceChannel.id === guild.members.me.voice.id || queue && voiceChannel.id === queue.voice.id && guild.members.me.voice.channel) return { text: `${author}, Я уже в этом канале <#${voiceChannel.id}>.`, color: "Yellow" };
 
         if (queue) { //Если есть очередь, то
             //Если включен режим радио
