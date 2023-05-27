@@ -1,6 +1,7 @@
 import {ClientMessage} from "@Client/Message";
 import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ComponentType, User} from "discord.js";
 import {env} from "@env";
+import {Queue} from "@AudioPlayer/Queue/Queue";
 
 //Кнопки с которыми можно взаимодействовать
 const ButtonIDs = ["skip", "resume_pause", "repeat", "last"];
@@ -17,15 +18,11 @@ const Buttons = new ActionRowBuilder().addComponents(
     ]
 );
 
-/**
- * @description Создаем сборщик кнопок
- */
 export class ButtonCollector {
     /**
      * @description Сборщик
      */
-    private _collector: any;
-
+    private readonly _collector: any;
     public static get buttons() { return Buttons; };
 
     //====================== ====================== ====================== ======================
@@ -45,37 +42,40 @@ export class ButtonCollector {
      * @description Отслеживаем ивент
      * @param i {ButtonInteraction} Кто взаимодействует с кнопкой
      * @param message {ClientMessage} Сообщение с сервера
-     * @returns
      */
-    private onCollect = (i: ButtonInteraction, message: ClientMessage) => {
-        const { client, guild } = message;
-        const queue = client.player.queue.get(guild.id);
-        const { player } = queue;
-
+    private readonly onCollect = (i: ButtonInteraction, message: ClientMessage) => {
+        const { client, guild } = message, queue = client.player.queue.get(guild.id), { player } = queue;
         message.author = i?.member?.user as User ?? i?.user;
 
-        try { i.deferReply().catch(() => {}); i.deleteReply().catch(() => {}); } catch (e) {/*Notfing*/ }
+        i.deferReply().catch(() => {});  i.deleteReply().catch(() => {});
 
         //Если вдруг пользователь будет нажимать на кнопки после выключения плеера
         if (!player?.state || !player?.state?.status) return;
 
+        return this.onButtonPush(queue, i);
+    };
+
+    //====================== ====================== ====================== ======================
+
+    /**
+     * @description Проверяем ID кнопок
+     * @param queue {Queue} Очередь
+     * @param i {ButtonInteraction} Взаимодействие с кнопкой
+     */
+    private readonly onButtonPush = (queue: Queue, i: ButtonInteraction): void => {
+        const message = queue.message, player = message.client.player;
+
         switch (i.customId) {
-            case "resume_pause": { //Если надо приостановить музыку или продолжить воспроизведение
-                switch (player.state.status) {
-                    case "read": return void client.player.pause(message);
-                    case "pause": return void client.player.resume(message);
+            case "skip": return player.skip(message, 1);
+            case "last": return void (queue.swap = 0);
+            case "repeat": return void (queue.options.loop = queue.options.loop === "songs" ? "song": "songs");
+            case "resume_pause": {
+                switch (queue.player.state.status) {
+                    case "read": return player.pause(message);
+                    case "pause": return player.resume(message);
                 }
                 return;
             }
-            //Пропуск текущей музыки
-            case "skip": return void client.player.skip(message, 1);
-            //Повторно включить текущую музыку
-            case "repeat": {
-                queue.options.loop = queue.options.loop === "songs" ? "song": "songs";
-                return;
-            }
-            //Включить последнею из списка музыку
-            case "last": return queue.swap = 0;
         }
     };
 
@@ -84,8 +84,5 @@ export class ButtonCollector {
     /**
      * @description Отключаем сборщик и удаляем
      */
-    public destroy = () => {
-        this._collector?.stop();
-        this._collector = null;
-    };
+    public destroy = () => this._collector?.stop();
 }

@@ -25,7 +25,7 @@ export namespace PlayerMessage {
         ChannelAction.sendMessage = {
             channel: queue.message.channel,
             embeds: [new ChannelAction.embed(queue).toJson],
-            time: 7
+            time: 7e3
         };
     }
 
@@ -40,7 +40,7 @@ export namespace PlayerMessage {
         ChannelAction.sendMessage = {
             channel: message.channel,
             embeds: [new ChannelAction.embed(playlist, message.author).toJson],
-            time: 7
+            time: 7e3
         };
     }
 
@@ -55,7 +55,31 @@ export namespace PlayerMessage {
         ChannelAction.sendMessage = {
             channel: queue.message.channel,
             embeds: [new ChannelAction.embed(queue, error).toJson],
-            time: 10
+            time: 10e3
+        };
+    }
+
+    /**
+     * @description Отправляем сообщение о текущем треке, обновляем раз в 15 сек
+     * @param queue {Queue} Очередь сервера
+     */
+    export function toPlay(queue: Queue) {
+        const ChannelAction = new MessageAction<"toPlay">("toPlay");
+
+        ChannelAction.sendMessage = {
+            channel: queue.message.channel,
+            components: [ButtonCollector.buttons],
+            embeds: [(new ChannelAction.embed(queue)).toJson],
+            promise: (msg) => {
+                //Добавляем к сообщению кнопки
+                const collector = new ButtonCollector(msg);
+
+                //Удаляем сборщик после проигрывания трека
+                queue.player.once("idle", () => collector?.destroy());
+
+                //Добавляем сообщение к CycleStep
+                CycleMessages.push = msg;
+            }
         };
     }
 
@@ -98,29 +122,5 @@ export namespace PlayerMessage {
                 });
             }
         }
-    }
-
-    /**
-     * @description Отправляем сообщение о текущем треке, обновляем раз в 15 сек
-     * @param queue {Queue} Очередь сервера
-     */
-    export function toPlay(queue: Queue) {
-        const ChannelAction = new MessageAction<"toPlay">("toPlay");
-
-        ChannelAction.sendMessage = {
-            channel: queue.message.channel,
-            components: [ButtonCollector.buttons],
-            embeds: [(new ChannelAction.embed(queue)).toJson],
-            promise: (msg) => {
-                //Добавляем к сообщению кнопки
-                const collector = new ButtonCollector(msg);
-
-                //Удаляем сборщик после проигрывания трека
-                queue.player.once("idle", () => collector?.destroy());
-
-                //Добавляем сообщение к CycleStep
-                CycleMessages.push = msg;
-            }
-        };
     }
 }

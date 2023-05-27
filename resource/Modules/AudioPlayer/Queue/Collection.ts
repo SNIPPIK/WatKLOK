@@ -49,6 +49,7 @@ export class CollectionQueue extends Collection<string, Queue> {
         //Запускаем отслеживание ивентов
         this.onPlayerIdle = queue.guild.id;
         this.onPlayerError = queue.guild.id;
+        this.onQueueEvents = queue.guild.id;
 
         if (env.get("debug.player")) Logger.debug(`[Queue]: [${queue.guild.id}]: has create`);
     };
@@ -65,22 +66,22 @@ export class CollectionQueue extends Collection<string, Queue> {
         const { message } = queue;
         const requester = message.author;
 
-        //Загружаем плейлисты или альбомы
-        if ("items" in info && info.items.length > 1) {
-            //Отправляем сообщение о том что плейлист будет добавлен в очередь
-            PlayerMessage.toPushPlaylist(message, info);
+        if ("duration" in info) {
+            queue.songs.push(new Song(info, requester));
 
-            //Загружаем треки из плейлиста в очередь
-            for (let track of info.items) queue.songs.push(new Song(track, requester));
-            return;
+            if (queue.songs.length > 1) PlayerMessage.toPush(queue);
+        } else {
+            if (info.items.length > 1) {
+                //Отправляем сообщение о том что плейлист будет добавлен в очередь
+                PlayerMessage.toPushPlaylist(message, info);
+
+                //Загружаем треки из плейлиста в очередь
+                for (let track of info.items) queue.songs.push(new Song(track, requester));
+                return;
+            }
+            queue.songs.push(new Song(info?.items[0], requester));
+            if (queue.songs.length > 1) PlayerMessage.toPush(queue);
         }
-
-        //Добавляем трек в очередь
-        // @ts-ignore
-        const song = new Song(info ?? info?.items[0], requester);
-        queue.songs.push(song);
-
-        if (queue.songs.length > 1) PlayerMessage.toPush(queue);
     };
 
     //====================== ====================== ====================== ======================
@@ -135,5 +136,41 @@ export class CollectionQueue extends Collection<string, Queue> {
                 setTimeout(() => queue.play = 0, 1800);
             }
         });
+    };
+
+    //====================== ====================== ====================== ======================
+
+    /**
+     * @description Ивенты очереди
+     * @param QueueID {string} ID сервера
+     */
+    private set onQueueEvents(QueueID: string) {
+        const queue = this.get(QueueID);
+
+        //Если очередь надо удалить
+        queue.once("destroy", () => {
+            const message = queue.message;
+
+            if (message && message?.deletable) message?.delete().catch(() => undefined);
+            if (queue.player) {
+                queue.player.destroy("stream");
+                queue.player.destroy("all");
+            }
+
+            queue.state = "destroy";
+            this.delete(QueueID);
+
+            if (env.get("music.leave")) Voice.disconnect(queue.guild.id);
+            if (env.get("debug.player")) Logger.debug(`[Queue]: [${queue.guild.id}]: has deleted`);
+        });
+
+        //Если начато удаление через время
+        queue.on("start", () => {
+            Voice.disconnect(queue.guild);
+            queue.player.pause;
+        });
+
+        //Если удаление через время отклонено
+        queue.on("cancel", () => queue.player.resume);
     };
 }

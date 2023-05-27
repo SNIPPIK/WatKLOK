@@ -32,7 +32,7 @@ export class StopCommand extends Command {
         //Если включен режим радио
         if (queue.options.radioMode) return { text: `${author}, Невозможно из-за включенного режима радио!`, color: "Yellow" };
 
-        queue.cleanup();
+        queue.emit("destroy");
         return { text: `${author}, музыкальная очередь удалена!` };
     };
 }

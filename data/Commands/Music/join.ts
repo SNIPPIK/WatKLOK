@@ -44,7 +44,7 @@ export class JoinCommand extends Command {
 
             queue.player.connection = connection; //Подключаем голосовой канал к плееру
 
-            queue.timer = "cancel"; //Отменяем удаление очереди
+            queue.state = "cancel"; //Отменяем удаление очереди
             return { text: `${author}, Переподключение к ${queue.voice}!`, color: "Yellow" };
         }
 

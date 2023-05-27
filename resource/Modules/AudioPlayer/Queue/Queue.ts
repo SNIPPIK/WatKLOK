@@ -1,63 +1,88 @@
-import {StageChannel, VoiceChannel} from "discord.js";
-import {ClientMessage} from "@Client/Message";
 import {OpusAudio} from "@AudioPlayer/Audio/Media/OpusAudio";
+import {StageChannel, VoiceChannel} from "discord.js";
 import {AudioPlayer} from "../Audio/AudioPlayer";
+import {TypedEmitter} from "tiny-typed-emitter";
+import {ClientMessage} from "@Client/Message";
 import {PlayerMessage} from "../Message";
-import {Voice} from "@Utils/Voice";
-import {Song} from "./Song";
 import {Logger} from "@Logger";
+import {Song} from "./Song";
 import {env} from "@env";
 
 /**
- * @description Очередь сервера
+ * @description Часть отвечающая за таймер и ивенты
  */
-export class Queue {
+class Timer extends TypedEmitter<TimerEvents> {
     /**
      * @description Таймер удаления, нужен для авто удаления очереди
      */
-    public _timer: NodeJS.Timeout = null;
+    private _timer: NodeJS.Timeout = null;
 
-    //====================== ====================== ====================== ======================
+    /**
+     * @description Удаление очереди через время
+     * @param state {string} Что делать с очередью. Запуск таймера или отмена
+     * @constructor
+     */
+    public set state(state: "start" | "cancel" | "destroy") {
+        if (state === "cancel") {
+            clearTimeout(this._timer);
+            this.emit("cancel");
+            return;
+        } else if (state === "destroy") {
+            clearTimeout(this._timer);
+            return;
+        }
 
+        //Запускаем таймер по истечению которого очереди будет удалена!
+        this._timer = setTimeout(() => this.emit("start"), 10e3);
+    };
+}
+
+/**
+ * @description Часть отвечающая за базу данных
+ */
+class Queue_Base extends Timer {
     /**
      * @description Array<Song> база с треками
      */
-    private _songs: Array<Song> = [];
+    protected _songs: Array<Song> = [];
 
     //====================== ====================== ====================== ======================
 
     /**
      * @description Все включенные фильтры. Фильтры для FFmpeg
      */
-    private _filters: Array<string> | Array<string | number> = [];
+    protected _filters: Array<string> | Array<string | number> = [];
 
     //====================== ====================== ====================== ======================
 
     /**
      * @description Плеер
      */
-    private _player: AudioPlayer = new AudioPlayer();
+    protected _player: AudioPlayer = new AudioPlayer();
 
     //====================== ====================== ====================== ======================
 
     /**
      * @description Каналы для взаимодействия. Каналы (message: TextChannel, voice: VoiceChannel)
      */
-    private _channel: { msg: ClientMessage, voice: VoiceChannel | StageChannel };
+    protected _channel: { msg: ClientMessage, voice: VoiceChannel | StageChannel };
 
     //====================== ====================== ====================== ======================
 
     /**
      * @description Настройки для очереди. Включен лы повтор, включен ли режим радио
      */
-    private _options: { random: boolean, loop: "song" | "songs" | "off", radioMode: boolean } = {
+    protected _options: { random: boolean, loop: "song" | "songs" | "off", radioMode: boolean } = {
         random: false, //Рандомные треки (каждый раз в плеере будет играть разная музыка из очереди)
         loop: "off", //Тип повтора (off, song, songs)
         radioMode: false //Режим радио
     };
+}
 
-    //====================== ====================== ====================== ======================
-
+/**
+ * @description Часть отвечающая за get, set
+ */
+class Queue_Functions extends Queue_Base {
     /**
      * @description Получаем все треки
      */
@@ -136,34 +161,11 @@ export class Queue {
     //====================== ====================== ====================== ======================
 
     /**
-     * @description Удаление очереди через время
-     * @param state {string} Что делать с очередью. Запуск таймера или отмена
-     * @constructor
-     */
-    public set timer(state: "start" | "cancel") {
-        const player = this.player;
-
-        //Запускаем таймер по истечению которого очереди будет удалена!
-        if (state === "start" && !this._timer) {
-            this._timer = setTimeout(this.cleanup, 10e3);
-            player.pause;
-        } else {
-            player.resume;
-            clearTimeout(this._timer);
-        }
-    };
-
-    //====================== ====================== ====================== ======================
-
-    /**
      * @description Меняет местами треки
      * @param num {number} Если есть номер для замены
      */
     public set swap(num: number) {
-        if (this.songs.length === 1) {
-            this.player.stop;
-            return;
-        }
+        if (this.songs.length === 1) { this.player.stop; return; }
 
         const first = this.songs[0];
         const position = num ?? this.songs.length - 1;
@@ -172,29 +174,22 @@ export class Queue {
         this.songs[position] = first;
         this.player.stop;
     };
+}
 
-    //====================== ====================== ====================== ======================
-
+/**
+ * @description Часть отвечающая за callback
+ */
+export class Queue extends Queue_Functions {
     /**
      * @description Создаем поток и передаем его в плеер
      */
     public set play(seek: number) {
         //Если треков в очереди больше нет
-        if (!this.song) { this.cleanup(); return; }
+        if (!this.song) { this.emit("destroy"); return; }
 
         //Отправляем сообщение с авто обновлением
         if (seek === 0) PlayerMessage.toPlay(this);
 
-        this.CreateStream = seek;
-    };
-
-    //====================== ====================== ====================== ======================
-
-    /**
-     * @description Создаем поток для проигрывания на сервера этой очереди
-     * @param seek {number} До скольки надо будет пропустить
-     */
-    private set CreateStream(seek: number) {
         //Запускаем чтение потока
         this.song.resource.then((url) => {
             if (!url) { this.player.emit("error", Error(`[${this.song.url}] не найдена ссылка на исходный файл!`), true); return; }
@@ -207,45 +202,23 @@ export class Queue {
         if (env.get("debug.client")) Logger.debug(`[Queue]: [${this.guild.id}]: Play: [${this.song.duration.full}] - [${this.song.author.title} - ${this.song.title}]`);
     };
 
-    //====================== ====================== ====================== ======================
-
     /**
      * @description Создаем очередь для сервера
      * @param msg {ClientMessage} Сообщение с сервера
      * @param voice {VoiceChannel | StageChannel} Голосовой канал
      */
-    public constructor(msg: ClientMessage, voice: VoiceChannel | StageChannel) { this._channel = { msg, voice }; };
-
-    //====================== ====================== ====================== ======================
-
-    /**
-     * @description Удаляем не используемые объекты
-     */
-    public readonly cleanup = (): void => {
-        const message = this.message;
-        const { client, guild } = message;
-
-        if (message && message?.deletable) message?.delete().catch(() => undefined);
-
-        //Удаляем таймер
-        clearTimeout(this._timer);
-
-        if (this._player) {
-            //Удаляем плеер и его данные
-            this.player.destroy("stream");
-            this.player.destroy("all");
-            this._player = null;
-        }
-
-        this._songs = null;
-        this._filters = null;
-        this._options = null;
-        this._channel = null;
-        this._timer = null;
-
-        client.player.queue.delete(guild.id);
-
-        if (env.get("music.leave")) Voice.disconnect(message.guild.id);
-        if (env.get("debug.player")) Logger.debug(`[Queue]: [${message.guild.id}]: has deleted`);
+    public constructor(msg: ClientMessage, voice: VoiceChannel | StageChannel) {
+        super();
+        this._channel = { msg, voice };
     };
+}
+
+
+/**
+ * @description Доступные ивенты
+ */
+interface TimerEvents {
+    start: () => void;
+    cancel: () => void;
+    destroy: () => void;
 }

@@ -30,8 +30,8 @@ export class voiceStateUpdate extends Event<VoiceState, VoiceState> {
             if (queue && !queue?.options?.radioMode) {
                 const isBotVoice = !!(newState.channel?.members ?? oldState.channel?.members)?.find((member) => member.user.id === client.user.id);
 
-                if (usersSize < 1 && !isBotVoice) queue.timer = "start"; //Если есть очередь сервера, удаляем!
-                else if (usersSize > 0) queue.timer = "cancel"; //Если есть очередь сервера, отмена удаления!
+                if (usersSize < 1 && !isBotVoice) queue.state = "start"; //Если есть очередь сервера, удаляем!
+                else if (usersSize > 0) queue.state = "cancel"; //Если есть очередь сервера, отмена удаления!
 
                 if (debug) Logger.debug(`[Event]: [voiceStateUpdate]: [ID: ${ChannelID} | Voice: ${!!voice} | inVoice: ${isBotVoice} | Users: ${usersSize} | Queue: ${!!queue}]`);
             }
