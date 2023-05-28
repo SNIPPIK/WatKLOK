@@ -2,7 +2,7 @@ import { Command, ResolveData } from "@Client/Command";
 import { Queue } from "@AudioPlayer/Queue/Queue";
 import { Song } from "@AudioPlayer/Queue/Song";
 import { MessageReaction, User } from "discord.js";
-import { DurationUtils } from "@Utils/Durations";
+import { Duration } from "@Utils/Durations";
 import { ClientMessage } from "@Client/Message";
 import { ArraySort } from "@db/ArraySort";
 
@@ -33,7 +33,7 @@ export class QueueCommand extends Command {
         });
 
         const CurrentPlaying = `Current playing -> [${queue.song.title}]`; //Музыка, которая играет сейчас
-        const Footer = `${author.username} | ${DurationUtils.getTracksTime(queue)} | Лист 1 из ${pages.length} | Songs: ${queue.songs.length} | Loop: ${queue.options.loop} | Random: ${queue.options.random} | Radio: ${queue.options.radioMode}`; //Что будет снизу сообщения
+        const Footer = `${author.username} | ${Duration.getTracksTime(queue.songs)} | Лист 1 из ${pages.length} | Songs: ${queue.songs.length} | Loop: ${queue.options.loop} | Random: ${queue.options.random} | Radio: ${queue.options.radioMode}`; //Что будет снизу сообщения
 
         return { embed: `\`\`\`css\n➡️ | ${CurrentPlaying}\n\n${pages[0]}\n\n${Footer}\`\`\``, callbacks: this.Callbacks(1, pages, queue) }
     };
@@ -87,7 +87,7 @@ export class QueueCommand extends Command {
      */
     private EditMessage = (queue: Queue, message: ClientMessage, msg: ClientMessage, pages: string[], page: number) => {
         const CurrentPlaying = `Current playing -> [${queue.song.title}]`;
-        const Footer = `${message.author.username} | ${DurationUtils.getTracksTime(queue)} | Лист ${page} из ${pages.length} | Songs: ${queue.songs.length}`;
+        const Footer = `${message.author.username} | ${Duration.getTracksTime(queue.songs)} | Лист ${page} из ${pages.length} | Songs: ${queue.songs.length}`;
 
         return msg.edit(`\`\`\`css\n➡️ | ${CurrentPlaying}\n\n${pages[page - 1]}\n\n${Footer}\`\`\``);
     };

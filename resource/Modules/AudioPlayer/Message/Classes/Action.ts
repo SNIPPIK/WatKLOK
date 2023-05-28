@@ -11,11 +11,13 @@ export class MessageAction<Action> {
     //Название действие, название EmbedData
     private readonly _action: Action;
 
+
     /**
      * @description Получаем Embed в зависимости от this._action
      */
     public get embed() { // @ts-ignore
         return EmbedsData[this._action]; };
+
 
     /**
      * @description Отправляем сообщение
@@ -34,6 +36,7 @@ export class MessageAction<Action> {
 
     public constructor(action: Action) { this._action = action; };
 }
+
 
 /**
  * @description Аргументы для отправки сообщения

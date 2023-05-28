@@ -83,7 +83,7 @@ export class OpusAudio {
     /**
      * @description Выдаем пакет, добавляем время
      */
-    public read(): Buffer | null {
+    public get read(): Buffer | null {
         const packet: Buffer = this.opus?.read();
 
         if (packet) this._duration += this._durFrame;

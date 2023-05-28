@@ -1,5 +1,5 @@
-import { ChannelType, Guild, InternalDiscordGatewayAdapterCreator, StageChannel, VoiceChannel, VoiceState } from "discord.js";
 import { VoiceConnection, getVoiceConnection, getVoiceConnections, joinVoiceChannel } from "@discordjs/voice";
+import { ChannelType, Guild, StageChannel, VoiceChannel, VoiceState } from "discord.js";
 import {Logger} from "@Logger";
 
 type Channels = VoiceChannel | StageChannel;
@@ -23,7 +23,8 @@ class VoiceManager {
 
         return connection;
     };
-    //====================== ====================== ====================== ======================
+
+
     /**
      * @description Отключаемся от канала
      * @param guild {Channels | string} ID канала или сам канал
@@ -41,7 +42,8 @@ class VoiceManager {
             getVoiceConnections(Group)?.delete(ID);
         }
     };
-    //====================== ====================== ====================== ======================
+
+
     /**
      * @description Все пользователи в голосовом канале
      * @param Guild {Guild} Сервер с которого надо взять данные
@@ -56,7 +58,8 @@ class VoiceManager {
 
         return Users.length > 0 ? Users : "Fail";
     };
-    //====================== ====================== ====================== ======================
+
+
     /**
      * @description Получаем голосовое подключение
      * @param guildID {string} ID сервера

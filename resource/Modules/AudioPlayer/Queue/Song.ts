@@ -1,7 +1,7 @@
 import { DownloadManager } from "../Audio/Downloader";
 import { httpsClient } from "@httpsClient";
 import { platform, Platform } from "@APIs";
-import { DurationUtils } from "@Utils/Durations";
+import { Duration } from "@Utils/Durations";
 import { ClientMessage } from "@Client/Message";
 import {env} from "@env";
 
@@ -16,35 +16,30 @@ class Song {
      */
     private readonly _title: string;
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Ссылка на трек
      */
     private readonly _url: string;
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Автор трека
      */
     private readonly _author: { url: string, title: string, isVerified?: boolean };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Пользователь который включил трек
      */
     private readonly _requester: ISong.requester;
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Платформа трека
      */
     private readonly _platform: platform;
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Время длительности трека
@@ -53,7 +48,6 @@ class Song {
      */
     private readonly _duration: { seconds: number, full: string };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Изображение трека и автора
@@ -62,7 +56,6 @@ class Song {
      */
     private readonly _images: { track: ISong.image, author: ISong.image };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Прочие модификаторы
@@ -70,91 +63,78 @@ class Song {
      */
     private readonly _other: { isLive: boolean };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Ссылка на исходный ресурс или путь до файла
      */
     private _link: string = null;
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Получаем цвет трека
      */
     public get color() { return new Platform(this._platform).color; };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Получаем название трека
      */
     public get title() { return this._title; };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Получаем ссылку на трек
      */
     public get url() { return this._url; };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Получаем данные автора трека
      */
     public get author() { return this._author; };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Получаем пользователя который включил трек
      */
     public get requester() { return this._requester; };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Получаем платформу у которого был взят трек
      */
     public get platform() { return this._platform; };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Получаем время трека
      */
     public get duration() { return this._duration; };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Получаем картинки автора и трека
      */
     public get image() { return this._images; };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Получаем доп данные
      */
     public get options() { return this._other; };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Получаем ссылку на исходный файл
      */
     public get link() { return this._link; };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Изменяем данные ссылки
      */
     private set link(link) { this._link = link; };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Получаем ссылку на исходный ресурс
@@ -175,10 +155,11 @@ class Song {
                 if (!this.link) this.link = await Platform.resource(this);
                 else {
                     //Проверяем ссылку на работоспособность
-                    const status = new httpsClient(this.link).status;
+                    const status = await new httpsClient(this.link, { method: "HEAD" }).status;
 
                     //Если ссылка работает
                     if (status) break;
+                    else this.link = null;
                 }
 
                 reqs++;
@@ -191,7 +172,6 @@ class Song {
         });
     };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Подгоняем трек под общую сетку
@@ -223,8 +203,8 @@ class Song {
         };
 
         //Время трека
-        this._duration = {
-            full: seconds > 0 ? DurationUtils.toString(seconds) : "Live", seconds
+        this._duration = { seconds,
+            full: seconds === 0 ? "Live": Duration.toConverting(seconds) as string
         };
 
         //Пользователь, который включил трек

@@ -1,6 +1,6 @@
 import { ActionRow, ActionRowBuilder, BaseInteraction, BaseMessageOptions, CommandInteractionOption, DMChannel, EmbedData, GuildMember, Message, MessageEditOptions, MessagePayload, NewsChannel, PartialDMChannel, TextChannel, ThreadChannel, User } from "discord.js";
 import { ReactionMenu } from "@db/Classes/ReactionMenu";
-import { DurationUtils } from "@Utils/Durations";
+import { Duration } from "@Utils/Durations";
 import { msgUtil } from "@db/Message";
 
 //Client imports
@@ -133,7 +133,7 @@ class interactionCreate extends Event<ClientInteraction, null> {
             if (command.isOwner) return { text: `${author}, Эта команда не для тебя!`, color: "DarkRed" };
 
             //Проверяем находится ли пользователь в базе
-            if (CoolDownBase.get(author.id)) return { text: `${author}, ты слишком быстро отправляем сообщения! Подожди ${DurationUtils.toString(CoolDownBase.get(author.id).time)}`, color: "DarkRed" }
+            if (CoolDownBase.get(author.id)) return { text: `${author}, ты слишком быстро отправляем сообщения! Подожди ${Duration.toConverting(CoolDownBase.get(author.id).time)}`, color: "DarkRed" }
             else {
                 //Добавляем пользователя в CoolDown базу
                 CoolDownBase.set(author.id, { time: command.isCLD });

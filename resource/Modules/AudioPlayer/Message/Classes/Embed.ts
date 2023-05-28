@@ -1,6 +1,6 @@
 import {Queue} from "@AudioPlayer/Queue/Queue";
 import {Colors, EmbedData} from "discord.js";
-import {DurationUtils} from "@Utils/Durations";
+import {Duration} from "@Utils/Durations";
 import {ISong} from "@AudioPlayer/Queue/Song";
 import {ClientMessage} from "@Client/Message";
 import {Platform} from "@APIs";
@@ -55,7 +55,7 @@ export const EmbedsData = {
             return {
                 color, image: image.track, thumbnail: image.author, fields: this.getFields,
                 author: { name: AuthorSong, url: author.url, iconURL: note },
-                footer: { text: `${requester.username} | ${DurationUtils.getTracksTime(this.queue)} | 🎶: ${this.queue.songs.length}`, iconURL: requester.avatarURL() }
+                footer: { text: `${requester.username} | ${Duration.getTracksTime(this.queue.songs)} | 🎶: ${this.queue.songs.length}`, iconURL: requester.avatarURL() }
             };
         };
 
@@ -84,7 +84,7 @@ export const EmbedsData = {
 
             if (duration.full === "Live" || !Bar.enable) return `\`\`[${duration.full}]\`\``;
 
-            const parsedDuration = DurationUtils.toString(streamDuration);
+            const parsedDuration = Duration.toConverting(streamDuration);
             const progress = this.matchBar(streamDuration, duration.seconds);
             const string = `**❯** \`\`[${parsedDuration} \\ ${duration.full}]\`\``;
 
@@ -126,7 +126,7 @@ export const EmbedsData = {
             return {
                 color, fields, thumbnail: image.track,
                 author: { name: AuthorSong, iconURL: image.author.url, url: author.url },
-                footer: { text: `${requester.username} | ${DurationUtils.getTracksTime(this.queue.songs)} | 🎶: ${this.queue.songs.length}`, iconURL: requester.avatarURL() }
+                footer: { text: `${requester.username} | ${Duration.getTracksTime(this.queue.songs)} | 🎶: ${this.queue.songs.length}`, iconURL: requester.avatarURL() }
             };
         };
     },
@@ -147,7 +147,7 @@ export const EmbedsData = {
                 thumbnail: { url: author?.image?.url ?? note },
                 image: typeof image === "string" ? { url: image } : image ?? { url: note },
                 fields: [{ name: `**Найден плейлист**`, value: `**❯** **[${title}](${url})**\n**❯** **Всего треков: ${items.length}**` }],
-                footer: { text: `${this._author.username} | ${DurationUtils.getTracksTime(items)} | 🎶: ${items?.length}`, iconURL: this._author.displayAvatarURL({}) }
+                footer: { text: `${this._author.username} | ${Duration.getTracksTime(items)} | 🎶: ${items?.length}`, iconURL: this._author.displayAvatarURL({}) }
             };
         };
     },
@@ -167,7 +167,7 @@ export const EmbedsData = {
                 color, thumbnail: image.track, timestamp: new Date(),
                 description: `\n[${title}](${url})\n\`\`\`js\n${this._error}...\`\`\``,
                 author: { name: AuthorSong, url: author.url, iconURL: image.author.url },
-                footer: { text: `${requester.username} | ${DurationUtils.getTracksTime(songs)} | 🎶: ${songs.length}`, iconURL: requester?.avatarURL() }
+                footer: { text: `${requester.username} | ${Duration.getTracksTime(songs)} | 🎶: ${songs.length}`, iconURL: requester?.avatarURL() }
             };
         };
     },
@@ -193,7 +193,7 @@ export const EmbedsData = {
          */
         private get fields() {
             return this._tracks.map((track, index) => {
-                const duration = this._platform === "YOUTUBE" ? track.duration.seconds : DurationUtils.toString(parseInt(track.duration.seconds));
+                const duration = this._platform === "YOUTUBE" ? track.duration.seconds : Duration.toConverting(parseInt(track.duration.seconds));
                 const title = `[${this.fixText(track.title, 80, true)}](${track.url})`; //Название трека
                 const author = `${this.fixText(track.author.title, 30, true)}`; //Автор трека
 

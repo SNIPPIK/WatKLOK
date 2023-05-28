@@ -12,6 +12,12 @@ export class PlayerCycle {
 
 
     /**
+     * @description Получаем плееры, в которых можно отсылать пакеты
+     */
+    private get players() { return this._players.filter((player) => player.hasPlayable); };
+
+
+    /**
      * @description Добавляем плеер в базу
      * @param player {AudioPlayer}
      */
@@ -28,7 +34,6 @@ export class PlayerCycle {
         }
     };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Удаляем плеер из базы
@@ -39,14 +44,6 @@ export class PlayerCycle {
         if (index != -1) this._players.splice(index, 1);
     };
 
-    //====================== ====================== ====================== ======================
-
-    /**
-     * @description Получаем плееры, в которых можно отсылать пакеты
-     */
-    private get players() { return this._players.filter((player) => player.hasPlayable); };
-
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Жизненный цикл плееров
@@ -63,7 +60,7 @@ export class PlayerCycle {
         }
 
         //Заставляем отправлять пакеты
-        for (const player of this.players) this.checkPlayer(player);
+        for (const player of this.players) this.sendPacketPlayer = player;
 
         //Добавляем задержку, в размер пакета
         this.time += 19.99995;
@@ -76,7 +73,7 @@ export class PlayerCycle {
     /**
      * @description Проверяем можно ли отправить пакет в голосовой канал
      */
-    private readonly checkPlayer = (player: AudioPlayer) => {
+    private set sendPacketPlayer(player: AudioPlayer) {
         const state = player?.state;
 
         //Если статус (idle или pause или его нет) прекратить выполнение функции
@@ -87,7 +84,7 @@ export class PlayerCycle {
 
         //Отправка музыкального пакета
         if (state.status === "read") {
-            const packet: Buffer | null = state.stream?.read();
+            const packet: Buffer | null = state.stream?.read;
 
             if (packet) player.sendPacket = packet;
             else {

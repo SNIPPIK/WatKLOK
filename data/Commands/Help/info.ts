@@ -1,5 +1,5 @@
 import { Command, ResolveData } from "@Client/Command";
-import { DurationUtils } from "@Utils/Durations";
+import { Duration } from "@Utils/Durations";
 import { ClientMessage } from "@Client/Message";
 import { Colors } from "discord.js";
 import pak from "package.json";
@@ -47,7 +47,7 @@ export class InfoCommand extends Command {
                     }
                 ],
                 footer: {
-                    text: `Latency - ${(Date.now() - message.createdTimestamp < 0 ? Math.random() * 78 : Date.now() - message.createdTimestamp).toFixed(0)} | Api - ${(client.ws.ping < 0 ? Math.random() * 78 : client.ws.ping).toFixed(0)} | Uptime: ${DurationUtils.toString(client.uptime / 1000)}`,
+                    text: `Latency - ${(Date.now() - message.createdTimestamp < 0 ? Math.random() * 78 : Date.now() - message.createdTimestamp).toFixed(0)} | Api - ${(client.ws.ping < 0 ? Math.random() * 78 : client.ws.ping).toFixed(0)} | Uptime: ${Duration.toConverting(client.uptime / 1000)}`,
                     iconURL: client.user.displayAvatarURL()
                 }
             }

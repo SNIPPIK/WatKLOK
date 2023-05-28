@@ -17,6 +17,7 @@ class Timer extends TypedEmitter<TimerEvents> {
      */
     private _timer: NodeJS.Timeout = null;
 
+
     /**
      * @description Удаление очереди через время
      * @param state {string} Что делать с очередью. Запуск таймера или отмена
@@ -46,28 +47,24 @@ class Queue_Base extends Timer {
      */
     protected _songs: Array<Song> = [];
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Все включенные фильтры. Фильтры для FFmpeg
      */
     protected _filters: Array<string> | Array<string | number> = [];
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Плеер
      */
     protected _player: AudioPlayer = new AudioPlayer();
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Каналы для взаимодействия. Каналы (message: TextChannel, voice: VoiceChannel)
      */
     protected _channel: { msg: ClientMessage, voice: VoiceChannel | StageChannel };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Настройки для очереди. Включен лы повтор, включен ли режим радио
@@ -88,77 +85,66 @@ class Queue_Functions extends Queue_Base {
      */
     public get songs() { return this._songs; };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Заменяем треки
      */
     public set songs(songs) { this._songs = songs; };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Получаем текущий трек
      */
     public get song(): Song { return this.songs.at(0); };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Получаем плеер текущей очереди
      */
     public get player() { return this._player; };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Получаем голосовой канал
      */
     public get voice() { return this._channel.voice; };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Меняем голосовой канал
      */
     public set voice(voiceChannel) { this._channel.voice = voiceChannel; };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Получаем сообщение из базы
      */
     public get message() { return this._channel.msg; };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Записываем сообщение в базу
      */
     public set message(message) { this._channel.msg = message; };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Получаем данные сервера
      */
     public get guild() { return this.message?.guild ?? undefined; };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Получаем все включенные фильтры
      */
     public get filters() { return this._filters; };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Получаем настройки очереди
      */
     public get options() { return this._options; };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Меняет местами треки

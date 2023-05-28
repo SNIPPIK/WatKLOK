@@ -1,9 +1,9 @@
-import { DurationUtils } from "@Utils/Durations";
+import { Duration } from "@Utils/Durations";
 
 class Logger_ {
     private get time() {
         const date = new Date();
-        const time = [date.getHours(), date.getMinutes(), date.getSeconds()].map(DurationUtils.toSplit).join(":");
+        const time = [date.getHours(), date.getMinutes(), date.getSeconds()].map(Duration.toSplit).join(":");
         let ms = `${date.getMilliseconds()}`;
 
         if (ms.length === 1) ms = `00${ms}`;

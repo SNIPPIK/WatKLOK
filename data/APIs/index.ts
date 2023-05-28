@@ -1,4 +1,4 @@
-import {DurationUtils} from "@Utils/Durations";
+import {Duration} from "@Utils/Durations";
 import {ISong, Song} from "@AudioPlayer/Queue/Song";
 import {Colors} from "discord.js";
 import {readdirSync} from "fs";
@@ -199,7 +199,7 @@ class Platform {
         return (search.callback(nameSong) as Promise<ISong.track[]>).then((tracks: ISong.track[]) => {
             //Фильтруем треки оп времени
             const FindTracks: ISong.track[] = tracks.filter((track: ISong.track) => {
-                const DurationSong: number = (exPlatform === "YOUTUBE" ? DurationUtils.toInt : parseInt)(track.duration.seconds);
+                const DurationSong: number = (exPlatform === "YOUTUBE" ? Duration.toConverting : parseInt)(track.duration.seconds) as number;
 
                 //Как надо фильтровать треки
                 return DurationSong === duration || DurationSong < duration + 7 && DurationSong > duration - 5 || DurationSong < duration + 27 && DurationSong > duration - 27;

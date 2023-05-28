@@ -18,7 +18,6 @@ export class MessageCycle {
      */
     private get messages() { return this._messages.filter(msg => !!msg.edit); };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Добавляем сообщение в <Message[]>
@@ -40,7 +39,6 @@ export class MessageCycle {
         }
     };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Удаляем сообщение из <Message[]>, так-же проверяем отключить ли таймер
@@ -59,7 +57,6 @@ export class MessageCycle {
         if (index != -1) this._messages.splice(index, 1);
     };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Жизненный цикл сообщений
@@ -90,7 +87,6 @@ export class MessageCycle {
         this._timeout = setTimeout(() => this.messageCycleStep, this.time);
     };
 
-    //====================== ====================== ====================== ======================
 
     /**
      * @description Обновляем сообщение
