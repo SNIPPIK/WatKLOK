@@ -10,7 +10,7 @@ export namespace env {
     export function get(name: string): any {
         const env = process.env[name];
 
-        if (!env || env === "undefined") new Error(name);
+        if (!env || env === "undefined") throw new Error(`[Error]: [env]: Not found ${name}`);
 
         return env === "true" ? true : env === "false" ? false : env;
     }
