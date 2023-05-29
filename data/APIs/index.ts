@@ -97,11 +97,20 @@ class Platform {
      * @description Получаем или ищем платформу
      * @param string
      */
-    public constructor(string: platform | string) {
-        const platforms = Platforms.all.filter((info) => string === info.name || string.match(info.filter) || info.prefix && info.prefix.includes(string));
+     public constructor(string: platform | string) {
+        if (string.startsWith("http")) {
+            const platforms = Platforms.all.filter((info) => string.match(info.filter));
 
-        if (platforms.length === 0) this._platform = "YOUTUBE";
-        else this._platform = platforms[0].name;
+            //Если нет платформы в базе
+            if (!platforms.length) return undefined;
+
+            this._platform = platforms[0].name
+        } else {
+            const platforms = Platforms.all.find((info) => info.prefix && info.prefix.includes(string.split(' ')[0].toLowerCase()));
+
+            if (!platforms) this._platform = "YOUTUBE";
+            this._platform = platforms.name;
+        }
     };
 
 
