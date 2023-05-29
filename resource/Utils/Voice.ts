@@ -16,8 +16,16 @@ class VoiceManager {
             selfDeaf: true, selfMute: false, group: Group, channelId: channel.id, guildId: channel.guildId,
             adapterCreator: channel.guild.voiceAdapterCreator
         });
-        const me = channel.guild.members?.me;
 
+        //Если дискорд перекрывает доступ к серверу, то подключаемся заново
+        connection.on("error", (err) => {
+            Logger.error(`[VoiceConnection]: [${channel.id}]: ${err.message}`);
+
+            connection.configureNetworking();
+            connection.rejoin();
+        });
+
+        const me = channel.guild.members?.me;
         //Для голосовых трибун
         if (channel.type !== ChannelType.GuildVoice && me) me?.voice?.setRequestToSpeak(true).catch(Logger.error);
 

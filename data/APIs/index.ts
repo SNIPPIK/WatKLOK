@@ -97,7 +97,7 @@ class Platform {
      * @description Получаем или ищем платформу
      * @param string
      */
-     public constructor(string: platform | string) {
+    public constructor(string: platform | string) {
         if (string.startsWith("http")) {
             const platforms = Platforms.all.filter((info) => string.match(info.filter));
 
@@ -106,10 +106,10 @@ class Platform {
 
             this._platform = platforms[0].name
         } else {
-            const platforms = Platforms.all.find((info) => info.prefix && info.prefix.includes(string.split(' ')[0].toLowerCase()));
+            const platform = Platforms.all.find((info) => info.prefix && info.prefix.includes(string.split(' ')[0].toLowerCase()));
 
-            if (!platforms) this._platform = "YOUTUBE";
-            this._platform = platforms.name;
+            if (!platform) this._platform = "YOUTUBE";
+            else this._platform = platform.name;
         }
     };
 

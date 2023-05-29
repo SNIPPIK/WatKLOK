@@ -5,7 +5,7 @@ import { MessageAction } from "./Classes/Action";
 import { ClientMessage } from "@Client/Message";
 import { Queue } from "../Queue/Queue"
 import { ISong } from "../Queue/Song";
-import { msgUtil } from "@db/Message";
+import { MessageUtils } from "@db/Message";
 import { env } from "@env";
 
 //
@@ -89,8 +89,8 @@ export namespace PlayerMessage {
      * @param platform {platform} Платформа на которой ищем
      * @param message {ClientMessage} Сообщение с сервера
      */
-    export function toSearch(tracks: ISong.track[], platform: string, message: ClientMessage) {
-        if (tracks.length < 1) return msgUtil.createMessage({ text: `${message.author} | Я не смог найти музыку с таким названием. Попробуй другое название!`, color: "DarkRed", message });
+    export function toSearch(tracks: ISong.track[], platform: string, message: ClientMessage): void {
+        if (tracks.length < 1) return void (MessageUtils.send = { text: `${message.author} | Я не смог найти музыку с таким названием. Попробуй другое название!`, color: "DarkRed", message });
         const ChannelAction = new MessageAction<"toSearch">("toSearch"), { author, client } = message;
 
         ChannelAction.sendMessage = {
@@ -98,14 +98,17 @@ export namespace PlayerMessage {
             embeds: [new ChannelAction.embed(tracks, platform).toJson],
             promise: (msg) => {
                 //Создаем сборщик
-                const collector = msgUtil.createCollector(msg.channel, (m) => {
+                const collector = MessageUtils.collector(msg.channel, (m: any) => {
                     const messageNum = parseInt(m.content);
                     return !isNaN(messageNum) && messageNum <= tracks.length && messageNum > 0 && m.author.id === author.id;
-                });
-                const clear = () => { msgUtil.deleteMessage(msg, 1e3); collector?.stop(); }
+                }), clear = () => { MessageUtils.delete = {message: msg, time: 1e3}; collector?.stop(); };
 
                 //Делаем что-бы при нажатии на эмодзи удалялся сборщик
-                msgUtil.createReaction(msg, emoji, (reaction, user) => reaction.emoji.name === emoji && user.id !== client.user.id, clear, 30e3);
+                MessageUtils.reaction = {
+                    message: msg, emoji, callback: clear, time: 30e3,
+                    filter: (reaction, user) => reaction.emoji.name === emoji && user.id !== client.user.id
+                };
+
                 //Если пользователь нечего не выбрал, то удаляем сборщик и сообщение через 30 сек
                 setTimeout(clear, 30e3);
 
@@ -113,7 +116,7 @@ export namespace PlayerMessage {
                 collector.once("collect", (m: any): void => {
                     setImmediate(() => {
                         //Чистим чат и удаляем сборщик
-                        msgUtil.deleteMessage(m); clear();
+                        MessageUtils.delete = {message: m};
 
                         //Получаем ссылку на трек, затем включаем его
                         const url = tracks[parseInt(m.content) - 1].url;

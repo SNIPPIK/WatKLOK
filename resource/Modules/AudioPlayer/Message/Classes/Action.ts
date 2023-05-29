@@ -1,6 +1,6 @@
 import {ActionRowBuilder, EmbedData} from "discord.js";
 import {ClientMessage} from "@Client/Message";
-import {msgUtil} from "@db/Message";
+import {MessageUtils} from "@db/Message";
 import {EmbedsData} from "./Embed";
 import {Logger} from "@Logger";
 
@@ -29,7 +29,7 @@ export class MessageAction<Action> {
             .then((msg) => {
                 if (!msg) return;
 
-                if (options.time) msgUtil.deleteMessage(msg, options.time);
+                if (options.time) MessageUtils.delete = {message: msg, time: options.time};
                 if (options.promise) options.promise(msg);
             });
     };

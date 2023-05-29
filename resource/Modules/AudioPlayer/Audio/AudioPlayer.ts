@@ -70,11 +70,11 @@ class AudioPlayer extends TypedEmitter<PlayerEvents> {
         const state = this._state;
         if (state.status === "idle" || !this.connection) return false;
 
-        //Если поток уничтожен или больше не читается, переходим в состояние Idle.
+        //Если больше не читается, переходим в состояние Idle.
         if (!state.stream.readable) { this.state = { status: "idle" }; return false; }
 
         return true;
-    }
+    };
 
     //====================== ====================== ====================== ======================
 

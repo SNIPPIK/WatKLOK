@@ -1,6 +1,6 @@
 import { ClientMessage } from "@Client/Message";
 import {EmbedData, MessageReaction, User} from "discord.js";
-import { msgUtil } from "@db/Message";
+import {MessageUtils} from "@db/Message";
 import {env} from "@env";
 
 const emojis = {
@@ -33,7 +33,7 @@ export class ReactionMenu {
         const callback = (reaction: MessageReaction) => value(reaction, message.author, message, msg);
         const emoji = emojis[key as "back" | "next" | "cancel"];
 
-        return msgUtil.createReaction(msg, emoji, (reaction, user) => reaction.emoji.name === emoji && user.id !== message.client.user.id, callback, 60e3);
+        return MessageUtils.reaction = {message: msg, emoji, filter: (reaction, user) => reaction.emoji.name === emoji && user.id !== message.client.user.id, callback, time: 60e3};
     });
     //====================== ====================== ====================== ======================
     /**

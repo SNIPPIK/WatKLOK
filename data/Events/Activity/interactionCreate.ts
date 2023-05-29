@@ -1,7 +1,7 @@
 import { ActionRow, ActionRowBuilder, BaseInteraction, BaseMessageOptions, CommandInteractionOption, DMChannel, EmbedData, GuildMember, Message, MessageEditOptions, MessagePayload, NewsChannel, PartialDMChannel, TextChannel, ThreadChannel, User } from "discord.js";
 import { ReactionMenu } from "@db/Classes/ReactionMenu";
 import { Duration } from "@Utils/Durations";
-import { msgUtil } from "@db/Message";
+import {MessageUtils} from "@db/Message";
 
 //Client imports
 import { Command, ResolveData } from "@Client/Command";
@@ -81,10 +81,10 @@ class interactionCreate extends Event<ClientInteraction, null> {
         if ("callbacks" in command && command?.callbacks !== undefined) new ReactionMenu(command.embed, message as ClientMessage, command.callbacks);
 
         //Отправляем просто сообщение
-        else if ("text" in command) msgUtil.createMessage({ ...command, message });
+        else if ("text" in command) MessageUtils.send = { ...command, message };
 
         //Отправляем embed
-        else msgUtil.createMessage({ text: command.embed, message });
+        else MessageUtils.send = { text: command.embed, message };
     }
     //====================== ====================== ====================== ======================
     /**

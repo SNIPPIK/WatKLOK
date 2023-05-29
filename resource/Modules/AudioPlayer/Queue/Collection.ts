@@ -157,11 +157,11 @@ export class CollectionQueue extends Collection<string, Queue> {
                 queue.player.destroy("all");
             }
 
-            queue.state = "destroy";
-            this.delete(QueueID);
-
             if (env.get("music.leave")) Voice.disconnect(queue.guild.id);
             if (env.get("debug.player")) Logger.debug(`[Queue]: [${queue.guild.id}]: has deleted`);
+
+            queue.state = "destroy";
+            this.delete(QueueID);
         });
 
         //Если начато удаление через время

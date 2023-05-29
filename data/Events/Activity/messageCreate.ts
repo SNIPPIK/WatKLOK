@@ -1,4 +1,4 @@
-import { msgUtil } from "@db/Message";
+import {MessageUtils} from "@db/Message";
 import { Logger } from "@Logger";
 import {env} from "@env";
 
@@ -22,14 +22,14 @@ export class messageCreate extends Event<ClientMessage, null> {
 
         try {
             //Удаляем сообщение пользователя
-            setTimeout(() => msgUtil.deleteMessage(message), 15e3);
+            setTimeout(() => MessageUtils.delete = {message, time: 15e3});
 
             const args = (message as ClientMessage).content.split(" ")?.slice(1)?.filter((string) => string !== "");
             const commandName = (message as ClientMessage).content?.split(" ")[0]?.slice(prefix.length)?.toLowerCase();
             const command = message.client.commands.get(commandName) ?? message.client.commands.find(cmd => cmd.aliases.includes(commandName));
 
             //Заставляем бота делать вид, что он что-то печатает
-            if (env.get("bot.typing")) return message.channel.sendTyping().then(() => runCommand(message, command, args));
+            if (typing) return message.channel.sendTyping().then(() => runCommand(message, command, args));
             return runCommand(message, command, args);
         } catch (e) {
             if (e.message === "Missing Access") Logger.error(`[ChannelID: ${message.channel.id}]: ${e.message}`);
