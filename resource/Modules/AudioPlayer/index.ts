@@ -45,7 +45,7 @@ export class Player {
         //Платформа с которой будем взаимодействовать
         const platform = new Platform(argument);
 
-        //Если нет такой платформы 
+        //Если нет такой платформы
         if (!platform.platform) return void (MessageUtils.send = { text: `⚠️ Warning\n\nУ меня нет поддержки этой платформы!`, codeBlock: "css", color: "Yellow", message });
 
         const platform_name = platform.platform.toLowerCase();
@@ -111,35 +111,33 @@ export class Player {
      * @param args {number} Сколько треков пропускаем
      */
     public readonly skip = (message: ClientMessage, args: number = 1): void => {
-        const { client, guild, author } = message;
+        const {client, guild, author} = message;
         const queue: Queue = this.queue.get(guild.id);
-        const { player, songs, options } = queue;
-        const { title, url }: Song = songs[args - 1];
+        const {player, songs, options} = queue;
+        const {title, url}: Song = songs[args - 1];
 
-        setImmediate(() => {
-            //Если музыку нельзя пропустить из-за плеера
-            if (!player.hasSkipped) return void (MessageUtils.send = { text: `${author}, ⚠ Музыка еще не играет!`, message, color: "Yellow" });
+        //Если музыку нельзя пропустить из-за плеера
+        if (!player.hasSkipped) return void (MessageUtils.send = { text: `${author}, ⚠ Музыка еще не играет!`, message, color: "Yellow" });
 
-            //Если пользователь укажет больше чем есть в очереди
-            if (args > songs.length) return void (MessageUtils.send = { text: `${author}, В очереди ${songs.length}!`, message, color: "Yellow" });
+        //Если пользователь укажет больше чем есть в очереди
+        if (args > songs.length) return void (MessageUtils.send = { text: `${author}, В очереди ${songs.length}!`, message, color: "Yellow" });
 
-            //Голосование за пропуск
-            Vote(message, queue, (win): void => {
-                if (win) {
-                    if (args > 1) {
-                        if (options.loop === "songs") for (let i = 0; i < args - 2; i++) songs.push(songs.shift());
-                        else queue.songs = songs.slice(args - 2);
+        //Голосование за пропуск
+        Vote(message, queue, (win): void => {
+            if (win) {
+                if (args > 1) {
+                    if (options.loop === "songs") for (let i = 0; i < args - 2; i++) songs.push(songs.shift());
+                    else queue.songs = songs.slice(args - 2);
 
-                        MessageUtils.send = { text: `⏭️ | Skip to song [${args}] | ${title}`, message, codeBlock: "css", color: "Green" };
-                    } else MessageUtils.send = { text: `⏭️ | Skip song | ${title}`, message, codeBlock: "css", color: "Green" };
+                    MessageUtils.send = { text: `⏭️ | Skip to song [${args}] | ${title}`, message, codeBlock: "css", color: "Green" };
+                } else MessageUtils.send = { text: `⏭️ | Skip song | ${title}`, message, codeBlock: "css", color: "Green" };
 
-                    return client.player.stop(message);
-                } else {
-                    //Если пользователю нельзя пропустить трек сделать
-                    return void (MessageUtils.send = { text: `${author}, пропустить этот трек [${title}](${url}) не вышло!`, message, color: "Yellow" });
-                }
-            }, "пропуск трека", args);
-        });
+                return client.player.stop(message);
+            } else {
+                //Если пользователю нельзя пропустить трек сделать
+                return void (MessageUtils.send = { text: `${author}, пропустить этот трек [${title}](${url}) не вышло!`, message, color: "Yellow" });
+            }
+        }, "пропуск трека", args);
     };
 
     //====================== ====================== ====================== ======================

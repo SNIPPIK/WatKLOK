@@ -3,9 +3,14 @@ import { WatKLOK } from "@Client";
 import { Logger } from "@Logger";
 import {env} from "@env";
 
-//Если указан --sharder
+
 if (process.argv.includes("--sharder")) new ShardManager();
-else {
+else runShard();
+
+/**
+ * @description Запускаем один осколок
+ */
+function runShard() {
     const client = new WatKLOK();
 
     client.login(env.get("bot.token.discord")).then((): void => {

@@ -99,7 +99,7 @@ export class WatKLOK extends Client {
         //Загружаем команды
         new initDataDir("data/Commands", "command").readDir();
         //Загружаем ивенты
-        new initDataDir("data/Events", "event").readDir(this);
+        new initDataDir("data/Actions", "action").readDir(this);
 
         return super.login(token);
     };
@@ -158,8 +158,8 @@ class initDataDir<type> {
 
                         commands.set(hasLoad.name, hasLoad as Command);
                     } else { //Загружаем ивент
-                        if (reason) return Logger.error(`[Event]: [${hasLoad.name}]: ${reason}!`);
-                        else if (!hasLoad.name) return Logger.error(`[Event]: [${hasLoad.name}]: Not found name!`);
+                        if (reason) return Logger.error(`[Action]: [${hasLoad.name}]: ${reason}!`);
+                        else if (!hasLoad.name) return Logger.error(`[Action]: [${hasLoad.name}]: Not found name!`);
 
                         //@ts-ignore
                         client.on(hasLoad.name, (f, v) => hasLoad.run(f, v, client));

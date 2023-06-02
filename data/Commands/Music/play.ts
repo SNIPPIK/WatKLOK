@@ -38,13 +38,13 @@ export class PlayCommand extends Command {
         const { author, member, guild, client } = message;
         const queue: Queue = client.player.queue.get(guild.id);
         const search: string = args.join(" ");
-        const voiceChannel = member?.voice;
+        const voiceChannel = member?.voice?.channel;
 
         //Если пользователь не подключен к голосовым каналам
-        if (!voiceChannel?.channel || !voiceChannel) return { text: `${author}, Необходимо подключится к голосовому каналу!`, color: "Yellow" };
+        if (!voiceChannel) return { text: `${author}, Необходимо подключится к голосовому каналу!`, color: "Yellow" };
 
         //Если есть очередь и пользователь не подключен к тому же голосовому каналу
-        if (queue && queue.voice && voiceChannel?.channel?.id !== queue.voice.id && guild.members.me.voice.channel) return {
+        if (queue && queue.voice && voiceChannel?.id !== queue.voice.id && guild.members.me.voice.channel) return {
             text: `${author}, Музыка уже играет в другом голосовом канале!\nМузыка включена тут <#${queue.voice.id}>`,
             color: "Yellow"
         };
