@@ -9,7 +9,7 @@
       "@Client/Shard": ["resource/Structures/Client/ShardManager"],
       "@Client/Event": ["data/Structures/Abstracts/Event"],
       "@Client/Command": ["data/Structures/Abstracts/Command"],
-      "@Client/Message": ["data/Events/Activity/interactionCreate"],
+      "@Client/Message": ["data/Actions/Activity/interactionCreate"],
       "@Client/Cycles/*": ["resource/Structures/Cycles/*"],
 
       "@AudioPlayer": ["resource/Modules/AudioPlayer/index"],
