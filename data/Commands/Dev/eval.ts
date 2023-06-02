@@ -20,6 +20,7 @@ export class EvalCommand extends Command {
         const queue = client.player.queue.get(message.guild.id);
         const StartMs = new Date().getMilliseconds();
         const Code = args.join(" ");
+
         const resolve = (Eval: string, EndMs: number, color: number): EmbedData => {
             return {
                 color, footer: { text: `Time: ${EndMs - StartMs} ms` }, fields:

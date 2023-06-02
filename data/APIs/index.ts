@@ -106,7 +106,7 @@ class Platform {
 
             this._platform = platforms[0].name
         } else {
-            const platform = Platforms.all.find((info) => info.prefix && info.prefix.includes(string.split(' ')[0].toLowerCase()));
+            const platform = Platforms.all.find((info) => info.name === string || info.prefix && info.prefix.includes(string.split(' ')[0].toLowerCase()));
 
             if (!platform) this._platform = "YOUTUBE";
             else this._platform = platform.name;
@@ -117,7 +117,7 @@ class Platform {
     /**
      * @description Получаем цвет платформы
      */
-    public get color(): number { return Platforms.all.find((pl) => pl.name === this.platform).color ?? 16711680; };
+    public get color(): number { return Platforms.all.find((pl) => pl.name === this.platform).color; };
 
 
     /**
