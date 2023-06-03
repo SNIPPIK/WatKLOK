@@ -112,29 +112,6 @@ export class OpusAudio {
     //====================== ====================== ====================== ======================
 
     /**
-     * @description Создаем FFmpeg, opus.OggDemuxer
-     * @param options { seek?: number, filters?: Filters, path: string } Аргументы запуска
-     */
-    private set pushStreams(options: { seek?: number, filters?: Filters, path: string }) {
-        const resource = options.path.endsWith("opus") ? fs.createReadStream(options.path) : options.path
-        const filters = AudioFilters.getVanillaFilters(options?.filters, options?.seek);
-
-        //Создаем ffmpeg
-        this._ffmpeg = new FFmpeg(this.args(typeof resource === "string" ? options.path : null, options?.seek, filters), { highWaterMark: 128 });
-
-        //Если resource является Readable то загружаем его в FFmpeg
-        if (resource instanceof Readable) {
-            resource.pipe(this._ffmpeg);
-            this._streams.push(resource);
-        }
-        this._ffmpeg.pipe(this.opus); //Загружаем из FFmpeg'a в opus.OggDemuxer
-
-        if (debug) Logger.debug(`[AudioPlayer]: [OpusAudio]:\n┌ Status:       [Encoding]\n├ Modification: [Filters: ${options?.filters?.length} | Seek: ${options?.seek}]\n└ File:         [${options.path}]`);
-    };
-
-    //====================== ====================== ====================== ======================
-
-    /**
      * @description Создаем ивенты для отслеживания
      * @param events {string[]} Ивенты отслеживания
      */
@@ -160,8 +137,20 @@ export class OpusAudio {
      * @param options {seek?: number, filters?: Filters} Настройки FFmpeg, такие, как seek, filter
      */
     public constructor(path: string, options: { seek?: number, filters?: Filters }) {
-        //Задаем старт
-        this.pushStreams = {...options, path};
+        const resource = path.endsWith("opus") ? fs.createReadStream(path) : options.path
+        const filters = AudioFilters.getVanillaFilters(options?.filters, options?.seek);
+
+        //Создаем ffmpeg
+        this._ffmpeg = new FFmpeg(this.args(typeof resource === "string" ? path : null, options?.seek, filters), { highWaterMark: 128 });
+
+        //Если resource является Readable то загружаем его в FFmpeg
+        if (resource instanceof Readable) {
+            resource.pipe(this._ffmpeg);
+            this._streams.push(resource);
+        }
+        this._ffmpeg.pipe(this.opus); //Загружаем из FFmpeg'a в opus.OggDemuxer
+
+        if (debug) Logger.debug(`[AudioPlayer]: [OpusAudio]:\n┌ Status:       [Encoding]\n├ Modification: [Filters: ${options?.filters?.length} | Seek: ${options?.seek}]\n└ File:         [${path}]`);
 
         //Проверяем сколько времени длится пакет
         if (options?.filters?.length > 0) this._durFrame = AudioFilters.getDuration(options?.filters);
