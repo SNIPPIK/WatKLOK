@@ -34,7 +34,7 @@ class Timer extends TypedEmitter<TimerEvents> {
         }
 
         //Запускаем таймер по истечению которого очереди будет удалена!
-        this._timer = setTimeout(() => this.emit("start"), 10e3);
+        this._timer = setTimeout(() => this.emit("destroy"), 10e3);
     };
 }
 
