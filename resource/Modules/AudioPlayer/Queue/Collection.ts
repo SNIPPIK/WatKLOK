@@ -100,12 +100,12 @@ export class CollectionQueue extends Collection<string, Queue> {
                 const { loop } = queue.options;
 
                 //Если не включен режим радио, или повтор не song
-                if (loop === "songs") {
+                if (loop === "off" || loop === "songs") {
                     //Убираем текущий трек
                     const shiftSong = queue.songs.shift();
 
                     //Если тип повтора треки, то добавляем по новой трек
-                    queue.songs.push(shiftSong);
+                    if (loop === "songs") queue.songs.push(shiftSong);
                 }
             }
 
