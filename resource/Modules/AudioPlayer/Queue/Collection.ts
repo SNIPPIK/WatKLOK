@@ -97,15 +97,15 @@ export class CollectionQueue extends Collection<string, Queue> {
         queue.player.on("idle", () => {
             //Определяем тип loop
             if (queue?.songs) {
-                const { radioMode, loop } = queue.options;
+                const { loop } = queue.options;
 
                 //Если не включен режим радио, или повтор не song
-                if (!radioMode || loop !== "song") {
+                if (loop === "songs") {
                     //Убираем текущий трек
                     const shiftSong = queue.songs.shift();
 
                     //Если тип повтора треки, то добавляем по новой трек
-                    if (loop === "songs") queue.songs.push(shiftSong);
+                    queue.songs.push(shiftSong);
                 }
             }
 
