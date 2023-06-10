@@ -99,14 +99,14 @@ export class CollectionQueue extends Collection<string, Queue> {
             if (queue?.songs) {
                 const { radioMode, loop } = queue.options;
 
-                //Если включен радио мод или тип повтора трек нечего не делаем
-                if (radioMode || loop === "song") return;
+                //Если не включен режим радио, или повтор не song
+                if (!radioMode || loop !== "song") {
+                    //Убираем текущий трек
+                    const shiftSong = queue.songs.shift();
 
-                //Убираем текущий трек
-                const shiftSong = queue.songs.shift();
-
-                //Если тип повтора треки, то добавляем по новой трек
-                if (loop === "songs") queue.songs.push(shiftSong);
+                    //Если тип повтора треки, то добавляем по новой трек
+                    if (loop === "songs") queue.songs.push(shiftSong);
+                }
             }
 
             //Выбираем случайный номер трека, просто меняем их местами
