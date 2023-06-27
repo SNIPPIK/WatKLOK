@@ -1,62 +1,60 @@
 [<img align="right" alt="Avatar bot" width="350px" src="https://media.discordapp.net/attachments/1016995045783633940/1080964769927942234/Icon.png" />](https://discordapp.com/users/623170593268957214)
-# WatKLOK
+# WatKLOK 
 - Автор: [`SNIPPIK`](https://github.com/SNIPPIK)
 - Лицензия: [`MIT`](LICENSE.md)
-- Перейти к [`настройкам`](db/Config.json)
-- Перейти к [`командам`](data/Commands) | `Slash + Standart`
-- Перейти к [`плееру`](resource/Modules/AudioPlayer)
+- Перейти к [`настройкам`](.env.dev)
+- Перейти к [`командам`](src/Data/Commands)
 - Перейти к [`демонстрации`](https://www.youtube.com/playlist?list=PLrQkedRE9MFvchEkGvt-Tk5jqS5GiS8Kd)
-- Все сообщения удаляются автоматически через время
+
+
+### Описание
+ - Это просто музыкальный бот, работающий на `ffmpeg`
+ - Умеет кешировать аудио, по принципу [`http, https`](src/Components/Request/index.ts)
+ - Все сообщения удаляются через время
+ - Никаких [`Lavalink`](https://github.com/lavalink-devs/Lavalink)
 
 <img align="center" alt="PGI Settings" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/v2/.github/resource/PGI.png?raw=true" />
-
 <img align="center" alt="Bot Permissions" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/v2/.github/resource/Bot Permissions.png?raw=true" />
 
-## Гайд по запуску
-1. [`Node.js`](https://nodejs.org/ru/) 20
-2. [`FFmpeg & FFprobe`](https://ffmpeg.org/) или npm install (ffmpeg-static и ffprobe-static)
-3. Запускаем `npm run build`
-4. Указываем данные в [`build/.env`](build/.env) | `Ps если его нет, то надо создать`
-5. Варианты запуска | `Если возникли ошибки повторите шаги заново`
+
+## <a name="run"></a> Как запустить
+1. Скачать и установить [`Node.js`](https://nodejs.org/ru/)
+2. Установить FFmpeg и FFprobe
+   - В зависимости от платформы
+      - `Windows` | Скачать [`FFmpeg`](https://ffmpeg.org/) и распаковать в любое место
+      - `Linux` | sudo apt install ffmpeg
+   - Указать `ffmpeg.name` и `ffprobe.name` в [`env`](.env.dev)
+3. Открыть консоль в текущей директории и выполнить `npm run build`
+    - При возникновении ошибки выполнить `npm install -g typescript` и повторить 3 шаг
+4. Открыть только что созданную [`папку`](.AutoBuild)
+5. Если нет .env файла, то надо создать [`файл`](.env.dev)
+6. Варианты запуска
    - Если серверов не более 1к, то `npm run start`
    - Если серверов более 1к, то `npm run shard`
 
-## Поддерживаемые платформы
-[Можно добавить поддержку иных платформ](data/APIs)
 
-| Платформы                                    | Аудио      | Что доступно                                 | Доступ без авторизации |
-|----------------------------------------------|------------|----------------------------------------------|------------------------|
-| [**YouTube**](https://www.youtube.com/)      | ✔          | **видео, плейлисты, поиск, стримы, каналы**  | ✔                      |
-| [**Spotify**](https://open.spotify.com/)     | ✔ (YM, YT) | **треки, плейлисты, поиск, альбомы, авторы** | ❌                      |
-| [**Yandex Music**](https://music.yandex.ru/) | ✔          | **треки, альбомы, поиск, авторы**            | ❌                      |
-| [**SoundCloud**](https://soundcloud.com/)    | ✔          | **треки, плейлисты, поиск, альбомы**         | ✔                      |
-| [**VK**](https://vk.com/)                    | ✔          | **треки, ~~плейлисты~~, поиск**              | ❌                      |
-| [**Discord**](https://discord.com/)          | ✔          | **ссылки, файлы**                            | ✔                      |
 
-<details>
-  <summary>Показать настройки</summary>
 
-### Настройки
-1. [.env](.env) | Копировать в [build](./build)
-2. [`Filters.json`](data/Json/Filters.json) | Можно добавлять свои фильтры в конфиг | [`FFmpeg Docs`](https://ffmpeg.org/ffmpeg.html)
-    ```json5
-   [
-      {
-         "names": ["name"], //Названия
-         "description": "Типа описание", //Описание
+## <a name="APIS"></a> [`APIs`](src/Data/APIs)
+- Является директорией с запросами
+- Можно добавить свою поддержку любой платформы используя примеры
+- Для загрузки необходимо добавить в [APIs](src/Components/APIs/index.ts)
 
-         //Сам аргумент, если указывать args то необходимо что-бы в конце аргумента было =
-         //Пример atempo=
-         "filter": "Аргумент для FFmpeg",
 
-         //Мин, макс - мин и макс аргументы для фильтра
-         //Если аргумент не нужен, оставить false
-         "args": [1, 3],
 
-         //Ускоряется ли музыка, да то как (arg - ускоряется аргументом, 1.25 - ускоряется в 1.25)
-         //Влияет на progress bar
-         "speed": "arg"
-      }
-   ]
-     ```
-</details>
+
+
+## <a name="AudioPlayer"></a> [`AudioPlayer`](src/Components/AudioPlayer)
+  - Является частичным fork'ом [discordjs/voice](https://www.npmjs.com/package/@discordjs/voice)
+  - Музыка работает через `FFmpeg` конвертируется в `opus`
+  - Используется [`SodiumLib`](#sodium-libs)
+  - Присутствует поддержка фильтров через `FFmpeg`, добавляются в [`Filters`](src/Data/Json/Filters.json)
+
+
+    
+
+## <a name="sodium-libs"></a> [`Sodium libs`](https://discordjs.guide/voice/#extra-dependencies)
+ - Необходим для шифровки голосовых пакетов
+ - Рекомендуемые библиотеки
+   - [sodium](https://www.npmjs.com/package/sodium) (Best)
+   - [sodium-native](https://www.npmjs.com/package/sodium-native)

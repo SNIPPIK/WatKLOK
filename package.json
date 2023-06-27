@@ -1,32 +1,23 @@
 {
   "name": "watklok",
-  "version": "3.0.1",
+  "version": "1.0.0",
   "description": "Music discord bot",
   "dependencies": {
     "@discordjs/voice": "^0.16.0",
+    "bufferutil": "^4.0.7",
     "discord.js": "14.11",
-    "dotenv": "^16.0.2",
+    "dotenv": "^16.0.3",
     "sodium-native": "^4.0.4",
-    "tiny-typed-emitter": "^2.1.0"
+    "utf-8-validate": "^6.0.3"
   },
   "devDependencies": {
     "@types/node": "^20.1",
-    "tsconfig-paths": "^4.1.1",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.0.3"
   },
   "scripts": {
-    "start": "cd build && node -r tsconfig-paths/register resource/main.js",
-    "shard": "cd build && node -r tsconfig-paths/register resource/main.js --sharder",
+    "start": "cd .AutoBuild && node -r tsconfig-paths/register src/Program.js",
+    "shard": "cd .AutoBuild && node -r tsconfig-paths/register src/Program.js --sharder",
     "build": "tsc -p tsconfig.json"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/SNIPPIK/WatKLOK.git"
-  },
-  "author": "SNIPPIK",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/SNIPPIK/WatKLOK/issues"
-  },
-  "homepage": "https://github.com/SNIPPIK/WatKLOK#readme"
+  }
 }

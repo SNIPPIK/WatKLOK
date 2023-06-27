@@ -1,29 +1,30 @@
 {
   "compilerOptions": {
     "paths": {
-      "@db/*": ["data/Json/*", "data/Structures/*"],
-      "@APIs": ["data/APIs/index"],
-      "@env": ["resource/env"],
+      "@Client": ["Source/Client/Shard"],
+      "@Client/DB": ["Source/db"],
+      "@Client/Fs": ["Source/FileSystem"],
+      "@Client/Shard": ["Source/Client/ShardManager"],
+      "@Client/Action": ["Data/Structures/Abstracts/Action"],
+      "@Client/Command": ["Data/Structures/Abstracts/Command"],
+      "@Client/Message": ["Data/Actions/Activity/interactionCreate"],
+      "@Client/Cycles": ["Cycles/index"],
 
-      "@Client": ["resource/Structures/Client/WatKLOK"],
-      "@Client/Shard": ["resource/Structures/Client/ShardManager"],
-      "@Client/Event": ["data/Structures/Abstracts/Event"],
-      "@Client/Command": ["data/Structures/Abstracts/Command"],
-      "@Client/Message": ["data/Actions/Activity/interactionCreate"],
-      "@Client/Cycles/*": ["resource/Structures/Cycles/*"],
+      "@AudioPlayer": ["Components/AudioPlayer/index"],
+      "@AudioPlayer/*": ["Components/AudioPlayer/*"],
 
-      "@AudioPlayer": ["resource/Modules/AudioPlayer/index"],
-      "@AudioPlayer/*": ["resource/Modules/AudioPlayer/*"],
+      "@Request": ["Components/Request/index"],
 
-      "@Utils/*": ["resource/Utils/*"],
-      "@Logger": ["resource/Structures/Logger"],
-      "@httpsClient": ["resource/Modules/httpsClient/index"]
+      "@Utils/*": ["Source/Utils/*"],
+      "@Json/*": ["Data/Json/*"],
+      "@APIs": ["Components/APIs/index"],
+      "@Emitter": ["Data/Structures/Emitter/index"]
     },
-    "baseUrl": "./",
+    "baseUrl": "./src",
     // Основные настройки.
     "module": "CommonJS",
     "moduleResolution": "Node",
-    "outDir": "build",
+    "outDir": ".AutoBuild",
     "alwaysStrict": true,
     "sourceMap": false,
     "target": "ES2022",
@@ -49,10 +50,7 @@
     "noImplicitAny": true                // Запрет на использование any
   },
   "include": [
-    "resource",
-    "data",
-
-    "db",
+    "src", "Data",
     "package.json", "tsconfig.json"
   ],
   "exclude": ["node_modules"]
