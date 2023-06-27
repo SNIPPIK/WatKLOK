@@ -167,7 +167,7 @@ export class httpsClient {
 
         //Добавляем куки
         if (options?.cookie) {
-            const cookie = env.get("bot.youtube.cookie");
+            const cookie = env.get("bot.cookie.youtube");
 
             if (cookie) headers = { ...headers, "cookie": cookie };
         }
