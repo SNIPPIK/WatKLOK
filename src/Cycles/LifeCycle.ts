@@ -12,6 +12,8 @@ export class LifeCycle<T> {
     //Время через которое будет выполниться _next
     protected readonly duration: number = 5e3;
     protected readonly type: "multi" | "single" = "multi";
+    //Выполнять this._next через setImmediate
+    protected readonly setImmediate: boolean = false;
 
     private readonly _array: T[] = [];
     private _timeout: NodeJS.Timeout = null;
@@ -33,7 +35,7 @@ export class LifeCycle<T> {
 
         //Запускаем цикл
         if (this._array.length === 1 && !this._timeout) {
-            if (debug) Logger.debug(`Cycle: ${this.duration}: Start cycle`);
+            if (debug_cycle) Logger.debug(`Cycle: ${this.duration}: Start cycle`);
 
             this._time = Date.now();
             setImmediate(this.CycleStep);
@@ -57,7 +59,7 @@ export class LifeCycle<T> {
     private readonly CycleStep = (): void => {
         //Если в базе больше нет плееров
         if (this._array.length === 0) {
-            if (debug) Logger.debug(`Cycle: ${this.duration}: Stop cycle`);
+            if (debug_cycle) Logger.debug(`Cycle: ${this.duration}: Stop cycle`);
 
             //Если таймер еще работает, то удаляем его
             if (this._timeout) { clearTimeout(this._timeout); this._timeout = null; }
@@ -65,8 +67,16 @@ export class LifeCycle<T> {
             return;
         }
 
-        if (this.type === "single") return this.CycleSingle();
-        return this.CycleMulti();
+        //Если тип обновления "multi" будет обработаны все объекты за раз в течении "this._duration"
+        if (this.type === "multi") {
+            //Добавляем задержку, в размер пакета
+            this._time += this.duration;
+
+            return this.CycleMulti();
+        }
+
+        //Если тип обновления "single" будет обработан 1 объект затем 2
+        return this.CycleSingle();
     };
 
 
@@ -74,9 +84,6 @@ export class LifeCycle<T> {
      * @description обновляем постепенно Array
      */
     private readonly CycleMulti = () => {
-        //Добавляем задержку, в размер пакета
-        this._time += this.duration;
-
         //Проверяем плееры, возможно ли отправить аудио пакет
         const array = this._array.filter(this._filter);
 
@@ -84,8 +91,11 @@ export class LifeCycle<T> {
         while (array.length > 0) {
             const data = array.shift();
 
-            //Отправляем его потом, поскольку while слишком быстро работает, могут возникнуть проблемы с потерями пакетов
-            setImmediate(() => this._next(data));
+            try {
+                //Отправляем его потом, поскольку while слишком быстро работает, могут возникнуть проблемы с потерями пакетов
+                if (!this.setImmediate) this._next(data);
+                else setImmediate(() => this._next(data));
+            } catch (err) { this.removeErrorObject("multi", err, data); }
         }
 
         //Добавляем к времени еще 1 мс из-за while
@@ -99,6 +109,21 @@ export class LifeCycle<T> {
     private readonly CycleSingle = () => {
         const array = this._array?.shift();
 
-        (this._next(array) as Promise<boolean>).then(this.CycleStep);
+        (this._next(array) as Promise<boolean>).then(this.CycleStep).catch((err) => this.removeErrorObject("single", err, array));
+    };
+
+
+    /**
+     * @description Удаляем объект выдающий ошибку
+     * @param type {string} Тип цикла
+     * @param err {string} Ошибка из-за которой объект был удален
+     * @param object {any} Объект который будет удален
+     */
+    private readonly removeErrorObject = (type: string, err: string, object: T) => {
+        //Удаляем объект выдающий ошибку
+        this.remove = object;
+
+        //Отправляем сообщение об ошибке
+        Logger.error(`[Cycle]: [${type}]: Error in this._next\n${err}\nRemove 1 object in cycle!`);
     };
 }
