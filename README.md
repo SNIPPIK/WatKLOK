@@ -19,7 +19,7 @@
 
 ## <a name="run"></a> Как запустить
 1. Скачать и установить [`Node.js`](https://nodejs.org/ru/)
-2. Установить FFmpeg и FFprobe
+2. Установить FFmpeg и FFprobe, рекомендуемая версия `6.0`
    - В зависимости от платформы
       - `Windows` | Скачать [`FFmpeg`](https://ffmpeg.org/) и распаковать в любое место
       - `Linux` | sudo apt install ffmpeg
@@ -35,26 +35,31 @@
 
 
 
-## <a name="APIS"></a> [`APIs`](src/Data/APIs)
+## <a name="APIS"></a> [`APIs`](src/Models/APIs)
 - Является директорией с запросами
 - Можно добавить свою поддержку любой платформы используя примеры
-- Для загрузки необходимо добавить в [APIs](src/Components/APIs/index.ts)
+- Для загрузки необходимо добавить в [APIs](src/Misc/APIs/index.ts)
 
 
 
 
 
-## <a name="AudioPlayer"></a> [`AudioPlayer`](src/Components/AudioPlayer)
+## <a name="AudioPlayer"></a> [`AudioPlayer`](src/Misc/AudioPlayer)
   - Является частичным fork'ом [discordjs/voice](https://www.npmjs.com/package/@discordjs/voice)
   - Музыка работает через `FFmpeg` конвертируется в `opus`
   - Используется [`SodiumLib`](#sodium-libs)
-  - Присутствует поддержка фильтров через `FFmpeg`, добавляются в [`Filters`](src/Data/Json/Filters.json)
+  - Присутствует поддержка фильтров через `FFmpeg`, добавляются в [`Filters`](src/Misc/Json/Filters.json)
+  - Все `EMBED` сообщения хранятся [`здесь`](src/Models/Embeds)
 
 
     
 
 ## <a name="sodium-libs"></a> [`Sodium libs`](https://discordjs.guide/voice/#extra-dependencies)
  - Необходим для шифровки голосовых пакетов
- - Рекомендуемые библиотеки
-   - [sodium](https://www.npmjs.com/package/sodium) (Best)
-   - [sodium-native](https://www.npmjs.com/package/sodium-native)
+ - Доступные варианты
+   - Не требуют компиляцию
+     - [sodium-native](https://www.npmjs.com/package/sodium-native)
+     - [libsodium-wrappers](https://www.npmjs.com/package/libsodium-wrappers)
+     - [tweetnacl](https://www.npmjs.com/package/tweetnacl)
+    - Требуют компиляцию
+      - [sodium](https://www.npmjs.com/package/sodium)
