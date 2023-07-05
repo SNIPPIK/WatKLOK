@@ -61,6 +61,7 @@ export class PlayerCycle extends LifeCycle<AudioPlayer> {
 export class MessageCycle extends LifeCycle<ClientMessage> {
     protected duration = parseInt(env.get("music.player.message")) * 1e3;
     protected readonly _filter = (message: ClientMessage) => !!message.edit;
+    protected setImmediate = true;
 
 
     /**
