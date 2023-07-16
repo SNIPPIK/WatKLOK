@@ -3,13 +3,13 @@
 - Автор: [`SNIPPIK`](https://github.com/SNIPPIK)
 - Лицензия: [`MIT`](LICENSE.md)
 - Перейти к [`настройкам`](.env.dev)
-- Перейти к [`командам`](src/Data/Commands)
+- Перейти к [`командам`](src/Commands)
 - Перейти к [`демонстрации`](https://www.youtube.com/playlist?list=PLrQkedRE9MFvchEkGvt-Tk5jqS5GiS8Kd)
 
 
 ### Описание
  - Это просто музыкальный бот, работающий на `ffmpeg`
- - Умеет кешировать аудио, по принципу [`http, https`](src/Components/Request/index.ts)
+ - Умеет кешировать аудио, по принципу [`http, https`](src/Misc/Request/index.ts)
  - Все сообщения удаляются через время
  - Никаких [`Lavalink`](https://github.com/lavalink-devs/Lavalink)
 
@@ -38,7 +38,7 @@
 ## <a name="APIS"></a> [`APIs`](src/Models/APIs)
 - Является директорией с запросами
 - Можно добавить свою поддержку любой платформы используя примеры
-- Для загрузки необходимо добавить в [APIs](src/Misc/APIs/index.ts)
+- Для загрузки необходимо добавить в [`API index`](src/Misc/APIs/index.ts)
 
 
 

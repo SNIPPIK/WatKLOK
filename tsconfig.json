@@ -1,24 +1,36 @@
 {
   "compilerOptions": {
     "paths": {
-      "@Client": ["Source/Client/Shard"],
-      "@Client/DB": ["Source/db"],
-      "@Client/Fs": ["Source/FileSystem"],
-      "@Client/Shard": ["Source/Client/ShardManager"],
-      "@Client/Action": ["Data/Structures/Abstracts/Action"],
-      "@Client/Command": ["Data/Structures/Abstracts/Command"],
-      "@Client/Message": ["Data/Actions/Activity/interactionCreate"],
-      "@Client/Cycles": ["Cycles/index"],
+      //Интерфейсы, абстракты, типы
+      "@Typed/*": ["Typed/*"],
+      "@Json/*": ["Misc/Json/*"],
 
-      "@AudioPlayer": ["Components/AudioPlayer/index"],
-      "@AudioPlayer/*": ["Components/AudioPlayer/*"],
+      //Ивенты
+      "@Actions/*": ["Actions/*"],
+      "@Action": ["Typed/Abstracts/Action"],
 
-      "@Request": ["Components/Request/index"],
+      //Команды
+      "@Commands/*": ["Commands/*"],
+      "@Command": ["Typed/Abstracts/Command"],
 
-      "@Utils/*": ["Source/Utils/*"],
-      "@Json/*": ["Data/Json/*"],
-      "@APIs": ["Components/APIs/index"],
-      "@Emitter": ["Data/Structures/Emitter/index"]
+      "@Embeds/*": ["Models/Embeds/*"],
+
+      //Сами клиенты
+      "@Client": ["Models/Client/Shard"],
+      "@Client/Sharder": ["Models/Client/ShardManager"],
+      "@Client/Message": ["Actions/Activity/interactionCreate"],
+      "@Client/FileSystem": ["FileSystem"],
+      "@Client/Cycles": ["Models/Cycles/index"],
+
+      //Музыка
+      "@APIs": ["Misc/APIs/index"],
+      "@AudioPlayer/*": ["Misc/AudioPlayer/*"],
+
+      //Прочее
+      "@Request": ["Misc/Request/index"],
+      "@Logger": ["Misc/Logger/index"],
+      "@Util/*": ["Utils/*"],
+      "@env": ["environment"]
     },
     "baseUrl": "./src",
     // Основные настройки.

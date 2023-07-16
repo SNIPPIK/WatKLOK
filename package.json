@@ -1,6 +1,6 @@
 {
   "name": "watklok",
-  "version": "1.0.0",
+  "version": "1.0.5",
   "description": "Music discord bot",
   "dependencies": {
     "@discordjs/voice": "^0.16.0",
@@ -13,11 +13,11 @@
   "devDependencies": {
     "@types/node": "^20.1",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.0.3"
+    "typescript": "^5.1.6"
   },
   "scripts": {
-    "start": "cd .AutoBuild && node -r tsconfig-paths/register src/Program.js",
-    "shard": "cd .AutoBuild && node -r tsconfig-paths/register src/Program.js --sharder",
+    "start": "cd .AutoBuild && node -r tsconfig-paths/register src/init.js",
+    "shard": "cd .AutoBuild && node -r tsconfig-paths/register src/init.js --sharder",
     "build": "tsc -p tsconfig.json"
   }
 }
