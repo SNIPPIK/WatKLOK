@@ -116,7 +116,8 @@ export class FFmpeg extends Duplex {
         if (debug) this._process.stderr.removeAllListeners();
 
         this.removeAllListeners();
-        this.destroy();
+        super.destroy();
+        
         delete this._process;
         delete this._filters;
         delete this._path;
