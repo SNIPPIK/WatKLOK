@@ -125,7 +125,7 @@ export class CollectionQueue extends Collection<string, Queue> {
                 //Если пропускаем трек
                 if (skip) {
                     queue.songs.shift();
-                    setTimeout(() => queue.play = 0, PlayerTimeout * 1e3);
+                    setTimeout(() => queue.play = 0, 5e3);
                     return;
                 }
 

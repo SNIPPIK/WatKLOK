@@ -35,11 +35,6 @@ export class MessageUtils {
 
         channel.then((msg) => void (this.delete = {message: msg as ClientMessage}));
     };
-
-    public static get collector() {
-        return (channel: ClientMessage["channel"], filter: (m: ClientMessage) => boolean, max: number = 1, time: number = 20e3) =>
-            channel.createMessageCollector({ filter: filter as any, max: max, time: time });
-    };
 }
 
 

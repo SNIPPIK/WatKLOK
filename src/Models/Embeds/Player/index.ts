@@ -172,9 +172,8 @@ export const PlayersEmbeds = {
         };
     },
     "toSearch": class extends Embed {
-        private readonly _tracks: ISong.track[];
         private readonly _platform: string;
-        public constructor(tracks: ISong.track[], platform: string) { super(null); this._tracks = tracks; this._platform = platform};
+        public constructor(platform: string) { super(null); this._platform = platform};
 
         /**
          * @description Получаем EmbedData
@@ -182,28 +181,9 @@ export const PlayersEmbeds = {
         public get toJson(): EmbedData {
             return {
                 color: new Platform(this._platform).color,
-                title: `Найдено ${this._tracks.length}`,
+                title: `Необходимо выбрать трек!`,
                 timestamp: new Date(),
-                fields: this.fields,
             };
-        };
-
-        /**
-         * @description Из полученных треков создаем fields
-         */
-        private get fields() {
-            return this._tracks.map((track, index) => {
-                const duration = this._platform === "YOUTUBE" ? track.duration.seconds : Duration.toConverting(parseInt(track.duration.seconds));
-                const title = `[${this.fixText(track.title, 80, true)}](${track.url})`; //Название трека
-                const author = `${this.fixText(track.author.title, 30, true)}`; //Автор трека
-
-                index++;
-
-                return {
-                    name: `${index}: _${author} | ${duration ?? "LIVE"}_`,
-                    value: `__**❯** ${title}__\n\n`
-                }
-            });
         };
     }
 }

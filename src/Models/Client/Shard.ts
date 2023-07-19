@@ -53,9 +53,6 @@ export class WatKLOK extends Client {
                 //Slash Commands (Пользователям доступны slash команды)
                 IntentsBitField.Flags.GuildIntegrations,
 
-                //Default Commands (Бот может читать сообщение пользователей)
-                IntentsBitField.Flags.MessageContent,
-
                 //Voice (Бот может получить данные кто находится в голосовом канале)
                 IntentsBitField.Flags.GuildVoiceStates,
 

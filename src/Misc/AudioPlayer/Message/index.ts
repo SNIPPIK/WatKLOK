@@ -1,4 +1,4 @@
-import {ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedData} from "discord.js";
+import {ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedData, StringSelectMenuBuilder} from "discord.js";
 import { ClientMessage } from "@Client/Message";
 import { MessageCycle } from "@Client/Cycles";
 import { MessageUtils } from "@Util/Message";
@@ -7,9 +7,9 @@ import { Queue } from "../Queue/Queue"
 import { ISong } from "../Queue/Song";
 import {Logger} from "@Logger";
 import {env} from "@env";
+import {Duration} from "@Util/Duration";
 
 //
-const emoji: string = env.get("reaction.emoji.cancel");
 const CycleMessages = new MessageCycle();
 //
 
@@ -125,41 +125,45 @@ export namespace PlayerMessage {
      */
     export function toSearch(tracks: ISong.track[], platform: string, message: ClientMessage): void {
         if (tracks?.length < 1 || !tracks) return void (MessageUtils.send = { text: `${message.author} | Я не смог найти музыку с таким названием. Попробуй другое название!`, color: "DarkRed", message });
-        const ChannelAction = new MessageAction<"toSearch">("toSearch"), { author, client } = message;
+        const ChannelAction = new MessageAction<"toSearch">("toSearch"), { client } = message;
 
         ChannelAction.sendMessage = {
             channel: message.channel,
-            embeds: [new ChannelAction.embed(tracks, platform).toJson],
+            components: [new ActionRowBuilder().addComponents(
+                new StringSelectMenuBuilder().setCustomId("menu-builder").setPlaceholder("Найденные треки")
+                    .setOptions( ...tracks.map((track) => {
+                        const duration = isNaN(track.duration.seconds as any) ? track.duration.seconds : Duration.toConverting(parseInt(track.duration.seconds));
+                        return { label: `${track.title}`, description: `${track.author.title} | ${duration}`, value: track.url } }), { label: "Отмена", value: "stop" }
+                    )
+            )],
+            embeds: [new ChannelAction.embed(platform).toJson],
             promise: (msg) => {
                 //Создаем сборщик
-                const collector = MessageUtils.collector(msg.channel, (m: any) => {
-                    const messageNum = parseInt(m.content);
-                    return !isNaN(messageNum) && messageNum <= tracks.length && messageNum > 0 && m.author.id === author.id;
-                }), clear = () => { MessageUtils.delete = {message: msg, time: 1e3}; collector?.stop(); };
+                const collector = msg.createMessageComponentCollector({filter: (interaction) => !interaction.user.bot, time: 30e3, max: 1});
+                const clear = () => { MessageUtils.delete = {message: msg}; collector.stop() };
 
-                //Делаем что-бы при нажатии на эмодзи удалялся сборщик
-                MessageUtils.reaction = {
-                    message: msg, emoji, callback: clear, time: 30e3,
-                    filter: (reaction, user) => reaction.emoji.name === emoji && user.id !== client.user.id
-                };
+                //Что будет делать сборщик после выбора трека
+                collector.once("collect", (interaction: any) => {
+                    const id = interaction.values[0];
+
+                    if (id && id !== "stop") {
+                        //Ищем команду и выполняем ее
+                        const command = client.commands.get("play").run(message, [id]);
+                        if (command) {
+                            if ((command instanceof Promise)) command.then((d) => MessageUtils.send = {...d as any, message});
+                            else MessageUtils.send = {...command as any, message};
+                        }
+                    }
+
+                    interaction?.deferReply();
+                    interaction?.deleteReply();
+
+                    //Удаляем данные
+                    return clear();
+                });
 
                 //Если пользователь нечего не выбрал, то удаляем сборщик и сообщение через 30 сек
                 setTimeout(clear, 30e3);
-
-                //Что будет делать сборщик после нахождения числа
-                collector.once("collect", (m: any): void => {
-                    //Чистим чат и удаляем сборщик
-                    MessageUtils.delete = {message: m};
-                    //Получаем ссылку на трек
-                    const url = tracks[parseInt(m.content) - 1].url;
-
-                    //Ищем команду и выполняем ее
-                    const command = client.commands.get("play").run(message, [url]);
-                    if (command) {
-                        if ((command instanceof Promise)) command.then((d) => MessageUtils.send = {...d as any, message});
-                        else MessageUtils.send = {...command as any, message};
-                    }
-                });
             }
         }
     }
