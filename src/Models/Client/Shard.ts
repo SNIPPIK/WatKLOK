@@ -116,6 +116,9 @@ export class WatKLOK extends Client {
                     Platforms.all[index].requests.reverse();
                 });
             }
+
+            //Создание ссылки если нет серверов
+            if (this.guilds.cache.size === 0) Logger.log(`https://discord.com/api/oauth2/authorize?client_id=${this.user.id}&permissions=274914633792&scope=applications.commands%20bot`);
         });
 
         return super.login(token);
