@@ -146,8 +146,7 @@ class Song extends Song_data {
                 if (info.status === "final") return resolve(info.path);
             }
 
-            let reqs = 0;
-            while (reqs < 3) {
+            for (let req = 0; req < 3; req++) {
                 //Если нет ссылки, то ищем трек
                 if (!this.link) this.link = await Platform.resource(this);
                 else {
@@ -158,8 +157,6 @@ class Song extends Song_data {
                     if (status) break;
                     else this.link = null;
                 }
-
-                reqs++;
             }
 
             //Если включено кеширование музыки, то скачиваем

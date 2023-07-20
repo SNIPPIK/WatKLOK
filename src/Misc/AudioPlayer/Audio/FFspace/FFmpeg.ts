@@ -44,7 +44,7 @@ export class FFmpeg extends Duplex {
         //Добавляем фильтры если они указаны
         if (this._filters) Args.push("-af", this._filters);
 
-        return [...Args, "-acodec", "libopus", "-f", "opus" , "-b:a", bitrate, "-intra-refresh", "1"];
+        return [...Args, "-acodec", "libopus", "-f", "opus" , "-b:a", bitrate];
     };
 
 
@@ -117,7 +117,7 @@ export class FFmpeg extends Duplex {
 
         this.removeAllListeners();
         super.destroy();
-        
+
         delete this._process;
         delete this._filters;
         delete this._path;
