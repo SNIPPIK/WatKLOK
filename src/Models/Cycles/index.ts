@@ -72,12 +72,7 @@ export class MainCycle<T> {
         }
 
         //Если тип обновления "multi" будет обработаны все объекты за раз в течении "this._duration"
-        if (this.type === "multi") {
-            //Добавляем задержку, в размер пакета
-            this._time += this.duration;
-
-            return this.CycleMulti();
-        }
+        if (this.type === "multi") return this.CycleMulti();
 
         //Если тип обновления "single" будет обработан 1 объект затем 2
         return this.CycleSingle();
@@ -88,6 +83,9 @@ export class MainCycle<T> {
      * @description обновляем постепенно Array
      */
     private readonly CycleMulti = () => {
+        //Добавляем задержку, в размер пакета
+        this._time += this.duration;
+
         //Проверяем плееры, возможно ли отправить аудио пакет
         const array = this._array.filter(this._filter);
 
