@@ -5,7 +5,7 @@ import {Logger} from "@Logger";
 import {env} from "@env";
 
 export class OpusAudio {
-    private _ffmpeg: FFmpeg = null;
+    private _ffmpeg: FFmpeg;
     private _opus: opus.OggDemuxer = new opus.OggDemuxer({ autoDestroy: true, objectMode: true });
     private _durationFrame: number = parseInt(env.get("music.player.duration"));
     private _duration: number = 0;
@@ -14,7 +14,7 @@ export class OpusAudio {
     /**
      * @description Уничтожен ли поток
      */
-    public get destroyed() { return this._opus?.destroyed ?? true; };
+    public get destroyed() { return !this._opus?.destroyed ?? true; };
 
 
     /**
@@ -35,6 +35,7 @@ export class OpusAudio {
     public get read(): Buffer {
         const packet: Buffer = this._opus?.read();
 
+        //Если пакет не пустой добавляем время к проигрыванию
         if (packet) this._duration += this._durationFrame;
 
         return packet;
@@ -52,9 +53,10 @@ export class OpusAudio {
 
 
     public constructor(options: {path: string, filters: Filters, seek: number}) {
-        this._ffmpeg = new FFmpeg(options, { autoDestroy: true, objectMode: true });
+        this._ffmpeg = new FFmpeg(options);
         this._ffmpeg.pipe(this.opus);
 
+        //Если будет вызван один из этих ивентов, то чистим ffmpeg, opusDecoder
         ["end", "close", "error"].forEach((event) => this.opus.once(event, () => {
             this._ffmpeg.destroy();
             this.destroy();
@@ -73,17 +75,17 @@ export class OpusAudio {
     };
 
     public readonly destroy = () => {
-        delete this._durationFrame;
-        delete this._duration;
-        delete this._read;
+        this._durationFrame = null;
+        this._duration = null;
+        this._read = null;
 
         //Удаляем поток
-        if (!this.destroyed) {
+        if (this.destroyed) {
             this._opus.removeAllListeners();
             this._opus.destroy();
         }
 
-        delete this._ffmpeg;
-        delete this._opus;
+        this._ffmpeg = null;
+        this._opus = null;
     };
 }

@@ -30,7 +30,7 @@ export class initDataDir<type> {
     /**
      * @description Начинаем чтение
      */
-    public readonly reading = () => {
+    public get reading() {
         if (this.isFiles) return this.readDir();
 
         readdirSync(this.path).forEach((dir) => {

@@ -15,6 +15,5 @@ export function FFprobe(url: string): Promise<JSON> {
     return new Promise((resolve) => {
         process.once("close", () => { cleanup(); return resolve(JSON.parse(information + "}")) });
         process.stdout.once("data", (data) => information += data.toString());
-        process.once("error", cleanup);
     });
 }

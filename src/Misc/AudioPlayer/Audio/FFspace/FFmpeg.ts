@@ -28,14 +28,19 @@ export class FFmpeg extends Duplex {
 
 
     /**
+     * @description Данные выходящие при ошибке
+     */
+    public get stderr() { return this?._process?.stderr; };
+
+
+    /**
      * @description Получаем аргументы для запуска FFmpeg
-     * @protected
      */
     private get arguments(): string[] {
-        const Args: string[] = ["-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5"];
+        const Args: string[] = ["-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "2"];
 
         //Добавляем пропуск если он указан
-        if (this._seek) Args.push("-ss", `${this._seek ?? 0}`);
+        if (this._seek) Args.push("-ss", `${this._seek}`);
 
         //Добавляем путь до файла
         if (typeof this._path === "string") Args.push("-i", this._path);
@@ -44,7 +49,7 @@ export class FFmpeg extends Duplex {
         //Добавляем фильтры если они указаны
         if (this._filters) Args.push("-af", this._filters);
 
-        return [...Args, "-acodec", "libopus", "-f", "opus" , "-b:a", bitrate];
+        return [...Args, "-f", "opus" , "-b:a", bitrate];
     };
 
 
@@ -52,7 +57,7 @@ export class FFmpeg extends Duplex {
      * @description Создаем "привязанные функции"
      * @param methods {("on" | "once" | "removeListener" | "listeners" | )[]} Доступные методы
      */
-    private set setter(methods: ("on" | "once" | "removeListener" | "listeners" | "removeAllListeners")[]) {
+    private set caller(methods: ("on" | "once" | "removeListener" | "listeners" | "removeAllListeners")[]) {
         const EVENTS = { readable: this.stdout, data: this.stdout, end: this.stdout, unpipe: this.stdout, finish: this.stdin, close: this.stdin, drain: this.stdin };
 
         for (const method of methods) (this[method] as any) = (ev: any, fn: any): any => {
@@ -66,34 +71,28 @@ export class FFmpeg extends Duplex {
      * @description Добавляем методы запросов к options.target
      * @param options {processIn | processOut} Вариации запросов
      */
-    private set setProcessST(options: processIn | processOut) {
-        for (const method of options.methods) {
-            this[method] = (options.target as any)[method].bind(options.target);
-        }
+    private set std(options: processIn | processOut) {
+        for (const method of options.methods) this[method] = (options.target as any)[method].bind(options.target);
     };
 
 
-    /**
-     * @description Создаем FFmpeg
-     * @param args
-     * @param options {DuplexOptions} Модификации потока
-     */
     public constructor(args: {seek: number, path: string, filters: Filters}, options: DuplexOptions = {}) {
         super({autoDestroy: true, objectMode: true, ...options});
         this._seek = args.seek; this._filters = AudioFilters.getVanillaFilters(args?.filters, args?.seek);
         this._path = args.path.endsWith(".opus") ? fs.createReadStream(args.path) : args.path;
 
         //Создаем процесс
-        this._process = spawn(name, ["-vn", "-sn", "-dn", "-loglevel", "error", ...this.arguments, "pipe:1"]);
+        this._process = spawn(name, ["-vn", "-loglevel", "panic", ...this.arguments, "pipe:1"]);
 
-        this.setProcessST = {methods: ["write", "end"], target: this.stdin};
-        this.setProcessST = {methods: ["read", "setEncoding", "pipe", "unpipe"], target: this.stdout};
-        this.setter = ["on", "once", "removeListener", "listeners", "removeAllListeners"];
+        this.std = {methods: ["write", "end"], target: this.stdin};
+        this.std = {methods: ["read", "setEncoding", "pipe", "unpipe"], target: this.stdout};
+        this.caller = ["on", "once", "removeListener", "removeAllListeners", "listeners"];
 
-        if (debug) {
-            this._process?.stderr.once("data", (d) => console.log(this._process.spawnargs, d.toString()));
-            Logger.debug(`AudioPlayer: spawn process FFmpeg`);
-        }
+        this.stderr.once("data", (d) => {
+            Logger.error(`[FFmpeg]: ${d.toString()}\nArg: ${this._process.spawnargs}`);
+        });
+
+        if (debug) Logger.debug(`AudioPlayer: spawn process FFmpeg`);
     };
 
 
@@ -113,15 +112,15 @@ export class FFmpeg extends Duplex {
         //Удаляем файл из процесса
         if (typeof this._path !== "string" && !this._path.destroyed) this._path.destroy();
 
-        if (debug) this._process.stderr.removeAllListeners();
-
+        this.stderr.removeAllListeners();
+        this.stdin.removeAllListeners();
+        this.stdout.removeAllListeners();
         this.removeAllListeners();
-        super.destroy();
 
-        delete this._process;
-        delete this._filters;
-        delete this._path;
-        delete this._seek;
+        this._process = null;
+        this._filters  = null;
+        this._path = null;
+        this._seek = null;
     };
 }
 

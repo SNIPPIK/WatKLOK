@@ -1,14 +1,18 @@
 import { ShardManager } from "@Client/Sharder";
+import {initDataDir} from "@Client/FileSystem";
+import {REST, Routes} from "discord.js";
+import {API, Platform} from "@APIs";
 import { WatKLOK } from "@Client";
 import { Logger } from "@Logger";
+import {Command} from "@Command";
+import {Action} from "@Action";
 import { env } from "@env";
 
 class init {
     /**
      * @description Запускаем ShardManager
-     * @constructor
      */
-    public readonly ShardManager = () => {
+    public ShardManager = () => {
         const manager = new ShardManager(__filename);
 
         Logger.log("ShardManager has starting");
@@ -27,12 +31,16 @@ class init {
 
     /**
      * @description Запускаем клиент
-     * @constructor
      */
-    public readonly Shard = () => {
+    public Shard = () => {
         const client = new WatKLOK();
+        const token = env.get("bot.token.discord");
 
-        client.login(env.get("bot.token.discord")).then((): void => {
+        //Загружаем APIs для возможности включать треки
+        this.loadAPIs();
+
+        //Что будет происходить после подключения к WS
+        client.login(token).then((): void => {
             //Сообщаем что бот подключился к discord api
             Logger.log(`[Shard ${client.ID}] has connected for websocket`);
 
@@ -52,6 +60,88 @@ class init {
                 } catch {/* Continue */ }
             });
         });
+
+        //Что будет происходить когда бот будет готов
+        client.once("ready", () => {
+            //Загружаем необходимые данные
+            this.loadModules(client);
+
+            //Загружаем команды и отправляем через REST
+            this.pushApplicationCommands(token, client.commands, client.user.id);
+
+            //Создание ссылки если нет серверов
+            if (client.guilds.cache.size === 0) Logger.log(`https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&permissions=274914633792&scope=applications.commands%20bot`);
+        });
+    };
+
+
+    /**
+     * @description Загружаем общие модули
+     * @param client {WatKLOK} Бот
+     */
+    private loadModules = (client: WatKLOK) => {
+        //Загружаем команды
+        new initDataDir<Command>("Commands", (_, data) => {
+            client.commands.set(data.name, data);
+        }).reading;
+
+        //Загружаем ивенты
+        new initDataDir<Action>("Actions", (_, data) => {
+            client.on(data.name as any, (...args) => data.run(...args, client));
+        }).reading;
+    };
+
+
+    /**
+     * @description Отправляем команды в applicationCommands
+     * @param token {string} Токен бота
+     * @param commands {WatKLOK["commands"]} Команды бота
+     * @param UserID {string} ID бота в Discord
+     */
+    private pushApplicationCommands = (token: string, commands: WatKLOK["commands"], UserID: string) => {
+        const rest = new REST().setToken(token);
+
+        //Загружаем в Discord API SlashCommands
+        (async () => {
+            try {
+                const PublicCommands = commands.filter((command) => !command.isOwner).toJSON();
+                const OwnerCommands = commands.filter((command) => command.isOwner).toJSON();
+
+                //Загружаем все команды
+                const PublicData: any = await rest.put(Routes.applicationCommands(UserID), {body: PublicCommands});
+                const OwnerData: any = await rest.put(Routes.applicationGuildCommands(UserID, env.get("bot.owner.server")), {body: OwnerCommands});
+
+                if (env.get("debug.client")) Logger.debug(`SlashCommands: Load: Public: ${PublicData.length} | Owner: ${OwnerData.length}`);
+            } catch (error) { Logger.error(error); }
+        })();
+    };
+
+
+    /**
+     * @description Загружаем запросы для музыки
+     */
+    private loadAPIs = () => {
+        const Platforms = Platform.Platforms;
+
+        if (Platforms.audio.length === 0) {
+            if (!env.get("bot.token.spotify")) Platforms.auth.push("SPOTIFY");
+            if (!env.get("bot.token.vk")) Platforms.auth.push("VK");
+            if (!env.get("bot.token.yandex")) Platforms.auth.push("YANDEX");
+
+            //Если платформа не поддерживает получение аудио
+            for (let platform of Platforms.all) if (!platform.audio) Platforms.audio.push(platform.name);
+
+            ["YouTube", "Yandex", "Discord", "VK", "Spotify"].forEach((platform) => {
+                const Platform = Platforms.all.find(data => data.name === platform.toUpperCase());
+                const index = Platforms.all.indexOf(Platform);
+
+                new initDataDir<API.list | API.array | API.track>(`Models/APIs/${platform}/Classes`,(_, data) => {
+                    Platforms.all[index].requests.push(data);
+                }, true).reading;
+
+                Platforms.all[index].requests.reverse();
+            });
+        }
     };
 }
 

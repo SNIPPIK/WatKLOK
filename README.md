@@ -11,10 +11,11 @@
  - Это просто музыкальный бот, работающий на `ffmpeg`
  - Умеет кешировать аудио, по принципу [`http, https`](src/Misc/Request/index.ts)
  - Все сообщения удаляются через время
- - Никаких [`Lavalink`](https://github.com/lavalink-devs/Lavalink)
+ - Никаких [`Lavalink`](https://github.com/lavalink-devs/Lavalink), [`Lavaplayer`](https://github.com/sedmelluq/lavaplayer)
+ - Не используется [`YouTube-DL`](https://youtube-dl.org/)
 
-<img align="center" alt="PGI Settings" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/v2/.github/resource/PGI.png?raw=true" />
-<img align="center" alt="Bot Permissions" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/v2/.github/resource/Bot Permissions.png?raw=true" />
+<img align="center" alt="PGI Settings" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/main/.github/resource/PGI.png?raw=true" />
+<img align="center" alt="Bot Permissions" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/main/.github/resource/Bot Permissions.png?raw=true" />
 
 
 ## <a name="run"></a> Как запустить

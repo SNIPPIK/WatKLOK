@@ -11,19 +11,16 @@ const Downloader = env.get("music.cache.enable") ? new DownloadManager() : null;
 const note = env.get("music.note");
 
 class Song_data {
-    protected readonly _title: string;
-    protected readonly _url: string;
-    protected readonly _author: { url: string, title: string, isVerified?: boolean };
-    protected readonly _requester: ISong.requester;
-    protected readonly _platform: platform;
-    protected readonly _duration: { seconds: number, full: string };
-    protected readonly _images: { track: ISong.image, author: ISong.image };
-    protected readonly _other: { isLive: boolean };
-    protected _link: string = null;
+    readonly _title: string;
+    readonly _url: string;
+    readonly _author: { url: string, title: string, isVerified?: boolean };
+    readonly _requester: ISong.requester;
+    readonly _platform: platform;
+    readonly _duration: { seconds: number, full: string };
+    readonly _images: { track: ISong.image, author: ISong.image };
+    readonly _other: { isLive: boolean };
+    _link: string = null;
 
-    /**
-     * @description Подгоняем трек под общую сетку
-     */
     public constructor(track: ISong.track, author: ClientMessage["author"]) {
         //Данные об пользователе
         const { username, id, avatar } = author;
@@ -138,30 +135,22 @@ class Song extends Song_data {
      */
     public get resource() {
         return new Promise<string>(async (resolve) => {
-            //Если пользователь включил кеширование музыки
             if (Downloader) {
                 const info = Downloader.status(this);
-
-                //Если есть файл выдаем путь до него
                 if (info.status === "final") return resolve(info.path);
             }
 
             for (let req = 0; req < 3; req++) {
-                //Если нет ссылки, то ищем трек
                 if (!this.link) this.link = await Platform.resource(this);
                 else {
-                    //Проверяем ссылку на работоспособность
                     const status: boolean = await new httpsClient(this.link, { method: "HEAD" }).status;
 
-                    //Если ссылка работает
                     if (status) break;
                     else this.link = null;
                 }
             }
 
-            //Если включено кеширование музыки, то скачиваем
             if (Downloader && this.link.length > 10) Downloader.push = this;
-
             return resolve(this.link);
         });
     };

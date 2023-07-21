@@ -59,7 +59,7 @@ export class httpsAgent {
 
             //Что делаем при завершении
             request.once("close", () => {
-                delete this._path;
+                this._path = null;
             });
 
             request.end();

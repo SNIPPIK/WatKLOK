@@ -183,8 +183,8 @@ export class httpsClient {
      * @description Очищаем класс
      */
     private cleanup = () => {
-        delete this._options;
-        delete this._proxy;
+        this._options = null;
+        this._proxy = null;
     };
 }
 

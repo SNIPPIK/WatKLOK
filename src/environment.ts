@@ -1,6 +1,7 @@
 import process from "process";
 import fs from "fs";
 import os from "node:os";
+import {Logger} from "@Logger";
 
 require("dotenv").config();
 export namespace env {
@@ -11,7 +12,7 @@ export namespace env {
     export function get(name: string): any {
         const env = process.env[name];
 
-        if (!env || env === "undefined") throw new Error(`[Error]: [env]: Not found ${name}`);
+        if (!env || env === "undefined") throw new Error(`[ENV]: Not found ${name} in .env`);
 
         return env === "true" ? true : env === "false" ? false : env;
     }
@@ -38,6 +39,8 @@ export namespace env {
 
             //Обновляем env
             setImmediate(() => require("dotenv").config());
-        } catch (e) {}
+        } catch (e) {
+            Logger.error(`[ENV]: Fail save ${key} to .env`);
+        }
     }
 }

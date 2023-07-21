@@ -12,9 +12,9 @@ const Debug: boolean = env.get("debug.player");
 const AudioType = env.get("music.audio.type");
 
 export class AudioPlayer extends TypedEmitter<PlayerEvents> {
-    private _status: PlayerStatus = "idle";
-    private _connection: VoiceConnection;
-    private _stream: OpusAudio;
+    private _status: PlayerStatus         = "idle";
+    private _connection: VoiceConnection  = null;
+    private _stream: OpusAudio            = null;
 
     /**
      * @description Общее время проигрывания музыки
@@ -42,8 +42,8 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
             return;
         }
 
-        delete this._stream;
-        delete this._status;
+        this._stream = null;
+        this._status = null;
     };
 
 
@@ -111,8 +111,6 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
     public get hasUpdate() { return UpdateMessage.includes(this.status); };
 
 
-
-
     /**
      * @description Ставим на паузу плеер
      */
@@ -164,12 +162,16 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
         if (this.connection?.state?.status !== "ready" || !packet) return;
 
         try {
+            //Отправляем opus пакет
             if (AudioType === "opus") this.connection.playOpusPacket(packet);
-            else {
+            else { //Отправляем raw пакет
                 this.connection.dispatchAudio();
                 this.connection.prepareAudioPacket(packet);
             }
-        } catch (err) { this.emit("error", err, false); }
+        } catch (err) {
+            //Если возникает ошибка, то выключаем плеер
+            this.emit("error", err, false);
+        }
     };
 
 
