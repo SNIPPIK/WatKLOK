@@ -44,11 +44,11 @@ export class httpsClient {
      * @description Создаем запрос по ссылке, модифицируем по необходимости
      */
     public get request(): Promise<IncomingMessage | Error> {
-        return new Promise((resolve) => {
+        return new Promise(async (resolve) => {
             if (this._proxy) {
-                new httpsAgent(`${this._options.hostname}`).Agent.then((Agent) => {
-                    if (Agent) this._options = {...this._options, agent: Agent};
-                });
+                const Agent = await new httpsAgent(`${this._options.hostname}`).Agent;
+
+                if (Agent) this._options = {...this._options, agent: Agent};
             }
 
             if (debug) Logger.debug(`httpsClient: [${this._options.method}] | [${this._options.hostname}${this._options.path}]`);
