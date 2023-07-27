@@ -8,7 +8,7 @@
 
 
 ### Описание
- - Это просто музыкальный бот, работающий на `ffmpeg`
+ - Это не просто музыкальный бот, работающий на `ffmpeg`
  - Умеет кешировать аудио, по принципу [`http, https`](src/Misc/Request/index.ts)
  - Все сообщения удаляются через время
  - Никаких [`Lavalink`](https://github.com/lavalink-devs/Lavalink), [`Lavaplayer`](https://github.com/sedmelluq/lavaplayer)
@@ -20,7 +20,7 @@
 
 ## <a name="run"></a> Как запустить
 1. Скачать и установить [`Node.js`](https://nodejs.org/ru/)
-2. Установить FFmpeg и FFprobe, рекомендуемая версия `6.0`
+2. Установить [`FFmpeg и FFprobe`](https://github.com/BtbN/FFmpeg-Builds/releases), рекомендуемая версия `6.0`
    - В зависимости от платформы
       - `Windows` | Скачать [`FFmpeg`](https://ffmpeg.org/) и распаковать в любое место
       - `Linux` | sudo apt install ffmpeg
@@ -51,6 +51,7 @@
   - Используется [`SodiumLib`](#sodium-libs)
   - Присутствует поддержка фильтров через `FFmpeg`, добавляются в [`Filters`](src/Misc/Json/Filters.json)
   - Все `EMBED` сообщения хранятся [`здесь`](src/Models/Embeds)
+  - Умеет сохранять треки и можно проглядывать их по типу истории прослушиваний
 
 
     
