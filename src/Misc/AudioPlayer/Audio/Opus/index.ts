@@ -14,7 +14,7 @@ export class OpusAudio {
     /**
      * @description Уничтожен ли поток
      */
-    public get destroyed() { return !this._opus?.destroyed ?? true; };
+    public get destroyed() { return this._opus?.destroyed; };
 
 
     /**
@@ -80,7 +80,7 @@ export class OpusAudio {
         this._read = null;
 
         //Удаляем поток
-        if (this.destroyed) {
+        if (!this.destroyed) {
             this._opus.removeAllListeners();
             this._opus.destroy();
         }
