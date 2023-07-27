@@ -11,7 +11,7 @@ const name = env.get("ffmpeg.name");
 
 export class FFmpeg extends Duplex {
     protected _process: ChildProcessWithoutNullStreams;
-    protected _path: fs.ReadStream | string = null;
+    protected _path: string = null;
     protected _filters: string = null;
     protected _seek: number = 0;
 
@@ -37,14 +37,16 @@ export class FFmpeg extends Duplex {
      * @description Получаем аргументы для запуска FFmpeg
      */
     private get arguments(): string[] {
-        const Args: string[] = ["-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "2"];
+        const Args: string[] = [];
+
+        //Если используется ссылка
+        if (this._path.startsWith("http")) Args.push("-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5");
 
         //Добавляем пропуск если он указан
         if (this._seek) Args.push("-ss", `${this._seek}`);
 
         //Добавляем путь до файла
-        if (typeof this._path === "string") Args.push("-i", this._path);
-        else Args.push("-i", "-");
+        Args.push("-i", this._path);
 
         //Добавляем фильтры если они указаны
         if (this._filters) Args.push("-af", this._filters);
@@ -79,16 +81,16 @@ export class FFmpeg extends Duplex {
     public constructor(args: {seek: number, path: string, filters: Filters}, options: DuplexOptions = {}) {
         super({autoDestroy: true, objectMode: true, ...options});
         this._seek = args.seek; this._filters = AudioFilters.getVanillaFilters(args?.filters, args?.seek);
-        this._path = args.path.endsWith(".opus") ? fs.createReadStream(args.path) : args.path;
+        this._path = args.path.endsWith(".opus") ? fs.realpathSync(args.path) : args.path;
 
         //Создаем процесс
-        this._process = spawn(name, ["-vn", "-loglevel", "panic", ...this.arguments, "pipe:1"]);
+        this._process = spawn(name, ["-vn", "-loglevel", "error", ...this.arguments, "pipe:1"]);
 
         this.std = {methods: ["write", "end"], target: this.stdin};
         this.std = {methods: ["read", "setEncoding", "pipe", "unpipe"], target: this.stdout};
         this.caller = ["on", "once", "removeListener", "removeAllListeners", "listeners"];
 
-        this.stderr.once("data", (d) => {
+        this.stderr.on("data", (d) => {
             Logger.error(`[FFmpeg]: ${d.toString()}\nArg: ${this._process.spawnargs}`);
         });
 
@@ -108,9 +110,6 @@ export class FFmpeg extends Duplex {
     public _destroy = (): void => {
         //Убиваем процесс, если он еще жив
         if (this.deletable) this._process.kill("SIGKILL");
-
-        //Удаляем файл из процесса
-        if (typeof this._path !== "string" && !this._path.destroyed) this._path.destroy();
 
         this.stderr.removeAllListeners();
         this.stdin.removeAllListeners();
