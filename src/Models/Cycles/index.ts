@@ -124,7 +124,7 @@ export class MainCycle<T> {
         this.remove = object;
 
         //Отправляем сообщение об ошибке
-        Logger.error(`[Cycle]: [${this.type}/${this.duration}]:: Error in this._next\n${err}\nRemove 1 object in cycle!`);
+        Logger.error(`[Cycle]: [${this.type}/${this.duration}]: Error in this._next\n${err}\nRemove 1 object in cycle!`);
     };
 }
 /**

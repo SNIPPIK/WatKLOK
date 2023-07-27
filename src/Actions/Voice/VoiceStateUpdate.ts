@@ -16,7 +16,7 @@ export default class extends Action {
         const ChannelID = oldState?.channel?.id || newState?.channel?.id;
         const Guild = oldState.guild;
 
-        //setImmediate(() => {
+        setTimeout(() => {
             const voice = Voice.getVoice(Guild.id);
             const usersSize = (newState.channel?.members ?? oldState.channel?.members)?.filter((member) => !member.user.bot && member.voice?.channel?.id === ChannelID)?.size;
 
@@ -32,6 +32,6 @@ export default class extends Action {
 
                 if (debug) Logger.debug(`voiceStateUpdate: [ID: ${ChannelID} | Voice: ${!!voice} | inVoice: ${isBotVoice} | Users: ${usersSize} | Queue: ${!!queue}]`);
             }
-        //});
+        }, 500);
     };
 }

@@ -21,7 +21,7 @@ export class History {
      * @description Получаем путь
      */
     private get path() {
-        return `db/Guilds/[${this._guildID}].json`;
+        return `${env.get("music.history.dir")}/[${this._guildID}].json`;
     };
 
 

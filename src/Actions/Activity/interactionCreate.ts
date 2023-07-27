@@ -27,7 +27,7 @@ export default class extends Action {
         else if (message?.isButton()) {
             const { guild } = message, queue = client.queue.get(guild.id), { player } = queue;
 
-            MessageUtils.send = {text: `${message.member}, выполнение действия!`, color: "Green", message};
+            message.deleteReply().catch(() => undefined); message.deferReply().catch(() => undefined);
 
             switch (message.customId) {
                 case "last": return void (queue.swap = 0);
@@ -44,7 +44,6 @@ export default class extends Action {
                 }
                 case "repeat": {
                     queue.options.loop = queue.options.loop === "songs" ? "song": "songs";
-                    MessageUtils.send = { text: `🎶 | Повтор ${queue.options.loop}`, message, color: "Green", codeBlock: "css" };
                     break;
                 }
             }
