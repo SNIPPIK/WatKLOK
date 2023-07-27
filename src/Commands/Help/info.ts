@@ -35,7 +35,7 @@ export default class extends Command {
                     },
                     {
                         name: "Статистика",
-                        value: `\`\`\`css\n• Platform   => ${process.platform}\n• Node       => ${process.version}\n\n• Servers    => ${client.guilds.cache.size}\n• Channels   => ${client.channels.cache.size}\n\`\`\`\n`
+                        value: `\`\`\`css\n• Platform   => ${process.platform}\n• Node       => ${process.version}\n\n• Servers    => ${client.guilds.cache.size}\n• Channels   => ${client.channels.cache.size}\n\n• Shards   => ${client?.shard?.ids?.length > 1 ? client.shard.ids.length : 1}\n\`\`\`\n`
                     },
                     {
                         name: "Музыка",

@@ -14,14 +14,13 @@ class init {
      */
     public ShardManager = () => {
         const manager = new ShardManager(__filename);
-
         Logger.log("ShardManager has starting");
 
         //Ивент создания дубликата
         manager.on("shardCreate", (shard) => {
-            shard.once("spawn", () => Logger.log(`[Shard ${shard.id}] has added to manager`));
-            shard.once("ready", () => Logger.log(`[Shard ${shard.id}] has ready`));
-            shard.once("death", () => Logger.log(`[Shard ${shard.id}] has killed`));
+            shard.on("spawn", () => Logger.log(`[Shard ${shard.id}] has added to manager`));
+            shard.on("ready", () => Logger.log(`[Shard ${shard.id}] has ready`));
+            shard.on("death", () => Logger.log(`[Shard ${shard.id}] has killed`));
         });
 
         //Создаем дубликат
@@ -35,9 +34,6 @@ class init {
     public Shard = () => {
         const client = new WatKLOK();
         const token = env.get("bot.token.discord");
-
-        //Загружаем APIs для возможности включать треки
-        this.loadAPIs();
 
         //Что будет происходить после подключения к WS
         client.login(token).then((): void => {
@@ -63,6 +59,9 @@ class init {
 
         //Что будет происходить когда бот будет готов
         client.once("ready", () => {
+            //Загружаем APIs для возможности включать треки
+            this.loadAPIs(client.ID);
+
             //Загружаем необходимые данные
             this.loadModules(client);
 
@@ -81,14 +80,20 @@ class init {
      */
     private loadModules = (client: WatKLOK) => {
         //Загружаем команды
-        new initDataDir<Command>("Commands", (_, data) => {
+        new initDataDir<Command>("Commands", (data) => {
+            if (!data.run || !data.name) return;
+
             client.commands.set(data.name, data);
         }).reading;
+        Logger.log(`[Shard ${client.ID}] has initialize commands`);
 
         //Загружаем ивенты
-        new initDataDir<Action>("Actions", (_, data) => {
+        new initDataDir<Action>("Actions", (data) => {
+            if (!data.run || !data.name) return;
+
             client.on(data.name as any, (...args) => data.run(...args, client));
         }).reading;
+        Logger.log(`[Shard ${client.ID}] has initialize actions`);
     };
 
 
@@ -111,7 +116,7 @@ class init {
                 const PublicData: any = await rest.put(Routes.applicationCommands(UserID), {body: PublicCommands});
                 const OwnerData: any = await rest.put(Routes.applicationGuildCommands(UserID, env.get("bot.owner.server")), {body: OwnerCommands});
 
-                if (env.get("debug.client")) Logger.debug(`SlashCommands: Load: Public: ${PublicData.length} | Owner: ${OwnerData.length}`);
+                if (env.get("debug.client")) Logger.debug(`[SlashCommands]: [Load]: Public: ${PublicData.length} | Owner: ${OwnerData.length}`);
             } catch (error) { Logger.error(error); }
         })();
     };
@@ -120,7 +125,7 @@ class init {
     /**
      * @description Загружаем запросы для музыки
      */
-    private loadAPIs = () => {
+    private loadAPIs = (ShardID: number) => {
         const Platforms = Platform.Platforms;
 
         if (Platforms.audio.length === 0) {
@@ -135,13 +140,15 @@ class init {
                 const Platform = Platforms.all.find(data => data.name === platform.toUpperCase());
                 const index = Platforms.all.indexOf(Platform);
 
-                new initDataDir<API.list | API.array | API.track>(`Models/APIs/${platform}/Classes`,(_, data) => {
+                new initDataDir<API.list | API.array | API.track>(`Models/APIs/${platform}/Classes`,(data) => {
                     Platforms.all[index].requests.push(data);
                 }, true).reading;
 
                 Platforms.all[index].requests.reverse();
             });
         }
+
+        Logger.log(`[Shard ${ShardID}] has initialize APIs`);
     };
 }
 

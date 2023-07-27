@@ -73,9 +73,11 @@ export type ResolveData =
         codeBlock?: "css" | "js" | "ts" | "cpp" | "html" | "cs" | "json" | "not";
         color?: colors;
         notAttachEmbed?: boolean;
+        lifeTime?: number;
     } | { //ReactionMenu
     embed: EmbedData | string;
     callbacks: any;
 } | { //Готовое embed сообщение
     embed: EmbedData;
+    lifeTime?: number;
 };

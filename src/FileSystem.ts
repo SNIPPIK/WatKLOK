@@ -1,10 +1,10 @@
 import {Logger} from "@Logger";
-import {readdirSync} from "fs";
+import {existsSync, readdirSync, readFileSync, writeFileSync, mkdirSync} from "fs";
 import {env} from "@env";
 
 export class initDataDir<type> {
     private readonly path: string;
-    private readonly callback: (file: string, data: type) => void;
+    private readonly callback: (data: type, file: string) => void;
     private readonly isFiles: boolean;
     private file: string;
 
@@ -22,7 +22,7 @@ export class initDataDir<type> {
     };
 
 
-    public constructor(path: string, callback: (file: string, data: type) => void, isFiles: boolean = false) {
+    public constructor(path: string, callback: (data: type, file: string) => void, isFiles: boolean = false) {
         this.path = `src/${path}`; this.callback = callback; this.isFiles = isFiles
     };
 
@@ -56,8 +56,30 @@ export class initDataDir<type> {
 
                 if (env.get("debug.fs")) Logger.debug(`Fs: [Load]: ${path}${path.endsWith("/") || file.startsWith("/") ? file : `/${file}`}`);
 
-                this.callback(this.file, hasLoad);
+                this.callback(hasLoad, this.file);
             } catch (e) { Logger.error(e); }
         });
+    }
+}
+
+export namespace FileSystem {
+    export function getFile(dir: string) {
+        if (!existsSync(dir)) return null;
+
+        return readFileSync(dir, {encoding: "utf-8"});
+    }
+
+    export function saveToFile(dir: string, data: any): void {
+        if (!existsSync(dir)) {
+            let fixDir = dir.split("/");
+            fixDir.splice(fixDir.length - 1, 1);
+
+            mkdirSync(`${fixDir.join("/")}/`, {recursive: true});
+        }
+
+        setTimeout(() => {
+            const file: object = JSON.parse(FileSystem.getFile(dir));
+            writeFileSync(dir, JSON.stringify(data ? data : file, null, `\t`));
+        }, 2e3);
     }
 }

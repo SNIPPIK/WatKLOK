@@ -1,10 +1,13 @@
 import { ApplicationCommandOptionType } from "discord.js";
 import {PlayerMessage} from "@AudioPlayer/Message";
+import {History} from "@AudioPlayer/Audio/History";
 import { ClientMessage } from "@Client/Message";
 import { Command, ResolveData } from "@Command";
+import {ISong} from "@AudioPlayer/Queue/Song";
 import {MessageUtils} from "@Util/Message";
 import {Platform} from "@APIs";
 import {env} from "@env";
+import {Logger} from "@Logger";
 
 const Info = env.get("music.info");
 const Warning = env.get("APIs.warning");
@@ -85,8 +88,13 @@ export default class extends Command {
                 //Если пользователь ищет трек и кол-во треков больше одного
                 if (info instanceof Array && info.length > 1) return PlayerMessage.toSearch(info, platform.platform, message);
 
+                const track = info instanceof Array ? info[0] : info;
+
+                //История треков сервера
+                try { if (History.enable) new History(track as ISong.track, message.guildId, platform_name).init; } catch (e) { Logger.error(e) }
+
                 //Загружаем трек или плейлист в Queue<GuildID>
-                client.queue.push = { message, VoiceChannel, info: info instanceof Array ? info[0] : info };
+                client.queue.push = { message, VoiceChannel, info: track };
             }).catch((e: any): void => {
                 if (e.length > 2e3) (MessageUtils.send = { text: `⛔️ Error | [${platform_name}.${type}]\n\nПроизошла ошибка при получении данных!\n${e.message}`, color: "DarkRed", codeBlock: "css", message });
                 else (MessageUtils.send = { text: `⛔️ Error | [${platform_name}.${type}]\n\nПроизошла ошибка при получении данных!\n${e}`, color: "DarkRed", codeBlock: "css", message });
@@ -96,3 +104,5 @@ export default class extends Command {
         }
     };
 }
+
+

@@ -33,7 +33,7 @@ export class MessageUtils {
         }
         else channel = message.channel.send({...args as any});
 
-        channel.then((msg) => void (this.delete = {message: msg as ClientMessage}));
+        channel.then((msg) => void (this.delete = {message: msg as ClientMessage, time: options?.lifeTime}));
     };
 }
 
@@ -50,6 +50,7 @@ interface send {
     codeBlock?: string;
     notAttachEmbed?: boolean;
     replied?: boolean;
+    lifeTime?: number;
 }
 interface createReaction {
     message: ClientMessage;
