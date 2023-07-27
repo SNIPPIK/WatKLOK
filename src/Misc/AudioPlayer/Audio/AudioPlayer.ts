@@ -32,7 +32,7 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
         //Если введен новый поток и есть старый, то закрываем старый
         if (this._stream && !this._stream.destroyed && this._stream !== newStream) {
             this.sendPacket = Buffer.from([0xf8, 0xff, 0xfe, 0xfae]);
-            this._stream.opus.emit("close");
+            this._stream.opus?.emit("close");
         }
 
         //Если есть новый поток
