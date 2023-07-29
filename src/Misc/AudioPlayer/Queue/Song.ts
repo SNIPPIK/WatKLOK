@@ -1,6 +1,6 @@
 import { ClientMessage } from "@Client/Message";
 import {DownloadManager} from "@Client/Cycles";
-import { platform, Platform } from "@APIs";
+import { platform, APIs } from "@APIs";
 import { Duration } from "@Util/Duration";
 import { httpsClient } from "@Request";
 import {env} from "@env";
@@ -28,7 +28,7 @@ class Song_data {
 
         this._title = track.title;
         this._url = track.url;
-        this._platform = new Platform(track.url).platform;
+        this._platform = new APIs(track.url).platform;
 
         //Прочие
         this._other = {
@@ -67,7 +67,7 @@ class Song extends Song_data {
     /**
      * @description Получаем цвет трека
      */
-    public get color() { return new Platform(this._platform).color; };
+    public get color() { return new APIs(this._platform).color; };
 
 
     /**
@@ -141,7 +141,7 @@ class Song extends Song_data {
             }
 
             for (let req = 0; req < 3; req++) {
-                if (!this.link) this.link = await Platform.resource(this);
+                if (!this.link) this.link = await APIs.resource(this);
                 else {
                     const status: boolean = await new httpsClient(this.link, { method: "HEAD" }).status;
 

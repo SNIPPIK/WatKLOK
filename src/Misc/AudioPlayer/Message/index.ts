@@ -33,7 +33,7 @@ class MessageAction<Action> {
     public set sendMessage(options: actionOptions) {
         options.channel.send({embeds: options.embeds, components: options.components as any})
             .catch((err: string) => Logger.error(`[AudioPlayer]: [Message]: [${this._action}]: ${err}`))
-            .finally(() => { delete this._action; })
+            .finally(() => { this._action = null; })
             .then((msg) => {
                 if (!msg) return;
 

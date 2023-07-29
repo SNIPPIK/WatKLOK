@@ -6,8 +6,8 @@ import {FileSystem} from "@Client/FileSystem";
  * @description История прослушиваний для серверов, только для серверов не для пользователей
  */
 export class History {
-    private readonly _guildID: string;
-    private readonly _platform: string;
+    private _guildID: string;
+    private _platform: string;
     private _track: ISong.track;
     /**
      * @description Проверяем работает ли история
@@ -55,6 +55,10 @@ export class History {
 
             //Сохраняем файл
             FileSystem.saveToFile(this.path, file);
+            
+            this._track = null;
+            this._platform = null;
+            this._guildID = null;
         }, 2e3);
 
         return true;
@@ -68,7 +72,7 @@ export class History {
     private pushTrack = (tracks: Array<miniTrack>) => {
         const Found = (tracks as Array<miniTrack>).find((track) => track.title.includes(this._track.title) || track.url === this._track.url);
 
-        //Если нету трека то добавляем его
+        //Если нет трека, то добавляем его
         if (!Found) {
             tracks.push({
                 title: this._track.title,

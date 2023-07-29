@@ -5,7 +5,7 @@ import { ClientMessage } from "@Client/Message";
 import { Command, ResolveData } from "@Command";
 import {ISong} from "@AudioPlayer/Queue/Song";
 import {MessageUtils} from "@Util/Message";
-import {Platform} from "@APIs";
+import {APIs} from "@APIs";
 import {env} from "@env";
 import {Logger} from "@Logger";
 
@@ -53,7 +53,7 @@ export default class extends Command {
 
         try {
             //Платформа с которой будем взаимодействовать
-            const platform = new Platform(argument);
+            const platform = new APIs(argument);
 
             //Если нет такой платформы
             if (!platform.platform) return void (MessageUtils.send = { text: `⚠️ Warning\n\nУ меня нет поддержки этой платформы!`, codeBlock: "css", color: "Yellow", message });

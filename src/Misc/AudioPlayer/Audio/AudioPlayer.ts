@@ -13,8 +13,8 @@ const AudioType = env.get("music.audio.type");
 
 export class AudioPlayer extends TypedEmitter<PlayerEvents> {
     private _status: PlayerStatus         = "idle";
-    private _connection: VoiceConnection  = null;
     private _stream: OpusAudio            = null;
+    private _connection: VoiceConnection  = null;
 
     /**
      * @description Общее время проигрывания музыки
@@ -23,34 +23,33 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
 
 
     /**
-     * @description Задаём поток в плеер
-     * @param newStream {OpusAudio} Новый поток или замена прошлому
+     * @description Действие будет высчитано из аргумента
+     * @param data {PlayerStatus | OpusAudio} Статус или поток
      */
-    public set stream(newStream: OpusAudio) {
-        if (Debug) Logger.debug(`AudioPlayer.stream has [${!!newStream}]`);
+    public set state(data: PlayerStatus | OpusAudio) {
+        if (Debug) Logger.debug(`AudioPlayer${typeof data === "string" ? `.status: [${this._status} to ${data}]` : `.stream has [${!!data}]`}`);
 
-        //Если введен новый поток и есть старый, то закрываем старый
-        if (this._stream && !this._stream.destroyed && this._stream !== newStream) {
-            this.sendPacket = Buffer.from([0xf8, 0xff, 0xfe, 0xfae]);
-            this._stream.opus?.emit("close");
-        }
+        if (typeof data !== "string") {
+            //Если введен новый поток и есть старый, то закрываем старый
+            if (this._stream && !this._stream.destroyed && this._stream !== data) {
+                this.sendPacket = Buffer.from([0xf8, 0xff, 0xfe, 0xfae]);
+                this._stream.opus?.emit("close");
+            }
 
-        //Если есть новый поток
-        if (newStream) {
-            this._stream = newStream;
-            this.status = "read";
+            //Если есть новый поток
+            if (data) { this._stream = data; this.state = "read"; }
+
             return;
         }
 
-        this._stream = null;
-        this._status = null;
+        //Надо ли удалять плеер из базы
+        if (data === "idle") CyclePlayers.remove = this;
+        else CyclePlayers.push = this;
+
+        //Если статусы не совпадают, то делаем emit
+        if (this._status !== data) this.emit(data);
+        this._status = data;
     };
-
-
-    /**
-     * @description Получаем текущий поток
-     */
-    public get stream() { return this._stream; };
 
 
     /**
@@ -58,9 +57,6 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
      * @param connection {VoiceConnection} Голосовое подключение
      */
     public set connection(connection: VoiceConnection) {
-        //Если нет голосового подключения
-        if (!connection) { delete this._connection; return; }
-
         //Если колосовое подключение совпадает с текущим
         if (this._connection === connection) return;
 
@@ -76,21 +72,9 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
 
 
     /**
-     * @description Изменяем статус плеера
-     * @param newStatus {PlayerStatus} Новый статус плеера
+     * @description Получаем текущий поток
      */
-    private set status(newStatus: PlayerStatus) {
-        //Надо ли удалять плеер из базы
-        if (newStatus === "idle") CyclePlayers.remove = this;
-        else CyclePlayers.push = this;
-
-        //Если статусы не совпадают, то делаем emit
-        if (this._status !== newStatus) this.emit(newStatus);
-
-        if (Debug) Logger.debug(`AudioPlayer.status: [${this._status} to ${newStatus}]`);
-
-        this._status = newStatus;
-    };
+    public get stream() { return this._stream; };
 
 
     /**
@@ -116,7 +100,7 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
      */
     public get pause(): void {
         if (this.status !== "read") return;
-        this.status = "pause";
+        this.state = "pause";
     };
 
 
@@ -125,7 +109,7 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
      */
     public get resume(): void {
         if (this.status !== "pause") return;
-        this.status = "read";
+        this.state = "read";
     };
 
 
@@ -134,7 +118,7 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
      */
     public get stop(): void {
         if (this.status === "idle") return;
-        this.status = "idle";
+        this.state = "idle";
     };
 
 
@@ -146,7 +130,7 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
 
         //Если больше не читается, переходим в состояние Idle.
         if (!this.stream.readable) {
-            this.status = "idle";
+            this.state = "idle";
             return false;
         }
 
@@ -183,15 +167,25 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
         if (!stream) { this.emit("error", Error(`Stream is null`), true); return; }
 
         //Если прочитать возможно
-        if (stream.readable) { this.stream = stream; return; }
+        if (stream.readable) { this.state = stream; return; }
 
         stream.opus
 
         //Включаем поток когда можно будет начать читать
-        .once("readable", () => { this.stream = stream })
+        .once("readable", () => { this.state = stream })
 
         //Если происходит ошибка, то продолжаем читать этот же поток
         .once("error", () => this.emit("error", Error("Fail read stream"), true));
+    };
+
+
+    /**
+     * @description Удаляем ненужные данные
+     */
+    public cleanup = () => {
+        this._stream = null;
+        this._status = null;
+        this._connection = null;
     };
 }
 

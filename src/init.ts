@@ -1,7 +1,7 @@
 import { ShardManager } from "@Client/Sharder";
 import {initDataDir} from "@Client/FileSystem";
 import {REST, Routes} from "discord.js";
-import {API, Platform} from "@APIs";
+import {API, APIs} from "@APIs";
 import { WatKLOK } from "@Client";
 import { Logger } from "@Logger";
 import {Command} from "@Command";
@@ -126,26 +126,25 @@ class init {
      * @description Загружаем запросы для музыки
      */
     private loadAPIs = (ShardID: number) => {
-        const Platforms = Platform.Platforms;
+        const Platforms = APIs.Platforms, Auths = APIs.Auths, Audios = APIs.Audios;
 
-        if (Platforms.audio.length === 0) {
-            if (!env.get("bot.token.spotify")) Platforms.auth.push("SPOTIFY");
-            if (!env.get("bot.token.vk")) Platforms.auth.push("VK");
-            if (!env.get("bot.token.yandex")) Platforms.auth.push("YANDEX");
+        //Проверяем все платформы
+        for (let platform of Platforms) {
+            const index = Platforms.indexOf(platform);
 
-            //Если платформа не поддерживает получение аудио
-            for (let platform of Platforms.all) if (!platform.audio) Platforms.audio.push(platform.name);
+            //Надо ли авторизоваться на этой платформе
+            if (platform.auth) {
+                //Если нет данных, то откидываем платформу
+                if (!env.get(`bot.token.${platform.name.toLowerCase()}`)) Auths.push(platform.name);
+            }
 
-            ["YouTube", "Yandex", "Discord", "VK", "Spotify"].forEach((platform) => {
-                const Platform = Platforms.all.find(data => data.name === platform.toUpperCase());
-                const index = Platforms.all.indexOf(Platform);
+            //Поддерживает ли платформа получение аудио
+            if (!platform.audio) Audios.push(platform.name);
 
-                new initDataDir<API.list | API.array | API.track>(`Models/APIs/${platform}/Classes`,(data) => {
-                    Platforms.all[index].requests.push(data);
-                }, true).reading;
-
-                Platforms.all[index].requests.reverse();
-            });
+            //Загружаем запросы для платформы
+            new initDataDir<API.list | API.array | API.track>(`Models/APIs/${platform.name}`, (data) => {
+                Platforms[index].requests.unshift(data);
+            }).reading;
         }
 
         Logger.log(`[Shard ${ShardID}] has initialize APIs`);

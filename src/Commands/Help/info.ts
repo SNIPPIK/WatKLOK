@@ -31,11 +31,11 @@ export default class extends Command {
                 fields: [
                     {
                         name: "Основные",
-                        value: `**❯ Разработчик: [SNIPPIK#4178](https://discordapp.com/users/312909267327778818) **\n**❯ Команд:** ${client.commands.size}\n**❯ Процессор [${processor}]**`
+                        value: `**❯ Разработчик: [@snippik](https://discordapp.com/users/312909267327778818) **\n**❯ Команд:** ${client.commands.size}\n**❯ Процессор [${processor}]**`
                     },
                     {
                         name: "Статистика",
-                        value: `\`\`\`css\n• Platform   => ${process.platform}\n• Node       => ${process.version}\n\n• Servers    => ${client.guilds.cache.size}\n• Channels   => ${client.channels.cache.size}\n\n• Shards   => ${client?.shard?.ids?.length > 1 ? client.shard.ids.length : 1}\n\`\`\`\n`
+                        value: `\`\`\`css\n• Platform   => ${process.platform}\n• Node       => ${process.version}\n\n• Servers    => ${client.guilds.cache.size}\n• Channels   => ${client.channels.cache.size}\n\n• Shards     => ${client?.shard?.ids?.length > 1 ? client.shard.ids.length : 1}\n\`\`\`\n`
                     },
                     {
                         name: "Музыка",

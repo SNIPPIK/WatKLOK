@@ -1,19 +1,13 @@
 import {StageChannel, VoiceChannel} from "discord.js";
-
-//AudioPlayer
 import {AudioPlayer} from "../Audio/AudioPlayer";
+import {ClientMessage} from "@Client/Message";
+import {TypedEmitter} from "@Typed/Emitter";
 import {PlayerMessage} from "../Message";
 import {OpusAudio} from "../Audio/Opus";
-import {Song} from "./Song";
-
-//Client
-import {ClientMessage} from "@Client/Message";
-import {env} from "@env";
-
-//Utils
-import {TypedEmitter} from "@Typed/Emitter";
-import {Logger} from "@Logger";
 import {Voice} from "@Util/Voice";
+import {Logger} from "@Logger";
+import {Song} from "./Song";
+import {env} from "@env";
 
 const timeDestroy = parseInt(env.get("music.queue.destroy"));
 

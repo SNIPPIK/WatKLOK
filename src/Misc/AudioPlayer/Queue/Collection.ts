@@ -1,21 +1,13 @@
 import {Collection, StageChannel, VoiceChannel} from "discord.js";
-
-//AudioPlayer
-import {ISong, Song} from "./Song";
-import {Queue} from "./Queue";
-import {PlayerMessage} from "@AudioPlayer/Message";
-
-//Client
 import {ClientMessage} from "@Client/Message";
-import {env} from "@env";
-
-//Utils
+import {PlayerMessage} from "../Message";
+import {ISong, Song} from "./Song";
 import {Voice} from "@Util/Voice";
 import {Logger} from "@Logger";
-
+import {Queue} from "./Queue";
+import {env} from "@env";
 
 const PlayerTimeout = parseInt(env.get("music.player.timeout"));
-
 
 export class CollectionQueue extends Collection<string, Queue> {
     /**
@@ -151,10 +143,9 @@ export class CollectionQueue extends Collection<string, Queue> {
                     queue.player.removeAllListeners();
                     //Выключаем плеер если сейчас играет трек
                     queue.player.stop;
-                    //Удаляем текущий поток из-за ненадобности
-                    queue.player.stream = null;
-                    //Удаляем голосовое подключение
-                    queue.player.connection = null;
+
+                    //Удаляем ненужные данные
+                    queue.player.cleanup();
                 }
 
                 if (env.get("music.leave")) Voice.disconnect(queue.guild.id);

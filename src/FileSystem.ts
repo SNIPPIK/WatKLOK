@@ -5,7 +5,6 @@ import {env} from "@env";
 export class initDataDir<type> {
     private readonly path: string;
     private readonly callback: (data: type, file: string) => void;
-    private readonly isFiles: boolean;
     private file: string;
 
 
@@ -22,8 +21,8 @@ export class initDataDir<type> {
     };
 
 
-    public constructor(path: string, callback: (data: type, file: string) => void, isFiles: boolean = false) {
-        this.path = `src/${path}`; this.callback = callback; this.isFiles = isFiles
+    public constructor(path: string, callback: (data: type, file: string) => void) {
+        this.path = `src/${path}`; this.callback = callback;
     };
 
 
@@ -31,12 +30,12 @@ export class initDataDir<type> {
      * @description Начинаем чтение
      */
     public get reading() {
-        if (this.isFiles) return this.readDir();
-
         readdirSync(this.path).forEach((dir) => {
             if (dir.endsWith(".js")) return;
             return this.readDir(dir);
         });
+
+        return true;
     };
 
 
@@ -45,7 +44,7 @@ export class initDataDir<type> {
      * @param dir {string} Директория из которой будем читать
      */
     private readonly readDir = (dir?: string) => {
-        const path = dir ? `${this.path}/${dir}/` : this.path;
+        const path = dir ? `${this.path}/${dir}` : this.path;
 
         readdirSync(path).forEach((file) => {
             if (!file.endsWith(".js")) return;
@@ -54,12 +53,12 @@ export class initDataDir<type> {
                 this.file = `${path}/${file}`;
                 const hasLoad: type = this.loadFile;
 
-                if (env.get("debug.fs")) Logger.debug(`Fs: [Load]: ${path}${path.endsWith("/") || file.startsWith("/") ? file : `/${file}`}`);
+                if (env.get("debug.fs")) Logger.debug(`Fs: [Load]: ${this.file}`);
 
                 this.callback(hasLoad, this.file);
             } catch (e) { Logger.error(e); }
         });
-    }
+    };
 }
 
 export namespace FileSystem {

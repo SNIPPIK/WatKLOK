@@ -3,7 +3,7 @@ import {ISong} from "@AudioPlayer/Queue/Song";
 import {ClientMessage} from "@Client/Message";
 import {Colors, EmbedData} from "discord.js";
 import {Duration} from "@Util/Duration";
-import {Platform} from "@APIs";
+import {APIs} from "@APIs";
 import {env} from "@env";
 
 const note = env.get("music.note");
@@ -180,7 +180,7 @@ export const PlayersEmbeds = {
          */
         public get toJson(): EmbedData {
             return {
-                color: new Platform(this._platform).color,
+                color: new APIs(this._platform).color,
                 title: `Необходимо выбрать трек!`,
                 timestamp: new Date(),
             };

@@ -1,82 +1,92 @@
 import {ISong, Song} from "@AudioPlayer/Queue/Song";
 import {Duration} from "@Util/Duration";
 import {Colors} from "discord.js";
+import {randomNumber} from "../Request/Structures/Utils";
 
-export { Platform, platform, callback };
+export { APIs, platform, callback };
 
-const Platforms: { audio: platform[], auth: platform[], all: platformData[] } = {
-    //Платформы у которых нет возможности получить доступ к аудио
-    audio: [],
+//Поддерживаемые платформы
+type platform = "YOUTUBE" | "SPOTIFY" | "VK" | "SOUNDCLOUD" | "DISCORD" | "YANDEX";
 
-    //Платформы у которых нет данных авторизации
-    auth: [],
+//Поддерживаемые типы для этих платформ
+type callback = "track" | "playlist" | "search" | "album" | "artist";
 
-    //Доступные платформы, запросы буду загружены позже
-    all: [
-        {
-            requests: [],
-            name: "YOUTUBE",
-            audio: true,
-            color: 16711680,
-            prefix: ["yt", "ytb"],
-            filter: /^(https?:\/\/)?(www\.)?(m\.)?(music\.)?( )?(youtube\.com|youtu\.?be)\/.+$/gi
-        },
-        {
-            requests: [],
-            name: "SPOTIFY",
-            audio: false,
-            color: 1420288,
-            prefix: ["sp"],
-            filter: /^(https?:\/\/)?(open\.)?(m\.)?(spotify\.com|spotify\.?ru)\/.+$/gi
-        },
-        {
-            requests: [],
-            name: "VK",
-            audio: true,
-            color: 30719,
-            prefix: ["vk"],
-            filter: /^(https?:\/\/)?(vk\.com)\/.+$/gi
-        },
-        {
-            requests: [],
-            name: "YANDEX",
-            audio: true,
-            color: Colors.Yellow,
-            prefix: ["ym", "yandex", "y"],
-            filter: /^(https?:\/\/)?(music\.)?(yandex\.ru)\/.+$/gi
-        },
-        {
-            requests: [],
-            name: "DISCORD",
-            audio: true,
-            color: Colors.Grey,
-            filter: /^(https?:\/\/)?(cdn\.)?( )?(discordapp\.com|discord\.gg)\/.+$/gi
-        }
-    ]
-}
+/**
+ * @description База с платформами для взаимодействия
+ * @global
+ */
+const SupportedPlatforms: {
+    requests: (API.list | API.array | API.track)[]; name: platform;
+    audio: boolean;                                 auth: boolean;
+    prefix?: string[];                              color: number;
+    filter: RegExp;
+}[] = [
+    {
+        requests: [],                  name: "YOUTUBE",
+        audio: true,                   auth: false,
+        prefix: ["yt", "ytb"],         color: 16711680,
+        filter: /^(https?:\/\/)?(www\.)?(m\.)?(music\.)?( )?(youtube\.com|youtu\.?be)\/.+$/gi
+    },
+    {
+        requests: [],                  name: "SPOTIFY",
+        audio: false,                  auth: true,
+        prefix: ["sp"],                color: 1420288,
+        filter: /^(https?:\/\/)?(open\.)?(m\.)?(spotify\.com|spotify\.?ru)\/.+$/gi
+    },
+    {
+        requests: [],                  name: "VK",
+        audio: true,                   auth: true,
+        prefix: ["vk"],                color: 30719,
+        filter: /^(https?:\/\/)?(vk\.com)\/.+$/gi
+    },
+    {
+        requests: [],                  name: "YANDEX",
+        audio: true,                   auth: true,
+        prefix: ["ym", "yandex", "y"], color: Colors.Yellow,
+        filter: /^(https?:\/\/)?(music\.)?(yandex\.ru)\/.+$/gi
+    },
+    {
+        requests: [],                  name: "DISCORD",
+        audio: true,                   auth: false,
+        color: Colors.Grey,
+        filter: /^(https?:\/\/)?(cdn\.)?( )?(discordapp\.com|discord\.gg)\/.+$/gi
+    }
+];
 
-class Platform {
+/**
+ * @description База с платформами если нет данных для авторизации
+ */
+const AuthorizationPlatforms: platform[] = [];
+
+/**
+ * @description База с названиями платформ у которых нет доступа к получению аудио
+ */
+const AudioPlatforms: platform[] = [];
+
+/**
+ * @description Главный класс
+ */
+class initPlatform {
     protected readonly _platform: platform;
-
     /**
-     * @description Передаем полностью Platforms
+     * @description Ищем платформу в базе
      */
-    public static get Platforms() { return Platforms; };
+    private find = (callback: (d: any) => boolean) => SupportedPlatforms.find(callback);
 
     /**
      * @description Получаем все запросы от this._platform
      */
-    public get requests() { return Platforms.all.find((info) => info.name === this.platform).requests; };
+    public get requests() { return SupportedPlatforms.find((info) => info.name === this._platform).requests; };
 
     /**
      * @description Доступна ли музыка у текущей платформы
      */
-    public get audio() { return Platforms.audio.includes(this._platform); };
+    public get audio() { return AudioPlatforms.includes(this._platform); };
 
     /**
      * @description Проверяем есть ли данные авторизации у текущей платформы
      */
-    public get auth() { return Platforms.auth.includes(this._platform); };
+    public get auth() { return AuthorizationPlatforms.includes(this._platform); };
 
     /**
      * @description Получаем текущую платформу
@@ -86,32 +96,110 @@ class Platform {
     /**
      * @description Получаем цвет платформы
      */
-    public get color(): number { return Platforms.all.find((pl) => pl.name === this.platform).color; };
+    public get color(): number { return SupportedPlatforms.find((pl) => pl.name === this.platform).color; };
 
+    public constructor(argument: string | platform) {
+        let platform;
+
+        try {
+            //Следуя какой аргумент ищем платформу
+            if (argument.startsWith("http")) platform = this.find((info) => !!argument.match(info.filter));
+            else platform = this.find((info) => info.name === argument || info.prefix && info.prefix.includes(argument.split(' ')[0].toLowerCase()));
+
+            //Если найти не удалось значит ставим YouTube
+            if (!platform) this._platform = "YOUTUBE";
+            else this._platform = platform.name;
+        } catch { this._platform = "YOUTUBE" }
+    };
+}
+
+/**
+ * @description Отвечает за поиск исходного файл музыки
+ */
+class Finder extends initPlatform {
+    /**
+     * @description Передаем полностью SupportedPlatforms
+     */
+    public static get Platforms() { return SupportedPlatforms; };
 
     /**
-     * @description Получаем или ищем платформу
-     * @param string
+     * @description Передаем полностью AudioPlatforms
      */
-    public constructor(string: platform | string) {
-        try {
-            if (string.startsWith("http")) {
-                const platforms = Platforms.all.filter((info) => string.match(info.filter));
+    public static get Audios() { return AudioPlatforms; };
 
-                //Если нет платформы в базе
-                if (!platforms.length) return undefined;
+    /**
+     * @description Передаем полностью AuthorizationPlatforms
+     */
+    public static get Auths() { return AuthorizationPlatforms; };
 
-                this._platform = platforms[0].name
-            } else {
-                const platform = Platforms.all.find((info) => info.name === string || info.prefix && info.prefix.includes(string.split(' ')[0].toLowerCase()));
+    /**
+     * @description Получаем случайную платформу
+     */
+    private static get randomPlatform() {
+        const filter = SupportedPlatforms.filter((platform) =>
+            !AudioPlatforms.includes(platform.name) && !AuthorizationPlatforms.includes(platform.name)
+        );
 
-                if (!platform) this._platform = "YOUTUBE";
-                else this._platform = platform.name;
-            }
-        } catch { this._platform = "YOUTUBE"; }
+        return filter[randomNumber(filter.length)];
     };
 
 
+    /**
+     * @description Получаем исходный файл музыки
+     */
+    public static resource = ({ platform, url, author, title, duration }: Song): Promise<string> => {
+        if (AudioPlatforms.includes(platform)) {
+            let track = this.searchTrack(`${author.title} ${title}`, duration.seconds);
+            if (!track) track = this.searchTrack(`${title}`, duration.seconds);
+
+            return track;
+        }
+
+        const callback = new APIs(platform).callback("track");
+
+        //Если нет такого запроса
+        if (!callback) return null;
+
+        return (callback(url) as Promise<ISong.track>).then((track) => track.format.url);
+    };
+
+
+    /**
+     * @description Если у платформы нет возможности дать исходный файл то ищем его на других платформах
+     * @param nameSong {string} Название трека
+     * @param duration {number} Длительность трека
+     */
+    private static searchTrack = async (nameSong: string, duration: number): Promise<string> => {
+        const randomPlatform = this.randomPlatform;
+        const track = randomPlatform.requests.find((d) => d.type === "track");
+        const search = randomPlatform.requests.find((d) => d.type === "search");
+
+        //Ищем треки
+        const tracks = await search.callback(nameSong) as ISong.track[] | Error;
+
+        //Если поиск выдал ошибку или нет треков возвращаем ничего
+        if (tracks instanceof Error || tracks.length === 0) return null;
+
+        //Ищем подходящие треки
+        const GoodTracks = tracks.filter((track) => {
+            const DurationSong: number = (randomPlatform.name === "YOUTUBE" ? Duration.toConverting : parseInt)(track.duration.seconds) as number;
+
+            //Как надо фильтровать треки
+            return DurationSong === duration || DurationSong < duration + 7 && DurationSong > duration - 5 || DurationSong < duration + 27 && DurationSong > duration - 27;
+        });
+
+        //Если подходящих треков нет, то возвращаем ничего
+        if (GoodTracks.length === 0) return null;
+
+        //Делаем запрос полной информации о треки для получения ссылки на исходный файл музыки
+        return track.callback(GoodTracks[0].url).then((track: any) => track.format.url);
+    };
+}
+
+/**
+ * @description Отвечает за мелкие функции с возвращением данных
+ */
+class APIs extends Finder {
     /**
      * @description Получаем тип запроса
      * @param url {string} Ссылка
@@ -119,7 +207,7 @@ class Platform {
     public type = (url: string): callback => {
         if (!url.startsWith("http")) return "search";
 
-        const Platform = Platforms.all.find((plt) => plt.name === this.platform);
+        const Platform = SupportedPlatforms.find((plt) => plt.name === this.platform);
         const type = Platform.requests.find((data) => data.filter && url.match(data.filter));
 
         if (!type) return undefined;
@@ -158,105 +246,34 @@ class Platform {
 
         return arg;
     };
-
-
-    /**
-     * @description Получаем данные о треке заново
-     * @param song {Song} Трек который надо найти по новой
-     */
-    public static resource = ({ platform, url, author, title, duration }: Song): Promise<string> => {
-        if (!Platforms.audio.includes(platform)) {
-            const callback = new Platform(platform).callback("track");
-
-            //Если нет такой платформы или нет callbacks.track
-            if (typeof callback === "string") return null;
-
-            //Выдаем ссылку
-            return (callback(url) as Promise<ISong.track>).then((track: ISong.track) => track?.format?.url);
-        }
-        //Ищем трек
-        let track = this.searchTrack(`${author.title} ${title}`, duration.seconds, platform);
-
-        //Если трек не найден пробуем 2 вариант без автора
-        if (!track) track = this.searchTrack(title, duration.seconds, platform);
-
-        return track;
-    };
-
-
-    /**
-     * @description Ищем трек на yandex music, если нет токена yandex music или yandex не дал ссылку то ищем на YouTube
-     * @param nameSong {string} Название трека
-     * @param duration {number} Длительность трека
-     * @param platform {platform} Платформа
-     */
-    protected static searchTrack = (nameSong: string, duration: number, platform: platform): Promise<string> => {
-        const exPlatform = Platforms.auth.includes(platform) || Platforms.audio.includes(platform) ? Platforms.auth.includes("YANDEX") ? "YOUTUBE" : "YANDEX" : platform;
-        const callbacks = new Platform(exPlatform).requests;
-
-        const search = callbacks.find((req) => req.type === "search");
-        const track = callbacks.find((req) => req.type === "track");
-
-        return (search.callback(nameSong) as Promise<ISong.track[]>).then((tracks: ISong.track[]) => {
-            //Фильтруем треки оп времени
-            const FindTracks: ISong.track[] = tracks.filter((track: ISong.track) => {
-                const DurationSong: number = (exPlatform === "YOUTUBE" ? Duration.toConverting : parseInt)(track.duration.seconds) as number;
-
-                //Как надо фильтровать треки
-                return DurationSong === duration || DurationSong < duration + 7 && DurationSong > duration - 5 || DurationSong < duration + 27 && DurationSong > duration - 27;
-            });
-
-            //Если треков нет
-            if (FindTracks?.length < 1) return null;
-
-            //Получаем данные о треке
-            return (track.callback(FindTracks[0].url) as Promise<ISong.track>).then((video: ISong.track) => video?.format?.url) as Promise<string>;
-        });
-    };
 }
 
 
-
-//Поддерживаемые платформы
-type platform = "YOUTUBE" | "SPOTIFY" | "VK" | "SOUNDCLOUD" | "DISCORD" | "YANDEX";
-
-//Поддерживаемые типы для этих платформ
-type callback = "track" | "playlist" | "search" | "album" | "artist";
-
-//Данные которые хранит Platforms.all в формате Array
-interface platformData {
-    //Название платформы
-    name: platform;
-
-    //Возможно ли получить исходный файл трека
-    audio: boolean;
-
-    //Цвет платформы
-    color: number;
-
-    //Названия для поиска
-    prefix?: string[];
-
-    //Проверка ссылки
-    filter: RegExp;
-
-    //Допустимые запросы
-    requests: (API.list | API.array | API.track)[];
-}
-
+/**
+ * @description Для загрузки запросов из файлов
+ */
 export namespace API {
+    /**
+     * @description Структура получение трека
+     */
     export interface track {
         filter: RegExp;
         type: "track";
         callback: (url: string) => Promise<ISong.track | Error>;
     }
 
+    /**
+     * @description Структура получение нескольких объектов
+     */
     export interface array {
         filter?: RegExp;
         type: "search" | "artist";
         callback: (url: string) => Promise<ISong.track[] | Error>;
     }
 
+    /**
+     * @description Структура объектов и данных об объектах
+     */
     export interface list {
         filter: RegExp;
         type: "playlist" | "album";

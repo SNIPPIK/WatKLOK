@@ -224,7 +224,7 @@ export class MessageCycle extends MainCycle<ClientMessage> {
  */
 export class DownloadManager extends MainCycle<Song> {
     protected readonly duration = 2e3;
-    protected readonly type: "single" = "single";
+    protected readonly type = "single";
 
 
     /**
