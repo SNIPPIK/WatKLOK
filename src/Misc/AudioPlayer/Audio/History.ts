@@ -12,25 +12,19 @@ export class History {
     /**
      * @description Проверяем работает ли история
      */
-    public static get enable() {
-        return env.get("music.history");
-    };
+    public static get enable() { return env.get("music.history"); };
 
 
     /**
      * @description Получаем путь
      */
-    private get path() {
-        return `${env.get("music.history.dir")}/[${this._guildID}].json`;
-    };
+    private get path() { return `${env.get("music.history.dir")}/[${this._guildID}].json`; };
 
 
     /**
      * @description Загружаем файл
      */
-    private get file() {
-        return FileSystem.getFile(this.path);
-    };
+    private get file() { return FileSystem.getFile(this.path); };
 
     public constructor(track: ISong.track, GuildID: string, platform: string) {
         this._guildID = GuildID; this._track = track; this._platform = platform;

@@ -11,8 +11,7 @@
  - Это не просто музыкальный бот, работающий на `ffmpeg`
  - Умеет кешировать аудио, по принципу [`http, https`](src/Misc/Request/index.ts)
  - Все сообщения удаляются через время
- - Никаких [`Lavalink`](https://github.com/lavalink-devs/Lavalink), [`Lavaplayer`](https://github.com/sedmelluq/lavaplayer)
- - Не используется [`YouTube-DL`](https://youtube-dl.org/)
+ - Не используется [`Lavalink`](https://github.com/lavalink-devs/Lavalink) | [`Lavaplayer`](https://github.com/sedmelluq/lavaplayer) | [`YouTube-DL`](https://youtube-dl.org/)
 
 <img align="center" alt="PGI Settings" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/main/.github/resource/PGI.png?raw=true" />
 <img align="center" alt="Bot Permissions" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/main/.github/resource/Bot Permissions.png?raw=true" />
@@ -40,18 +39,19 @@
 - Является директорией с запросами
 - Можно добавить свою поддержку любой платформы используя примеры
 - Для загрузки необходимо добавить в [`API index`](src/Misc/APIs/index.ts)
+- Примеры можно найти [`тут`](src/Models/APIs)
 
 
 
 
 
 ## <a name="AudioPlayer"></a> [`AudioPlayer`](src/Misc/AudioPlayer)
-  - Является частичным fork'ом [discordjs/voice](https://www.npmjs.com/package/@discordjs/voice)
+  - Является частичным fork'ом [`@discordjs/voice`](https://www.npmjs.com/package/@discordjs/voice)
   - Музыка работает через `FFmpeg` конвертируется в `opus`
   - Используется [`SodiumLib`](#sodium-libs)
   - Присутствует поддержка фильтров через `FFmpeg`, добавляются в [`Filters`](src/Misc/Json/Filters.json)
   - Все `EMBED` сообщения хранятся [`здесь`](src/Models/Embeds)
-  - Умеет сохранять треки и можно проглядывать их по типу истории прослушиваний
+  - Если история прослушиваний треков
 
 
     
@@ -59,9 +59,9 @@
 ## <a name="sodium-libs"></a> [`Sodium libs`](https://discordjs.guide/voice/#extra-dependencies)
  - Необходим для шифровки голосовых пакетов
  - Доступные варианты
-   - Не требуют компиляцию
-     - [sodium-native](https://www.npmjs.com/package/sodium-native)
-     - [libsodium-wrappers](https://www.npmjs.com/package/libsodium-wrappers)
-     - [tweetnacl](https://www.npmjs.com/package/tweetnacl)
+   - Не требуют компиляцию | `не на всех устройствах`
+     - [`sodium-native`](https://www.npmjs.com/package/sodium-native)
+     - [`libsodium-wrappers`](https://www.npmjs.com/package/libsodium-wrappers)
+     - [`tweetnacl`](https://www.npmjs.com/package/tweetnacl)
     - Требуют компиляцию
-      - [sodium](https://www.npmjs.com/package/sodium)
+      - [`sodium`](https://www.npmjs.com/package/sodium)

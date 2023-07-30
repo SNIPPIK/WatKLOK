@@ -17,13 +17,7 @@ const Bar = {
 
 export class Embed {
     private readonly _queue: Queue;
-
     protected get queue() { return this._queue; }
-
-    /**
-     * @description Записываем данные в класс
-     * @param queue {Queue} Очередь
-     */
     public constructor(queue: Queue) { this._queue = queue; };
 
     /**

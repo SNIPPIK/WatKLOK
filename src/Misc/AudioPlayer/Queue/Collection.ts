@@ -58,7 +58,6 @@ export class CollectionQueue extends Collection<string, Queue> {
      * @param queue {Queue} Очередь которую добавляем
      */
     private set addQueue(queue: Queue) {
-        //Запускаем callback для проигрывания треков
         setImmediate(() => {
             //Запускаем отслеживание плеера
             this.onPlayerEvents = queue.guild.id;

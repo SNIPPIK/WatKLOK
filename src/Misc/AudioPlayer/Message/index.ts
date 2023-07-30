@@ -1,49 +1,14 @@
-import {ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedData, StringSelectMenuBuilder} from "discord.js";
+import {ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder} from "discord.js";
+import {MessageAction} from "@Embeds/MessageAction";
 import { ClientMessage } from "@Client/Message";
 import { MessageCycle } from "@Client/Cycles";
 import { MessageUtils } from "@Util/Message";
-import {PlayersEmbeds} from "@Embeds/Player";
+import {Duration} from "@Util/Duration";
 import { Queue } from "../Queue/Queue"
 import { ISong } from "../Queue/Song";
-import {Logger} from "@Logger";
 import {env} from "@env";
-import {Duration} from "@Util/Duration";
 
-//
 const CycleMessages = new MessageCycle();
-//
-
-/**
- * @description Создаем действие сообщения (что будем делать с сообщением)
- */
-class MessageAction<Action> {
-    protected _action: Action;
-
-    /**
-     * @description Получаем Embed в зависимости от this._action
-     */
-    public get embed() { // @ts-ignore
-        return PlayersEmbeds[this._action]; };
-
-
-    /**
-     * @description Отправляем сообщение
-     * @param options {actionOptions} Аргументы для отправки
-     */
-    public set sendMessage(options: actionOptions) {
-        options.channel.send({embeds: options.embeds, components: options.components as any})
-            .catch((err: string) => Logger.error(`[AudioPlayer]: [Message]: [${this._action}]: ${err}`))
-            .finally(() => { this._action = null; })
-            .then((msg) => {
-                if (!msg) return;
-
-                if (options.time) MessageUtils.delete = {message: msg, time: options.time};
-                if (options.promise) options.promise(msg);
-            });
-    };
-
-    public constructor(action: Action) { this._action = action; };
-}
 
 //Сообщения, которые отправляет плеер
 export namespace PlayerMessage {
@@ -167,24 +132,4 @@ export namespace PlayerMessage {
             }
         }
     }
-}
-
-/**
- * @description Аргументы для отправки сообщения
- */
-interface actionOptions {
-    //Канал на который будет отправлено сообщение
-    channel: ClientMessage["channel"];
-
-    //Компоненты, такие как кнопки
-    components?: ActionRowBuilder[];
-
-    //Json<EmbedData>
-    embeds: EmbedData[];
-
-    //Что будет делать после отправки сообщения
-    promise?: (msg: ClientMessage) => void;
-
-    //Время через которое надо удалить сообщение
-    time?: number
 }

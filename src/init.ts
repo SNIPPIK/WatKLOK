@@ -1,12 +1,13 @@
 import { ShardManager } from "@Client/Sharder";
 import {initDataDir} from "@Client/FileSystem";
 import {REST, Routes} from "discord.js";
-import {API, APIs} from "@APIs";
 import { WatKLOK } from "@Client";
 import { Logger } from "@Logger";
 import {Command} from "@Command";
+import {API, APIs} from "@APIs";
 import {Action} from "@Action";
 import { env } from "@env";
+import {readdirSync} from "fs";
 
 class init {
     /**
@@ -128,9 +129,12 @@ class init {
     private loadAPIs = (ShardID: number) => {
         const Platforms = APIs.Platforms, Auths = APIs.Auths, Audios = APIs.Audios;
 
-        //Проверяем все платформы
-        for (let platform of Platforms) {
-            const index = Platforms.indexOf(platform);
+        //Загружаем директорию с запросами
+        readdirSync(`src/Models/APIs`).forEach((dir: string) => {
+            const platform = Platforms.find((platform) => platform.name.toLowerCase() === dir.toLowerCase());
+
+            //Если нет платформы в базе, то не загружаем ее
+            if (!platform) return;
 
             //Надо ли авторизоваться на этой платформе
             if (platform.auth) {
@@ -142,10 +146,10 @@ class init {
             if (!platform.audio) Audios.push(platform.name);
 
             //Загружаем запросы для платформы
-            new initDataDir<API.list | API.array | API.track>(`Models/APIs/${platform.name}`, (data) => {
-                Platforms[index].requests.unshift(data);
+            new initDataDir<API.list | API.array | API.track>(`Models/APIs/${dir}`, (data) => {
+                Platforms[Platforms.indexOf(platform)].requests.unshift(data);
             }).reading;
-        }
+        });
 
         Logger.log(`[Shard ${ShardID}] has initialize APIs`);
     };

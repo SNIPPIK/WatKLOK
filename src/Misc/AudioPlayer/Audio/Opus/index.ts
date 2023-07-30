@@ -59,7 +59,7 @@ export class OpusAudio {
         //Если будет вызван один из этих ивентов, то чистим ffmpeg, opusDecoder
         ["end", "close", "error"].forEach((event) => this.opus.once(event, () => {
             this._ffmpeg.destroy();
-            this.destroy();
+            this.cleanup();
 
             if (env.get("debug.ffmpeg")) Logger.debug(`AudioPlayer: FFmpeg emit event ${event}`);
             if (env.get("debug.player.audio")) Logger.debug(`AudioPlayer: OpusCompilation: emit event ${event}`);
@@ -74,7 +74,7 @@ export class OpusAudio {
         this.opus.once("readable", () => (this._read = true));
     };
 
-    public readonly destroy = () => {
+    public cleanup = () => {
         this._durationFrame = null;
         this._duration = null;
         this._read = null;

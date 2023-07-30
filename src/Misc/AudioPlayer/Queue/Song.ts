@@ -69,66 +69,55 @@ class Song extends Song_data {
      */
     public get color() { return new APIs(this._platform).color; };
 
-
     /**
      * @description Получаем название трека
      */
     public get title() { return this._title; };
-
 
     /**
      * @description Получаем ссылку на трек
      */
     public get url() { return this._url; };
 
-
     /**
      * @description Получаем данные автора трека
      */
     public get author() { return this._author; };
-
 
     /**
      * @description Получаем пользователя который включил трек
      */
     public get requester() { return this._requester; };
 
-
     /**
      * @description Получаем платформу у которого был взят трек
      */
     public get platform() { return this._platform; };
-
 
     /**
      * @description Получаем время трека
      */
     public get duration() { return this._duration; };
 
-
     /**
      * @description Получаем картинки автора и трека
      */
     public get image() { return this._images; };
-
 
     /**
      * @description Получаем доп данные
      */
     public get options() { return this._other; };
 
-
     /**
      * @description Получаем ссылку на исходный файл
      */
     public get link() { return this._link; };
 
-
     /**
      * @description Изменяем данные ссылки
      */
     private set link(link: string) { this._link = link; };
-
 
     /**
      * @description Получаем ссылку на исходный ресурс
