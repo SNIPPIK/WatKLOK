@@ -139,7 +139,7 @@ class Song extends Song_data {
                 }
             }
 
-            if (Downloader && this.link.length > 10) Downloader.push = this;
+            if (Downloader && this.link?.length > 10) Downloader.push = this;
             return resolve(this.link);
         });
     };
