@@ -3,7 +3,7 @@
 - Автор: [`SNIPPIK`](https://github.com/SNIPPIK)
 - Лицензия: [`MIT`](LICENSE.md)
 - Перейти к [`настройкам`](.env.dev)
-- Перейти к [`командам`](src/Commands)
+- Перейти к [`командам`](src/Handlers/Commands), [`ивентам`](src/Handlers/Actions)
 - Перейти к [`демонстрации`](https://www.youtube.com/playlist?list=PLrQkedRE9MFvchEkGvt-Tk5jqS5GiS8Kd)
 
 
@@ -35,11 +35,11 @@
 
 
 
-## <a name="APIS"></a> [`APIs`](src/Models/APIs)
+## <a name="APIS"></a> [`APIs`](src/Handlers/APIs)
 - Является директорией с запросами
 - Можно добавить свою поддержку любой платформы используя примеры
-- Для загрузки необходимо добавить в [`API index`](src/Misc/APIs/index.ts)
-- Примеры можно найти [`тут`](src/Models/APIs)
+- Для загрузки необходимо добавить в [`API index`](src/Misc/AudioPlayer/APIs/index.ts)
+- Примеры можно найти [`тут`](src/Handlers/APIs)
 
 
 
@@ -49,9 +49,9 @@
   - Является частичным fork'ом [`@discordjs/voice`](https://www.npmjs.com/package/@discordjs/voice)
   - Музыка работает через `FFmpeg` конвертируется в `opus`
   - Используется [`SodiumLib`](#sodium-libs)
-  - Присутствует поддержка фильтров через `FFmpeg`, добавляются в [`Filters`](src/Misc/Json/Filters.json)
+  - Присутствует поддержка фильтров через `FFmpeg`, добавляются в [`Filters`](src/Handlers/JSON/Filters.json)
   - Все `EMBED` сообщения хранятся [`здесь`](src/Models/Embeds)
-  - Есть история прослушиваний треков
+  - Если история прослушиваний треков
 
 
     

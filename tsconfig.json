@@ -1,16 +1,20 @@
 {
   "compilerOptions": {
     "paths": {
+      //Циклы для работы некоторых элементов
+      "@Cycles/*": ["Handlers/Cycles/*"],
+
+
       //Интерфейсы, абстракты, типы
       "@Typed/*": ["Typed/*"],
-      "@Json/*": ["Misc/Json/*"],
+      "@Json/*": ["Handlers/JSON/*"],
 
       //Ивенты
-      "@Actions/*": ["Actions/*"],
+      "@Actions/*": ["Handlers/Actions/*"],
       "@Action": ["Typed/Abstracts/Action"],
 
       //Команды
-      "@Commands/*": ["Commands/*"],
+      "@Commands/*": ["Handlers/Commands/*"],
       "@Command": ["Typed/Abstracts/Command"],
 
       "@Embeds/*": ["Models/Embeds/*"],
@@ -18,12 +22,11 @@
       //Сами клиенты
       "@Client": ["Models/Client/Shard"],
       "@Client/Sharder": ["Models/Client/ShardManager"],
-      "@Client/Message": ["Actions/Activity/interactionCreate"],
+      "@Client/Message": ["Handlers/Actions/Activity/interactionCreate"],
       "@Client/FileSystem": ["FileSystem"],
-      "@Client/Cycles": ["Models/Cycles/index"],
 
       //Музыка
-      "@APIs": ["Misc/APIs/index"],
+      "@APIs": ["Misc/AudioPlayer/APIs/index"],
       "@AudioPlayer/*": ["Misc/AudioPlayer/*"],
 
       //Прочее
