@@ -4,24 +4,19 @@
       //Циклы для работы некоторых элементов
       "@Cycles/*": ["Handlers/Cycles/*"],
 
-
-      //Интерфейсы, абстракты, типы
-      "@Typed/*": ["Typed/*"],
-      "@Json/*": ["Handlers/JSON/*"],
-
       //Ивенты
       "@Actions/*": ["Handlers/Actions/*"],
-      "@Action": ["Typed/Abstracts/Action"],
+      "@Action": ["Models/Abstracts/Action"],
 
       //Команды
       "@Commands/*": ["Handlers/Commands/*"],
-      "@Command": ["Typed/Abstracts/Command"],
+      "@Command": ["Models/Abstracts/Command"],
 
       "@Embeds/*": ["Models/Embeds/*"],
 
       //Сами клиенты
       "@Client": ["Models/Client/Shard"],
-      "@Client/Sharder": ["Models/Client/ShardManager"],
+      "@Client/ShardManager": ["Models/Client/ShardManager"],
       "@Client/Message": ["Handlers/Actions/Activity/interactionCreate"],
       "@Client/FileSystem": ["FileSystem"],
 
@@ -32,6 +27,8 @@
       //Прочее
       "@Request": ["Misc/Request/index"],
       "@Logger": ["Misc/Logger/index"],
+      "@Emitter": ["Models/Emitter/index"],
+      "@Json/*": ["Handlers/JSON/*"],
       "@Util/*": ["Utils/*"],
       "@env": ["environment"]
     },
@@ -39,7 +36,7 @@
     // Основные настройки.
     "module": "CommonJS",
     "moduleResolution": "Node",
-    "outDir": ".AutoBuild",
+    "outDir": ".Build",
     "alwaysStrict": true,
     "sourceMap": false,
     "target": "ES2022",
