@@ -16,8 +16,8 @@
     "typescript": "^5.1.6"
   },
   "scripts": {
-    "start": "cd .AutoBuild && node -r tsconfig-paths/register src/init.js",
-    "shard": "cd .AutoBuild && node -r tsconfig-paths/register src/init.js --sharder",
+    "start": "cd .Build && node -r tsconfig-paths/register src/init.js",
+    "shard": "cd .Build && node -r tsconfig-paths/register src/init.js --sharder",
     "build": "tsc -p tsconfig.json"
   }
 }
