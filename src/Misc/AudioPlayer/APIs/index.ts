@@ -1,4 +1,3 @@
-import {randomNumber} from "../../Request/Structures/Utils";
 import {ISong, Song} from "@AudioPlayer/Queue/Song";
 import {Duration} from "@Util/Duration";
 import {Colors} from "discord.js";
@@ -140,7 +139,7 @@ class Finder extends initPlatform {
             !AudioPlatforms.includes(platform.name) && !AuthorizationPlatforms.includes(platform.name)
         );
 
-        return filter[randomNumber(filter.length)];
+        return filter[Duration.randomNumber(filter.length)];
     };
 
 

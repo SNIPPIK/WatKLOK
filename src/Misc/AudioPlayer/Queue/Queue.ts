@@ -1,9 +1,8 @@
 import {StageChannel, VoiceChannel} from "discord.js";
 import {AudioPlayer} from "../Audio/AudioPlayer";
 import {ClientMessage} from "@Client/Message";
-import {TypedEmitter} from "@Emitter";
 import {PlayerMessage} from "../Message";
-import {OpusAudio} from "../Audio/Opus";
+import {TypedEmitter} from "@Emitter";
 import {Voice} from "@Util/Voice";
 import {Logger} from "@Logger";
 import {Song} from "./Song";
@@ -136,17 +135,12 @@ export class Queue extends QueueFunctions {
 
         //Отправляем сообщение с авто обновлением
         if (seek === 0) PlayerMessage.toPlay(this);
-
-        //Получаем ссылку на файл
         this.song.resource.then((path) => {
-            //Если не удалось получить рабочую ссылку
-            if (!path) { this.player.emit("error", Error(`[${this.song.url}] не найдена ссылка на исходный файл!`), true); return; }
+            if (path instanceof Error) { this.player.emit("error", path, false); return; }
 
-            //Отправляем поток в плеер, если это сделать не удалось пропускаем трек
-            try {
-                this.player.exportStreamPlayer = new OpusAudio({ path, seek, filters: this.song.options.isLive ? [] : this.filters });
-            } catch (e) { this.player.emit("error", e, true); }
-        }).catch((e) => this.player.emit("error", Error(e), true));
+            //Отправляем данные в плеер для чтения
+            this.player.readStream = { path, seek, filters: this.song.options.isLive ? [] : this.filters };
+        });
 
         //Если включен режим отладки показывает что сейчас играет и где
         if (env.get("debug.player.audio")) Logger.debug(`Queue: Play: [${this.song.duration.full}] - [${this.song.author.title} - ${this.song.title}]`);

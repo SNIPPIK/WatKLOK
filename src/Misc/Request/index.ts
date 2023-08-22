@@ -1,9 +1,10 @@
 import { BrotliDecompress, createBrotliDecompress, createDeflate, createGunzip, Deflate, Gunzip } from "node:zlib";
 import { request as httpsRequest, RequestOptions as ReqOptions } from "https";
 import { IncomingMessage, request as httpRequest } from "http";
-import {getUserAgent} from "./Structures/Utils";
+import UserAgents from "@Json/UserAgents.json";
 import {httpsAgent} from "./Structures/Proxy";
 import {Cookie} from "./Structures/Cookie";
+import {Duration} from "@Util/Duration";
 import { Logger } from "@Logger";
 import {env} from "@env";
 
@@ -21,15 +22,6 @@ const decoderBase = {
 };
 
 
-/**
- * @description Доступные запросы
- */
-const protocols = {
-    "http": httpRequest,  //http запрос
-    "https": httpsRequest //https запрос
-};
-
-
 export class httpsClient {
     private _options: RequestOptions = null;
     private _proxy: boolean          = null;
@@ -37,7 +29,12 @@ export class httpsClient {
     /**
      * @description Получаем протокол ссылки
      */
-    private get protocol() { return protocols[this._options.protocol?.split(":")[0] as "http" | "https"]; };
+    private get protocol() {
+        const protocol = this._options.protocol?.split(":")[0];
+
+        if (protocol === "http") return httpRequest;
+        else return httpsRequest
+    };
 
 
     /**
@@ -71,7 +68,11 @@ export class httpsClient {
             //Если запрос получил ошибку
             request.once("error", resolve);
             request.once("timeout", () => resolve(Error(`[APIs]: Connection Timeout Exceeded ${this._options?.hostname}:${this._options?.port ?? 443}`)));
-            request.once("close", this.cleanup);
+            request.once("close", () => {
+                request.removeAllListeners();
+                request.destroy();
+                this.cleanup();
+            });
 
             //Если запрос POST, отправляем ответ на сервер
             if (this._options.method === "POST" && this._options.body) request.write(this._options.body);
@@ -148,6 +149,24 @@ export class httpsClient {
 
 
     /**
+     * @description Генерируем UserAgent из асетов
+     */
+    private get genUserAgent() {
+        const OS = UserAgents.os[Duration.randomNumber(UserAgents.os.length)];
+        const browser = UserAgents.browser[Duration.randomNumber(UserAgents.browser.length)];
+        const bit = `${OS.at(-3)}${OS.at(-2)}`;
+
+        return {
+            "User-Agent": `Mozilla/5.0 ${OS} AppleWebKit/537.36 (KHTML, like Gecko) ${browser} Safari/537.36`,
+            "Sec-Ch-Ua-Full-Version": `${browser.split("/")[0]?.split(" ")[0]}`,
+            "Sec-Ch-Ua-Bitness": `${OS.at(-3)}${OS.at(-2)}`,
+            "Sec-Ch-Ua-Arch": bit === "64" ? "x86" : "x32",
+            "Sec-Ch-Ua-Mobile": "?0"
+        }
+    };
+
+
+    /**
      * @description Инициализируем класс
      * @param url {string} Ссылка
      * @param options {RequestOptions} Опции
@@ -155,15 +174,9 @@ export class httpsClient {
     public constructor(url: string, options?: httpsClientOptions) {
         const { hostname, pathname, search, port, protocol } = new URL(url);
         let headers = options?.headers ?? {};
-        let reqOptions: RequestOptions = { method: options?.method ?? "GET", hostname, path: pathname + search, port, headers, body: options?.body, protocol: protocol }
 
-        //Добавляем User-Agent
-        if (options?.useragent) {
-            const { Agent, Version } = getUserAgent();
-
-            if (Agent) headers = { ...headers, "user-agent": Agent };
-            if (Version) headers = { ...headers, "sec-ch-ua-full-version": Version };
-        }
+        //Добавляем фейковые данные о клиенте
+        if (options?.useragent) headers = {...this.genUserAgent};
 
         //Добавляем куки
         if (options?.cookie) {
@@ -175,7 +188,12 @@ export class httpsClient {
         //Добавляем proxy connection
         if (options?.proxy && useProxy) this._proxy = true;
 
-        this._options = {...reqOptions, headers};
+        this._options = {
+            method: options?.method ?? "GET", hostname,
+            path: pathname + search, port, headers,
+            body: options?.body,
+            protocol: protocol
+        };
     };
 
 

@@ -56,4 +56,12 @@ export namespace Duration {
 
         return (fixed < 10) ? ("0" + fixed) : fixed;
     }
+
+    /**
+     * @description Получаем случайное число
+     * @param max {number} Макс число
+     */
+    export function randomNumber(max: number) {
+        return Math.floor(Math.random() * max);
+    }
 }

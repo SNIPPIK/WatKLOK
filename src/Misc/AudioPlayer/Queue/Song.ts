@@ -115,33 +115,33 @@ class Song extends Song_data {
     public get link() { return this._link; };
 
     /**
-     * @description Изменяем данные ссылки
-     */
-    private set link(link: string) { this._link = link; };
-
-    /**
      * @description Получаем ссылку на исходный ресурс
      */
-    public get resource() {
-        return new Promise<string>(async (resolve) => {
+    public get resource(): Promise<string | Error> {
+        return new Promise<string | Error>(async (resolve) => {
             if (Downloader) {
                 const info = Downloader.status(this);
                 if (info.status === "final") return resolve(info.path);
             }
 
-            //Проверяем ссылку на работоспособность, если 3 раза будет неудача ссылка будет удалена
-            for (let req = 0; req < 3; req++) {
-                if (!this.link) this.link = await APIs.resource(this);
-                else {
-                    const status: boolean = await new httpsClient(this.link, { method: "HEAD" }).status;
+            try {
+                //Проверяем ссылку на работоспособность, если 3 раза будет неудача ссылка будет удалена
+                for (let req = 0; req < 3; req++) {
+                    if (!this.link) this._link = await APIs.resource(this);
+                    else {
+                        const status: boolean = await new httpsClient(this.link, {method: "HEAD"}).status;
 
-                    if (status) break;
-                    else this.link = null;
+                        if (status) break;
+                        else this._link = null;
+                    }
                 }
-            }
 
-            if (Downloader && this.link?.length > 10) Downloader.push = this;
-            return resolve(this.link);
+                //Если нет ссылки
+                if (!this._link) return Error(`[SONG]: Fail update link resource`);
+
+                if (Downloader && this.link?.length > 10) Downloader.push = this;
+                return resolve(this.link);
+            } catch (e) { return Error(`[SONG]: ${e}`) }
         });
     };
 }

@@ -84,12 +84,10 @@ export class CollectionQueue extends Collection<string, Queue> {
         const queue = this.get(QueueID);
 
         queue.player
-
             //Что будет делать плеер если закончит играть
             .on("idle", () => {
-                //Определяем тип loop
                 if (queue?.songs) {
-                    const {loop} = queue.options;
+                    const {loop, random} = queue.options;
 
                     //Если не включен режим радио, или повтор не song
                     if (loop === "off" || loop === "songs") {
@@ -99,29 +97,25 @@ export class CollectionQueue extends Collection<string, Queue> {
                         //Если тип повтора треки, то добавляем по новой трек
                         if (loop === "songs") queue.songs.push(shiftSong);
                     }
+
+                    //Выбираем случайный номер трека, просто меняем их местами
+                    if (random) queue.swap = Math.floor(Math.random() * queue.songs.length);
                 }
 
-                //Выбираем случайный номер трека, просто меняем их местами
-                if (queue?.options?.random) queue.swap = Math.floor(Math.random() * queue.songs.length);
-
-                //Включаем трек
+                //Включаем трек через timeout
                 setTimeout(() => queue.play = 0, PlayerTimeout * 1e3);
             })
 
             //Если в плеере возникнет ошибка
-            .on("error", (err, skip) => {
+            .on("error", (err, crash): void => {
                 //Выводим сообщение об ошибке
                 PlayerMessage.toError(queue, err);
 
-                //Если пропускаем трек
-                if (skip) {
-                    queue.songs.shift();
-                    setTimeout(() => queue.play = 0, 5e3);
-                    return;
-                }
-
                 //Если возникает критическая ошибка
-                queue.emit("destroy");
+                if (crash) { queue.emit("destroy"); return; }
+
+                queue.songs.shift();
+                setTimeout(() => queue.play = 0, 5e3);
             });
     };
 
@@ -134,18 +128,10 @@ export class CollectionQueue extends Collection<string, Queue> {
         const queue = this.get(QueueID);
 
         queue
-
             //Если очередь надо удалить
             .once("destroy", () => {
                 //Чистим плеер
-                if (queue.player) {
-                    queue.player.removeAllListeners();
-                    //Выключаем плеер если сейчас играет трек
-                    queue.player.stop;
-
-                    //Удаляем ненужные данные
-                    queue.player.cleanup();
-                }
+                if (queue.player) queue.player.cleanup();
 
                 if (env.get("music.leave")) Voice.disconnect(queue.guild.id);
                 if (env.get("debug.player")) Logger.debug(`Queue: deleted for [${queue.guild.id}]`);

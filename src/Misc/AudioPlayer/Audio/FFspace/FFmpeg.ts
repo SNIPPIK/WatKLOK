@@ -84,7 +84,7 @@ export class FFmpeg extends Duplex {
         this._path = args.path.endsWith(".opus") ? fs.realpathSync(args.path) : args.path;
 
         //Создаем процесс
-        this._process = spawn(name, ["-vn", "-loglevel", "panic", ...this.arguments, "pipe:1"]);
+        this._process = spawn(name, ["-vn", "-loglevel", "panic", ...this.arguments, "pipe:1"], {killSignal: "SIGKILL"});
 
         this.std = {methods: ["write", "end"], target: this.stdin};
         this.std = {methods: ["read", "setEncoding", "pipe", "unpipe"], target: this.stdout};

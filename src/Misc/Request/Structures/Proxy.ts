@@ -1,4 +1,4 @@
-import {randomNumber} from "./Utils";
+import {Duration} from "@Util/Duration";
 import {Logger} from "@Logger";
 import * as https from "https";
 import * as http from "http";
@@ -15,7 +15,7 @@ export class httpsAgent {
      */
     private get proxy() {
         const proxyList = JSON.parse(fs.readFileSync(`Data/Json/Proxy.json`, {encoding: "utf-8"}));
-        const number = randomNumber(proxyList.length);
+        const number = Duration.randomNumber(proxyList.length);
 
         return proxyList[number];
     };

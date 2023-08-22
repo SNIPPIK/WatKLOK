@@ -154,35 +154,33 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
             }
         } catch (err) {
             //Если возникает ошибка, то выключаем плеер
-            this.emit("error", err, false);
+            this.emit("error", err, true);
         }
     };
 
 
     /**
      * @description Начинаем чтение стрима
-     * @param stream {OpusAudio} Поток который будет воспроизведен на сервере
      */
-    public set exportStreamPlayer(stream: OpusAudio) {
-        if (!stream) { this.emit("error", Error(`Stream is null`), true); return; }
-
-        //Если прочитать возможно
-        if (stream.readable) { this.state = stream; return; }
+    public set readStream(options: {path: string, filters: (string | number)[], seek: number}) {
+        const stream = new OpusAudio(options);
 
         stream.opus
-
-        //Включаем поток когда можно будет начать читать
-        .once("readable", () => { this.state = stream })
-
-        //Если происходит ошибка, то продолжаем читать этот же поток
-        .once("error", () => this.emit("error", Error("Fail read stream"), true));
-    };
+            //Если происходит ошибка, то продолжаем читать этот же поток
+            .once("error", () => this.emit("error", Error("Fail read stream"), false))
+            //Включаем поток когда можно будет начать читать
+            .once("readable", () => { this.state = stream });
+    }
 
 
     /**
      * @description Удаляем ненужные данные
      */
     public cleanup = () => {
+        this.removeAllListeners();
+        //Выключаем плеер если сейчас играет трек
+        this.stop;
+
         this._stream = null;
         this._status = null;
         this._connection = null;
@@ -200,7 +198,7 @@ interface PlayerEvents {
     idle: () => any;
 
     //Плеер получил ошибку
-    error: (error: Error, skipSong: boolean) => void;
+    error: (error: Error, crash: boolean) => void;
 
     //Плеер встал на паузу
     pause: () => any;
