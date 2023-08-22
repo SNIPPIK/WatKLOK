@@ -153,13 +153,13 @@ export class httpsClient {
      */
     private get genUserAgent() {
         const OS = UserAgents.os[Duration.randomNumber(UserAgents.os.length)];
-        const browser = UserAgents.browser[Duration.randomNumber(UserAgents.browser.length)];
+        const version = UserAgents.version[Duration.randomNumber(UserAgents.version.length)];
         const bit = `${OS.at(-3)}${OS.at(-2)}`;
 
         return {
-            "User-Agent": `Mozilla/5.0 ${OS} AppleWebKit/537.36 (KHTML, like Gecko) ${browser} Safari/537.36`,
-            "Sec-Ch-Ua-Full-Version": `${browser.split("/")[0]?.split(" ")[0]}`,
-            "Sec-Ch-Ua-Bitness": `${OS.at(-3)}${OS.at(-2)}`,
+            "User-Agent": `Mozilla/5.0 ${OS} AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version} Safari/537.36`,
+            "Sec-Ch-Ua-Full-Version": version,
+            "Sec-Ch-Ua-Bitness": `${bit}`,
             "Sec-Ch-Ua-Arch": bit === "64" ? "x86" : "x32",
             "Sec-Ch-Ua-Mobile": "?0"
         }
