@@ -100,19 +100,16 @@ export class CollectionQueue extends Map<string, Queue> {
     private set onPlayerEvents(QueueID: string) {
         const queue = this.get(QueueID);
 
-        queue.player
+       queue.player
             //Что будет делать плеер если закончит играть
             .on("idle", () => {
                 if (queue?.songs) {
                     const {loop, random} = queue.options;
 
-                    //Если не включен режим радио, или повтор не song
-                    if (loop === "off" || loop === "songs") {
-                        //Убираем текущий трек
-                        const shiftSong = queue.songs.shift();
-
-                        //Если тип повтора треки, то добавляем по новой трек
-                        if (loop === "songs") queue.songs.push(shiftSong);
+                    //Убираем текущий трек
+                    const removedSong = loop === "off" || loop === "songs" ? queue.songs.shift() : null;
+                    if (removedSong) {
+                        if (loop === "songs") queue.songs.push(removedSong);
                     }
 
                     //Выбираем случайный номер трека, просто меняем их местами
