@@ -1,6 +1,7 @@
 import {StageChannel, VoiceChannel} from "discord.js";
 import {AudioPlayer} from "../Audio/AudioPlayer";
 import {ClientMessage} from "@Client/Message";
+import {History} from "../Audio/History";
 import {PlayerMessage} from "../Message";
 import {TypedEmitter} from "@Emitter";
 import {Voice} from "@Util/Voice";
@@ -9,40 +10,20 @@ import {Song} from "./Song";
 import {env} from "@env";
 
 const timeDestroy = parseInt(env.get("music.queue.destroy"));
+export class Queue extends TypedEmitter<TimerEvents> {
+    private _player: AudioPlayer = new AudioPlayer();
+    private _timeout: NodeJS.Timeout = null;
 
-class QueueTimer extends TypedEmitter<TimerEvents> {
-    protected _timeout: NodeJS.Timeout = null;
-    /**
-     * @description Удаление очереди через время
-     * @param state {string} Что делать с очередью. Запуск таймера или отмена
-     * @constructor
-     */
-    public set state(state: "start" | "cancel" | "destroy") {
-        if (this._timeout) clearTimeout(this._timeout);
+    private _songs: Array<Song> = [];
+    private _filters: Array<string> | Array<string | number> = [];
 
-        if (state === "cancel" || state === "destroy") {
-            this.emit(state);
-            return;
-        }
-
-        //Запускаем таймер по истечению которого очереди будет удалена!
-        this._timeout = setTimeout(() => this.emit("destroy"), timeDestroy * 1e3);
-    };
-}
-
-class QueueBase extends QueueTimer {
-    protected _songs: Array<Song> = [];
-    protected _player: AudioPlayer = new AudioPlayer();
-    protected _filters: Array<string> | Array<string | number> = [];
-    protected _channel: { msg: ClientMessage, voice: VoiceChannel | StageChannel } = null;
-    protected _options: { random: boolean, loop: "song" | "songs" | "off", radioMode: boolean } = {
+    private _channel: { msg: ClientMessage, voice: VoiceChannel | StageChannel };
+    private _options = {
         random: false, //Рандомные треки (каждый раз в плеере будет играть разная музыка из очереди)
         loop: "off", //Тип повтора (off, song, songs)
         radioMode: false //Режим радио
     };
-}
-
-class QueueFunctions extends QueueBase {
+    public constructor(msg: ClientMessage, voice: VoiceChannel | StageChannel) { super(); this._channel = { msg, voice }; this.joinVoice = voice; };
     /**
      * @description Получаем все треки
      */
@@ -79,16 +60,13 @@ class QueueFunctions extends QueueBase {
     public get message() { return this._channel.msg; };
 
     /**
-     * @description Записываем сообщение в базу или удаляем его
+     * @description Записываем сообщение в базу или удаляем
      */
     public set message(message) {
-        //Если нет сообщения или канал нового и старого совпадают, то удаляем
-        if (!message && this._channel.msg?.delete) {
-            this._channel.msg.delete().catch(() => undefined);
-            return;
-        }
+        if (message) { this._channel.msg = message; return; }
 
-        this._channel.msg = message;
+        //Если нет сообщения или канал нового и старого совпадают, то удаляем
+        if (this._channel.msg && this._channel.msg?.deletable) this._channel.msg.delete().catch(() => undefined);
     };
 
     /**
@@ -111,39 +89,46 @@ class QueueFunctions extends QueueBase {
      * @param num {number} Если есть номер для замены
      */
     public set swap(num: number) {
-        if (this.songs.length === 1) { this.player.stop; return; }
+        if (this.songs.length > 1) {
+            const index = num ?? this.songs.length - 1;
 
-        const first = this.songs[0];
-        const position = num ?? this.songs.length - 1;
+            this.songs[0] = this.songs[index];
+            this.songs[index] = this.song;
+        }
 
-        this.songs[0] = this.songs[position];
-        this.songs[position] = first;
+        //Пропускаем текущий трек
         this.player.stop;
     };
-}
 
-/**
- * @description Часть отвечающая за callback
- */
-export class Queue extends QueueFunctions {
+
     /**
      * @description Создаем поток и передаем его в плеер
      */
     public set play(seek: number) {
-        //Если треков в очереди больше нет
-        if (!this.song) { this.emit("destroy"); return; }
+        if (this.song) {
+            this.song.resource.then((path) => {
+                if (path instanceof Error) this.player.emit("error", path, false);
 
-        //Отправляем сообщение с авто обновлением
-        if (seek === 0) PlayerMessage.toPlay(this);
-        this.song.resource.then((path) => {
-            if (path instanceof Error) { this.player.emit("error", path, false); return; }
+                //Отправляем данные в плеер для чтения если удалось получить ссылку или путь до файла
+                else {
+                    this.player.readStream = { path, seek, filters: this.song.options.isLive ? [] : this.filters };
 
-            //Отправляем данные в плеер для чтения
-            this.player.readStream = { path, seek, filters: this.song.options.isLive ? [] : this.filters };
-        });
+                    setImmediate(() => {
+                        if (seek === 0) {
+                            //Отправляем сообщение с авто обновлением
+                            PlayerMessage.toPlay(this);
 
-        //Если включен режим отладки показывает что сейчас играет и где
-        if (env.get("debug.player.audio")) Logger.debug(`Queue: Play: [${this.song.duration.full}] - [${this.song.author.title} - ${this.song.title}]`);
+                            //История треков сервера
+                            try { if (History.enable) new History(this.song, this.guild.id, this.song.platform).init; } catch (e) { Logger.error(e) }
+                        }
+                    });
+                }
+            });
+            return;
+        }
+
+        //Если нет треков, то удаляем очередь
+        this.emit("destroy");
     };
 
 
@@ -158,17 +143,20 @@ export class Queue extends QueueFunctions {
 
 
     /**
-     * @description Создаем очередь для сервера
-     * @param msg {ClientMessage} Сообщение с сервера
-     * @param voice {VoiceChannel | StageChannel} Голосовой канал
+     * @description Удаление очереди через время
+     * @param state {string} Что делать с очередью. Запуск таймера или отмена
+     * @constructor
      */
-    public constructor(msg: ClientMessage, voice: VoiceChannel | StageChannel) {
-        super();
-        this._channel = { msg, voice };
-        this.joinVoice = voice;
+    public set state(state: "start" | "cancel" | "destroy") {
+        if (this._timeout) clearTimeout(this._timeout);
+
+        //Запускаем таймер по истечению которого очереди будет удалена!
+        if (state === "start") this._timeout = setTimeout(() => this.emit("destroy"), timeDestroy * 1e3);
+
+        //Отправляем ивент в EventEmitter
+        this.emit(state);
     };
 }
-
 
 /**
  * @description Доступные ивенты

@@ -1,6 +1,6 @@
 import { BaseApplicationCommandOptionsData, PermissionResolvable, ApplicationCommandOptionType, EmbedData, ApplicationCommandOption } from "discord.js";
-import {ClientInteraction, ClientMessage} from "../../Handlers/Actions/Activity/interactionCreate";
-import {colors} from "../../Utils/Message";
+import {ClientInteraction, ClientMessage} from "@Client/Message";
+import {colors} from "@Util/Message";
 
 /**
  * @description Как выглядит команда
@@ -32,7 +32,7 @@ export abstract class Command {
             if (options[key] !== null) this[key] = options[key];
         });
     };
-    public readonly run: (message: ClientMessage | ClientInteraction, args?: string[]) => Promise<ResolveData> | ResolveData;
+    public readonly execute: (message: ClientMessage | ClientInteraction, args?: string[]) => Promise<ResolveData> | ResolveData;
 
     public readonly name: string = null;
     public readonly aliases: string[] = [];

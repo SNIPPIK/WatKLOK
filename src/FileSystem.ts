@@ -1,5 +1,5 @@
-import {Logger} from "@Logger";
 import {existsSync, readdirSync, readFileSync, writeFileSync, mkdirSync} from "fs";
+import {Logger} from "@Logger";
 import {env} from "@env";
 
 export class initDataDir<type> {

@@ -11,7 +11,7 @@ export default class extends Command {
         });
     };
 
-    public readonly run = (message: ClientMessage): ResolveData => {
+    public readonly execute = (message: ClientMessage): ResolveData => {
         const { author, guild, member, client } = message;
         const queue: Queue = client.queue.get(guild.id);
 

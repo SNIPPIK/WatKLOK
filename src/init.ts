@@ -6,8 +6,8 @@ import { Logger } from "@Logger";
 import {Command} from "@Command";
 import {API, APIs} from "@APIs";
 import {Action} from "@Action";
-import { env } from "@env";
 import {readdirSync} from "fs";
+import { env } from "@env";
 
 class init {
     /**
@@ -82,7 +82,7 @@ class init {
     private loadModules = (client: WatKLOK) => {
         //Загружаем команды
         new initDataDir<Command>("Handlers/Commands", (data) => {
-            if (!data.run || !data.name) return;
+            if (!data.execute || !data.name) return;
 
             client.commands.set(data.name, data);
         }).reading;
@@ -90,9 +90,9 @@ class init {
 
         //Загружаем ивенты
         new initDataDir<Action>("Handlers/Actions", (data) => {
-            if (!data.run || !data.name) return;
+            if (!data.execute || !data.name) return;
 
-            client.on(data.name as any, (...args) => data.run(...args, client));
+            client.on(data.name as any, (...args) => data.execute(...args, client));
         }).reading;
         Logger.log(`[Shard ${client.ID}] has initialize actions`);
     };

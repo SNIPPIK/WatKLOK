@@ -14,6 +14,25 @@ export class FFmpeg extends Duplex {
     protected _path: string    = null;
     protected _filters: string = null;
     protected _seek: number    = 0;
+    public constructor(args: {seek: number, path: string, filters: Filters}, options: DuplexOptions = {}) {
+        super({autoDestroy: true, objectMode: true, ...options});
+        this._seek = args.seek; this._filters = AudioFilters.getRealFilters(args?.filters, args?.seek);
+        this._path = args.path.endsWith(".opus") ? fs.realpathSync(args.path) : args.path;
+
+        //Создаем процесс
+        this._process = spawn(name, ["-vn", "-loglevel", "panic", ...this.arguments, "pipe:1"], {killSignal: "SIGKILL"});
+
+        this.std = {methods: ["write", "end"], target: this.stdin};
+        this.std = {methods: ["read", "setEncoding", "pipe", "unpipe"], target: this.stdout};
+        this.caller = ["on", "once", "removeListener", "removeAllListeners", "listeners"];
+
+        this.stderr.once("data", (d) => {
+            Logger.error(`[FFmpeg]: ${d.toString()}\nArg: ${this._process.spawnargs}`);
+        });
+
+        if (debug) Logger.debug(`AudioPlayer: spawn process FFmpeg`);
+    };
+
 
     /**
      * @description Данные выходящие из процесса
@@ -75,26 +94,6 @@ export class FFmpeg extends Duplex {
      */
     private set std(options: processIn | processOut) {
         for (const method of options.methods) this[method] = (options.target as any)[method].bind(options.target);
-    };
-
-
-    public constructor(args: {seek: number, path: string, filters: Filters}, options: DuplexOptions = {}) {
-        super({autoDestroy: true, objectMode: true, ...options});
-        this._seek = args.seek; this._filters = AudioFilters.getRealFilters(args?.filters, args?.seek);
-        this._path = args.path.endsWith(".opus") ? fs.realpathSync(args.path) : args.path;
-
-        //Создаем процесс
-        this._process = spawn(name, ["-vn", "-loglevel", "panic", ...this.arguments, "pipe:1"], {killSignal: "SIGKILL"});
-
-        this.std = {methods: ["write", "end"], target: this.stdin};
-        this.std = {methods: ["read", "setEncoding", "pipe", "unpipe"], target: this.stdout};
-        this.caller = ["on", "once", "removeListener", "removeAllListeners", "listeners"];
-
-        this.stderr.once("data", (d) => {
-            Logger.error(`[FFmpeg]: ${d.toString()}\nArg: ${this._process.spawnargs}`);
-        });
-
-        if (debug) Logger.debug(`AudioPlayer: spawn process FFmpeg`);
     };
 
 

@@ -9,6 +9,7 @@ import { ISong } from "../Queue/Song";
 import { env } from "@env";
 
 const CycleMessages = new Cycles_Messages();
+const MusicButtons = JSON.parse(env.get("buttons"));
 
 //Сообщения, которые отправляет плеер
 export namespace PlayerMessage {
@@ -62,17 +63,14 @@ export namespace PlayerMessage {
      */
     export function toPlay(queue: Queue) {
         const ChannelAction = new MessageAction<"toPlay">("toPlay");
-        const MusicButtons = JSON.parse(env.get("buttons"));
 
         ChannelAction.sendMessage = {
             channel: queue.message.channel,
             components: [new ActionRowBuilder().addComponents(
                 [
-                    new ButtonBuilder().setCustomId("last").setEmoji(MusicButtons[0]).setStyle(ButtonStyle.Secondary),
-                    new ButtonBuilder().setCustomId("resume_pause").setEmoji(MusicButtons[1]).setStyle(ButtonStyle.Secondary),
-                    new ButtonBuilder().setCustomId("skip").setEmoji(MusicButtons[2]).setStyle(ButtonStyle.Secondary),
-                    new ButtonBuilder().setCustomId("repeat").setEmoji(MusicButtons[3]).setStyle(ButtonStyle.Secondary)
-                ]
+                    new ButtonBuilder().setCustomId("last"), new ButtonBuilder().setCustomId("resume_pause"),
+                    new ButtonBuilder().setCustomId("skip"), new ButtonBuilder().setCustomId("repeat")
+                ].map((d, index) => d.setEmoji(MusicButtons[index]).setStyle(ButtonStyle.Secondary))
             )],
             embeds: [(new ChannelAction.embed(queue)).toJson],
             promise: (msg) => {
@@ -113,7 +111,7 @@ export namespace PlayerMessage {
 
                     if (id && id !== "stop") {
                         //Ищем команду и выполняем ее
-                        const command = client.commands.get("play").run(message, [id]);
+                        const command = client.commands.get("play").execute(message, [id]);
                         if (command) {
                             if ((command instanceof Promise)) command.then((d) => MessageUtils.send = {...d as any, message});
                             else MessageUtils.send = {...command as any, message};
@@ -124,7 +122,7 @@ export namespace PlayerMessage {
                     interaction?.deleteReply();
 
                     //Удаляем данные
-                    return clear();
+                    clear();
                 });
 
                 //Если пользователь нечего не выбрал, то удаляем сборщик и сообщение через 30 сек

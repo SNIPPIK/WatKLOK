@@ -1,5 +1,5 @@
-import {LifeCycle} from "../../Models/Abstracts/LifeCycle";
 import {AudioPlayer} from "@AudioPlayer/Audio/AudioPlayer";
+import {LifeCycle} from "@Cycles/Main";
 import {env} from "@env";
 
 /**
@@ -14,7 +14,7 @@ export class Cycles_Players extends LifeCycle<AudioPlayer> {
     /**
      * @description Проверяем можно ли отправить пакет в голосовой канал
      */
-    protected readonly _next = (player: AudioPlayer) => {
+    protected readonly _execute = (player: AudioPlayer) => {
         const status = player?.status;
 
         //Если статус (idle или pause или его нет) прекратить выполнение функции

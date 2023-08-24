@@ -38,7 +38,7 @@ export default class extends Command {
         });
     };
 
-    public readonly run = (message: ClientMessage, args: string[]): ResolveData => {
+    public readonly execute = (message: ClientMessage, args: string[]): ResolveData => {
         const { author, member, guild, client } = message;
         const queue: Queue = client.queue.get(guild.id);
 
@@ -97,7 +97,7 @@ export default class extends Command {
 
         //Если есть фильтр
         if (Filter) {
-            const isFilter = !!queue.filters.find((filter) => typeof Filter === "number" ? null : Filter.names.includes(filter));
+            const isFilter = !!queue.filters.find((filter) => typeof Filter === "number" ? null : Filter.names.includes(filter as any));
             const name = Filter.names[0];
 
             //Если фильтр есть в очереди
@@ -114,14 +114,14 @@ export default class extends Command {
                     queue.filters[index + 1] = arg;
                     queue.play = seek;
 
-                    return void (MessageUtils.send = { text: `${author.username} | Filter: ${name} был изменен аргумент на ${arg}!`, message, codeBlock: "css", color: "Green", replied: false });
+                    return void (MessageUtils.send = { text: `Filter: ${name} был изменен аргумент на ${arg}!`, message, codeBlock: "css", color: "Green", replied: false });
                     //Если пользователь не указал аргумент, значит его надо удалить
                 } else {
                     if (Filter.args) queue.filters.splice(index, 2); //Удаляем фильтр и аргумент
                     else queue.filters.splice(index, 1); //Удаляем только фильтр
 
                     queue.play = seek;
-                    return void (MessageUtils.send = { text: `${author.username} | Filter: ${name} отключен!`, color: "Green", message, codeBlock: "css", replied: false });
+                    return void (MessageUtils.send = { text: `Filter: ${name} отключен!`, color: "Green", message, codeBlock: "css", replied: false });
                 }
                 //Если фильтра нет в очереди, значит его надо добавить
             } else {

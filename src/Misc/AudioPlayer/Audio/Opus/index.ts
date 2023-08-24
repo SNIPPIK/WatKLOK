@@ -10,6 +10,33 @@ export class OpusAudio {
     private _ffmpeg: FFmpeg   = null;
     private _duration: number = 0;
     private _read: boolean    = false;
+    public constructor(options: {path: string, filters: Filters, seek: number}) {
+        this._ffmpeg = new FFmpeg(options);
+        this._ffmpeg.pipe(this.opus);
+
+        //Отслеживаем ивенты OggDemuxer'а
+        ["end", "close", "error"].forEach((event) => this.opus.once(event, () => {
+            this.cleanup();
+
+            if (env.get("debug.ffmpeg")) Logger.debug(`AudioPlayer: FFmpeg emit event ${event}`);
+            if (env.get("debug.player.audio")) Logger.debug(`AudioPlayer: OpusCompilation: emit event ${event}`);
+        }));
+
+        const durationFrame = AudioFilters.getDuration(options?.filters);
+
+        if (options.seek > 0) this._duration = options.seek * 1e3;
+        if (durationFrame > 0) this._durationFrame = durationFrame;
+
+        //Когда можно будет читать поток записываем его в <this._read>
+        this.opus.once("readable", () => (this._read = true));
+    };
+
+
+    /**
+     * @description Получаем время в секундах
+     */
+    public get duration(): number { return parseInt((this._duration / 1e3).toFixed(0)); };
+
 
     /**
      * @description Уничтожен ли поток
@@ -43,37 +70,8 @@ export class OpusAudio {
 
 
     /**
-     * @description Получаем время в секундах
+     * @description Удаляем данные из класса
      */
-    public get duration(): number {
-        const duration = (this._duration / 1e3).toFixed(0);
-
-        return parseInt(duration);
-    };
-
-
-    public constructor(options: {path: string, filters: Filters, seek: number}) {
-        this._ffmpeg = new FFmpeg(options);
-        this._ffmpeg.pipe(this.opus);
-
-        //Если будет вызван один из этих ивентов, то чистим ffmpeg, opusDecoder
-        ["end", "close", "error"].forEach((event) => this.opus.once(event, () => {
-            this._ffmpeg.destroy();
-            this.cleanup();
-
-            if (env.get("debug.ffmpeg")) Logger.debug(`AudioPlayer: FFmpeg emit event ${event}`);
-            if (env.get("debug.player.audio")) Logger.debug(`AudioPlayer: OpusCompilation: emit event ${event}`);
-        }));
-
-        const durationFrame = AudioFilters.getDuration(options?.filters);
-
-        if (options.seek > 0) this._duration = options.seek * 1e3;
-        if (durationFrame > 0) this._durationFrame = durationFrame;
-
-        //Когда можно будет читать поток записываем его в <this._read>
-        this.opus.once("readable", () => (this._read = true));
-    };
-
     public cleanup = () => {
         this._durationFrame = null;
         this._duration = null;
@@ -84,8 +82,9 @@ export class OpusAudio {
             this._opus.removeAllListeners();
             this._opus.destroy();
         }
-
-        this._ffmpeg = null;
         this._opus = null;
+
+        this._ffmpeg.destroy();
+        this._ffmpeg = null;
     };
 }

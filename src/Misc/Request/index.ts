@@ -12,16 +12,6 @@ const useProxy = env.get("APIs.proxy");
 const debug = env.get("debug.request");
 const CookieManager = new Cookie();
 
-/**
- * @description Варианты расшифровки
- */
-const decoderBase = {
-    "gzip": createGunzip,
-    "br": createBrotliDecompress,
-    "deflate": createDeflate
-};
-
-
 export class httpsClient {
     private _options: RequestOptions = null;
     private _proxy: boolean          = null;
@@ -90,11 +80,13 @@ export class httpsClient {
         return new Promise((resolve) => this.request.then((request) => {
             if (request instanceof Error) return resolve(request);
 
-            const encoding = request.headers["content-encoding"] as "br" | "gzip" | "deflate";
-            const decoder: Decoder | null = decoderBase[encoding] ? decoderBase[encoding]() : null;
-
-            if (!decoder) return resolve(extractPage(request));
-            return resolve(extractPage(request.pipe(decoder)));
+            const encoding = request.headers["content-encoding"];
+            switch (encoding) {
+                case "br": return resolve(extractPage(request.pipe(createBrotliDecompress())));
+                case "gzip": return resolve(extractPage(request.pipe(createGunzip())));
+                case "deflate": return resolve(extractPage(request.pipe(createDeflate())));
+                default: return resolve(extractPage(request));
+            }
         }));
     };
 

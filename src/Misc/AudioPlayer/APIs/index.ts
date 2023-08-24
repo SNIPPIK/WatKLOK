@@ -101,14 +101,15 @@ class initPlatform {
         let platform;
 
         try {
-            //Следуя какой аргумент ищем платформу
-            if (argument.startsWith("http")) platform = this.find((info) => !!argument.match(info.filter));
-            else platform = this.find((info) => info.name === argument || info.prefix && info.prefix.includes(argument.split(' ')[0].toLowerCase()));
+            if (argument.startsWith("http")) {
+                platform = this.find((info) => !!argument.match(info.filter));
 
-            //Если найти не удалось значит ставим YouTube
-            if (!platform) this._platform = "YOUTUBE";
-            else this._platform = platform.name;
-        } catch { this._platform = "YOUTUBE" }
+                if (!platform) platform = this.find((info) => info.name === "DISCORD");
+            } else platform = this.find((info) => info.name === argument || info.prefix && info.prefix.includes(argument.split(' ')[0].toLowerCase()));
+        } catch { this._platform = "YOUTUBE"; }
+
+        if (!platform) this._platform = "YOUTUBE";
+        else this._platform = platform.name;
     };
 }
 
@@ -147,19 +148,28 @@ class Finder extends initPlatform {
      * @description Получаем исходный файл музыки
      */
     public static resource = ({ platform, url, author, title, duration }: Song): Promise<string> => {
-        if (AudioPlatforms.includes(platform)) {
-            let track = this.searchTrack(`${author.title} ${title}`, duration.seconds);
-            if (!track) track = this.searchTrack(`${title}`, duration.seconds);
+        return new Promise<string>(async (resolve) => {
+            if (AudioPlatforms.includes(platform)) {
+                let track = this.searchTrack(`${author.title} ${title}`, duration.seconds);
+                if (!track) track = this.searchTrack(`${title}`, duration.seconds);
 
-            return track;
-        }
+                return resolve(track);
+            }
+            const callback = new APIs(platform).callback("track");
 
-        const callback = new APIs(platform).callback("track");
+            //Если нет такого запроса
+            if (callback) {
+                const track = await callback(url);
 
-        //Если нет такого запроса
-        if (!callback) return null;
+                //Если произошла ошибка при получении ссылки
+                if (track instanceof Error) return resolve(null);
 
-        return (callback(url) as Promise<ISong.track>).then((track) => track.format.url);
+                return resolve(track.format.url);
+            }
+
+            //Если нет такой платформы, это невозможно, но мало ли!
+            return resolve(null);
+        });
     };
 
 
@@ -219,7 +229,11 @@ class APIs extends Finder {
      * @description Получаем функцию в зависимости от типа платформы и запроса
      * @param type {callback} Тип запроса
      */
-    public callback = (type: callback) => {
+    callback (type: "track"): (url: string) => Promise<ISong.track | Error>;
+    callback (type: "search" | "artist"): (url: string) => Promise<ISong.track[] | Error>;
+    callback (type: "playlist" | "album"): (url: string) => Promise<ISong.playlist | Error>;
+    callback (type: callback): (url: string) => Promise<ISong.playlist | ISong.track[] | ISong.track | Error>;
+    callback(type: any): any {
         const callback = this.requests.find((data) => data.type === type);
 
         if (!callback) return null;

@@ -16,7 +16,7 @@ export default class extends Command {
         });
     };
 
-    public readonly run = (message: ClientMessage): ResolveData => {
+    public readonly execute = (message: ClientMessage): ResolveData => {
         const { author } = message;
 
         //Если история отключена

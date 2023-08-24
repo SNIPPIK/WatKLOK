@@ -17,7 +17,7 @@ const OwnerIDS: string[] = env.get("bot.owners").split(",") || [env.get("bot.own
 export default class extends Action {
     public readonly name = Events.InteractionCreate;
 
-    public readonly run = (message: ClientInteraction, client: WatKLOK): void => {
+    public readonly execute = (message: ClientInteraction, client: WatKLOK): void => {
         //Игнорируем ботов
         if ((message.user || message?.member?.user).bot) return;
 
@@ -38,7 +38,7 @@ export default class extends Action {
                     break;
                 }
                 case "skip": {
-                    message.client.commands.get("skip").run(message, ["1"]);
+                    message.client.commands.get("skip").execute(message, ["1"]);
                     break;
                 }
                 case "repeat": {
@@ -122,7 +122,7 @@ class Interaction {
         if (userPermissions) return void (this.ChannelSend = { text: `Внимание ${author.tag}\nУ тебя нет прав на: ${userPermissions}`, color: "DarkRed", codeBlock: "css" });
 
         //Передаем данные в команду
-        const runCommand = command.run(message, args ?? []);
+        const runCommand = command.execute(message, args ?? []);
 
         //Если есть что отправить на канал
         if (runCommand) {

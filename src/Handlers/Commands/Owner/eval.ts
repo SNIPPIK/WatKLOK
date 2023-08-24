@@ -20,7 +20,7 @@ export default class extends Command {
         });
     };
 
-    public readonly run = (message: ClientMessage, args: string[]): ResolveData => {
+    public readonly execute = (message: ClientMessage, args: string[]): ResolveData => {
         const userCode = args.join(" ");
         const TimeStart = new Date().getMilliseconds();
         const { client } = message;

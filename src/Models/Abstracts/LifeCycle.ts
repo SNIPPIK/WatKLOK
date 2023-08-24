@@ -1,5 +1,5 @@
-import {Logger} from "../../Misc/Logger";
-import {env} from "../../environment";
+import {Logger} from "@Logger";
+import {env} from "@env";
 
 const debug_cycle = env.get("debug.cycle");
 
@@ -7,7 +7,7 @@ export abstract class LifeCycle<T> {
     //Как фильтровать <T>
     protected readonly _filter?: (data: T, index?: number) => boolean;
     //Что надо выполнять
-    protected readonly _next: (data: T) => void | Promise<boolean>;
+    protected readonly _execute: (data: T) => void | Promise<boolean>;
     //Время через которое будет выполниться _next
     protected readonly duration: number = 5e3;
     protected readonly type: "multi" | "single" = "multi";
@@ -88,7 +88,7 @@ export abstract class LifeCycle<T> {
 
             try {
                 //Отправляем его потом, поскольку while слишком быстро работает, могут возникнуть проблемы с потерями пакетов
-                setImmediate(() => this._next(data));
+                setImmediate(() => this._execute(data));
             } catch (err) { this.removeErrorObject(err, data); }
         }
 
@@ -103,7 +103,7 @@ export abstract class LifeCycle<T> {
     private readonly CycleSingle = () => {
         const array = this._array?.shift();
 
-        (this._next(array) as Promise<boolean>).then(this.CycleStep).catch((err) => this.removeErrorObject(err, array));
+        (this._execute(array) as Promise<boolean>).then(this.CycleStep).catch((err) => this.removeErrorObject(err, array));
     };
 
 

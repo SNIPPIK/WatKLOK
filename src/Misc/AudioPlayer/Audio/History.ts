@@ -1,6 +1,6 @@
-import {ISong} from "@AudioPlayer/Queue/Song";
-import {env} from "@env";
 import {FileSystem} from "@Client/FileSystem";
+import {Song} from "@AudioPlayer/Queue/Song";
+import {env} from "@env";
 
 /**
  * @description История прослушиваний для серверов, только для серверов не для пользователей
@@ -8,7 +8,12 @@ import {FileSystem} from "@Client/FileSystem";
 export class History {
     private _guildID: string    = null;
     private _platform: string   = null;
-    private _track: ISong.track = null;
+    private _track: Song = null;
+    public constructor(track: Song, GuildID: string, platform: string) {
+        this._guildID = GuildID; this._track = track; this._platform = platform;
+    };
+
+
     /**
      * @description Проверяем работает ли история
      */
@@ -25,10 +30,6 @@ export class History {
      * @description Загружаем файл
      */
     private get file() { return FileSystem.getFile(this.path); };
-
-    public constructor(track: ISong.track, GuildID: string, platform: string) {
-        this._guildID = GuildID; this._track = track; this._platform = platform;
-    };
 
 
     /**

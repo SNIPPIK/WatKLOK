@@ -11,7 +11,7 @@ const debug = env.get("debug.client");
 export default class extends Action {
     public readonly name = Events.VoiceStateUpdate;
 
-    public readonly run = (oldState: VoiceState, newState: VoiceState, client: WatKLOK): void => {
+    public readonly execute = (oldState: VoiceState, newState: VoiceState, client: WatKLOK): void => {
         const queue: Queue = client.queue.get(newState.guild.id); //Очередь сервера
         const ChannelID = oldState?.channel?.id || newState?.channel?.id;
         const Guild = oldState.guild;

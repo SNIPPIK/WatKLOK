@@ -1,8 +1,8 @@
-import {LifeCycle} from "../../Models/Abstracts/LifeCycle";
-import {Song} from "@AudioPlayer/Queue/Song";
 import {createWriteStream, existsSync, mkdirSync, rename} from "fs";
-import {Logger} from "@Logger";
+import {Song} from "@AudioPlayer/Queue/Song";
+import {LifeCycle} from "@Cycles/Main";
 import {httpsClient} from "@Request";
+import {Logger} from "@Logger";
 import {env} from "@env";
 
 const debug = env.get("debug.player.cache");
@@ -42,7 +42,7 @@ export class DownloadManager extends LifeCycle<Song> {
      * @description Скачиваем трек
      * @param track {Song} Сам трек
      */
-    protected readonly _next = (track: Song) => {
+    protected readonly _execute = (track: Song) => {
         if (debug) Logger.debug(`[AudioPlayer]: [Download]: ${track.url}`);
 
         return new Promise<boolean>((resolve) => {

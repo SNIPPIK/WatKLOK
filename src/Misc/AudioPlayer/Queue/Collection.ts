@@ -1,4 +1,4 @@
-import {Collection, StageChannel, VoiceChannel} from "discord.js";
+import {StageChannel, VoiceChannel} from "discord.js";
 import {ClientMessage} from "@Client/Message";
 import {PlayerMessage} from "../Message";
 import {ISong, Song} from "./Song";
@@ -9,47 +9,64 @@ import {env} from "@env";
 
 const PlayerTimeout = parseInt(env.get("music.player.timeout"));
 
-export class CollectionQueue extends Collection<string, Queue> {
+export class CollectionQueue extends Map<string, Queue> {
     /**
      * @description Создаем очереди или добавляем в нее объект или объекты
      * @param options {message: ClientMessage, VoiceChannel: Voice.Channels, info: ISong.track | ISong.playlist} Параметры для создания очереди
      */
-    public set push(options: { message: ClientMessage, VoiceChannel: VoiceChannel | StageChannel, info: ISong.track | ISong.playlist }) {
+    public set push(options: { message: ClientMessage, VoiceChannel: VoiceChannel | StageChannel, info: ISong.track | ISong.playlist | ISong.track[], platform?: string }) {
         const { message, VoiceChannel, info } = options;
-        const queue = this.get(message.guild.id);
+
+        //Для поиска не нужно создавать очередь
+        if (info instanceof Array) {
+            PlayerMessage.toSearch(info, options.platform, message);
+            return;
+        }
 
         //Если нет очереди, то создаём
+        const queue = this.get(message.guild.id);
         if (!queue) this.addQueue = new Queue(message, VoiceChannel);
 
-        //Добавляем плейлист или трек в очередь
-        this.addTracks = { queueID: message.guild.id, info, author: message.author };
+        //1 трек
+        if ("duration" in info) {
+            this.addTrack = {queueID: message.guild.id, info: info, author: message.author};
+            return;
+        }
+        //Плейлист или альбом
+        else if ("items" in info) {
+            if (info.items.length === 1) this.addTrack = {queueID: message.guild.id, info: info.items.at(0), author: message.author};
+            else this.addTracks = { queueID: message.guild.id, info, author: message.author };
+        }
     };
 
 
     /**
-     * @description Добавляем трек или плейлист
+     * @description Добавляем трек в очередь
      * @param options {queueID: string, info: ISong.track | ISong.playlist} Параметры для добавления в очередь
      */
-    private set addTracks(options: { queueID: string, info: ISong.track | ISong.playlist, author: ClientMessage["author"] }) {
+    private set addTrack(options: { queueID: string, info: ISong.track, author: ClientMessage["author"] }) {
         const {queueID, info, author} = options;
         const queue = this.get(queueID);
 
-        if ("duration" in info) {
-            queue.songs.push(new Song(info, author));
+        queue.songs.push(new Song(info, author));
 
-            if (queue.songs.length > 1) PlayerMessage.toPush(queue);
-        } else {
-            if (info.items.length > 1) {
-                //Отправляем сообщение о том что плейлист будет добавлен в очередь
-                PlayerMessage.toPushPlaylist(queue.message, info);
+        //Если это не первый трек, то отправляем сообщение о том что было добавлено
+        if (queue.songs.length > 1) PlayerMessage.toPush(queue);
+    };
 
-                //Загружаем треки из плейлиста в очередь
-                for (let track of info.items) queue.songs.push(new Song(track, author));
-                return;
-            }
-            queue.songs.push(new Song(info?.items[0], author));
-            if (queue.songs.length > 1) PlayerMessage.toPush(queue);
-        }
+    /**
+     * @description Добавляем плейлист в очередь
+     * @param options {queueID: string, info: ISong.track | ISong.playlist} Параметры для добавления в очередь
+     */
+    private set addTracks(options: { queueID: string, info: ISong.playlist, author: ClientMessage["author"] }) {
+        const {queueID, info, author} = options;
+        const queue = this.get(queueID);
+
+        //Отправляем сообщение о том что плейлист будет добавлен в очередь
+        PlayerMessage.toPushPlaylist(queue.message, info);
+
+        //Загружаем треки из плейлиста в очередь
+        for (let track of info.items) queue.songs.push(new Song(track, author));
     };
 
 

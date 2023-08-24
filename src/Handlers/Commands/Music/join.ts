@@ -18,7 +18,7 @@ export default class extends Command {
         });
     };
 
-    public readonly run = (message: ClientMessage): ResolveData => {
+    public readonly execute = (message: ClientMessage): ResolveData => {
         const { author, member, guild, client } = message;
         const voiceChannel: VoiceChannel | StageChannel = member.voice.channel;
         const queue: Queue = client.queue.get(guild.id);
@@ -36,11 +36,11 @@ export default class extends Command {
             queue.message = message;
             queue.joinVoice = voiceChannel;
             queue.state = "cancel"; //Отменяем удаление очереди
-            return { text: `${author}, Переподключение к ${queue.voice}!`, color: "Yellow" };
+            return { text: `${author}, Переподключение к ${queue.voice}`, color: "Yellow" };
         }
 
         //Просто подключаемся к голосовому каналу
         Voice.join(voiceChannel);
-        return { text: `${author}, Подключение к ${voiceChannel}!`, color: "Yellow" };
+        return { text: `${author}, Подключение к ${voiceChannel}`, color: "Yellow" };
     };
 }

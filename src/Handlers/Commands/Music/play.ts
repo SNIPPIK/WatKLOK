@@ -1,16 +1,12 @@
-import { ApplicationCommandOptionType } from "discord.js";
-import {PlayerMessage} from "@AudioPlayer/Message";
-import {History} from "@AudioPlayer/Audio/History";
+import {ApplicationCommandOptionType} from "discord.js";
 import { ClientMessage } from "@Client/Message";
 import { Command, ResolveData } from "@Command";
-import {ISong} from "@AudioPlayer/Queue/Song";
 import {MessageUtils} from "@Util/Message";
 import {APIs} from "@APIs";
 import {env} from "@env";
-import {Logger} from "@Logger";
 
-const Info = env.get("music.info");
-const Warning = env.get("APIs.warning");
+const _musicInfo = env.get("music.info");
+const _APIs_warning = env.get("APIs.warning");
 
 export default class extends Command {
     public constructor() {
@@ -33,7 +29,7 @@ export default class extends Command {
         });
     };
 
-    public readonly run = (message: ClientMessage, args: string[]): ResolveData | Promise<ResolveData> => {
+    public readonly execute = (message: ClientMessage, args: string[]): ResolveData | Promise<ResolveData> => {
         const { author, member, guild, client } = message;
         const queue = client.queue.get(guild.id);
         const argument: string = args.join(" ");
@@ -51,55 +47,35 @@ export default class extends Command {
         //Если пользователь не указал аргумент
         if (!argument) return { text: `${author}, Укажи ссылку или название!`, color: "Yellow" };
 
-        try {
-            //Платформа с которой будем взаимодействовать
-            const platform = new APIs(argument);
+        //Платформа с которой будем взаимодействовать
+        const platform = new APIs(argument), platformLow = platform?.platform?.toLowerCase();
 
-            //Если нет такой платформы
-            if (!platform.platform) return void (MessageUtils.send = { text: `⚠️ Warning\n\nУ меня нет поддержки этой платформы!`, codeBlock: "css", color: "Yellow", message });
+        //Если нет поддержки платформы
+        if (!platform.platform) return { text: `⚠️ **Warning**\n\nУ меня нет поддержки этой платформы!`, codeBlock: "css", color: "Yellow" };
 
-            const platform_name = platform.platform.toLowerCase();
+        //Если нельзя получить данные с определенной платформы
+        if (platform.auth) return { text: `⚠️ **Warning** | **${platformLow}**\n\nНет данных для авторизации, запрос не может быть выполнен!`, color: "Yellow" };
 
-            //Если нельзя получить данные с определенной платформы
-            if (platform.auth) return void (MessageUtils.send = { text: `⚠️ Warning | [${platform_name}]\n\nНет данных для авторизации, запрос не может быть выполнен!`, codeBlock: "css", color: "Yellow", message });
+        const type = platform.type(argument);
+        const callback = platform.callback(type);
 
-            //Тип запроса
-            const type = platform.type(argument);
+        //Если нет поддержки запроса
+        if (!callback) return { text: `⚠️ **Warning** | **${platformLow}.${type}**\n\nУ меня нет поддержки этого запроса!`, color: "Yellow" };
 
-            //Ищем функцию, которая вернет данные или ошибку
-            const callback = platform.callback(type);
+        if (_musicInfo) {
+            let text = `⚠️ **Warning** | **${platformLow}.${type}**\n\nОжидание ответа от сервера...\n`;
+            if (platform.audio && _APIs_warning) text += `Эта платформа не может выдать исходный файл музыки!`;
 
-            //Если нет функции запроса
-            if (!callback) return void (MessageUtils.send = { text: `⚠️ Warning | [${platform_name}]\n\nУ меня нет поддержки этого запроса!`, codeBlock: "css", color: "Yellow", message });
-
-            //Если включено показывать запросы
-            if (Info) {
-                //Если у этой платформы нельзя получить исходный файл музыки, то сообщаем
-                if (platform.audio && Warning) MessageUtils.send = { text: `⚠️ Warning | [${platform_name}]\n\nЯ не могу получать исходные файлы музыки у этой платформы.`, color: "Yellow", codeBlock: "css", message };
-                //Отправляем сообщение о текущем запросе
-                else MessageUtils.send = { text: `${message.author}, производится запрос в **${platform_name}.${type}**`, color: "Grey", message };
-            }
-
-            //Вызываем функцию для получения данных
-            callback(platform.filterArgument(argument)).then((info): void => {
-                //Если данных нет
-                if (!info || info instanceof Error) return void (MessageUtils.send = { text: `⚠️ Warning | [${platform_name}.${type}]\n\nДанные не были получены!`, codeBlock: "css", color: "DarkRed", message });
-
-                //Если пользователь ищет трек и кол-во треков больше одного
-                if (info instanceof Array && info.length > 1) return PlayerMessage.toSearch(info, platform.platform, message);
-
-                const track = info instanceof Array ? info[0] : info;
-
-                //История треков сервера
-                try { if (History.enable) new History(track as ISong.track, message.guildId, platform_name).init; } catch (e) { Logger.error(e) }
-
-                //Загружаем трек или плейлист в Queue<GuildID>
-                client.queue.push = { message, VoiceChannel, info: track };
-            }).catch((err) => {
-                MessageUtils.send = { text: `⛔️ Error | [${platform_name}.${type}]\n\nПроизошла ошибка при получении данных!\n${err.message}`, color: "DarkRed", codeBlock: "css", message, replied: true }
-            });
-        } catch (e) {
-            return { text: `Произошла ошибка -> ${argument}\n${e}`, color: "DarkRed", codeBlock: "css" };
+            MessageUtils.send = { text: text, color: "Yellow", message };
         }
+
+        //Вызываем функцию для получения данных
+        callback(platform.filterArgument(argument))
+            .catch((err) => void (MessageUtils.send = { text: `⛔️ **Error** | **${platformLow}.${type}**\n\nПроизошла ошибка при получении данных!\n${err.message}`, color: "DarkRed", message, replied: true }))
+            .then((info): void => {
+                if (!info || info instanceof Error) return void (MessageUtils.send = { text: `⚠️ **Warning* | **${platformLow}.${type}**\n\nДанные не были получены!`, color: "DarkRed", message });
+
+                client.queue.push = { message, VoiceChannel, info };
+            });
     };
 }

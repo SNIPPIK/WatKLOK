@@ -8,5 +8,5 @@ export abstract class Action {
     public readonly name: Events;
 
     //Функция, которая будет запущена при вызове ивента
-    public readonly run: (...args: any) => void;
+    public readonly execute: (...args: any) => void;
 }

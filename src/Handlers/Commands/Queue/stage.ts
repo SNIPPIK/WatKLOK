@@ -32,7 +32,7 @@ export default class extends Command {
         });
     };
 
-    public readonly run = (message: ClientMessage, args: string[]): ResolveData | Promise<ResolveData> => {
+    public readonly execute = (message: ClientMessage, args: string[]): ResolveData | Promise<ResolveData> => {
         const { author, member, guild, client } = message;
         const voiceChannel = member?.voice?.channel;
         const queue = client.queue.get(guild.id);

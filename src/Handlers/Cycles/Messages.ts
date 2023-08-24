@@ -1,6 +1,6 @@
-import {LifeCycle} from "../../Models/Abstracts/LifeCycle";
 import {ClientMessage} from "@Client/Message";
 import {PlayersEmbeds} from "@Embeds/Player";
+import {LifeCycle} from "@Cycles/Main";
 import {Logger} from "@Logger";
 import {env} from "@env";
 
@@ -45,7 +45,7 @@ export class Cycles_Messages extends LifeCycle<ClientMessage> {
      * @description Обновляем сообщение
      * @param message {ClientMessage} Сообщение
      */
-    protected readonly _next = (message: ClientMessage) => {
+    protected readonly _execute = (message: ClientMessage) => {
         const {client, guild} = message;
         const queue = client.queue.get(guild.id);
 
