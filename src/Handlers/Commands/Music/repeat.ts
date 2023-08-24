@@ -55,29 +55,20 @@ export default class extends Command {
         if (queue.options.radioMode) return { text: `${author}, Невозможно из-за включенного режима радио!`, color: "Yellow" };
 
         const argument = args?.pop()?.toLowerCase();
-        let text = "";
 
-        //Если пользователь выключаем повтор
-        if (["off", "выкл"].includes(argument)) {
-            queue.options.loop = "off";
-            text = `❌ | Повтор выключен`;
-
-            //Если пользователь включаем повтор    
-        } else if (["on", "вкл"].includes(argument)) {
-            queue.options.loop = "songs";
-            text = `🔁 | Повтор всей музыки`;
-
-            //Если пользователь включает повтор трека    
-        } else if (["one", "1", "song"].includes(argument)) {
-            queue.options.loop = "song";
-            text = `🔂 | Повтор  | ${queue.songs[0].title}`;
-
-            //Если пользователь не указал аргумент
-        } else if (!argument) {
-            queue.options.loop = queue.options.loop !== "songs" ? "songs" : "off";
-            text = `🎶 | Повтор ${queue.options.loop}`;
+        switch (argument) {
+            case "song": {
+                queue.options.loop = "song";
+                return { text: `🔂 | Повтор  | ${queue.songs[0].title}`, codeBlock: "css"};
+            }
+            case "songs": {
+                queue.options.loop = "songs";
+                return { text: `🔁 | Повтор всей музыки`, codeBlock: "css"};
+            }
+            case "off": {
+                queue.options.loop = "off";
+                return { text: `❌ | Повтор выключен`, codeBlock: "css"};
+            }
         }
-
-        return { text, codeBlock: "css" };
     };
 }
