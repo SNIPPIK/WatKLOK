@@ -35,7 +35,7 @@ export default class extends Command {
                     },
                     {
                         name: "Статистика",
-                        value: `\`\`\`css\n• Platform   => ${process.platform}\n• Node       => ${process.version}\n\n• Servers    => ${client.guilds.cache.size}\n• Channels   => ${client.channels.cache.size}\n\n• Shards     => ${client?.shard?.ids?.length > 1 ? client.shard.ids.length : 1}\n\`\`\`\n`
+                        value: `\`\`\`css\n• Platform   => ${process.platform}\n• Node       => ${process.version}\n• Shards     => ${client?.shard?.ids?.length > 1 ? client.shard.ids.length : 1}\n\n• Servers    => ${client.guilds.cache.size}\n• Channels   => ${client.channels.cache.size}\`\`\`\n`
                     },
                     {
                         name: "Музыка",
@@ -46,7 +46,7 @@ export default class extends Command {
                     text: `Latency - ${(Date.now() - message.createdTimestamp < 0 ? Math.random() * 78 : Date.now() - message.createdTimestamp).toFixed(0)} | Api - ${(client.ws.ping < 0 ? Math.random() * 78 : client.ws.ping).toFixed(0)} | Uptime: ${Duration.toConverting(client.uptime / 1000)}`,
                     iconURL: client.user.displayAvatarURL()
                 }
-            }
+            }, lifeTime: 30e3
         }
     };
 }

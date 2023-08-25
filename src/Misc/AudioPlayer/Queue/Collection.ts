@@ -100,7 +100,7 @@ export class CollectionQueue extends Map<string, Queue> {
     private set onPlayerEvents(QueueID: string) {
         const queue = this.get(QueueID);
 
-       queue.player
+        queue.player
             //Что будет делать плеер если закончит играть
             .on("idle", () => {
                 if (queue?.songs) {

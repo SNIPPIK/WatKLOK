@@ -73,7 +73,7 @@ export default class extends Command {
         callback(platform.filterArgument(argument))
             .catch((err) => void (MessageUtils.send = { text: `⛔️ **Error** | **${platformLow}.${type}**\n\nПроизошла ошибка при получении данных!\n${err.message}`, color: "DarkRed", message, replied: true }))
             .then((info): void => {
-                if (!info || info instanceof Error) return void (MessageUtils.send = { text: `⚠️ **Warning* | **${platformLow}.${type}**\n\nДанные не были получены!`, color: "DarkRed", message });
+                if (!info || info instanceof Error) return void (MessageUtils.send = { text: `⚠️ **Warning** | **${platformLow}.${type}**\n\nДанные не были получены!`, color: "DarkRed", message });
 
                 client.queue.push = { message, VoiceChannel, info };
             });

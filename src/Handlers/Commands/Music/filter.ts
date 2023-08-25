@@ -109,7 +109,7 @@ export default class extends Command {
                     const isOkArgs = arg >= (Filter.args as number[])[0] && arg <= (Filter.args as number[])[1];
 
                     //Если аргументы не подходят
-                    if (!isOkArgs) return void (MessageUtils.send = { text: `${author.username} | Filter: ${name} не изменен из-за несоответствия аргументов!`, message, color: "Yellow", codeBlock: "css" });
+                    if (!isOkArgs) return void (MessageUtils.send = { text: `Filter: ${name} не изменен из-за несоответствия аргументов!`, message, color: "Yellow", codeBlock: "css" });
 
                     queue.filters[index + 1] = arg;
                     queue.play = seek;
@@ -131,13 +131,13 @@ export default class extends Command {
                     queue.filters.push(arg as any);
                     queue.play = seek;
 
-                    return void (MessageUtils.send = { text: `${author.username} | Filter: ${name}:${arg} включен!`, color: "Green", message, codeBlock: "css", replied: false });
+                    return void (MessageUtils.send = { text: `Filter: ${name}:${arg} включен!`, color: "Green", message, codeBlock: "css", replied: false });
                     //Если нет аргумента
                 } else {
                     queue.filters.push(name);
                     queue.play = seek;
 
-                    return void (MessageUtils.send = { text: `${author.username} | Filter: ${name} включен!`, color: "Green", message, codeBlock: "css", replied: false });
+                    return void (MessageUtils.send = { text: `Filter: ${name} включен!`, color: "Green", message, codeBlock: "css", replied: false });
                 }
             }
         }
