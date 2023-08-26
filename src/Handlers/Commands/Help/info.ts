@@ -22,6 +22,8 @@ export default class extends Command {
     public readonly execute = (message: ClientMessage): ResolveData => {
         const { client, guild } = message;
         const queue = client.queue;
+        const timeStamp = (Date.now() - message.createdTimestamp < 0 ? Math.random() * 78 : Date.now() - message.createdTimestamp).toFixed(0);
+        const timeAPi = (client.ws.ping < 0 ? Math.random() * 78 : client.ws.ping).toFixed(0);
 
         return {
             embed: {
@@ -43,7 +45,7 @@ export default class extends Command {
                     }
                 ],
                 footer: {
-                    text: `Latency - ${(Date.now() - message.createdTimestamp < 0 ? Math.random() * 78 : Date.now() - message.createdTimestamp).toFixed(0)} | Api - ${(client.ws.ping < 0 ? Math.random() * 78 : client.ws.ping).toFixed(0)} | Uptime: ${Duration.toConverting(client.uptime / 1000)}`,
+                    text: `Latency - ${timeStamp} | Api - ${timeAPi} | Uptime: ${Duration.toConverting(client.uptime / 1000)}`,
                     iconURL: client.user.displayAvatarURL()
                 }
             }, lifeTime: 30e3

@@ -6,8 +6,6 @@ import {Logger} from "@Logger";
 import {env} from "@env";
 
 const CyclePlayers = new Cycles_Players();
-const SkippedStatuses = ["read", "pause"];
-const UpdateMessage = ["read"];
 const Debug: boolean = env.get("debug.player");
 const AudioType = env.get("music.audio.type");
 
@@ -86,13 +84,33 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
     /**
      * @description Возможно ли сейчас пропустить трек
      */
-    public get hasSkipped() { return SkippedStatuses.includes(this.status); };
+    public get hasSkipped() {
+        return ["read", "pause"].includes(this.status);
+    };
 
 
     /**
      * @description Можно ли обновить сообщение
      */
-    public get hasUpdate() { return UpdateMessage.includes(this.status); };
+    public get hasUpdate() {
+        return ["read"].includes(this.status);
+    };
+
+
+    /**
+     * @description Проверяем можно ли читать плеер
+     */
+    public get hasPlayable() {
+        if (this.status === "idle" || !this.connection) return false;
+
+        //Если больше не читается, переходим в состояние Idle.
+        if (!this.stream.readable) {
+            this.state = "idle";
+            return false;
+        }
+
+        return true;
+    };
 
 
     /**
@@ -123,22 +141,6 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
 
 
     /**
-     * @description Проверяем можно ли читать плеер
-     */
-    public get hasPlayable() {
-        if (this.status === "idle" || !this.connection) return false;
-
-        //Если больше не читается, переходим в состояние Idle.
-        if (!this.stream.readable) {
-            this.state = "idle";
-            return false;
-        }
-
-        return true;
-    };
-
-
-    /**
      * @description Передача пакетов в голосовые каналы
      * @param packet {null} Пакет
      */
@@ -165,12 +167,17 @@ export class AudioPlayer extends TypedEmitter<PlayerEvents> {
     public set readStream(options: {path: string, filters: (string | number)[], seek: number}) {
         const stream = new OpusAudio(options);
 
-        stream.opus
-            //Если происходит ошибка, то продолжаем читать этот же поток
-            .once("error", () => this.emit("error", Error("Fail read stream"), false))
-            //Включаем поток когда можно будет начать читать
-            .once("readable", () => { this.state = stream });
-    }
+        if (!stream.readable) {
+            stream.opus
+                //Если происходит ошибка, то продолжаем читать этот же поток
+                .once("error", () => this.emit("error", Error("Fail read stream"), false))
+                //Включаем поток когда можно будет начать читать
+                .once("readable", () => { this.state = stream });
+            return;
+        }
+
+        this.state = stream;
+    };
 
 
     /**

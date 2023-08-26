@@ -19,7 +19,17 @@ export abstract class LifeCycle<T> {
     /**
      * @description Ищем элемент в очереди
      */
-    protected readonly find = (callback: (data: T) => boolean): T => this._array.find(callback);
+    protected find = (callback: (data: T) => boolean): T => this._array.find(callback);
+
+
+    /**
+     * @description Получаем время и тип цикла
+     */
+    protected get time() {
+        const sizes = ['ms', 'sec', 'min'];
+        const i = Math.floor(Math.log(this.duration) / Math.log(1000));
+        return `${this.type}/${this.duration / Math.pow(1000, i)} ${sizes[i]}`;
+    };
 
 
     /**
@@ -32,7 +42,7 @@ export abstract class LifeCycle<T> {
 
         //Запускаем цикл
         if (this._array.length === 1 && !this._timeout) {
-            if (debug_cycle) Logger.debug(`[Cycle]: [${this.type}/${this.duration}]: Start cycle`);
+            if (debug_cycle) Logger.debug(`[Cycle]: [${this.time}]: Start cycle`);
 
             this._time = Date.now();
             setImmediate(this.CycleStep);
@@ -56,7 +66,7 @@ export abstract class LifeCycle<T> {
     private readonly CycleStep = (): void => {
         //Если в базе больше нет плееров
         if (this._array.length === 0) {
-            if (debug_cycle) Logger.debug(`[Cycle]: [${this.type}/${this.duration}]: Stop cycle`);
+            if (debug_cycle) Logger.debug(`[Cycle]: [${this.time}]: Stop cycle`);
 
             //Если таймер еще работает, то удаляем его
             if (this._timeout) { clearTimeout(this._timeout); this._timeout = null; }
@@ -117,6 +127,6 @@ export abstract class LifeCycle<T> {
         this.remove = object;
 
         //Отправляем сообщение об ошибке
-        Logger.error(`[Cycle]: [${this.type}/${this.duration}]: Error in this._next\n${err}\nRemove 1 object in cycle!`);
+        Logger.error(`[Cycle]: [${this.time}]: Error in this._execute\n${err}\nRemove this object in cycle!`);
     };
 }

@@ -61,7 +61,7 @@ export class Cycles_Messages extends LifeCycle<ClientMessage> {
 
         message.edit({embeds: [new PlayersEmbeds.toPlay(queue).toJson as any], components: message.components}).catch((e) => {
             if (e.message === "Unknown Message") this.remove = message;
-            if (debug) Logger.debug(`[Cycle]: [${this.duration}]: [editMessage]: ${e.message}`);
+            if (debug) Logger.debug(`[Cycle]: [${this.time}]: [editMessage]: ${e.message}`);
         });
     };
 }

@@ -23,7 +23,7 @@ export default class extends Yandex implements API.list {
                 if (api instanceof Error) return reject(api);
                 else if (!api?.["duplicates"]?.length && !api?.["volumes"]?.length) return reject(Error("[APIs]: Я не нахожу треков в этом альбоме!"));
 
-                const AlbumImage = this.parseImage(api?.["ogImage"] ?? api?.["coverUri"]);
+                const AlbumImage = this.parseImage({image: api?.["ogImage"] ?? api?.["coverUri"]});
                 const tracks: ISong.track[] = (api["duplicates"] ?? api["volumes"])?.pop().splice(0, Limit);
                 const Author = await this.getAuthor(api["artists"][0]?.id);
 

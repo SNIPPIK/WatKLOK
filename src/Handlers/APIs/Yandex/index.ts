@@ -44,7 +44,7 @@ export default class Yandex {
                  if (!api || api instanceof Error) return resolve(Error("[APIs]: Not found links for track!"));
 
                  const track = api?.pop() ?? api;
-                 return new httpsClient(track.downloadInfoUrl).toXML.then((xml) => {
+                 return new httpsClient(track["downloadInfoUrl"]).toXML.then((xml) => {
                      if (xml instanceof Error) return resolve(xml);
 
                      const path = xml[1];
@@ -62,7 +62,7 @@ export default class Yandex {
      * @param image {string} Ссылка на картинку
      * @param size {number} Размер картинки
      */
-     protected parseImage = (image: string, size = 1e3) => {
+     protected parseImage = ({image, size = 1e3}: { image: string, size?: number }): {url: string, width?: number, height?: number} => {
          if (!image) return { url: "" };
 
          return {
@@ -90,7 +90,7 @@ export default class Yandex {
                 if (api?.error && api?.error?.name === "unknown") return resolve(null);
 
                 const author = api.artist;
-                const image = this.parseImage(author?.ogImage);
+                const image = this.parseImage({image: author?.["ogImage"]});
 
                 return resolve({ url: `https://music.yandex.ru/artist/${ID}`, title: author.name, image: image });//, isVerified: true
             } catch (e) { return null }
@@ -103,21 +103,21 @@ export default class Yandex {
      * @param track {any} Любой трек с Yandex Music
      */
     protected track(track: any): ISong.track {
-        const author = track.artists?.length ? track.artists?.pop() : track.artists;
-        const image = this.parseImage(track?.ogImage || track?.coverUri);
-        const album = track.albums?.length ? track.albums[0] : track.albums;
+        const author = track["artists"]?.length ? track["artists"]?.pop() : track["artists"];
+        const album = track["albums"]?.length ? track["albums"][0] : track["albums"];
         const title = `${track?.title ?? track?.name}` + (track.version ? ` - ${track.version}` : "");
+        const image = this.parseImage({image: track?.["ogImage"] || track?.["coverUri"]});
 
         return {
             title, image,
 
             url: `https://music.yandex.ru/album/${album.id}/track/${track.id}`,
-            duration: { seconds: (track.durationMs / 1000).toFixed(0) },
+            duration: { seconds: (track["durationMs"] / 1000).toFixed(0) },
 
             author: track.author ?? {
                 title: author?.name,
                 url: `https://music.yandex.ru/artist/${author.id}`,
-                image: { url: this.parseImage(author?.ogImage ?? author?.coverUri) }
+                image: this.parseImage({image: author?.["ogImage"] ?? author?.["coverUri"]})
             }
         };
     }
