@@ -3,7 +3,7 @@
 - Автор: [`SNIPPIK`](https://github.com/SNIPPIK)
 - Лицензия: [`MIT`](LICENSE.md)
 - Перейти к [`настройкам`](.env.dev)
-- Перейти к [`командам`](src/handlers/Commands), [`ивентам`](src/handlers/Events)
+- Перейти к [`командам`](src/handlers/Commands), [`ивентам`](src/handlers/Events) | Поддерживаться только /команды
 - Перейти к [`демонстрации`](https://www.youtube.com/playlist?list=PLrQkedRE9MFvchEkGvt-Tk5jqS5GiS8Kd)
 
 
