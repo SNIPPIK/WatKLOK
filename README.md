@@ -3,11 +3,12 @@
 - Автор: [`SNIPPIK`](https://github.com/SNIPPIK)
 - Лицензия: [`MIT`](LICENSE.md)
 - Перейти к [`настройкам`](.env.dev)
-- Перейти к [`командам`](src/handlers/Commands), [`ивентам`](src/handlers/Events) | Поддерживаться только /команды
+- Перейти к [`командам`](src/handlers/Commands), [`ивентам`](src/handlers/Events)
 - Перейти к [`демонстрации`](https://www.youtube.com/playlist?list=PLrQkedRE9MFvchEkGvt-Tk5jqS5GiS8Kd)
 
 
 ### Описание
+ - Поддерживаться только /команды 
  - Это не просто музыкальный бот, работающий на `ffmpeg`
  - Умеет кешировать аудио, по принципу [`http, https`](src/Misc/Request/index.ts)
  - Все сообщения удаляются через время
