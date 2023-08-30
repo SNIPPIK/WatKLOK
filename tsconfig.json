@@ -2,34 +2,35 @@
   "compilerOptions": {
     "paths": {
       //Циклы для работы некоторых элементов
-      "@Cycles/*": ["Handlers/Cycles/*"],
+      "@Cycles/*": ["handlers/Cycles/*"],
+      "@Cycles/Main": ["handlers/Structures/Abstracts/LifeCycle"],
 
       //Ивенты
-      "@Actions/*": ["Handlers/Actions/*"],
-      "@Action": ["Models/Abstracts/Action"],
+      "@Events/*": ["handlers/Events/*"],
+      "@Event": ["handlers/Structures/Abstracts/Event"],
 
       //Команды
       "@Commands/*": ["Handlers/Commands/*"],
-      "@Command": ["Models/Abstracts/Command"],
+      "@Command": ["handlers/Structures/Abstracts/Command"],
 
-      "@Embeds/*": ["Models/Embeds/*"],
+      "@Embeds/*": ["components/Embeds/*"],
 
       //Сами клиенты
-      "@Client": ["Models/Client/Shard"],
-      "@Client/ShardManager": ["Models/Client/ShardManager"],
-      "@Client/Message": ["Handlers/Actions/Activity/interactionCreate"],
+      "@Client": ["core/Shard"],
+      "@Client/ShardManager": ["core/ShardManager"],
+      "@Client/Message": ["handlers/Events/Activity/interactionCreate"],
       "@Client/FileSystem": ["FileSystem"],
 
       //Музыка
-      "@APIs": ["Misc/AudioPlayer/APIs/index"],
-      "@AudioPlayer/*": ["Misc/AudioPlayer/*"],
+      "@APIs": ["handlers/APIs"],
+      "@AudioPlayer/*": ["structures/AudioPlayer/*"],
 
       //Прочее
-      "@Request": ["Misc/Request/index"],
-      "@Logger": ["Misc/Logger/index"],
-      "@Emitter": ["Models/Emitter/index"],
-      "@Json/*": ["Handlers/JSON/*"],
-      "@Util/*": ["Utils/*"],
+      "@Request": ["structures/Request/index"],
+      "@Logger": ["structures/Logger/index"],
+      "@Emitter": ["structures/EventEmitter/index"],
+      "@Json/*": ["handlers/JSON/*"],
+      "@Util/*": ["utils/*"],
       "@env": ["environment"]
     },
     "baseUrl": "./src",
@@ -61,9 +62,6 @@
     "importHelpers": false,              // Имортировать созданные хелперы (__extends, __rest и так далее) из "tslib".
     "noImplicitAny": true                // Запрет на использование any
   },
-  "include": [
-    "src", "Data",
-    "package.json", "tsconfig.json"
-  ],
+  "include": ["src", "package.json", "tsconfig.json"],
   "exclude": ["node_modules"]
 }

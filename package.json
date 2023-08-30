@@ -1,11 +1,11 @@
 {
   "name": "watklok",
-  "version": "3.4.0",
+  "version": "4.0.0",
   "description": "Music discord bot",
   "dependencies": {
     "@discordjs/voice": "^0.16.0",
     "bufferutil": "^4.0.7",
-    "discord.js": "14.13.0",
+    "discord.js": "^14.13.0",
     "dotenv": "^16.0.3",
     "sodium-native": "^4.0.4",
     "utf-8-validate": "^6.0.3"
@@ -16,8 +16,9 @@
     "typescript": "^5.2.2"
   },
   "scripts": {
-    "start": "cd .Build && node -r tsconfig-paths/register src/init.js",
-    "shard": "cd .Build && node -r tsconfig-paths/register src/init.js --sharder",
-    "build": "tsc -p tsconfig.json"
+    "start": "cd .Build && node -r tsconfig-paths/register src/app.js",
+    "shard": "cd .Build && node -r tsconfig-paths/register src/app.js --ShardManager",
+    "build": "tsc -p tsconfig.json",
+    "build:watch": "tsc -p tsconfig.json -watch"
   }
 }

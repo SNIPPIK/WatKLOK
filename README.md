@@ -3,7 +3,7 @@
 - Автор: [`SNIPPIK`](https://github.com/SNIPPIK)
 - Лицензия: [`MIT`](LICENSE.md)
 - Перейти к [`настройкам`](.env.dev)
-- Перейти к [`командам`](src/Handlers/Commands), [`ивентам`](src/Handlers/Actions)
+- Перейти к [`командам`](src/handlers/Commands), [`ивентам`](src/handlers/Events)
 - Перейти к [`демонстрации`](https://www.youtube.com/playlist?list=PLrQkedRE9MFvchEkGvt-Tk5jqS5GiS8Kd)
 
 
@@ -19,7 +19,7 @@
 
 ## <a name="run"></a> Как запустить
 1. Скачать и установить [`Node.js`](https://nodejs.org/ru/)
-2. Установить [`FFmpeg и FFprobe`](https://github.com/BtbN/FFmpeg-Builds/releases), рекомендуемая версия `6.0`
+2. Установить [`FFmpeg и FFprobe`](https://github.com/BtbN/FFmpeg-Builds/releases)
    - В зависимости от платформы
       - `Windows` | Скачать [`FFmpeg`](https://ffmpeg.org/) и распаковать в любое место
       - `Linux` | sudo apt install ffmpeg
@@ -29,28 +29,32 @@
 4. Открыть только что созданную [`папку`](.Build)
 5. Если нет .env файла, то надо создать [`файл`](.env.dev)
 6. Варианты запуска
-   - Если серверов не более 1к, то `npm run start`
-   - Если серверов более 1к, то `npm run shard`
+   - Для запуска одного осколка, то `npm run start`
+   - Для запуска менеджера осколков, то `npm run shard`
 
 
 
 
-## <a name="APIS"></a> [`APIs`](src/Handlers/APIs)
-- Является директорией с запросами
-- Можно добавить свою поддержку любой платформы используя примеры
-- Для загрузки необходимо добавить в [`API index`](src/Misc/AudioPlayer/APIs/index.ts)
-- Примеры можно найти [`тут`](src/Handlers/APIs)
+## <a name="APIS"></a> [`APIs`](src/handlers/APIs)
+- Можно добавить свою поддержку любой платформы используя [`примеры`](src/handlers/APIs)
+- Для загрузки необходимо добавить в [`APIs`](src/handlers/APIs.ts)
+- Доступные платформы [`Yandex music`](https://music.yandex.ru),[`YouTube`](https://youtube.com),[`Spotify`](https://open.spotify.com),[`VK`](https://vk.com),[`Discord`](https://discord.com)
+- По умолчанию поддерживаются запросы, лимиты на кол-во объектов редактируются в [`env`](.env.dev)
+  - `track` - Получение одного элемента
+  - `search` - Глобальный поиск треков
+  - `artist` - Получение списка треков от автора
+  - `album` or `playlist` - Получение списка треков
 
 
 
 
 
-## <a name="AudioPlayer"></a> [`AudioPlayer`](src/Misc/AudioPlayer)
+## <a name="AudioPlayer"></a> [`AudioPlayer`](src/structures/AudioPlayer)
   - Является частичным fork'ом [`@discordjs/voice`](https://www.npmjs.com/package/@discordjs/voice)
   - Музыка работает через `FFmpeg` конвертируется в `opus`
   - Используется [`SodiumLib`](#sodium-libs)
-  - Присутствует поддержка фильтров через `FFmpeg`, добавляются в [`Filters`](src/Handlers/JSON/Filters.json)
-  - Все `EMBED` сообщения хранятся [`здесь`](src/Models/Embeds)
+  - Присутствует поддержка фильтров через `FFmpeg`, добавляются в [`Filters`](src/handlers/JSON/Filters.json)
+  - Все `EMBED` сообщения хранятся [`здесь`](src/components/Embeds)
   - Доступна история прослушиваний | только для треков которые начали играть
 
 
