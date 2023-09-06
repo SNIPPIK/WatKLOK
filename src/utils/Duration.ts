@@ -37,13 +37,12 @@ export const Duration = new class parseDuration {
     public parseDuration(duration: number): string;
     public parseDuration(duration: string): number;
     public parseDuration(duration: number | string): any {
-        if (typeof duration === "number") {
-            let time = [duration / ((60 * 60) * 24) % 24, duration / (60 * 60) % 24, (duration / 60) % 60, duration % 60].filter(dur => dur >= 1).map(this.toSplit);
-
-            if (time.length === 0) return "00:00";
-            else if (time.length === 1) return `00:${time[0]}`;
-            return time.join(":");
-        }
+        if (typeof duration === "number") return [duration / ((60 * 60) * 24) % 24, duration / (60 * 60) % 24, (duration / 60) % 60, duration % 60].map(this.toSplit).filter((time, index, array) => {
+            if (index === 3 || index == 2) return true;
+            else if (index == 1 && array[0] !== "00") return true;
+            else if (index == 0 && array[1] !== "00") return true;
+            return false;
+        }).join(":");
 
         let time = duration.split(":").map(parseInt);
         switch (time.length) {
