@@ -111,7 +111,7 @@ export namespace PlayerMessage {
 
                     if (id && id !== "stop") {
                         //Ищем команду и выполняем ее
-                        const command = client.commands.get("play").execute(message, [id]);
+                        const command = client.commands.get("play").execute(message, [platform, id]);
                         if (command) {
                             if ((command instanceof Promise)) command.then((d) => MessageUtils.send = {...d as any, message});
                             else MessageUtils.send = {...command as any, message};
