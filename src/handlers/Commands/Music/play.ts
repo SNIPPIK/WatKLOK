@@ -55,7 +55,7 @@ export default class extends Command {
         };
 
         //Платформа с которой будем взаимодействовать
-        const platform = new APIs(args[0]), platformLow = platform?.platform?.toLowerCase();
+        const platform = new APIs(args[0] ?? args[1]), platformLow = platform?.platform?.toLowerCase();
 
         //Если нет поддержки платформы
         if (!platform.platform) return { text: `⚠️ **Warning**\n\nУ меня нет поддержки этой платформы!`, codeBlock: "css", color: "Yellow" };
