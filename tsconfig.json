@@ -1,67 +1,49 @@
 {
-  "compilerOptions": {
-    "paths": {
-      //Циклы для работы некоторых элементов
-      "@Cycles/*": ["handlers/Cycles/*"],
-      "@Cycles/Main": ["handlers/Structures/Abstracts/LifeCycle"],
-
-      //Ивенты
-      "@Events/*": ["handlers/Events/*"],
-      "@Event": ["handlers/Structures/Abstracts/Event"],
-
-      //Команды
-      "@Commands/*": ["Handlers/Commands/*"],
-      "@Command": ["handlers/Structures/Abstracts/Command"],
-
-      "@Embeds/*": ["components/Embeds/*"],
-
-      //Сами клиенты
-      "@Client": ["core/Shard"],
-      "@Client/ShardManager": ["core/ShardManager"],
-      "@Client/Message": ["handlers/Events/Activity/interactionCreate"],
-      "@Client/FileSystem": ["FileSystem"],
-
-      //Музыка
-      "@APIs": ["handlers/APIs"],
-      "@AudioPlayer/*": ["structures/AudioPlayer/*"],
-
-      //Прочее
-      "@Request": ["structures/Request/index"],
-      "@Logger": ["structures/Logger/index"],
-      "@Emitter": ["structures/EventEmitter/index"],
-      "@Json/*": ["handlers/JSON/*"],
-      "@Util/*": ["utils/*"],
-      "@env": ["environment"]
-    },
-    "baseUrl": "./src",
-    // Основные настройки.
+  "compilerOptions": {  // Параметры компилятора
     "module": "CommonJS",
-    "moduleResolution": "Node",
-    "outDir": ".Build",
-    "alwaysStrict": true,
-    "sourceMap": false,
-    "target": "ES2022",
+    "target": "ESNext",
+    "moduleResolution": "node",
 
-    // Дополнительные настройки.
-    "declaration": false,                // Создать ли ".d.ts" файлы
-    "esModuleInterop": true,             // Создать хелперы __importStar и __importDefault для обеспечения совместимости с экосистемой Babel и включить allowSyntheticDefaultImports для совместимости с системой типов.
-    "listFiles": false,                  // Печатать ли имена файлов при компиляции?
-    "listEmittedFiles": true,            // Печатать список всех выходных файлов при компиляции. Требуется TypeScript версии 2.0 или новее.
-    "skipLibCheck": true,                // Не проверять типы, заданные во всех файлах описания типов (*.d.ts)?
-    "traceResolution": false,            // Выводить в логи сообщения о нахождении путей до модулей.
-    "resolveJsonModule": true,           // Не проверять Json файлы
-    "removeComments": true,              // Удалить все комментарии из итогового файла.
-    "noEmitHelpers": false,              // Отключить создание пользовательских вспомогательных функций, таких как `__extends` в скомпилированном выводе
+    "baseUrl": "src",
+    "outDir": "node_build",
 
-    // Вспомогательные настройки.
-    "noFallthroughCasesInSwitch": true,  // Сообщить об ошибке в случае обнаружения проваливания в конструкции switch-case?
-    "noImplicitReturns": false,          // Сообщить об ошибке, когда не все пути кода в функции возвращают значение?
-    "strictNullChecks": false,           // Значения "null" и "undefined" могут быть присвоены только значениям данного типа
-    "allowUnreachableCode": true,        // Сообщить об ошибке в случае обнаружения кода, который никогда не будет выполнен?
-    "noImplicitThis": true,              // Показывать ошибку на "this", если где-то задан тип "any".
-    "importHelpers": false,              // Имортировать созданные хелперы (__extends, __rest и так далее) из "tslib".
-    "noImplicitAny": true                // Запрет на использование any
+    // Настройки компиляции в JavaScript
+    "alwaysStrict": true,           // Все файлы ".js" будут иметь "use strict"
+    "sourceMap": false,             // Создавать ".js.map" файлы
+    "resolveJsonModule": true,      // Игнорировать импорт ".json" файлы
+
+    "declaration": false,           // Создать ".d.ts" файлы
+    "skipLibCheck": true,           // Не проверять типы
+    "listFiles": false,             // Печатать имена файлов
+    "listEmittedFiles": true,       // Печатать список всех выходных файлов
+    "removeComments": true,         // Удалить все комментарии
+
+    "esModuleInterop": true,        // Создать хелперы __importStar и __importDefault
+    "importHelpers": false,         // Импортировать хелперы (__extends, __rest и так далее) из "tslib"
+    "noEmitHelpers": false,         // Отключить создание пользовательских вспомогательных функций, таких как `__extends` в скомпилированном выводе
+
+    // Дополнительные настройки компилятора
+    "noFallthroughCasesInSwitch": true,     // Сообщить об ошибке в случае обнаружения проваливания в конструкции switch-case?
+    "noImplicitReturns": false,             // Сообщить об ошибке, когда не все пути кода в функции возвращают значение?
+    "strictNullChecks": false,              // Значения "null" и "undefined" могут быть присвоены только значениям данного типа
+    "allowUnreachableCode": true,           // Сообщить об ошибке в случае обнаружения кода, который никогда не будет выполнен?
+    "noImplicitThis": false,                // Показывать ошибку на "this", если где-то задан тип "any".
+    "noImplicitAny": false,                 // Запрет на "any"
+    "noUnusedParameters": true,             // Вызов ошибки, когда параметр функции не читается
+
+    //Сокращения
+    "paths": {
+      "@env": ["./environment"],
+      "@handler/*": ["./Handler/*"], "@handler": ["./Handler/index"],
+      "@components/*": ["./Components/*"]
+    }
   },
-  "include": ["src", "package.json", "tsconfig.json"],
-  "exclude": ["node_modules"]
+
+  "include": [ // Включить в сборку
+    "src", "package.json", "tsconfig.json"
+  ],
+
+  "exclude": [ //Исключить из сборки
+    "node_modules"
+  ]
 }
