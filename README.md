@@ -6,7 +6,6 @@
 ### Описание
 - Поддерживаться только /команды
 - Возможно это лучший музыкальный бот?
-- Умеет кешировать аудио, по принципу [`http, https`](src/Components/Request/index.ts)
 - Умеет сохранять историю прослушиваний треков
 - Все сообщения удаляются через время
 - Не используется [`Lavalink`](https://github.com/lavalink-devs/Lavalink) | [`Lavaplayer`](https://github.com/sedmelluq/lavaplayer) | [`YouTube-DL`](https://youtube-dl.org/)
