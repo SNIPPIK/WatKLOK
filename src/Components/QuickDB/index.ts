@@ -79,7 +79,7 @@ class Music {
      */
     public get gettingFilters(): Promise<Error | true> {
         return new Promise<Error | true>(async (resolve, reject) => {
-            const raw = await new httpsClient("https://raw.githubusercontent.com/SNIPPIK/WatKLOK/main/src/handlers/JSON/Filters.json", {useragent: true}).toJson;
+            const raw = await new httpsClient(env.get("filters.url") {useragent: true}).toJson;
 
             if (raw instanceof Error) return reject(raw);
             this._filters.push(...raw);
