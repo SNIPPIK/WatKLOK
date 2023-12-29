@@ -1,4 +1,4 @@
-uni[<img align="right" alt="Avatar" width="350px" src="https://media.discordapp.net/attachments/1066636694142595143/1155519865180930138/R_O_X_v2.1.png?width=619&height=619" />]()
+[<img align="right" alt="Avatar" width="350px" src="https://media.discordapp.net/attachments/1066636694142595143/1155519865180930138/R_O_X_v2.1.png?width=619&height=619" />]()
 
 # [`WatKLOK`](https://github.com/SNIPPIK/WatKLOK)
 - Автор: [`SNIPPIK`](https://github.com/SNIPPIK)
