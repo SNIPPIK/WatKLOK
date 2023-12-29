@@ -1,4 +1,4 @@
-[<img align="right" alt="Avatar" width="350px" src="https://media.discordapp.net/attachments/1066636694142595143/1155519865180930138/R_O_X_v2.1.png?width=619&height=619" />]()
+uni[<img align="right" alt="Avatar" width="350px" src="https://media.discordapp.net/attachments/1066636694142595143/1155519865180930138/R_O_X_v2.1.png?width=619&height=619" />]()
 
 # [`WatKLOK`](https://github.com/SNIPPIK/WatKLOK)
 - Автор: [`SNIPPIK`](https://github.com/SNIPPIK)
@@ -19,9 +19,8 @@
 2. Установить [`FFmpeg и FFprobe`](https://github.com/BtbN/FFmpeg-Builds/releases)
    - В зависимости от платформы
       - `Windows` | Скачать [`FFmpeg`](https://ffmpeg.org/) и распаковать в любое место
-      - `Linux` | sudo apt install ffmpeg
+      - `Linux` | sudo (apt install or pacman -S) ffmpeg
    - Указать `ffmpeg.path` и `ffprobe.path` в [`env`](.env)
-3. Запуск бота
-   - В зависимости от платформы
-     - `Windows` | Запустить ROX.bat
-     - `Other` | npm run build, потом npm run shard
+3. Запуск бота 
+   - Записать данные в .env
+   - npm run build, потом npm run shard
