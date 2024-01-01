@@ -76,15 +76,16 @@ class ProgressBar {
     public get bar(): string {
         const size = this._size, current = this._current, max = this._max;
         const progressZ = Math.round(size * (isNaN(current) ? 0 : current / max));
-        let progress: string;
+        let progress: string = "";
 
         //Начало показа дорожки
         if (current > 0) progress += `${local_db.ne_left}`;
-        else progress = `${local_db.e_left}`;
+        else progress += `${local_db.e_left}`;
 
         //Середина дорожки + точка
-        if (current === 0 || current === max) progress = `${local_db.ne_center.repeat(progressZ)}${local_db.e_center.repeat((size + 1) - progressZ)}`;
-        else progress = `${local_db.ne_center.repeat(progressZ)}${local_db.bottom}${local_db.e_center.repeat(size - progressZ)}`;
+        if (current === 0) progress += `${local_db.ne_center.repeat(progressZ)}${local_db.e_center.repeat((size + 1) - progressZ)}`;
+        else if (current >= max) progress += `${local_db.ne_center.repeat(size)}`;
+        else progress += `${local_db.ne_center.repeat(progressZ)}${local_db.bottom}${local_db.e_center.repeat(size - progressZ)}`;
 
         //Конец дорожки
         if (current >= max) progress += `${local_db.ne_right}`;
