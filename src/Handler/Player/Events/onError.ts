@@ -1,6 +1,5 @@
 import {ArrayQueue} from "@Client/Audio/Queue/Queue";
 import toError from "@handler/Player/Messages/toError";
-
 import {db} from "@Client/db";
 
 export default class {

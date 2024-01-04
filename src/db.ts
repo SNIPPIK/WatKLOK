@@ -16,10 +16,7 @@ export const db = new class QuickDB {
      * @return Commands
      * @public
      */
-    public get commands() {
-        return this._commands;
-    };
-
+    public get commands() { return this._commands; };
     private readonly _commands = new Commands();
 
 
@@ -28,10 +25,7 @@ export const db = new class QuickDB {
      * @return Music
      * @public
      */
-    public get music() {
-        return this._music;
-    };
-
+    public get music() { return this._music; };
     private readonly _music = new db_Music();
 
 

@@ -14,7 +14,6 @@ import toPlay from "@handler/Player/Messages/toPlay";
 import toPush from "@handler/Player/Messages/toPush";
 import {db} from "@Client/db";
 import {ActionMessage} from "@Client";
-
 /**
  * @author SNIPPIK
  * @description Локальная база с данными
@@ -28,7 +27,6 @@ const _events = ["onWait", "onStart", "onError"].map((file) => {
 
     return new importFile[keysFile[0]];
 });
-
 
 
 /**
@@ -154,6 +152,119 @@ abstract class ArrayCollection {
 }
 
 
+/**
+ * @author SNIPPIK
+ * @description База с циклами для дальнейшей работы этот класс надо подключить к другому
+ * @class ArrayCycle
+ */
+abstract class ArrayCycle<T = unknown> {
+    protected readonly _array?: T[] = [];
+    protected _time?: number = 0;
+    protected _asyncStep?: () => void;
+    /**
+     * @description Добавляем элемент в очередь
+     * @param data {any} Сам элемент
+     * @public
+     */
+    public push? = (data: T) => {
+        if ("guild" in (data as ClientMessage)) {
+            const old: T = this._array.find(msg => (msg as ClientMessage).guild.id === (data as ClientMessage).guild.id);
+
+            //Если это-же сообщение есть в базе, то нечего не делаем
+            if (old) this.remove(old);
+        } else if (this._array.includes(data)) this.remove(data);
+        this._array.push(data);
+
+        //Запускаем цикл
+        if (this._array?.length === 1) {
+            Logger.debug(`[AsyncCycle]: Start cycle`);
+
+            this._time = Date.now();
+            setImmediate(this._asyncStep);
+        }
+    };
+
+    /**
+     * @description Удаляем элемент из очереди
+     * @param data {any} Сам элемент
+     * @public
+     */
+    public remove? = (data: T) => {
+        if (this._array?.length === 0) return;
+
+        const index = this._array.indexOf(data);
+        if (index != -1) {
+            if ("edit" in (data as ClientMessage)) {
+                if ((data as ClientMessage) && (data as ClientMessage).deletable) (data as ClientMessage).delete().catch(() => undefined);
+            }
+
+            this._array.splice(index, 1);
+        }
+    };
+}
+
+
+/**
+ * @author SNIPPIK
+ * @description Задаем параметры для циклов и запускаем их
+ * @class TimeCycle
+ */
+abstract class TimeCycle<T = unknown> extends ArrayCycle<T> {
+    public readonly execute: (item: T) => void;
+    public readonly filter: (item: T) => boolean;
+    public readonly duration: number;
+    protected constructor(options: {
+        //Как выполнить функцию
+        execute: (item: T) => void;
+
+        //Фильтр объектов
+        filter: (item: T) => boolean;
+
+        //Через сколько времени выполнять функцию
+        duration: number
+    }) {
+        super();
+        Object.assign(this, options);
+    };
+    /**
+     * @description Выполняем this._execute
+     * @private
+     */
+    protected _asyncStep? = (): void => {
+        //Если в базе больше нет объектов
+        if (this._array?.length === 0) {
+            Logger.debug(`[AsyncCycle]: Stop cycle`);
+            this._time = 0;
+            return;
+        }
+
+        //Высчитываем время для выполнения
+        this._time += this.duration;
+
+        for (let object of this._array.filter(this.filter)) {
+            try {
+                this.execute(object);
+            } catch (err) {
+                this._removeItem(err, object);
+            }
+        }
+
+        //Выполняем функцию через ~this._time ms
+        setTimeout(this._asyncStep, this._time - Date.now());
+    };
+
+    /**
+     * @description Удаляем объект выдающий ошибку
+     * @param err {string} Ошибка из-за которой объект был удален
+     * @param item {any} Объект который будет удален
+     * @private
+     */
+    private _removeItem? = (err: string, item: T) => {
+        Logger.warn(`[AsyncCycle]: Error in this._execute | ${err}`);
+        this.remove(item);
+    };
+}
+
 
 /**
  * @author SNIPPIK
@@ -268,121 +379,5 @@ export class Collection extends ArrayCollection {
             track.requesterSong = author;
             queue.songs.push(track);
         }
-    };
-}
-
-
-
-/**
- * @author SNIPPIK
- * @description База с циклами для дальнейшей работы этот класс надо подключить к другому
- * @class ArrayCycle
- */
-abstract class ArrayCycle<T = unknown> {
-    protected readonly _array?: T[] = [];
-    protected _time?: number = 0;
-    protected _asyncStep?: () => void;
-    /**
-     * @description Добавляем элемент в очередь
-     * @param data {any} Сам элемент
-     * @public
-     */
-    public push? = (data: T) => {
-        if ("guild" in (data as ClientMessage)) {
-            const old: T = this._array.find(msg => (msg as ClientMessage).guild.id === (data as ClientMessage).guild.id);
-
-            //Если это-же сообщение есть в базе, то нечего не делаем
-            if (old) this.remove(old);
-        } else if (this._array.includes(data)) this.remove(data);
-        this._array.push(data);
-
-        //Запускаем цикл
-        if (this._array?.length === 1) {
-            Logger.debug(`[AsyncCycle]: Start cycle`);
-
-            this._time = Date.now();
-            setImmediate(this._asyncStep);
-        }
-    };
-
-    /**
-     * @description Удаляем элемент из очереди
-     * @param data {any} Сам элемент
-     * @public
-     */
-    public remove? = (data: T) => {
-        if (this._array?.length === 0) return;
-
-        const index = this._array.indexOf(data);
-        if (index != -1) {
-            if ("edit" in (data as ClientMessage)) {
-                if ((data as ClientMessage) && (data as ClientMessage).deletable) (data as ClientMessage).delete().catch(() => undefined);
-            }
-
-            this._array.splice(index, 1);
-        }
-    };
-}
-
-
-
-/**
- * @author SNIPPIK
- * @description Задаем параметры для циклов и запускаем их
- * @class TimeCycle
- */
-abstract class TimeCycle<T = unknown> extends ArrayCycle<T> {
-    public readonly execute: (item: T) => void;
-    public readonly filter: (item: T) => boolean;
-    public readonly duration: number;
-    protected constructor(options: {
-        //Как выполнить функцию
-        execute: (item: T) => void;
-
-        //Фильтр объектов
-        filter: (item: T) => boolean;
-
-        //Через сколько времени выполнять функцию
-        duration: number
-    }) {
-        super();
-        Object.assign(this, options);
-    };
-    /**
-     * @description Выполняем this._execute
-     * @private
-     */
-    protected _asyncStep? = (): void => {
-        //Если в базе больше нет объектов
-        if (this._array?.length === 0) {
-            Logger.debug(`[AsyncCycle]: Stop cycle`);
-            this._time = 0;
-            return;
-        }
-
-        //Высчитываем время для выполнения
-        this._time += this.duration;
-
-        for (let object of this._array.filter(this.filter)) {
-            try {
-                this.execute(object);
-            } catch (err) {
-                this._removeItem(err, object);
-            }
-        }
-
-        //Выполняем функцию через ~this._time ms
-        setTimeout(this._asyncStep, this._time - Date.now());
-    };
-
-    /**
-     * @description Удаляем объект выдающий ошибку
-     * @param err {string} Ошибка из-за которой объект был удален
-     * @param item {any} Объект который будет удален
-     * @private
-     */
-    private _removeItem? = (err: string, item: T) => {
-        Logger.warn(`[AsyncCycle]: Error in this._execute | ${err}`);
-        this.remove(item);
     };
 }

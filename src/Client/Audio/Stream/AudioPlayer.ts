@@ -150,6 +150,32 @@ class Player extends TypedEmitter<AudioPlayerEvents> {
     };
 
     /**
+     * @description Начинаем чтение стрима
+     * @public
+     */
+    protected readStream = (stream: AudioResource): void => {
+        if (!stream.readable) {
+            //Если не удается включить поток за 20 сек, выдаем ошибку
+            const timeout = setTimeout(() => this.emit("error", "Timeout stream!", false), 20e3);
+
+            stream.stream
+                //Включаем поток когда можно будет начать читать
+                .once("readable", () => {
+                    this.stream = stream;
+                    clearTimeout(timeout);
+                })
+                //Если происходит ошибка, то продолжаем читать этот же поток
+                .once("error", () => {
+                    this.emit("error", "Fail read stream", false);
+                    clearTimeout(timeout);
+                });
+            return;
+        }
+
+        this.stream = stream;
+    }
+
+    /**
      * @description Удаляем ненужные данные
      * @public
      */
@@ -186,33 +212,7 @@ export class AudioPlayer extends Player {
             }
 
             this.emit("onStart", seek);
-            this._readStream(new AudioResource({path, filters: isFilters ? this.filters : [], seek}));
+            this.readStream(new AudioResource({path, filters: isFilters ? this.filters : [], seek}));
         }).catch((err) => this.emit("error", err));
     };
-
-    /**
-     * @description Начинаем чтение стрима
-     * @public
-     */
-    private _readStream = (stream: AudioResource): void => {
-        if (!stream.readable) {
-            //Если не удается включить поток за 20 сек, выдаем ошибку
-            const timeout = setTimeout(() => this.emit("error", "Timeout stream!", false), 20e3);
-
-            stream.stream
-                //Включаем поток когда можно будет начать читать
-                .once("readable", () => {
-                    this.stream = stream;
-                    clearTimeout(timeout);
-                })
-                //Если происходит ошибка, то продолжаем читать этот же поток
-                .once("error", () => {
-                    this.emit("error", "Fail read stream", false);
-                    clearTimeout(timeout);
-                });
-            return;
-        }
-
-        this.stream = stream;
-    }
 }

@@ -1,6 +1,6 @@
 import {ArrayQueue} from "@Client/Audio/Queue/Queue";
-import {env} from "@env";
 import {db} from "@Client/db";
+import {env} from "@env";
 
 const timeout = parseInt(env.get("player.timeout"));
 export default class {

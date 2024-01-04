@@ -55,4 +55,3 @@ process.on("uncaughtException", (err: Error) => {
 
 //Обрабатываем не возвращенные данные
 process.on("unhandledRejection", (reason) => console.log(reason));
-export {db} from "@Client/db";

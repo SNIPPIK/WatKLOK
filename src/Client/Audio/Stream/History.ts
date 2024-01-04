@@ -13,10 +13,10 @@ export class History {
         this._guildID = GuildID; this._track = track; this._platform = platform;
 
         //Если нет файла
-        if (!this._file) this._createDir();
+        if (!this.file) this._createDir();
 
         setTimeout(() => {
-            const file = JSON.parse(this._file);
+            const file = JSON.parse(this.file);
 
             //Добавляем трек
             this._pushTrack(file.tracks);
@@ -25,18 +25,18 @@ export class History {
             this._sortTracks(file.tracks);
 
             //Сохраняем файл
-            FileSystem.saveToFile(this._path, file);
+            FileSystem.saveToFile(this.path, file);
         }, 2e3);
     };
     /**
      * @description Получаем путь
      */
-    private get _path() { return `${env.get("history.dir")}/[${this._guildID}].json`; };
+    private get path() { return `${env.get("history.dir")}/[${this._guildID}].json`; };
 
     /**
      * @description Загружаем файл
      */
-    private get _file() { return FileSystem.getFile(this._path); };
+    private get file() { return FileSystem.getFile(this.path); };
 
 
     /**
@@ -85,7 +85,7 @@ export class History {
     /**
      * @description Если нет папки db/Guilds
      */
-    private _createDir = () => FileSystem.saveToFile(this._path, { tracks: [] as Array<miniTrack> });
+    private _createDir = () => FileSystem.saveToFile(this.path, { tracks: [] as Array<miniTrack> });
 }
 
 
