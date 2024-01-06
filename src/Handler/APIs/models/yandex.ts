@@ -242,9 +242,13 @@ class YandexLib {
                 const api = await this._API(`tracks/${ID}/download-info`);
 
                 if (!api || api instanceof Error) return resolve(Error("[APIs]: Невозможно получить исходный файл!"));
-                else if (api.length === 0) return resolve(Error("[APIs]: не удалось найти исходный файл музыки!"));
+                else if (api.length === 0) return resolve(Error("[APIs]: Не удалось найти исходный файл музыки!"));
 
-                return new httpsClient(api[0]["downloadInfoUrl"]).toXML.then((xml) => {
+                const url = api.find((data: any) => data.codec !== "aac");
+
+                if (!url) return resolve(Error("[APIs]: Не удалось найти исходный файл музыки!"));
+
+                new httpsClient(url["downloadInfoUrl"]).toXML.then((xml) => {
                     if (xml instanceof Error) return resolve(xml);
 
                     const path = xml[1];
