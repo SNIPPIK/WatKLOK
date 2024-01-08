@@ -2,6 +2,9 @@ import {Song} from "@Client/Audio/Queue/Song";
 import {httpsClient} from "@Client/Request";
 import {API} from "@handler/APIs";
 import {env} from "@env";
+import * as fs from "fs";
+import {FileSystem} from "@src";
+import saveToFile = FileSystem.saveToFile;
 /**
  * @author SNIPPIK
  * @class initYouTube
@@ -60,6 +63,7 @@ export default class implements API.load {
             public readonly filter = /playlist\?list=/gi;
 
             public readonly callback = (url: string) => {
+                let author = null;
                 const ID = this._getID(url, true);
 
                 return new Promise<Song.playlist>(async (resolve, reject) => {
@@ -72,18 +76,15 @@ export default class implements API.load {
 
                         if (details instanceof Error) return reject(details);
 
-                        const info = details["sidebar"]["playlistSidebarRenderer"].items[0]["playlistSidebarPrimaryInfoRenderer"];
-                        const author = details["sidebar"]["playlistSidebarRenderer"].items[1]["playlistSidebarSecondaryInfoRenderer"]["videoOwner"]["videoOwnerRenderer"];
-                        const contents: any[] = details["contents"]["twoColumnBrowseResultsRenderer"]["tabs"][0]["tabRenderer"].content["sectionListRenderer"]["contents"][0]["itemSectionRenderer"]["contents"][0]["playlistVideoListRenderer"]["contents"].splice(0, env.get("APIs.limit.playlist"));
-
-                        //Модифицируем видео
-                        const videos = contents.map(({playlistVideoRenderer}) => this._track(playlistVideoRenderer, true));
+                        const microformat = details["microformat"]["microformatDataRenderer"];
+                        const items = details["contents"]["twoColumnBrowseResultsRenderer"]["tabs"][0]["tabRenderer"]
+                            .content["sectionListRenderer"]["contents"][0]["itemSectionRenderer"]["contents"][0]["playlistVideoListRenderer"]["contents"]
+                            .splice(0, env.get("APIs.limit.playlist")).map(({playlistVideoRenderer}) => this._track(playlistVideoRenderer, true));
 
                         return resolve({
-                            title: info.title["runs"][0].text, url,
-                            items: videos,
-                            author: await this._getChannel({ id: author["navigationEndpoint"]["browseEndpoint"]["browseId"], name: author.title["runs"][0].text }),
-                            image: info["thumbnailRenderer"]["playlistVideoThumbnailRenderer"].thumbnail["thumbnails"].pop()
+                            url, title: microformat.title, items,
+                            author: items.at(-1).author,
+                            image: microformat.thumbnail["thumbnails"].pop()
                         });
                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
                 });
