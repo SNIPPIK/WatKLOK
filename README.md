@@ -6,7 +6,7 @@
 ### Описание
 - Поддерживаться только /команды
 - Возможно это лучший музыкальный бот?
-- Умеет сохранять историю прослушиваний треков
+- Умеет кешировать треки и сохранять историю прослушиваний
 - Все сообщения удаляются через время
 - Не используется [`Lavalink`](https://github.com/lavalink-devs/Lavalink) | [`Lavaplayer`](https://github.com/sedmelluq/lavaplayer) | [`YouTube-DL`](https://youtube-dl.org/)
 
@@ -19,8 +19,9 @@
 2. Установить [`FFmpeg и FFprobe`](https://github.com/BtbN/FFmpeg-Builds/releases)
    - В зависимости от платформы
       - `Windows` | Скачать [`FFmpeg`](https://ffmpeg.org/) и распаковать в любое место
-      - `Linux` | sudo (apt install or pacman -S) ffmpeg
+      - `Linux` | sudo apt install ffmpeg
    - Указать `ffmpeg.path` и `ffprobe.path` в [`env`](.env)
-3. Запуск бота 
-   - Записать данные в .env
-   - npm run build, потом npm run shard
+3. Запуск бота
+   - В зависимости от платформы
+     - `Windows` | Запустить ROX.bat
+     - `Other` | npm run build, потом npm run shard

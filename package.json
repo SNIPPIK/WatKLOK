@@ -1,6 +1,6 @@
 {
-  "name": "watklok",
-  "version": "1.0.0-next",
+  "name": "atlas",
+  "version": "0.0.1",
   "description": "Постоянно развивающийся музыкальный бот!",
   "dependencies": {
     "@discordjs/voice": "^0.16.1",
@@ -15,7 +15,7 @@
     "typescript": "^5.2.2"
   },
   "scripts": {
-    "start": "cd node_build && node -r tsconfig-paths/register src/index.js",
+    "client": "cd node_build && node -r tsconfig-paths/register src/index.js",
     "shard": "cd node_build && node -r tsconfig-paths/register src/index.js --ShardManager",
     "build": "tsc -p tsconfig.json"
   },

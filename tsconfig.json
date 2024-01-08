@@ -34,8 +34,11 @@
     //Сокращения
     "paths": {
       "@env": ["./env"],
-      "@handler/*": ["./Handler/*"], "@handler": ["./Handler/index"],
-      "@Client": ["./Client/index"], "@Client/*": ["./Client/*"], "@Client/db": ["./db"]
+      "@Client": ["./Client/index"], "@Client/*": ["./Client/*"],
+      "@handler/*": ["./Handlers/*"],
+
+
+      "@src": ["./index"]
     }
   },
 
