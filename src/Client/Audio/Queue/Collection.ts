@@ -115,9 +115,9 @@ abstract class ArrayCollection {
                         }
                         return true;
                     },
-                    execute: (track) => {
-                        return new Promise<boolean>((resolve) => {
-                            new httpsClient(track.link).request.then((req) => {
+                    execute: async (track) => {
+                        return new Promise<boolean>(async (resolve) => {
+                            new httpsClient(track.link).request.then(async (req) => {
                                 if (req instanceof Error) return resolve(false);
 
                                 if (req.pipe) {
