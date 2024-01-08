@@ -124,9 +124,9 @@ abstract class ArrayCollection {
                                     const status = this.status(track);
                                     const file = createWriteStream(status.path);
 
-                                    file.once("ready", () => req.pipe(file));
+                                    file.once("ready", async () => req.pipe(file));
                                     file.once("error", console.warn);
-                                    file.once("finish", () => {
+                                    file.once("finish", async () => {
                                         const refreshName = this.status(track).path.split(".raw")[0];
                                         rename(status.path, `${refreshName}.opus`, () => null);
 
