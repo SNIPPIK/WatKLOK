@@ -19,9 +19,7 @@
 2. Установить [`FFmpeg и FFprobe`](https://github.com/BtbN/FFmpeg-Builds/releases)
    - В зависимости от платформы
       - `Windows` | Скачать [`FFmpeg`](https://ffmpeg.org/) и распаковать в любое место
-      - `Linux` | sudo apt install ffmpeg
+      - `Linux` | (sudo apt install or sudo pacman -S) ffmpeg
    - Указать `ffmpeg.path` и `ffprobe.path` в [`env`](.env)
 3. Запуск бота
-   - В зависимости от платформы
-     - `Windows` | Запустить ROX.bat
-     - `Other` | npm run build, потом npm run shard
+   - npm run shard or npm run client
