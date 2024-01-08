@@ -73,14 +73,20 @@ export default class implements API.load {
 
                         if (details instanceof Error) return reject(details);
 
-                        const microformat = details["microformat"]["microformatDataRenderer"];
-                        const items = details["contents"]["twoColumnBrowseResultsRenderer"]["tabs"][0]["tabRenderer"]
+                        const sidebar: any[] = details["sidebar"]["playlistSidebarRenderer"]["items"];
+                        const microformat: any = details["microformat"]["microformatDataRenderer"];
+                        const items: Song[] = details["contents"]["twoColumnBrowseResultsRenderer"]["tabs"][0]["tabRenderer"]
                             .content["sectionListRenderer"]["contents"][0]["itemSectionRenderer"]["contents"][0]["playlistVideoListRenderer"]["contents"]
                             .splice(0, env.get("APIs.limit.playlist")).map(({playlistVideoRenderer}) => this._track(playlistVideoRenderer, true));
 
+                        //Если нет автора плейлиста то это альбом автора
+                        if (sidebar.length > 1) {
+                            const authorData = details["sidebar"]["playlistSidebarRenderer"].items[1]["playlistSidebarSecondaryInfoRenderer"]["videoOwner"]["videoOwnerRenderer"];
+                            author = await this._getChannel({ id: authorData["navigationEndpoint"]["browseEndpoint"]["browseId"], name: authorData.title["runs"][0].text });
+                        } else author = items.at(-1).author;
+
                         return resolve({
-                            url, title: microformat.title, items,
-                            author: items.at(-1).author,
+                            url, title: microformat.title, items, author,
                             image: microformat.thumbnail["thumbnails"].pop()
                         });
                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
