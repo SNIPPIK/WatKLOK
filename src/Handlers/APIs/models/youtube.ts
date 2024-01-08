@@ -2,9 +2,6 @@ import {Song} from "@Client/Audio/Queue/Song";
 import {httpsClient} from "@Client/Request";
 import {API} from "@handler/APIs";
 import {env} from "@env";
-import * as fs from "fs";
-import {FileSystem} from "@src";
-import saveToFile = FileSystem.saveToFile;
 /**
  * @author SNIPPIK
  * @class initYouTube
