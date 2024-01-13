@@ -213,7 +213,7 @@ export class AudioPlayer extends Player {
             }
 
             this.emit("onStart", seek);
-            this.readStream(new AudioResource({path, filters: isFilters ? this.filters : [], seek}));
+            this.readStream(new AudioResource({path, filters: !isFilters ? this.filters : [], seek}));
         }).catch((err) => this.emit("error", err));
     };
 }
