@@ -103,7 +103,7 @@ export class AudioResource {
                 stream.process.emit("close");
                 stream.stdout.removeAllListeners();
             } else {
-                stream.destroy();
+                stream?.destroy();
                 stream.removeAllListeners();
             }
         }
