@@ -98,17 +98,21 @@ export class AudioResource {
      * @description Удаляем ненужные данные
      */
     public cleanup = () => {
-        for (let stream of Object.values(this._stream)) {
-            if (stream instanceof Process) {
-                stream.process.emit("close");
-                stream.stdout.removeAllListeners();
-            } else {
-                stream?.destroy();
-                stream?.removeAllListeners();
+        for (let [key, value] of Object.entries(this._stream)) {
+            if (value) {
+                if (value instanceof Process) {
+                    value.process.emit("close");
+                    value.stdout.removeAllListeners();
+                } else {
+                    value?.destroy();
+                    value?.removeAllListeners();
+                }
+                this._stream[key] = null;
             }
         }
-        this._stream.ogg = null;
-        this._stream.process = null;
+
+        this._global.readable = null;
+        this._global.ended = null;
     };
 }
 
