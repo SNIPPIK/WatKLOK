@@ -104,7 +104,7 @@ export class AudioResource {
                 stream.stdout.removeAllListeners();
             } else {
                 stream?.destroy();
-                stream.removeAllListeners();
+                stream?.removeAllListeners();
             }
         }
         this._stream.ogg = null;
