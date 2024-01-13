@@ -1,5 +1,5 @@
 import {ClientMessage} from "@handler/Events/Atlas/interactionCreate";
-import {AudioPlayer} from "@Client/Audio/Stream/AudioPlayer";
+import {AudioPlayer} from "@Client/Audio/Player/AudioPlayer";
 import {StageChannel, VoiceChannel} from "discord.js";
 import {joinVoiceChannel} from "@discordjs/voice";
 import {Duration} from "@Client/Audio";

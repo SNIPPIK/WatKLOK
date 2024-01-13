@@ -1,4 +1,4 @@
-import {History} from "@Client/Audio/Stream/History";
+import {History} from "@Client/Audio/Player/History";
 import {ArraySort} from "@Client/Audio";
 import { Colors } from "discord.js";
 import {FileSystem} from "@src";

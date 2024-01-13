@@ -2,7 +2,7 @@ import {existsSync, rename, createWriteStream, mkdirSync} from "node:fs";
 import {toPlay, toPush, toPushPlaylist, toSearch} from "@Client/Audio";
 import {ClientMessage} from "@handler/Events/Atlas/interactionCreate";
 import {EmbedData, StageChannel, VoiceChannel} from "discord.js";
-import {AudioPlayer} from "@Client/Audio/Stream/AudioPlayer";
+import {AudioPlayer} from "@Client/Audio/Player/AudioPlayer";
 import {ActionMessage, ActionType} from "@Client";
 import {Song} from "@Client/Audio/Queue/Song";
 import {httpsClient} from "@Client/Request";
@@ -424,7 +424,7 @@ export class Collection extends ArrayCollection {
 
         //Если это не первый трек, то отправляем сообщение о том что было добавлено
         if (queue.songs.size > 1) toPush(queue);
-        else queue.player.play(queue.songs.song.resource, !queue.songs.song.options.isLive);
+        else queue.player.play(queue.songs.song.resource);
     };
 
     /**
@@ -439,7 +439,7 @@ export class Collection extends ArrayCollection {
         //Отправляем сообщение о том что плейлист будет добавлен в очередь
         toPushPlaylist(queue.message, info);
 
-        if (queue.songs.size === 0) setImmediate(() => queue.player.play(queue.songs.song.resource, !queue.songs.song.options.isLive));
+        if (queue.songs.size === 0) setImmediate(() => queue.player.play(queue.songs.song.resource));
 
         //Загружаем треки из плейлиста в очередь
         for (let track of info.items) {

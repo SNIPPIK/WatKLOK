@@ -21,9 +21,7 @@ export default class Player_onWait extends Event<any> {
 
                 //Включаем трек через время
                 setTimeout(() => {
-                    const isLive = !queue.songs.song?.options.isLive;
-
-                    queue.player.play(queue.songs.song?.resource, isLive);
+                    queue.player.play(queue.songs.song.resource);
                 }, timeout);
             }
         });

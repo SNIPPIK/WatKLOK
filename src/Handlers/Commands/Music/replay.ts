@@ -25,7 +25,7 @@ export default class extends Command {
                 else if (!queue) return { content: `${author}, ⚠ | Музыка щас не играет.`, color: "Yellow" };
                 let { title }: Song = queue.songs.song;
 
-                queue.player.play(queue.songs.song.resource, !queue.songs.song.options.isLive);
+                queue.player.play(queue.songs.song.resource);
                 //Сообщаем о том что музыка начата с начала
                 return { content: `🔂 | Replay | ${title}`, color: "Green", codeBlock: "css" };
             }

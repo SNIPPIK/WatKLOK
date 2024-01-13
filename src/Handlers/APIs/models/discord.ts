@@ -1,4 +1,4 @@
-import {Process} from "@Client/Audio/Stream/AudioResource";
+import {Process} from "@Client/Audio/Player/AudioResource";
 import {Song} from "@Client/Audio/Queue/Song";
 import {API} from "@handler/APIs";
 import {env} from "@env";

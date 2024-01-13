@@ -240,7 +240,7 @@ export class Song {
         const platform = this.platform;
         const isDownload = db.music.queue.cycles.downloader && platform !== "DISCORD";
 
-        return new Promise(async (resolve) => {
+        return new Promise<string | Error>(async (resolve) => {
             //Если трек уже кеширован, то сразу выдаем его
             if (isDownload) {
                 const info = db.music.queue.cycles.downloader.status(this);
@@ -255,7 +255,7 @@ export class Song {
                         this._link = await resource(platform, this.url, this.author.title, this.title, this.duration.seconds);
                     } catch {
                         this._link = null;
-                        continue;
+                        return;
                     }
                 }
 

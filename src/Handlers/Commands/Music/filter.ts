@@ -1,5 +1,5 @@
 import {ApplicationCommandOptionType, Colors, EmbedData} from "discord.js";
-import {Filters, Filter} from "@Client/Audio/Stream/AudioResource";
+import {Filters, Filter} from "@Client/Audio/Player/AudioResource";
 import {ArraySort} from "@Client/Audio";
 import {Command} from "@Client";
 import {db} from "@src";
@@ -115,20 +115,20 @@ export default class extends Command {
 
                             Filter.user_arg = arg;
                             queue.player.filters[index] = Filter;
-                            queue.player.play(queue.songs.song.resource, true, seek);
+                            queue.player.play(queue.songs.song.resource, queue.songs.song.options.isLive, seek);
 
                             return { content: `Filter: ${name} был изменен аргумент на ${arg}!`, codeBlock: "css", color: "Green", replied: false };
                         }
 
                         queue.player.filters.splice(index, 1); //Удаляем фильтр
-                        queue.player.play(queue.songs.song.resource, true, seek);
+                        queue.player.play(queue.songs.song.resource, queue.songs.song.options.isLive, seek);
                         return {content: `Filter: ${name} отключен!`, color: "Green", codeBlock: "css", replied: false};
                     }
                     //Если надо добавить аргумент
                     else if (arg && Filter.args) Filter.user_arg = arg;
 
                     queue.player.filters.push(Filter);
-                    queue.player.play(queue.songs.song.resource, true, seek);
+                    queue.player.play(queue.songs.song.resource, queue.songs.song.options.isLive, seek);
 
                     return {content: `Filter: ${Filter.user_arg ? `${name}:${args}` : name} включен!`, color: "Green", codeBlock: "css", replied: false};
                 }

@@ -1,5 +1,5 @@
 import {ArrayQueue} from "@Client/Audio/Queue/Queue";
-import {History} from "@Client/Audio/Stream/History";
+import {History} from "@Client/Audio/Player/History";
 import {toPlay} from "@Client/Audio";
 import {Event} from "@Client";
 import {Logger} from "@src";

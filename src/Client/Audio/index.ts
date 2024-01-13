@@ -1,6 +1,6 @@
 import {ClientMessage} from "@handler/Events/Atlas/interactionCreate";
 import {Collection} from "@Client/Audio/Queue/Collection";
-import {Filter} from "@Client/Audio/Stream/AudioResource";
+import {Filter} from "@Client/Audio/Player/AudioResource";
 import {ArrayQueue} from "@Client/Audio/Queue/Queue";
 import {Song} from "@Client/Audio/Queue/Song";
 import {httpsClient} from "@Client/Request";
