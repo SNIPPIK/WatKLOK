@@ -35,10 +35,8 @@
     "paths": {
       "@env": ["./env"],
       "@Client": ["./Client/index"], "@Client/*": ["./Client/*"],
-      "@handler/*": ["./Handlers/*"],
+      "@handler/*": ["./Handlers/*"], "@handler": ["./Handlers/index"],
 
-
-      "@src": ["./index"]
     }
   },
 
