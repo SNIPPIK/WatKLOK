@@ -581,15 +581,6 @@ function swapPositions<V>(array: V[], position: number): void {
 
 
 /**
- *  _____           _                    __
- * |_   _|         | |                  / _|
- *   | |    _ __   | |_    ___   _ __  | |_    __ _   ___    ___   ___
- *   | |   | '_ \  | __|  / _ \ | '__| |  _|  / _` | / __|  / _ \ / __|
- *  _| |_  | | | | | |_  |  __/ | |    | |   | (_| | \__ \ |  __/ \__ \
- * |_____| |_| |_|  \__|  \___| |_|    |_|    \__,_| |___/  \___| |___/
- */
-
-/**
  * @description Так выглядит youtube video or audio format
  */
 interface YouTubeFormat {

@@ -53,7 +53,7 @@ export default class extends Command {
                 else if (!queue.player.hasSkipped) return { content: `${author}, ⚠ Музыка еще не играет!`, color: "Yellow" };
 
                 //Начинаем проигрывание трека с <пользователем указанного тайм кода>
-                queue.player.play(queue.songs.song.resource, queue.songs.song.options.isLive, duration);
+                queue.player.play(queue.songs.song, duration);
 
                 //Отправляем сообщение о пропуске времени
                 return { content: `⏭️ | Seeking to [${args[0]}] song\n> ${queue.songs.song.title}`, codeBlock: "css", color: "Green" };

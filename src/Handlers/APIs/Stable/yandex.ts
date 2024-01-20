@@ -46,7 +46,7 @@ export default class implements API.load {
 
                 return new Promise<Song>(async (resolve, reject) => {
                     try {
-                        if (ID.length < 2) return reject(Error("[APIs]: Не найден ID трека!"));
+                        if (ID.length < 2) return reject(Error("[APIs]: Не найден ID трека или альбома!"));
 
                         //Делаем запрос
                         const api = await this._API(`tracks/${ID[1]}`);

@@ -50,9 +50,9 @@ export class AudioResource {
             "-ss", `${seek}`, "-i", urls[1], "-af", filters, "-f", "opus", "-b:a", `${bitrate}`, "pipe:1"
         ]);
 
+        this._stream.ogg.once("readable", () => { this._global.readable = true; });
         this._stream.process.stderr.once("error", (err) => this.stream.emit("error", err));
-        this.stream.once("readable", () => { this._global.readable = true; });
-        this._stream.process.stdout.pipe(this.stream);
+        this._stream.process.stdout.pipe(this._stream.ogg);
     };
 
     /**

@@ -1,6 +1,7 @@
 import {AudioResource, Filter} from "@Client/Audio/Player/AudioResource";
 import {VoiceConnection} from "@discordjs/voice";
 import {TypedEmitter} from "tiny-typed-emitter";
+import {Song} from "@Client/Audio/Queue/Song";
 /**
  * @author SNIPPIK
  * @description Статусы плеера
@@ -111,10 +112,14 @@ class Player extends TypedEmitter<AudioPlayerEvents> {
      */
     protected set stream(stream: AudioResource) {
         if (this.stream && this.stream !== stream) {
-            //Если есть прошлый поток, то удаляем его
-            if (!this.stream.ended) this.stream.stream.emit("close");
+            try {
+                if (!this.stream?.stream?.destroyed) this.stream?.stream?.emit("close");
+            } catch {}
+
+            //Удаляем прошлый поток
             this._stream = null;
         }
+
 
         //Продолжаем воспроизведение
         this._stream = stream;
@@ -152,7 +157,7 @@ class Player extends TypedEmitter<AudioPlayerEvents> {
                 //Если происходит ошибка, то продолжаем читать этот же поток
                 .once("error", () => {
                     this.emit("error", "Fail read stream", false);
-                    clearTimeout(timeout);
+                   clearTimeout(timeout);
                 });
             return;
         }
@@ -198,20 +203,19 @@ export class AudioPlayer extends Player {
 
     /**
      * @description Функция отвечает за циклическое проигрывание
-     * @param path {Promise<Error | string>} Путь к файлу полученный асинхронным методом
-     * @param isFilters {boolean} Включать фильтры
+     * @param track {Song} Трек который будет включен
      * @param seek {number} Пропуск времени
      * @public
      */
-    public play = (path: Promise<Error | string>, isFilters: boolean = true, seek: number = 0): void => {
-        path.then((path) => {
+    public play = (track: Song, seek: number = 0): void => {
+        track.resource.then((path) => {
             if (path instanceof Error) {
                 this.emit("error", `${path}`);
                 return
             }
 
             this.emit("onStart", seek);
-            this.readStream(new AudioResource({path, filters: !isFilters ? this.filters : [], seek}));
+            this.readStream(new AudioResource({path, filters: !track.options.isLive ? this.filters : [], seek}));
         }).catch((err) => {
             this.emit("error", err);
         });

@@ -303,7 +303,7 @@ export class Collection extends ArrayCollection {
 
         //Если это не первый трек, то отправляем сообщение о том что было добавлено
         if (queue.songs.size > 1) new ActionMessage(getPlayerMessage<"pushSong">("pushSong", [queue]));
-        else queue.player.play(queue.songs.song.resource);
+        else queue.player.play(queue.songs.song);
     };
 
     /**
@@ -318,7 +318,7 @@ export class Collection extends ArrayCollection {
         //Отправляем сообщение о том что плейлист будет добавлен в очередь
         new ActionMessage(getPlayerMessage<"pushPlaylist">("pushPlaylist", [queue.message, info]));
 
-        if (queue.songs.size === 0) setImmediate(() => queue.player.play(queue.songs.song.resource));
+        if (queue.songs.size === 0) setImmediate(() => queue.player.play(queue.songs.song));
 
         //Загружаем треки из плейлиста в очередь
         for (let track of info.items) {

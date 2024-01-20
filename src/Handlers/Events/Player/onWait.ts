@@ -21,7 +21,7 @@ export default class Player_onWait extends Event<any> {
 
                 //Включаем трек через время
                 setTimeout(() => {
-                    queue.player.play(queue.songs.song.resource);
+                    queue.player.play(queue.songs.song);
                 }, timeout);
             }
         });

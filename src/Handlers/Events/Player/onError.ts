@@ -17,7 +17,7 @@ export default class Player_toError extends Event<any> {
                 if (crash) return db.music.queue.remove(queue.guild.id);
 
                 queue.songs.shift();
-                setTimeout(() => queue.player.play(queue.songs.song.resource), 5e3);
+                setTimeout(() => queue.player.play(queue.songs.song), 5e3);
             }
         });
     }

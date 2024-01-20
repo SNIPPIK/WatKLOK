@@ -3,18 +3,6 @@ import {httpsClient} from "@Client/Request";
 import {API, RequestAPI} from "@handler";
 import {Duration} from "../index";
 import {db} from "@Client/db";
-import {env} from "@env";
-/**
- * @author SNIPPIK
- * @description Локальная база с данными
- * @const l_db
- */
-const l_db = {
-    imageAuthor: env.get("image.currentPlay"),
-    note: env.get("image.not")
-}
-
-
 
 /**
  * @author SNIPPIK
@@ -149,8 +137,8 @@ export class Song {
 
         //Изображения трека и автора
         this._images = {
-            track: track?.image ?? { url: l_db.note },
-            author: track.author?.image ?? { url: l_db.imageAuthor }
+            track: track?.image ?? { url: db.emojis.noImage },
+            author: track.author?.image ?? { url: db.emojis.diskImage }
         };
 
         //Время трека
@@ -255,7 +243,7 @@ export class Song {
                         this._link = await resource(platform, this.url, this.author.title, this.title, this.duration.seconds);
                     } catch {
                         this._link = null;
-                        return;
+                        break;
                     }
                 }
 
