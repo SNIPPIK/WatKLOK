@@ -49,9 +49,9 @@ export abstract class ArrayCollection {
                     duration: parseInt(env.get("player.duration")),
                     filter: (item) => item.playing,
                     execute: (player: AudioPlayer) => {
-                        if (player?.status !== "playing" && player.connection?.state?.status !== "ready") return;
-
-                        player.sendPacket = player.stream.packet;
+                        if (player.connection?.state?.status !== "ready" || player?.status === "pause") return;
+                        else if (player?.status !== "playing") player.sendPacket = Buffer.from([0xf8, 0xff, 0xfe]);
+                        else player.sendPacket = player.stream.packet;
                     },
                 });
             };

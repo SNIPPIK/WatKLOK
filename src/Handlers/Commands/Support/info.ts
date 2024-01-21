@@ -5,8 +5,6 @@ import {db} from "@Client/db";
 import {env} from "@env";
 import os from "node:os";
 
-
-
 const cpu = os.cpus();
 const processor = cpu.length > 0 ? cpu[0]?.model : "Невозможно определить";
 const bitrate = env.get("audio.bitrate");
