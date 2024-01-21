@@ -15,11 +15,14 @@
 
 
 ## <a name="run"></a> Как запустить
-1. Скачать и установить [`Node.js`](https://nodejs.org/ru/)
-2. Установить [`FFmpeg и FFprobe`](https://github.com/BtbN/FFmpeg-Builds/releases)
+1. Качаем проект [`тут`](https://codeload.github.com/SNIPPIK/WatKLOK/zip/refs/heads/main)
+2. Скачать и установить [`Node.js`](https://nodejs.org/ru/)
+3. Выполнить npm i -g typescript
+4. Установить [`FFmpeg и FFprobe`](https://github.com/BtbN/FFmpeg-Builds/releases)
    - В зависимости от платформы
       - `Windows` | Скачать [`FFmpeg`](https://ffmpeg.org/) и распаковать в любое место
+         - Указать `ffmpeg.path` и `ffprobe.path` в [`env`](.env) 
       - `Linux` | (sudo apt install or sudo pacman -S) ffmpeg
-   - Указать `ffmpeg.path` и `ffprobe.path` в [`env`](.env)
-3. Запуск бота
+5. Запуск бота
+   - npm run build
    - npm run shard or npm run client
