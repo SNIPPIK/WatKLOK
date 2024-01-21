@@ -1,6 +1,5 @@
 import {History} from "@Client/Audio/Player/History";
 import {ArraySort} from "@Client/Audio";
-import {env, FileSystem} from "@env";
 import { Colors } from "discord.js";
 import {Command} from "@handler";
 
@@ -16,7 +15,7 @@ export default class extends Command {
                 //Если история отключена
                 if (!History.enable) return { content: `${author}, история выключена!`, color: "Yellow" };
 
-                const file = FileSystem.getFile(`${env.get("cached.dir")}/Guilds/[${message.guildId}].json`);
+                const file = History.getFile(message.guildId);
 
                 //Если нет файла
                 if (!file) return { content: `${author}, на этом сервере еще не включали музыку!`, color: "Yellow" };

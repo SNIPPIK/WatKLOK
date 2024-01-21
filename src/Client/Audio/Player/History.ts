@@ -1,68 +1,99 @@
+import {existsSync, mkdirSync, readFileSync, writeFileSync} from "node:fs";
 import {Song} from "@Client/Audio/Queue/Song";
-import {env, FileSystem} from "@env";
+import {env} from "@env";
+
 /**
  * @author SNIPPIK
  * @description История прослушиваний для серверов
  * @class History
  */
 export class History {
-    private readonly _guildID: string;
-    private readonly _platform: string;
-    private readonly _track: Song;
+    private readonly _local = {
+        track: null as Song,
+        guildID: null as string,
+        platform: null as string
+    };
+    /**
+     * @description Получаем путь
+     * @return string
+     * @private
+     */
+    private get path() {
+        const path = env.get("cached.dir");
+
+        return `${path}/Guilds/[${this._local.guildID}].json`;
+    };
+
+    /**
+     * @description Проверяем работает ли история
+     * @return boolean
+     * @public
+     * @static
+     */
+    public static get enable() {
+        return env.get("history");
+    };
+
+    /**
+     * @description Загружаем файл
+     * @return null | string
+     * @private
+     */
+    private get file() {
+        if (!existsSync(this.path)) return null;
+
+        return readFileSync(this.path, {encoding: "utf-8"});
+    };
+
+
+    /**
+     * @description Сохраняем данные о треке в локальную базу
+     * @param track {Song} Сохраняемый трек
+     * @param GuildID {string} ID сервера
+     * @param platform {string} Имя платформы
+     */
     public constructor(track: Song, GuildID: string, platform: string) {
-        this._guildID = GuildID; this._track = track; this._platform = platform;
+        this._local.guildID = GuildID; this._local.track = track; this._local.platform = platform;
 
         //Если нет файла
-        if (!this.file) this._createDir();
+        if (!this.file) this.createDir();
 
         setTimeout(() => {
             const file = JSON.parse(this.file);
 
             //Добавляем трек
-            this._pushTrack(file.tracks);
+            this.pushTrack(file.tracks);
 
             //Сортируем треки
-            this._sortTracks(file.tracks);
+            this.sortTracks(file.tracks);
 
             //Сохраняем файл
-            FileSystem.saveToFile(this.path, file);
+            this.saveToFile(this.path, file);
         }, 2e3);
     };
-    /**
-     * @description Получаем путь
-     */
-    private get path() { return `${env.get("cached.dir")}/Guilds/[${this._guildID}].json`; };
-
-    /**
-     * @description Загружаем файл
-     */
-    private get file() { return FileSystem.getFile(this.path); };
-
-
-    /**
-     * @description Проверяем работает ли история
-     */
-    public static get enable() { return env.get("history"); };
 
 
     /**
      * @description Добавляем трек в базу
      * @param tracks {Array<miniTrack>} Треки для сортировки
+     * @return void
+     * @private
      */
-    private _pushTrack = (tracks: Array<miniTrack>) => {
-        const Found = (tracks as Array<miniTrack>).find((track) => track.title.includes(this._track.title) || track.url === this._track.url);
+    private pushTrack = (tracks: Array<miniTrack>) => {
+        const track = this._local.track;
+        const Found = (tracks as Array<miniTrack>).find((track) => track.title.includes(track.title) || track.url === track.url);
 
         //Если нет трека, то добавляем его
         if (!Found) {
             tracks.push({
-                title: this._track.title,
-                url: this._track.url,
+                title: track.title,
+                url: track.url,
                 author: {
-                    title: this._track.author.title,
-                    url: this._track.author.url
+                    title: track.author.title,
+                    url: track.author.url
                 },
 
-                platform: this._platform,
+                platform: track.platform,
                 total: 1
             })
         } else { //Если есть такой трек, то добавляем + к прослушиванию
@@ -70,12 +101,13 @@ export class History {
             tracks[index].total++;
         }
     };
-
     /**
      * @description Сортируем треки по популярности
      * @param tracks {Array<miniTrack>} Треки для сортировки
+     * @return void
+     * @private
      */
-    private _sortTracks = (tracks: Array<miniTrack>) => {
+    private sortTracks = (tracks: Array<miniTrack>) => {
         //Если треков более 1, то сортируем по популярности
         if (tracks.length > 1) (tracks as Array<miniTrack>).sort((track1, track2) => {
             return track2.total - track1.total;
@@ -84,9 +116,52 @@ export class History {
 
     /**
      * @description Если нет папки db/Guilds
+     * @return void
+     * @private
      */
-    private _createDir = () => FileSystem.saveToFile(this.path, { tracks: [] as Array<miniTrack> });
+    private createDir = () => this.saveToFile(this.path, {tracks: [] as Array<miniTrack>});
+
+    /**
+     * @description Выдаем путь до файла
+     * @param ID
+     */
+    public static getFile = (ID: string) => {
+        const path = env.get("cached.dir") + `/Guilds/[${ID}].json`;
+
+        if (!existsSync(path)) return null;
+
+        return readFileSync(path, {encoding: "utf-8"});
+    };
+
+    /**
+     * @description Сохраняем данные в файл
+     * @param dir {string} Путь файла
+     * @param data {any} Данные для записи
+     */
+    private saveToFile(dir: string, data: any): void {
+        if (!existsSync(dir)) {
+            let fixDir = dir.split("/");
+            fixDir.splice(fixDir.length - 1, 1);
+
+            mkdirSync(`${fixDir.join("/")}/`, {recursive: true});
+        }
+
+        setTimeout(() => {
+            const file: object = JSON.parse(History.getFile(dir));
+            writeFileSync(dir, JSON.stringify(data ? data : file, null, `\t`));
+        }, 2e3);
+    }
 }
+
+
+/**
+ *  _____           _                    __
+ * |_   _|         | |                  / _|
+ *   | |    _ __   | |_    ___   _ __  | |_    __ _   ___    ___   ___
+ *   | |   | '_ \  | __|  / _ \ | '__| |  _|  / _` | / __|  / _ \ / __|
+ *  _| |_  | | | | | |_  |  __/ | |    | |   | (_| | \__ \ |  __/ \__ \
+ * |_____| |_| |_|  \__|  \___| |_|    |_|    \__,_| |___/  \___| |___/
+ */
 
 
 /**
