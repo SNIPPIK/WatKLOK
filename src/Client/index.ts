@@ -82,7 +82,7 @@ export const Logger = new class {
         "WARN": "\x1b[33m",
         "ERROR": "\x1b[31m",
         "LOG": ""
-    }
+    };
 
     /**
      * @description Отправляем лог с временем

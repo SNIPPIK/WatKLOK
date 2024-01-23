@@ -9,9 +9,8 @@ import {env} from "@env";
  */
 export class History {
     private readonly _local = {
-        track: null as Song,
-        guildID: null as string,
-        platform: null as string
+        track: null     as Song,
+        guildID: null   as string
     };
     /**
      * @description Получаем путь
@@ -50,15 +49,14 @@ export class History {
      * @description Сохраняем данные о треке в локальную базу
      * @param track {Song} Сохраняемый трек
      * @param GuildID {string} ID сервера
-     * @param platform {string} Имя платформы
      */
-    public constructor(track: Song, GuildID: string, platform: string) {
-        this._local.guildID = GuildID; this._local.track = track; this._local.platform = platform;
+    public constructor(track: Song, GuildID: string) {
+        this._local.guildID = GuildID; this._local.track = track;
 
         //Если нет файла
-        if (!this.file) this.createDir();
+        if (!this.file) this.saveToFile(this.path, { tracks: [] });
 
-        setTimeout(() => {
+        setTimeout(async () => {
             const file = JSON.parse(this.file);
 
             //Добавляем трек
@@ -113,13 +111,6 @@ export class History {
             return track2.total - track1.total;
         });
     };
-
-    /**
-     * @description Если нет папки db/Guilds
-     * @return void
-     * @private
-     */
-    private createDir = () => this.saveToFile(this.path, {tracks: [] as Array<miniTrack>});
 
     /**
      * @description Выдаем путь до файла

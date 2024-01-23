@@ -94,6 +94,16 @@ export const db = new class QuickDB {
      * @private
      */
     private readonly _emojis = {
+        button: {
+            resume: env.get("button.resume"),
+            pause: env.get("button.pause"),
+            loop: env.get("button.loop"),
+            loop_one: env.get("button.loop_one"),
+            pref: env.get("button.pref"),
+            next: env.get("button.next"),
+            queue: env.get("button.queue")
+        },
+
         progress: {
             empty: {
                 left: env.get("progress.empty.left"),
@@ -125,7 +135,7 @@ export const db = new class QuickDB {
             const PublicData: any = await client.rest.put(Routes.applicationCommands(client.user.id), {body: this.commands.public});
             const OwnerData: any = await client.rest.put(Routes["applicationGuildCommands"](client.user.id, env.get("owner.server")), {body: this.commands.owner});
 
-            //Logger.debug(`[Shard ${client.ID}]: [SlashCommands]: [Upload]: Public: ${PublicData.length} | Owner: ${OwnerData.length}`);
+            Logger.log("DEBUG", `[Shard ${client.ID}]: [SlashCommands]: [Upload]: Public: ${PublicData.length} | Owner: ${OwnerData.length}`);
             return resolve(true);
         });
     };

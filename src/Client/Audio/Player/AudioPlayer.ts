@@ -11,13 +11,13 @@ import {Song} from "@Client/Audio/Queue/Song";
  */
 export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
     private readonly _array = {
-        filters: [] as Filter[]
+        filters: []     as Filter[]
     };
 
-    private readonly _global = {
-        status: "wait" as AudioPlayerStatus,
-        voice: null as VoiceConnection,
-        stream: null as AudioResource
+    private readonly _local = {
+        status: "wait"  as AudioPlayerStatus,
+        voice: null     as VoiceConnection,
+        stream: null    as AudioResource
     };
     /**
      * @description Возможно ли сейчас пропустить трек
@@ -45,21 +45,21 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @return VoiceConnection
      * @public
      */
-    public get connection() { return this._global.voice; };
+    public get connection() { return this._local.voice; };
 
     /**
      * @description
      * @return AudioPlayerStatus
      * @public
      */
-    public get status() { return this._global.status; };
+    public get status() { return this._local.status; };
 
     /**
      * @description
      * @return AudioResource
      * @public
      */
-    public get stream() { return this._global.stream; };
+    public get stream() { return this._local.stream; };
 
     /**
      * @description Проверяем играет ли плеер
@@ -88,11 +88,11 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @public
      */
     public set connection(connection: VoiceConnection) {
-        if (this._global.voice) {
-            if (this._global.voice.joinConfig.channelId === connection.joinConfig.channelId) return
+        if (this._local.voice) {
+            if (this._local.voice.joinConfig.channelId === connection.joinConfig.channelId) return
         }
 
-        this._global.voice = connection;
+        this._local.voice = connection;
     };
 
     /**
@@ -101,8 +101,8 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @private
      */
     protected set status(status: AudioPlayerStatus) {
-        if (status !== this._global.status) this.emit(status);
-        this._global.status = status;
+        if (status !== this._local.status) this.emit(status);
+        this._local.status = status;
     };
 
     /**
@@ -117,12 +117,12 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
             } catch {}
 
             //Удаляем прошлый поток
-            this._global.stream = null;
+            this._local.stream = null;
         }
 
 
         //Продолжаем воспроизведение
-        this._global.stream = stream;
+        this._local.stream = stream;
         this.status = "playing";
     };
 
@@ -228,7 +228,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
         //Выключаем плеер если сейчас играет трек
         this.stop();
 
-        for (let str of Object.keys(this._global))  this._global[str] = null;
+        for (let str of Object.keys(this._local))  this._local[str] = null;
         this._array.filters = null;
     };
 }

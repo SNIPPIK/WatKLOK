@@ -18,18 +18,22 @@ export default class extends Event<Events.InteractionCreate> {
 
                 //Подменяем данные
                 message.author = message?.member?.user ?? message?.user;
-                const type: number = message?.isCommand() ? 0 : message?.isButton() ? 1 : 2;
 
-                if (type < 2) {
-                    const actionType = (type === 0 ? this._stepCommand : this._stepButton)(message);
+                const status = message?.isCommand() ? true : message?.isButton() ? false : null
 
-                    //Если есть что отправить на канал
-                    if (actionType) this._sendChannel(message, actionType);
-                    return;
+                if (status || status === false) {
+                    const ICommand = (status ? this._stepCommand : this._stepButton)(message);
+
+                    //Если есть данные, то отправляем их в тестовый канал
+                    if (ICommand) {
+                        if (!(ICommand instanceof Promise)) return void new ActionMessage({...ICommand, message});
+                        ICommand.then(data => new ActionMessage({...data, message})).catch((err) => Logger.log("ERROR", err));
+                    }
                 }
             }
         });
     }
+
     /**
      * @description Выполняем действия связанные с командами
      * @param message {ClientInteraction} Взаимодействие с ботом
@@ -98,7 +102,7 @@ export default class extends Event<Events.InteractionCreate> {
             case "skip": return db.commands.get("skip").execute(message, ["1"]) as ICommand.all;
 
             //Кнопка повтора
-            case "repeat": return db.commands.get("repeat").execute(message, [queue.options.loop === "songs" ? "song": "songs"]) as ICommand.all;
+            case "repeat": return db.commands.get("repeat").execute(message, [queue.loop === "songs" ? "song": "songs"]) as ICommand.all;
 
             //Кнопка паузы
             case "resume_pause": {
@@ -115,18 +119,6 @@ export default class extends Event<Events.InteractionCreate> {
 
         //Если пользователь нашел не существующую кнопку
         return { content: `${message.author}, откуда ты взял эту кнопку!`, color: "DarkRed" }
-    };
-
-    /**
-     * @description Отправляем сообщение в тестовый канал
-     * @param message {ClientInteraction} Взаимодействие с ботом
-     * @param data {ICommand.all} Тип данных для отправки
-     * @readonly
-     * @private
-     */
-    private readonly _sendChannel = (message: ClientInteraction, data: ICommand.all | Promise<ICommand.all>) => {
-        if (!(data instanceof Promise)) return void new ActionMessage({...data, message});
-        data.then(data => new ActionMessage({...data, message})).catch((err) => Logger.log("ERROR", err));
     };
 
     /**

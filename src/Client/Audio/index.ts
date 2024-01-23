@@ -190,21 +190,8 @@ const arrayMessages: PlayerMessage.array<any>[] = [
 ]
 
 /**
- * @description Отправка сообщений плеера
- */
-//@ts-ignore
-export function getPlayerMessage<T = PlayerMessage.name>(type: PlayerMessage.name, args: PlayerMessage.args[T]) {
-    const arrayData: PlayerMessage.array<T> = arrayMessages.find((item: PlayerMessage.array<T>) => item.type === type);
-
-    if (!arrayData) throw TypeError("Not found embed message!");
-
-    //@ts-ignore
-    return arrayData.callback(...args);
-}
-
-
-/**
  * @author SNIPPIK
+ * @description Управление временем
  * @class Duration
  */
 export const Duration = new class {
@@ -275,6 +262,17 @@ export const Duration = new class {
     };
 }
 
+/**
+ * @description Отправка сообщений плеера
+ */
+//@ts-ignore
+export function getPlayerMessage<T = PlayerMessage.name>(type: PlayerMessage.name, args: PlayerMessage.args[T]) {
+    const arrayData: PlayerMessage.array<T> = arrayMessages.find((item: PlayerMessage.array<T>) => item.type === type);
+
+    if (!arrayData) throw TypeError("Not found embed message!");
+
+    return arrayData.callback(...args as any);
+}
 
 /**
  * @author SNIPPIK
@@ -282,15 +280,25 @@ export const Duration = new class {
  * @class ProgressBar
  */
 class ProgressBar {
-    private readonly _current: number;
-    private readonly _max: number;
-    private readonly _size: number = 12;
+    private readonly _local = {
+        current: 0,
+        max:     0,
+        size:    12
+    };
+
+    public constructor(currentDur: number, max: number) {
+        if (currentDur > max) this._local.current = max;
+        else this._local.current = currentDur;
+
+        this._local.max = max;
+    };
+
     /**
      * @description Высчитываем прогресс бар
      */
     public get bar(): string {
         const {progress} = db.emojis;
-        const size = this._size, current = this._current, max = this._max;
+        const size =  this._local.size, current =  this._local.current, max =  this._local.max;
         const progressZ = Math.round(size * (isNaN(current) ? 0 : current / max));
         let bar: string = "";
 
@@ -309,15 +317,7 @@ class ProgressBar {
 
         return bar;
     };
-
-    public constructor(currentDur: number, max: number) {
-        if (currentDur > max) this._current = max;
-        else this._current = currentDur;
-
-        this._max = max;
-    };
 }
-
 
 /**
  * @description Превращаем Array в Array<Array>

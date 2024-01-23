@@ -11,7 +11,6 @@ else {
     const client = new Atlas();
 
     client.login(env.get("token.discord")).then(() => {
-
         //Запускаем загрузку модулей после инициализации бота
         client.once("ready", async () => {
             Logger.log("LOG", `[Shard ${client.ID}] has connected for websocket`);
@@ -25,10 +24,14 @@ else {
                 if (status instanceof Error) throw status;
             }
         });
-    })
+    });
 
     for (const event of ["SIGTERM", "SIGINT", "exit"]) process.on(event, () => {
+        Logger.log("DEBUG", "[Process]: has be killed!");
         client.destroy().catch((err) => Logger.log("ERROR", err));
-        process.exit(0)
+
+        setTimeout(() => {
+            process.exit(0)
+        }, 1e3);
     });
 }

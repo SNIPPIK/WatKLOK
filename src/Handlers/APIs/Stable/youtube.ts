@@ -181,7 +181,7 @@ class YouTubeLib {
      */
     protected _API = (url: string): Promise<Error | any> => {
         return new Promise((resolve) => {
-            new httpsClient(url, {cookie: true, useragent: true,
+            new httpsClient(url, {useragent: true,
                 headers: { "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7", "accept-encoding": "gzip, deflate, br" }
             }).toString.then((api) => {
                 //Если возникает ошибка при получении страницы

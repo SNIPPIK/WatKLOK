@@ -3,66 +3,14 @@ import {request as httpsRequest, RequestOptions} from "https";
 import {IncomingMessage, request as httpRequest} from "http";
 import {Duration} from "@Client/Audio";
 import {Logger} from "@Client";
-import {env} from "@env";
-/**
- * @author SNIPPIK
- * @description Класс управляющий youtube cookie
- * @class RequestCookie
- */
-class YT_Cookie {
-    /**
-     * @description Обновляем куки в файле env
-     * @param Cookie {string | string[]} Новый куки или новые данные для замены
-     * @public
-     */
-    public set update(Cookie: string | string[]) {
-        const oldCookie: string = env.get("cookie.youtube");
-
-        //Объединяем куки если он имеет формат array
-        const toCookie = typeof Cookie === "string" ? Cookie : Cookie.join("; ");
-
-        //Соединяем старый и новый куки
-        const joinCookie = this.toString({...this.toJson(oldCookie), ...this.toJson(toCookie)});
-
-        env.set("cookie.youtube", joinCookie);
-    };
-
-
-    /**
-     * @description Конвертируем куки в Json
-     * @param Cookie {string} Куки
-     * @readonly
-     * @private
-     */
-    private readonly toJson = (Cookie: string): {} => {
-        let output: any = {};
-
-        Cookie.split(/\s*;\s*/).forEach((pair) => {
-            const cook = pair.split(/\s*=\s*/);
-            output[cook[0]] = cook.splice(1).join('=');
-        });
-
-        return output;
-    };
-
-
-    /**
-     * @description Конвертируем куки в строку для дальнейшего использования
-     * @param Cookie {{}} Совмещенный куки
-     * @readonly
-     * @private
-     */
-    private readonly toString = (Cookie: {}): string => Object.entries(Cookie).map(([key, value]) => `${key}=${value}`).join("; ");
-}
-
 
 /**
  * @author SNIPPIK
  * @description Класс создающий запрос
  * @class Request
+ * @abstract
  */
-class Request {
-    protected readonly _cookie = new YT_Cookie();
+abstract class Request {
     protected readonly _options: { body?: string; } & RequestOptions;
     /**
      * @description Получаем протокол ссылки
@@ -90,11 +38,6 @@ class Request {
                     return resolve(this.request);
                 }
 
-                //Обновляем куки
-                if (this._options?.headers["cookie"] && res.headers && res.headers["set-cookie"]) {
-                    setTimeout(() => this._cookie.update = res.headers["set-cookie"], 200);
-                }
-
                 return resolve(res);
             });
 
@@ -114,24 +57,6 @@ class Request {
     };
 
     /**
-     * @description Генерируем UserAgent из асетов
-     * @private
-     */
-    private get genUserAgent() {
-        const OSs = [ "(X11; Linux x86_64)", "(Windows NT 10.0; Win64; x64)" ];
-        const OS = OSs[Duration.randomNumber(0, OSs.length)];
-        const version = `${Duration.randomNumber(96, 119)}.0.4280.${Duration.randomNumber(20, 150)}`;
-
-        return {
-            "User-Agent": `Mozilla/5.0 ${OS} AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version} Safari/537.36`,
-            "Sec-Ch-Ua-Full-Version": version,
-            "Sec-Ch-Ua-Bitness": `64`,
-            "Sec-Ch-Ua-Arch": "x86",
-            "Sec-Ch-Ua-Mobile": "?0"
-        };
-    };
-
-    /**
      * @description Получаем всю страницу
      * @param decoder {Decoder | IncomingMessage}
      * @private
@@ -146,7 +71,7 @@ class Request {
                 return resolve(data.join(""));
             });
         });
-    }
+    };
 
     /**
      * @description Инициализируем класс
@@ -156,9 +81,7 @@ class Request {
      */
     public constructor(
         url: string,
-        options?: {
-            method?: "POST" | "GET" | "HEAD";
-
+        options?: { method?: "POST" | "GET" | "HEAD";
             //Headers запроса
             headers?: RequestOptions["headers"];
 
@@ -167,25 +90,24 @@ class Request {
 
             //Добавлять рандомный user-agent
             useragent?: boolean;
-
-            //Использовать Cookie
-            cookie?: boolean;
         }
     ) {
         const { hostname, pathname, search, port, protocol } = new URL(url);
         let headers = options?.headers ?? {};
 
-        //Добавляем куки
-        if (options?.cookie) {
-            if (env.check("cookie.youtube")) {
-                const cookie = env.get("cookie.youtube");
-
-                if (cookie) headers["cookie"] = cookie;
-            }
-        }
-
         //Добавляем фейковые данные о клиенте
-        if (options?.useragent) headers = {...this.genUserAgent};
+        if (options?.useragent) {
+            const OS = [ "(X11; Linux x86_64)", "(Windows NT 10.0; Win64; x64)" ];
+            const version = `${Duration.randomNumber(96, 120)}.0.6099.${Duration.randomNumber(20, 250)}`;
+
+            headers = {
+                "User-Agent": `Mozilla/5.0 ${OS[Duration.randomNumber(0, OS.length)]} AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version} Safari/537.36`,
+                "Sec-Ch-Ua-Full-Version": version,
+                "Sec-Ch-Ua-Bitness": `64`,
+                "Sec-Ch-Ua-Arch": "x86",
+                "Sec-Ch-Ua-Mobile": "?0"
+            };
+        }
 
         this._options = {
             method: options?.method ?? "GET", hostname,
@@ -195,7 +117,6 @@ class Request {
         };
     };
 }
-
 
 /**
  * @author SNIPPIK

@@ -24,5 +24,6 @@
          - Указать `ffmpeg.path` и `ffprobe.path` в [`env`](.env) 
       - `Linux` | (sudo apt install or sudo pacman -S) ffmpeg
 5. Запуск бота
+   - npm i
    - npm run build
    - npm run shard or npm run client

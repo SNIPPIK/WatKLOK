@@ -18,7 +18,7 @@ export class AudioResource {
       ogg: new opus.OggDemuxer({ autoDestroy: true, objectMode: true })
     };
 
-    private readonly _global = {
+    private readonly _local = {
         readable: false,
         ended:    false
     };
@@ -50,7 +50,7 @@ export class AudioResource {
             "-ss", `${seek}`, "-i", urls[1], "-af", filters, "-f", "opus", "-b:a", `${bitrate}`, "pipe:1"
         ]);
 
-        this._stream.ogg.once("readable", () => { this._global.readable = true; });
+        this._stream.ogg.once("readable", () => { this._local.readable = true; });
         this._stream.process.stderr.once("error", (err) => this.stream.emit("error", err));
         this._stream.process.stdout.pipe(this._stream.ogg);
     };
@@ -63,14 +63,7 @@ export class AudioResource {
     /**
      * @description Начато ли чтение потока
      */
-    public get readable() { return this._global.readable; };
-
-    /**
-     * @description Используется для проверки удален ли поток
-     * @return boolean
-     * @public
-     */
-    public get ended() { return this._global.ended; }
+    public get readable() { return this._local.readable; };
 
     /**
      * @description Выдаем фрагмент потока
@@ -112,8 +105,8 @@ export class AudioResource {
             }
         }
 
-        this._global.readable = null;
-        this._global.ended = null;
+        this._local.readable = null;
+        this._local.ended = null;
     };
 }
 

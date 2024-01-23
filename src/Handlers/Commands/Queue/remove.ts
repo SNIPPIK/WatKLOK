@@ -46,7 +46,7 @@ export default class extends Command {
                 let {title}: Song = queue.songs[arg - 1];
 
                 if (arg === 1) {
-                    if (queue.options.loop !== "off") {
+                    if (queue.loop !== "off") {
                         queue.songs.splice(0, 1); //Удаляем первый трек
                         queue.player.stop();
                     } else queue.player.stop();

@@ -35,8 +35,7 @@ export default class extends Command {
 
                 if (isNaN(arg)) return { content: `${author}, аргумент не является числом` };
 
-                let {player, songs, options} = queue;
-                let {title}: Song = songs[arg - 1];
+                let {player, songs} = queue, {title}: Song = songs[arg - 1];
 
                 try {
                     //Если музыку нельзя пропустить из-за плеера
@@ -46,7 +45,7 @@ export default class extends Command {
                     else if (arg > songs.length) return { content: `${author}, В очереди ${songs.length}!`, color: "Yellow" };
 
                     else if (arg > 1) {
-                        if (options.loop === "songs") for (let i = 0; i < arg - 2; i++) songs.push(songs.shift());
+                        if (queue.loop === "songs") for (let i = 0; i < arg - 2; i++) songs.push(songs.shift());
                         else queue.songs.splice(arg - 2, 1);
                     }
 

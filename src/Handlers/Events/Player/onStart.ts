@@ -16,7 +16,7 @@ export default class Player_onStart extends Event<any> {
                 new ActionMessage(getPlayerMessage<"playing">("playing", [queue]))
                 //История треков сервера
                 try {
-                    if (History.enable && queue.songs.song.platform !== "DISCORD") new History(queue.songs.song, queue.guild.id, queue.songs.song.platform);
+                    if (History.enable && queue.songs.song.platform !== "DISCORD") new History(queue.songs.song, queue.guild.id);
                 } catch (e) {
                     Logger.log("ERROR", e);
                 }

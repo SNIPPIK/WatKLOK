@@ -49,15 +49,15 @@ export default class extends Command {
 
                 switch (argument) {
                     case "song": {
-                        queue.options.loop = "song";
+                        queue.loop = "song";
                         return { content: `🔂 | Повтор  | ${queue.songs[0].title}`, codeBlock: "css"};
                     }
                     case "songs": {
-                        queue.options.loop = "songs";
+                        queue.loop = "songs";
                         return { content: `🔁 | Повтор всей музыки`, codeBlock: "css"};
                     }
                     case "off": {
-                        queue.options.loop = "off";
+                        queue.loop = "off";
                         return { content: `❌ | Повтор выключен`, codeBlock: "css"};
                     }
                 }

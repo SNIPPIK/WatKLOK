@@ -11,11 +11,9 @@ export default class Player_onWait extends Event<any> {
             type: "player",
             //@ts-ignore
             execute: (queue: ArrayQueue) => {
-                const {loop} = queue.options;
-
                 //Проверяем надо ли удалить из очереди трек
-                const removedSong = loop === "off" || loop === "songs" ? queue.songs.shift() : null;
-                if (removedSong && loop === "songs") queue.songs.push(removedSong);
+                const removedSong = queue.loop === "off" || queue.loop === "songs" ? queue.songs.shift() : null;
+                if (removedSong && queue.loop === "songs") queue.songs.push(removedSong);
 
                 if (!queue?.songs?.song) return db.music.queue.remove(queue.guild.id);
 

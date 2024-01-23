@@ -3,7 +3,6 @@ import {Events} from "discord.js";
 import {Event} from "@handler";
 import {db} from "@Client/db"
 
-
 /**
  * @author SNIPPIK
  * @description Класс ивента VoiceStateUpdate
@@ -32,7 +31,7 @@ export default class VoiceStateUpdate extends Event<Events.VoiceStateUpdate> {
                 /**
                  * @description Если есть очередь и нет слушателей то удаляем очередь
                  */
-                const queue = db.music.queue.get(newState.guild.id); //Очередь сервера
+                const queue = db.music.queue.get(newState.guild.id);
 
                 if (queue) {
                     const isBotVoice = !!(newState.channel?.members ?? oldState.channel?.members)?.find((member) => member.user.id === client.user.id);
