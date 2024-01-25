@@ -310,9 +310,10 @@ export class Collection extends CollectionArray {
     private set pushTracks({queueID, array, author}: {queueID: string, array: Song[], author: ClientMessage["author"]}) {
         const queue = this.get(queueID);
 
+        //Пишем о добавлении трека
         if (queue.songs.size > 1) {
             if (array.length === 1) new ActionMessage(getPlayerMessage<"pushSong">("pushSong", [queue]));
-        } else setImmediate(() => queue.player.play(queue.songs.song));
+        } else if (!queue.player.playing) setImmediate(() => queue.player.play(queue.songs.song));
 
         //Добавляем треки в очередь
         for (let n = 0; array.length > n; n++) {
