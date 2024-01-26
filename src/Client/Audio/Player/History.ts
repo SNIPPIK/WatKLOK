@@ -54,9 +54,9 @@ export class History {
         this._local.guildID = GuildID; this._local.track = track;
 
         //Если нет файла
-        if (!this.file) this.saveToFile(this.path, { tracks: [] });
+        if (!existsSync(this.path)) this.saveToFile(this.path, { tracks: [] });
 
-        setTimeout(async () => {
+        setTimeout(() => {
             const file = JSON.parse(this.file);
 
             //Добавляем трек
@@ -78,26 +78,25 @@ export class History {
      * @private
      */
     private pushTrack = (tracks: Array<miniTrack>) => {
-        const track = this._local.track;
-        const Found = (tracks as Array<miniTrack>).find((track) => track.title.includes(track.title) || track.url === track.url);
+        const track = tracks.find((track) => track.url === this._local.track.url);
 
-        //Если нет трека, то добавляем его
-        if (!Found) {
-            tracks.push({
-                title: track.title,
-                url: track.url,
-                author: {
-                    title: track.author.title,
-                    url: track.author.url
-                },
-
-                platform: track.platform,
-                total: 1
-            })
-        } else { //Если есть такой трек, то добавляем + к прослушиванию
-            const index = tracks.indexOf(Found);
+        if (track) {
+            const index = tracks.indexOf(track);
             tracks[index].total++;
+            return;
         }
+
+        tracks.push({
+            title: this._local.track.title,
+            url: this._local.track.url,
+            author: {
+                title: this._local.track.author.title,
+                url: this._local.track.author.url
+            },
+
+            platform: this._local.track.platform,
+            total: 1
+        });
     };
     /**
      * @description Сортируем треки по популярности
