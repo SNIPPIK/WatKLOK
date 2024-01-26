@@ -1,7 +1,7 @@
 import {Collection as AudioCollection} from "@Client/Audio/Queue/Collection";
 import {Filter} from "@Client/Audio/Player/AudioResource";
 import {Collection, Routes} from "discord.js";
-import {Command, Event, API} from "@handler";
+import {Command, Event, API, RequestAPI} from "@handler";
 import {httpsClient} from "@Client/Request";
 import {Atlas, Logger} from "@Client";
 import {env} from "@env";
@@ -43,7 +43,7 @@ export const db = new class QuickDB {
         private readonly _queue = new AudioCollection();
         private readonly _filters: Filter[] = [];
         private readonly _platform = {
-            supported: [] as API.load[],
+            supported: [] as RequestAPI[],
             authorization: [] as API.platform[],
             audio: [] as API.platform[],
             block: [] as API.platform[]
@@ -154,24 +154,21 @@ export const db = new class QuickDB {
             const path = dirs[n];
 
             try {
-                new loadHandlerDir<API.load | Command | Event<unknown>>(path, (item, file) => {
+                new loadHandlerDir<RequestAPI | Command | Event<unknown>>(path, (item, file) => {
 
                     //Загружаем команды
                     if (item instanceof Command) this.commands.set(item.name, item);
 
                     //Загружаем ивенты
                     else if (item instanceof Event) {
-                        if (item.type === "atlas") client.on(item.name as any, (...args: any[]) => item.execute(client, ...args));
+                        if (item.type === "client") client.on(item.name as any, (...args: any[]) => item.execute(client, ...args));
                         else if (item.type === "process") process.on(item.name as any, item.execute);
                     }
 
                     //Загружаем APIs
                     else if ("audio" in item) {
-                        //Надо ли авторизоваться на этой платформе
-                        if (item.auth) {
-                            //Если нет данных, то откидываем платформу
-                            if (!env.get(`token.${item.name.toLowerCase()}`)) this.music.platforms.authorization.push(item.name);
-                        }
+                        //Если нет данных, то откидываем платформу
+                        if (!item.auth) this.music.platforms.authorization.push(item.name);
 
                         //Поддерживает ли платформа получение аудио
                         if (!item.audio) this.music.platforms.audio.push(item.name);
