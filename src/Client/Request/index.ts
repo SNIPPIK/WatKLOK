@@ -11,7 +11,18 @@ import {Logger} from "@Client";
  * @abstract
  */
 abstract class Request {
-    protected readonly _options: { body?: string; } & RequestOptions;
+    protected readonly _options: {
+        method?: "POST" | "GET" | "HEAD";
+
+        //Headers запроса
+        headers?: RequestOptions["headers"];
+
+        //Если мы хотим что-то отправить серверу
+        body?: string;
+
+        //Добавлять рандомный user-agent
+        useragent?: boolean;
+    } & RequestOptions;
     /**
      * @description Получаем протокол ссылки
      * @private
@@ -57,64 +68,34 @@ abstract class Request {
     };
 
     /**
-     * @description Получаем всю страницу
-     * @param decoder {Decoder | IncomingMessage}
-     * @private
-     */
-    protected _extractPage = (decoder: BrotliDecompress | Gunzip | Deflate | IncomingMessage): Promise<string> => {
-        const data: string[] = [];
-
-        return new Promise<string>((resolve) => {
-            decoder.setEncoding("utf-8");
-            decoder.on("data", (c) => data.push(c));
-            decoder.once("end", () => {
-                return resolve(data.join(""));
-            });
-        });
-    };
-
-    /**
      * @description Инициализируем класс
      * @param url {string} Ссылка
      * @param options {any} Опции
      * @public
      */
-    public constructor(
-        url: string,
-        options?: { method?: "POST" | "GET" | "HEAD";
-            //Headers запроса
-            headers?: RequestOptions["headers"];
-
-            //Если мы хотим что-то отправить серверу
-            body?: string;
-
-            //Добавлять рандомный user-agent
-            useragent?: boolean;
-        }
-    ) {
+    public constructor(url: string, options?: httpsClient["_options"]) {
         const { hostname, pathname, search, port, protocol } = new URL(url);
-        let headers = options?.headers ?? {};
 
-        //Добавляем фейковые данные о клиенте
+        //Создаем стандартные настройки
+        this._options = {
+            headers: options?.headers ?? {},
+            method: options?.method ?? "GET",
+            port, hostname, body: options?.body ?? null,
+            path: pathname + search, protocol,
+        };
+
         if (options?.useragent) {
             const OS = [ "(X11; Linux x86_64)", "(Windows NT 10.0; Win64; x64)" ];
             const version = `${Duration.randomNumber(96, 120)}.0.6099.${Duration.randomNumber(20, 250)}`;
 
-            headers = {
+            Object.assign(this._options.headers, {
                 "User-Agent": `Mozilla/5.0 ${OS[Duration.randomNumber(0, OS.length)]} AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version} Safari/537.36`,
                 "Sec-Ch-Ua-Full-Version": version,
                 "Sec-Ch-Ua-Bitness": `64`,
                 "Sec-Ch-Ua-Arch": "x86",
                 "Sec-Ch-Ua-Mobile": "?0"
-            };
+            });
         }
-
-        this._options = {
-            method: options?.method ?? "GET", hostname,
-            path: pathname + search, port, headers,
-            body: options?.body,
-            protocol: protocol
-        };
     };
 }
 
@@ -134,12 +115,16 @@ export class httpsClient extends Request {
             if (request instanceof Error) return resolve(request);
 
             const encoding = request.headers["content-encoding"];
-            switch (encoding) {
-                case "br": return resolve(this._extractPage(request.pipe(createBrotliDecompress())));
-                case "gzip": return resolve(this._extractPage(request.pipe(createGunzip())));
-                case "deflate": return resolve(this._extractPage(request.pipe(createDeflate())));
-                default: return resolve(this._extractPage(request));
-            }
+            let decoder:  BrotliDecompress | IncomingMessage | Gunzip | Deflate, data: string[] = [];
+
+            if (encoding === "br") decoder = request.pipe(createBrotliDecompress());
+            else if (encoding === "gzip") decoder = request.pipe(createGunzip());
+            else if (encoding === "deflate") decoder = request.pipe(createDeflate());
+
+            (decoder ?? request).setEncoding("utf-8").on("data", (c) => data.push(c)).once("end", () => {
+                setImmediate(() => {data = null});
+                return resolve(data.join(""));
+            });
         }));
     };
 
