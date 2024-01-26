@@ -1,6 +1,6 @@
 {
   "name": "watklok",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Постоянно развивающийся музыкальный бот!",
   "dependencies": {
     "@discordjs/voice": "^0.16.1",

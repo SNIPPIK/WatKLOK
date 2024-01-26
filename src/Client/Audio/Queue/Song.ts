@@ -1,9 +1,8 @@
 import {ClientMessage} from "@handler/Events/Atlas/interactionCreate";
 import {httpsClient} from "@Client/Request";
-import {API, RequestAPI} from "@handler";
+import {API, ResponseAPI} from "@handler";
 import {Duration} from "../index";
 import {db} from "@Client/db";
-
 /**
  * @author SNIPPIK
  * @description Все интерфейсы для работы системы треков
@@ -99,8 +98,6 @@ export namespace Song {
     }
 }
 
-
-
 /**
  * @author SNIPPIK
  * @class Song
@@ -118,7 +115,7 @@ export class Song {
     private _requester: Song.requester;
     public _link: string = null;
     public constructor(track: Song.track) {
-        const api = new RequestAPI(track.url);
+        const api = new ResponseAPI(track.url);
         const seconds = parseInt(track.duration.seconds) || 321;
 
         this._title = track.title;
@@ -267,7 +264,7 @@ export class Song {
 function resource(platform: API.platform, url: string, author: string, title: string, duration: number): Promise<string> {
     return new Promise<string>(async (resolve) => {
         if (!db.music.platforms.audio.includes(platform)) {
-            const callback = new RequestAPI(platform).callback("track");
+            const callback = new ResponseAPI(platform).callback("track");
 
             //Если нет такого запроса
             if (callback) {
@@ -307,8 +304,8 @@ function resource(platform: API.platform, url: string, author: string, title: st
 function searchTrack(nameSong: string, duration: number) {
     return new Promise<string | Error>(async (resolve) => {
         const randomPlatform = getRandomPlatform();
-        const track = randomPlatform.requests.find((d) => d.type === "track");
-        const search = randomPlatform.requests.find((d) => d.type === "search");
+        const track = randomPlatform.requests.find((d) => d.name === "track");
+        const search = randomPlatform.requests.find((d) => d.name === "search");
         const tracks = await search.callback(nameSong) as Song[] | Error; //Ищем треки
 
         //Если поиск выдал ошибку или нет треков возвращаем ничего
@@ -335,7 +332,6 @@ function searchTrack(nameSong: string, duration: number) {
     });
 }
 
-
 /**
  * @author SNIPPIK
  * @description Получаем случайную платформу
@@ -344,8 +340,8 @@ function searchTrack(nameSong: string, duration: number) {
 function getRandomPlatform() {
     const randomAPI = db.music.platforms.supported.filter((platform) => !db.music.platforms.audio.includes(platform.name)
         && !db.music.platforms.authorization.includes(platform.name)
-        && platform.requests.find((pl) => pl.type === "search")
-        && platform.requests.find((pl) => pl.type === "track")
+        && platform.requests.find((pl) => pl.name === "search")
+        && platform.requests.find((pl) => pl.name === "track")
     );
 
     return randomAPI[Duration.randomNumber(0, randomAPI.length)];

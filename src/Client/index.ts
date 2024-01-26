@@ -1,5 +1,6 @@
 import {Client, IntentsBitField, Partials, ShardingManager} from "discord.js";
 import {env} from "@env";
+import process from "process";
 const debug = env.get("debug");
 /**
  * @author SNIPPIK
@@ -92,7 +93,7 @@ export const Logger = new class {
     public log = (status: "DEBUG" | "WARN" | "ERROR" | "LOG", text: string): void => {
         if (status === "DEBUG" && !debug) return;
 
-        text = text.replace(/\[/, "\x1b[42m \x1b[30m").replace(/]/, " \x1b[0m");
+        text = text.replace(/\[/, "\x1b[100m \x1b[30m").replace(/]/, " \x1b[0m");
 
         const extStatus = this.status[status];
         const time = `\x1b[90m${new Date().toLocaleTimeString()}\x1b[0m`;

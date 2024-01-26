@@ -1,5 +1,5 @@
 import {createWriteStream, existsSync, mkdirSync, rename} from "node:fs";
-import {ActionMessage, ICommand, RequestAPI, TimeCycle} from "@handler";
+import {ActionMessage, ICommand, ResponseAPI, TimeCycle} from "@handler";
 import {ClientMessage} from "@handler/Events/Atlas/interactionCreate";
 import {EmbedData, StageChannel, VoiceChannel} from "discord.js";
 import {AudioPlayer} from "@Client/Audio/Player/AudioPlayer";
@@ -240,29 +240,29 @@ export class Collection extends CollectionArray {
      * @public
      */
     public readonly runAPIs = (message: ClientMessage, VoiceChannel: VoiceChannel | StageChannel, argument: string[]): ICommand.all | Promise<ICommand.all> => {
-        const platform = new RequestAPI(argument[0] ?? argument[1]);
-        const platformLow = platform?.platform?.toLowerCase();
+        const platform = new ResponseAPI(argument[0] ?? argument[1]), platformLow = platform.platform.toLowerCase();
+        const platformError = platform.block ? 1 : platform.auth ? 2 : !argument[1].match(platform.filter) ? 3 : undefined;
 
-        //Если нельзя получить данные с определенной платформы
-        if (platform.block) return { color: "DarkRed",
-            content: `⚠️ **Warning** | **${platformLow}**\n\nРазработчик заблокировал доступ к этой платформе!\nВозможно из-за ошибки или блокировки со стороны сервера!`
-        };
+        //Если есть ошибка при попытке использовать платформу
+        if (platformError) {
+            let error: string;
 
-        //Если нельзя получить данные с определенной платформы
-        else if (platform.auth) return { color: "Yellow",
-            content: `⚠️ **Warning** | **${platformLow}**\n\nНет данных для авторизации, запрос не может быть выполнен!`
-        };
+            if (platformError === 1) error = "Разработчик заблокировал доступ к этой платформе!\\nВозможно из-за ошибки или блокировки со стороны сервера!";
+            else if (platformError === 2) error = "Нет данных для авторизации, запрос не может быть выполнен!";
+            else error = "Этот запрос не относится к этой платформе!";
 
+            return { color: "DarkRed", content: `⚠️ **Warning** | **${platformLow}**\n\n${error}` };
+        }
         const type = platform.type(argument[1]);
-        const callback = platform.callback(type);
 
         //Если невозможно определить тип запросы
         if (!type) return { color: "Yellow",
             content: `⚠️ **Warning** | **${platformLow}.${type}**\n\nУ меня нет поддержки этого запроса!`
         }
+        const callback = platform.callback(type);
 
         //Если нет поддержки запроса
-        else if (!callback) return { color: "Yellow",
+        if (!callback || !argument[1].match(platform.filter)) return { color: "Yellow",
             content: `⚠️ **Warning** | **${platformLow}.${type}**\n\nУ меня нет поддержки для выполнения этого запроса!`
         };
 
@@ -312,7 +312,7 @@ export class Collection extends CollectionArray {
 
         //Пишем о добавлении трека
         if (queue.songs.size > 1) {
-            if (array.length === 1) new ActionMessage(getPlayerMessage<"pushSong">("pushSong", [queue]));
+           if (array.length === 1) new ActionMessage(getPlayerMessage<"pushSong">("pushSong", [queue]));
         } else if (!queue.player.playing) setImmediate(() => queue.player.play(queue.songs.song));
 
         //Добавляем треки в очередь

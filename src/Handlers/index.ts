@@ -1,8 +1,17 @@
-import {ActionRowBuilder, ApplicationCommandOption, ClientEvents, EmbedData, PermissionResolvable, Colors, CommandInteraction} from "discord.js";
+import {
+    ActionRowBuilder,
+    ApplicationCommandOption,
+    ClientEvents,
+    Colors,
+    CommandInteraction,
+    EmbedData,
+    PermissionResolvable
+} from "discord.js";
 import {ClientInteraction, ClientMessage} from "@handler/Events/Atlas/interactionCreate";
 import {Song} from "@Client/Audio/Queue/Song";
 import {Atlas, Logger} from "@Client";
 import {db} from "@Client/db";
+
 /**
  * @author SNIPPIK
  * @description Загрузка команд
@@ -89,7 +98,7 @@ export abstract class Event<T> {
      * @readonly
      * @public
      */
-    public readonly type: "process" | "player" | "atlas" = null;
+    public readonly type: "process" | "player" | "client" = null;
 
     /**
      * @description Функция, которая будет запущена при вызове ивента
@@ -226,60 +235,64 @@ export abstract class TimeCycle<T = unknown> extends ArrayCycle<T> {
 
 /**
  * @author SNIPPIK
- * @description Необходим для взаимодействия с APIs
- * @class RequestAPI
+ * @description Получаем ответ от локальной базы APIs
+ * @class ResponseAPI
  */
-export class RequestAPI {
-    private readonly _name: API.platform;
-    private readonly _requests: API.load["requests"];
-    private readonly _color: number;
-
+export class ResponseAPI {
+    private readonly _api: RequestAPI = null;
     /**
      * @description Выдаем название
      * @return API.platform
      * @public
      */
-    public get platform() { return this._name; };
+    public get platform() { return this._api.name; };
+
+    /**
+     * @description Выдаем RegExp
+     * @return RegExp
+     * @public
+     */
+    public get filter() { return this._api.filter; };
+
 
     /**
      * @description Выдаем bool, Недоступна ли платформа
      * @return boolean
      * @public
      */
-    public get block() { return db.music.platforms.block.includes(this._name); };
+    public get block() { return db.music.platforms.block.includes(this.platform); };
 
     /**
      * @description Выдаем bool, есть ли доступ к платформе
      * @return boolean
      * @public
      */
-    public get auth() { return db.music.platforms.authorization.includes(this._name); };
+    public get auth() { return db.music.platforms.authorization.includes(this.platform); };
 
     /**
      * @description Выдаем bool, есть ли доступ к файлам аудио
      * @return boolean
      * @public
      */
-    public get audio() { return db.music.platforms.audio.includes(this._name); };
+    public get audio() { return db.music.platforms.audio.includes(this.platform); };
 
     /**
      * @description Выдаем int, цвет платформы
      * @return number
      * @public
      */
-    public get color() { return this._color; };
+    public get color() { return this._api.color; };
 
     /**
      * @description Получаем тип запроса
-     * @param url {string} Ссылка
+     * @param search {string} Ссылка или название трека
      * @public
      */
-    public type = (url: string): API.callback => {
-        if (!url.startsWith("http")) return "search";
-
-        const type = this._requests.find((data) => data.filter && url.match(data.filter));
-
-        return type?.type ?? undefined;
+    public type = (search: string): API.callback => {
+        try {
+            if (!search.startsWith("http")) return "search";
+            return this._api.requests.find((data) => data.filter && search.match(data.filter)).name;
+        } catch { return null; }
     };
 
     /**
@@ -292,19 +305,17 @@ export class RequestAPI {
     public callback (type: "playlist" | "album"): (url: string) => Promise<Song.playlist | Error>;
     public callback (type: API.callback): (url: string) => Promise<Song.playlist | Song[] | Song | Error>;
     public callback(type: any): any {
-        const callback = this._requests.find((data) => data.type === type);
-
-        if (!callback) return null;
-
-        return callback.callback;
+        try {
+            return this._api.requests.find((data) => data.name === type).callback;
+        } catch { return null; }
     };
 
     /**
-     * @description Ищем из аргумента нужную платформу
-     * @param argument {string | API.platform} Имя платформы или ссылка на трек, видео, плейлист, альбом, автора
+     * @description Ищем платформу из доступных
+     * @param argument {API.platform} Имя платформы
      * @public
      */
-    public constructor(argument: string | API.platform) {
+    public constructor(argument: API.platform | string) {
         const temp = db.music.platforms.supported;
 
         //Если была указана ссылка
@@ -312,31 +323,65 @@ export class RequestAPI {
             const platform = temp.find((info) => !!argument.match(info.filter));
 
             //Если не найдена платформа тогда используем DISCORD
-            if (!platform) {
-                const {requests, name} = temp.find((info) => info.name === "DISCORD");
-                this._name = name; this._requests = requests; this._color = platform.color;
-                return;
-            }
-            this._name = platform.name; this._requests = platform.requests; this._color = platform.color;
-            return;
+            if (!platform) { this._api = temp.find((info) => info.name === "DISCORD"); return; }
+            this._api = platform; return;
         }
 
         //Если был указан текст
         try {
-            const platform = temp.find((info) => info.name === argument || info.prefix && info.prefix.includes(argument.split(' ')[0].toLowerCase()));
+            const platform = temp.find((info) => info.name === argument);
 
             //Не найдена платформа тогда используем YOUTUBE
-            if (!platform) {
-                const yt = temp.find((info) => info.name === "YOUTUBE");
-                this._name = yt.name; this._color = yt.color; this._requests = yt.requests;
-                return;
-            }
+            if (!platform) { this._api = temp.find((info) => info.name === "YOUTUBE"); return; }
 
-            this._name = platform.name; this._requests = platform.requests; this._color = platform.color;
+            this._api = platform;
         } catch { //Если произошла ошибка значит используем YOUTUBE
-            const yt = temp.find((info) => info.name === "YOUTUBE");
-            this._name = yt.name; this._color = yt.color; this._requests = yt.requests;
+            this._api = temp.find((info) => info.name === "YOUTUBE");
         }
+    };
+}
+
+/**
+ * @author SNIPPIK
+ * @description Создаем класс для запроса на сервер
+ * @class RequestAPI
+ * @abstract
+ */
+export abstract class RequestAPI {
+    public readonly name: API.platform;
+    public readonly url: string;
+    public readonly audio: boolean;
+    public readonly auth: boolean;
+    public readonly filter: RegExp;
+    public readonly color: number;
+    public readonly requests: ItemRequestAPI[];
+
+    /**
+     * @description Сохраняем базу данных
+     * @param options
+     */
+    protected constructor(options: RequestAPI) {
+        Object.assign(this, options);
+    };
+}
+
+/**
+ * @author SNIPPIK
+ * @description Создаем класс для итогового запроса
+ * @class ItemRequestAPI
+ * @abstract
+ */
+export abstract class ItemRequestAPI {
+    public readonly name: API.callback;
+    public readonly filter?: RegExp;
+    public readonly callback?: (url: string) => Promise<Error | Song | Song[] | Song.playlist>;
+
+    /**
+     * @description Сохраняем базу данных
+     * @param options
+     */
+    protected constructor(options: ItemRequestAPI) {
+        Object.assign(this, options);
     };
 }
 
@@ -557,45 +602,4 @@ export namespace API {
      * @type
      */
     export type callback = "track" | "playlist" | "search" | "album" | "artist";
-
-    /**
-     * @description Что должен выдавать подгружаемый файл
-     * @interface
-     */
-    export interface load {
-        requests: (API.list | API.array | API.track)[]; name: platform;
-        audio: boolean;                                 auth: boolean;
-        prefix?: string[];                              color: number;
-        filter: RegExp;                                 url: string;
-    }
-
-    /**
-     * @description Структура получение трека
-     * @interface
-     */
-    export interface track {
-        filter: RegExp;
-        type: "track";
-        callback: (url: string) => Promise<Song | Error>;
-    }
-
-    /**
-     * @description Структура получение нескольких объектов
-     * @interface
-     */
-    export interface array {
-        filter?: RegExp;
-        type: "search" | "artist";
-        callback: (url: string) => Promise<Song[] | Error>;
-    }
-
-    /**
-     * @description Структура объектов и данных об объектах
-     * @interface
-     */
-    export interface list {
-        filter: RegExp;
-        type: "playlist" | "album";
-        callback: (url: string) => Promise<Song.playlist | Error>;
-    }
 }

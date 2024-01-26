@@ -12,7 +12,7 @@ export default class VoiceStateUpdate extends Event<Events.VoiceStateUpdate> {
     public constructor() {
         super({
             name: Events.VoiceStateUpdate,
-            type: "atlas",
+            type: "client",
             execute: (client, oldState, newState) => {
                 const ChannelID = oldState?.channel?.id || newState?.channel?.id;
                 const usersSize = (newState.channel?.members ?? oldState.channel?.members)?.filter((member) => !member.user.bot && member.voice?.channel?.id === ChannelID)?.size;

@@ -2,6 +2,7 @@ import { ActionRow, ActionRowBuilder, Attachment, BaseInteraction, BaseMessageOp
 import {ActionMessage, Event, ICommand} from "@handler";
 import {Atlas, Logger} from "@Client";
 import {db} from "@Client/db";
+import {env} from "@env";
 /**
  * @author SNIPPIK
  * @description Класс для взаимодействия бота с slash commands, buttons
@@ -11,7 +12,7 @@ export default class extends Event<Events.InteractionCreate> {
     public constructor() {
         super({
             name: Events.InteractionCreate,
-            type: "atlas",
+            type: "client",
             execute: (_, message: any) => {
                 //Игнорируем ботов
                 if ((message.user || message?.member?.user).bot) return;
@@ -19,7 +20,7 @@ export default class extends Event<Events.InteractionCreate> {
                 //Подменяем данные
                 message.author = message?.member?.user ?? message?.user;
 
-                const status = message?.isCommand() ? true : message?.isButton() ? false : null
+                const status = message?.isCommand() ? true : message?.isButton() ? false : null;
 
                 if (status || status === false) {
                     const ICommand = (status ? this._stepCommand : this._stepButton)(message);

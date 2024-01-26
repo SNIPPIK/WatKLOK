@@ -1,172 +1,180 @@
+import {RequestAPI, ItemRequestAPI} from "@handler";
 import {Song} from "@Client/Audio/Queue/Song";
 import {httpsClient} from "@Client/Request";
-import {API} from "@handler";
 import {env} from "@env";
+
 /**
  * @author SNIPPIK
- * @class initYouTube
  * @description Динамически загружаемый класс
  */
-export default class implements API.load {
-    public readonly name = "YOUTUBE";
-    public readonly audio = true;
-    public readonly auth = false;
-    public readonly prefix = ["yt"];
-    public readonly color = 16711680;
-    public readonly filter = /^(https?:\/\/)?(www\.)?(m\.)?(music\.)?( )?(youtube\.com|youtu\.?be)\/.+$/gi;
-    public readonly url = "youtube.com";
-    public readonly requests = [
-        /**
-         * @author SNIPPIK
-         * @class null
-         * @description Получение видео
-         * @type API.track
-         */
-        new class extends YouTubeLib implements API.track {
-            public readonly type = "track";
-            public readonly filter = /(watch|embed|youtu\.be)/gi;
+export default class extends RequestAPI {
+    public constructor() {
+        super({
+            name: "YOUTUBE",
+            audio: true,
+            auth: true,
 
-            public readonly callback = (url: string) => {
-                const ID = this._getID(url);
+            color: 16711680,
+            filter: /^(https?:\/\/)?(www\.)?(m\.)?(music\.)?( )?(youtube\.com|youtu\.?be)\/.+$/gi,
+            url: "youtube.com",
 
-                return new Promise<Song>(async (resolve, reject) => {
-                    //Если ID видео не удалось извлечь из ссылки
-                    if (!ID) return reject(Error("[APIs]: Не удалось получить ID трека!"));
+            requests: [
+                /**
+                 * @description Запрос данных о треке
+                 */
+                new class extends ItemRequestAPI {
+                    public constructor() {
+                        super({
+                            name: "track",
+                            filter: /(watch|embed|youtu\.be)/gi,
+                            callback: (url: string) => {
+                                const ID = YouTubeLib.getID(url);
 
-                    try {
-                        //Создаем запрос
-                        const result = await this._API(`https://www.youtube.com/watch?v=${ID}&has_verified=1`);
+                                return new Promise<Song>(async (resolve, reject) => {
+                                    //Если ID видео не удалось извлечь из ссылки
+                                    if (!ID) return reject(Error("[APIs]: Не удалось получить ID трека!"));
 
-                        //Если возникла ошибка при получении данных
-                        if (result instanceof Error) return reject(result);
+                                    try {
+                                        //Создаем запрос
+                                        const result = await YouTubeLib.API(`https://www.youtube.com/watch?v=${ID}&has_verified=1`);
 
-                        const format = await this._extractStreamingData(result["streamingData"], result["html5"]);
+                                        //Если возникла ошибка при получении данных
+                                        if (result instanceof Error) return reject(result);
 
-                        result["videoDetails"]["format"] = {url: format.url};
+                                        const format = await YouTubeLib.extractStreamingData(result["streamingData"], result["html5"]);
 
-                        return resolve(await this._track(result["videoDetails"], false));
-                    } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
-                });
-            };
-        },
-        /**
-         * @author SNIPPIK
-         * @class null
-         * @description Получение плейлиста с видео
-         * @type API.list
-         */
-        new class extends YouTubeLib implements API.list {
-            public readonly type = "playlist";
-            public readonly filter = /playlist\?list=/gi;
+                                        result["videoDetails"]["format"] = {url: format.url};
 
-            public readonly callback = (url: string) => {
-                let author = null;
-                const ID = this._getID(url, true);
-
-                return new Promise<Song.playlist>(async (resolve, reject) => {
-                    //Если ID плейлиста не удалось извлечь из ссылки
-                    if (!ID) return reject(Error("[APIs]: Не удалось получить ID плейлиста!"));
-
-                    try {
-                        //Создаем запрос
-                        const details = await this._API(`https://www.youtube.com/playlist?list=${ID}`);
-
-                        if (details instanceof Error) return reject(details);
-
-                        const sidebar: any[] = details["sidebar"]["playlistSidebarRenderer"]["items"];
-                        const microformat: any = details["microformat"]["microformatDataRenderer"];
-                        const items: Song[] = details["contents"]["twoColumnBrowseResultsRenderer"]["tabs"][0]["tabRenderer"]
-                            .content["sectionListRenderer"]["contents"][0]["itemSectionRenderer"]["contents"][0]["playlistVideoListRenderer"]["contents"]
-                            .splice(0, env.get("APIs.limit.playlist")).map(({playlistVideoRenderer}) => this._track(playlistVideoRenderer, true));
-
-                        //Если нет автора плейлиста то это альбом автора
-                        if (sidebar.length > 1) {
-                            const authorData = details["sidebar"]["playlistSidebarRenderer"].items[1]["playlistSidebarSecondaryInfoRenderer"]["videoOwner"]["videoOwnerRenderer"];
-                            author = await this._getChannel({ id: authorData["navigationEndpoint"]["browseEndpoint"]["browseId"], name: authorData.title["runs"][0].text });
-                        } else author = items.at(-1).author;
-
-                        return resolve({
-                            url, title: microformat.title, items, author,
-                            image: microformat.thumbnail["thumbnails"].pop()
-                        });
-                    } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
-                });
-            };
-        },
-        /**
-         * @author SNIPPIK
-         * @class null
-         * @description Поиск видео
-         * @type API.array
-         */
-        new class extends YouTubeLib implements API.array {
-            public readonly type = "search";
-
-            public readonly callback = (search: string) => {
-                return new Promise<Song[]>(async (resolve, reject) => {
-                    try {
-                        //Создаем запрос
-                        const details = await this._API(`https://www.youtube.com/results?search_query=${search.split(" ").join("+")}`);
-
-                        //Если при получении данных возникла ошибка
-                        if (details instanceof Error) return reject(details);
-
-                        let vanilla_videos = details["contents"]?.["twoColumnSearchResultsRenderer"]?.["primaryContents"]?.["sectionListRenderer"]?.["contents"][0]?.["itemSectionRenderer"]?.["contents"];
-
-                        if (vanilla_videos?.length === 0 || !vanilla_videos) return reject(Error(`[APIs]: Не удалось найти: ${search}`));
-
-                        let filtered_ = vanilla_videos?.filter((video: any) => video && video?.["videoRenderer"] && video?.["videoRenderer"]?.["videoId"])?.splice(0, env.get("APIs.limit.search"));
-                        let videos = filtered_.map(({ videoRenderer }: any) => this._track(videoRenderer, true));
-
-                        return resolve(videos);
-                    } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
-                });
-            };
-        },
-        /**
-         * @author SNIPPIK
-         * @class null
-         * @description Получение последних видео автора
-         * @type API.array
-         */
-        new class extends YouTubeLib implements API.array {
-            public readonly type = "artist";
-            public readonly filter = /(channel)/gi || /@/gi;
-
-            public callback = (url: string) => {
-                return new Promise<Song[]>(async (resolve, reject) => {
-                    try {
-                        let ID: string;
-
-                        if (url.match(/@/)) ID = `@${url.split("@")[1].split("/")[0]}`;
-                        else ID = `channel/${url.split("channel/")[1]}`;
-
-                        //Создаем запрос
-                        const details = await this._API(`https://www.youtube.com/${ID}/videos`);
-
-                        if (details instanceof Error) return reject(details);
-
-                        const author = details["microformat"]["microformatDataRenderer"];
-                        const tabs: any[] = details?.["contents"]?.["twoColumnBrowseResultsRenderer"]?.["tabs"];
-                        const contents = (tabs[1] ?? tabs[2])["tabRenderer"]?.content?.["richGridRenderer"]?.["contents"]
-                            ?.filter((video: any) => video?.["richItemRenderer"]?.content?.["videoRenderer"])?.splice(0, env.get("APIs.limit.author"));
-
-                        //Модифицируем видео
-                        const videos = contents.map(({richItemRenderer}: any) => {
-                            const video = richItemRenderer?.content?.["videoRenderer"];
-
-                            return {
-                                url: `https://youtu.be/${video["videoId"]}`, title: video.title["runs"][0].text, duration: { seconds: video["lengthText"]["simpleText"] },
-                                author: { url: `https://www.youtube.com${ID}`, title: author.title }
+                                        return resolve(YouTubeLib.track(result["videoDetails"]));
+                                    } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
+                                });
                             }
                         });
+                    };
+                },
 
-                        return resolve(videos);
-                    } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
-                });
-            };
-        }
-    ];
+                /**
+                 * @description Запрос данных об плейлисте
+                 */
+                new class extends ItemRequestAPI {
+                    public constructor() {
+                        super({
+                            name: "playlist",
+                            filter: /playlist\?list=/gi,
+                            callback: (url: string) => {
+                                const ID = YouTubeLib.getID(url, true);
+                                let author = null;
+
+                                return new Promise<Song.playlist>(async (resolve, reject) => {
+                                    //Если ID плейлиста не удалось извлечь из ссылки
+                                    if (!ID) return reject(Error("[APIs]: Не удалось получить ID плейлиста!"));
+
+                                    try {
+                                        //Создаем запрос
+                                        const details = await YouTubeLib.API(`https://www.youtube.com/playlist?list=${ID}`);
+
+                                        if (details instanceof Error) return reject(details);
+
+                                        const sidebar: any[] = details["sidebar"]["playlistSidebarRenderer"]["items"];
+                                        const microformat: any = details["microformat"]["microformatDataRenderer"];
+                                        const items: Song[] = details["contents"]["twoColumnBrowseResultsRenderer"]["tabs"][0]["tabRenderer"]
+                                            .content["sectionListRenderer"]["contents"][0]["itemSectionRenderer"]["contents"][0]["playlistVideoListRenderer"]["contents"]
+                                            .splice(0, env.get("APIs.limit.playlist")).map(({playlistVideoRenderer}) => YouTubeLib.track(playlistVideoRenderer));
+
+                                        //Если нет автора плейлиста то это альбом автора
+                                        if (sidebar.length > 1) {
+                                            const authorData = details["sidebar"]["playlistSidebarRenderer"].items[1]["playlistSidebarSecondaryInfoRenderer"]["videoOwner"]["videoOwnerRenderer"];
+                                            author = await YouTubeLib.getChannel({ id: authorData["navigationEndpoint"]["browseEndpoint"]["browseId"], name: authorData.title["runs"][0].text });
+                                        } else author = items.at(-1).author;
+
+                                        return resolve({
+                                            url, title: microformat.title, items, author,
+                                            image: microformat.thumbnail["thumbnails"].pop()
+                                        });
+                                    } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
+                                });
+                            }
+                        });
+                    };
+                },
+
+                /**
+                 * @description Запрос данных треков артиста
+                 */
+                new class extends ItemRequestAPI {
+                    public constructor() {
+                        super({
+                            name: "artist",
+                            filter: /(channel)/gi || /@/gi,
+                            callback: (url: string) => {
+                                return new Promise<Song[]>(async (resolve, reject) => {
+                                    try {
+                                        let ID: string;
+
+                                        if (url.match(/@/)) ID = `@${url.split("@")[1].split("/")[0]}`;
+                                        else ID = `channel/${url.split("channel/")[1]}`;
+
+                                        //Создаем запрос
+                                        const details = await YouTubeLib.API(`https://www.youtube.com/${ID}/videos`);
+
+                                        if (details instanceof Error) return reject(details);
+
+                                        const author = details["microformat"]["microformatDataRenderer"];
+                                        const tabs: any[] = details?.["contents"]?.["twoColumnBrowseResultsRenderer"]?.["tabs"];
+                                        const contents = (tabs[1] ?? tabs[2])["tabRenderer"]?.content?.["richGridRenderer"]?.["contents"]
+                                            ?.filter((video: any) => video?.["richItemRenderer"]?.content?.["videoRenderer"])?.splice(0, env.get("APIs.limit.author"));
+
+                                        //Модифицируем видео
+                                        const videos = contents.map(({richItemRenderer}: any) => {
+                                            const video = richItemRenderer?.content?.["videoRenderer"];
+
+                                            return {
+                                                url: `https://youtu.be/${video["videoId"]}`, title: video.title["runs"][0].text, duration: { seconds: video["lengthText"]["simpleText"] },
+                                                author: { url: `https://www.youtube.com${ID}`, title: author.title }
+                                            }
+                                        });
+
+                                        return resolve(videos);
+                                    } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
+                                });
+                            }
+                        })
+                    };
+                },
+
+                /**
+                 * @description Запрос данных по поиску
+                 */
+                new class extends ItemRequestAPI {
+                    public constructor() {
+                        super({
+                            name: "search",
+                            callback: (url: string) => {
+                                return new Promise<Song[]>(async (resolve, reject) => {
+                                    try {
+                                        //Создаем запрос
+                                        const details = await YouTubeLib.API(`https://www.youtube.com/results?search_query=${url.split(" ").join("+")}`);
+
+                                        //Если при получении данных возникла ошибка
+                                        if (details instanceof Error) return reject(details);
+
+                                        let vanilla_videos = details["contents"]?.["twoColumnSearchResultsRenderer"]?.["primaryContents"]?.["sectionListRenderer"]?.["contents"][0]?.["itemSectionRenderer"]?.["contents"];
+
+                                        if (vanilla_videos?.length === 0 || !vanilla_videos) return reject(Error(`[APIs]: Не удалось найти: ${url}`));
+
+                                        let filtered_ = vanilla_videos?.filter((video: any) => video && video?.["videoRenderer"] && video?.["videoRenderer"]?.["videoId"])?.splice(0, env.get("APIs.limit.search"));
+                                        let videos = filtered_.map(({ videoRenderer }: any) => YouTubeLib.track(videoRenderer));
+
+                                        return resolve(videos);
+                                    } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
+                                });
+                            }
+                        })
+                    };
+                },
+            ]
+        });
+    };
 }
 
 
@@ -179,7 +187,7 @@ class YouTubeLib {
      * @description Получаем страницу и ищем на ней данные
      * @param url {string} Ссылка на видео
      */
-    protected _API = (url: string): Promise<Error | any> => {
+    public static API = (url: string): Promise<Error | any> => {
         return new Promise((resolve) => {
             new httpsClient(url, {useragent: true,
                 headers: { "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7", "accept-encoding": "gzip, deflate, br" }
@@ -188,7 +196,7 @@ class YouTubeLib {
                 if (api instanceof Error) return resolve(Error("[APIs]: Не удалось получить данные!"));
 
                 //Ищем данные на странице
-                const data = this._extractInitialDataResponse(api);
+                const data = this.extractInitialDataResponse(api);
 
                 //Если возникает ошибка при поиске на странице
                 if (data instanceof Error) return resolve(data);
@@ -199,12 +207,11 @@ class YouTubeLib {
         });
     };
 
-
     /**
      * @description Получаем данные из страницы
      * @param input {string} Страница
      */
-    private _extractInitialDataResponse = (input: string): any | Error | null => {
+    public static extractInitialDataResponse = (input: string): any | Error | null => {
         const startPattern: string = input.match("var ytInitialPlayerResponse = ") ? "var ytInitialPlayerResponse = " : "var ytInitialData = ";
         const startIndex = input.indexOf(startPattern);
         const endIndex = input.indexOf("};", startIndex + startPattern.length);
@@ -226,18 +233,17 @@ class YouTubeLib {
         return data;
     };
 
-
     /**
      * @description Получаем аудио дорожки
      * @param data {any} <videoData>.streamingData
      * @param html5player {string} Ссылка на плеер дешифровки
      */
-    protected _extractStreamingData = async (data: any, html5player: string): Promise<YouTubeFormat> => {
+    public static extractStreamingData = async (data: any, html5player: string): Promise<YouTubeFormat> => {
         let videos: YouTubeFormat[] = [];
 
         for (const item of data["adaptiveFormats"]) {
             if (item.mimeType.match(/opus/) || item.mimeType.match(/audio/)) {
-                videos.push(await new DecodeVideos({html5player, format: item}).extract);
+                videos.push(await new DecodeVideos({html: html5player, format: item}).extract);
                 break;
             }
         }
@@ -245,32 +251,12 @@ class YouTubeLib {
         return videos?.pop();
     };
 
-
-    /**
-     * @description Получаем ID
-     * @param url {string} Ссылка
-     * @param isPlaylist
-     */
-    protected _getID = (url: string, isPlaylist: boolean = false): string => {
-        try {
-            if (typeof url !== "string") return null;
-            const parsedLink = new URL(url);
-
-            if (parsedLink.searchParams.get("list") && isPlaylist) return parsedLink.searchParams.get("list");
-            else if (parsedLink.searchParams.get("v") && !isPlaylist) return parsedLink.searchParams.get("v");
-            else if (url.match(/shorts/)) return parsedLink.pathname.split("/").pop();
-            else if (url.match(/si=/)) return parsedLink.pathname.split("/")[1].split("si=")[0];
-            else return parsedLink.pathname.split("/")[1];
-        } catch (err) { return null; }
-    };
-
-
     /**
      * @description Получаем данные о пользователе
      * @param id {string} ID канала
      * @param name {string} Название канала
      */
-    protected _getChannel = ({ id, name }: { id: string, name?: string }): Promise<Song.author> => {
+    public static getChannel = ({ id, name }: { id: string, name?: string }): Promise<Song.author> => {
         return new Promise<Song.author>((resolve) => {
             new httpsClient(`https://www.youtube.com/channel/${id}/channels?flow=grid&view=0&pbj=1`, {
                 headers: {
@@ -295,39 +281,53 @@ class YouTubeLib {
         });
     };
 
+    /**
+     * @description Получаем ID
+     * @param url {string} Ссылка
+     * @param isPlaylist
+     */
+    public static getID = (url: string, isPlaylist: boolean = false): string => {
+        try {
+            if (typeof url !== "string") return null;
+            const parsedLink = new URL(url);
+
+            if (parsedLink.searchParams.get("list") && isPlaylist) return parsedLink.searchParams.get("list");
+            else if (parsedLink.searchParams.get("v") && !isPlaylist) return parsedLink.searchParams.get("v");
+            else if (url.match(/shorts/)) return parsedLink.pathname.split("/").pop();
+            else if (url.match(/si=/)) return parsedLink.pathname.split("/")[1].split("si=")[0];
+            else return parsedLink.pathname.split("/")[1];
+        } catch (err) { return null; }
+    };
 
     /**
      * @description Подготавливаем трек к отправке
      * @param track {any} Видео
-     * @param sync
      */
-    protected _track(track: any, sync: true): Song;
-    protected _track(track: any, sync: false): Promise<Song>;
-    protected _track(track: any, sync: any): any {
-        if (sync) return new Song({
-            url: `https://youtu.be/${track["videoId"]}`,
-            title: track.title?.["runs"][0]?.text ?? track.title,
-            author: {
-                title: track["shortBylineText"]["runs"][0].text ?? track.author ?? undefined,
-                url: `https://www.youtube.com${track["shortBylineText"]["runs"][0]["navigationEndpoint"]["browseEndpoint"]["canonicalBaseUrl"] || track["shortBylineText"]["runs"][0]["navigationEndpoint"]["commandMetadata"]["webCommandMetadata"].url}`,
-            },
-            duration: {seconds: track["lengthSeconds"] ?? track["lengthText"]?.["simpleText"] ?? 0},
-            image: track.thumbnail["thumbnails"].pop(),
-            isLive: track["isLiveContent"] ?? track["isLive"] ?? track["is_live"],
-            format: track?.format || undefined
-        });
-
-        return new Promise(async (resolve) => {
-            return resolve(new Song({
-                author: await this._getChannel({id: track.channelId, name: track.author}),
+    public static track(track: any): any {
+        try {
+            return new Song({
+                url: `https://youtu.be/${track["videoId"]}`,
+                title: track.title?.["runs"][0]?.text ?? track.title,
+                author: {
+                    title: track["shortBylineText"]["runs"][0].text ?? track.author ?? undefined,
+                    url: `https://www.youtube.com${track["shortBylineText"]["runs"][0]["navigationEndpoint"]["browseEndpoint"]["canonicalBaseUrl"] || track["shortBylineText"]["runs"][0]["navigationEndpoint"]["commandMetadata"]["webCommandMetadata"].url}`,
+                },
+                duration: {seconds: track["lengthSeconds"] ?? track["lengthText"]?.["simpleText"] ?? 0},
+                image: track.thumbnail["thumbnails"].pop(),
+                isLive: track["isLiveContent"] ?? track["isLive"] ?? track["is_live"],
+                format: track?.format || undefined
+            });
+        } catch {
+            return new Song({
+                author: { title: track.author, url: `https://www.youtube.com/channel/${track.channelId}` },
                 url: `https://youtu.be/${track["videoId"]}`,
                 title: track.title,
                 duration: {seconds: track["lengthSeconds"] ?? 0},
                 image: track.thumbnail["thumbnails"].pop(),
                 isLive: track["isLiveContent"],
                 format: track?.format || undefined
-            }));
-        });
+            })
+        }
     };
 }
 
@@ -362,10 +362,14 @@ class DecodeRegex {
      */
     public get reverse() { return ':function\\(a\\)\\{' + '(?:return )?a\\.reverse\\(\\)' + '\\}'; };
 
-    /**
-     * @description Как найти reverse c помощью regexp
-     */
-    public get reverse_r() { return this.regexp(`(?:^|,)(${this.key})${this.reverse}`); };
+    public get Regs() {
+        return {
+            reverse: this.regexp(`(?:^|,)(${this.key})${this.reverse}`),
+            slice:   this.regexp(`(?:^|,)(${this.key})${this.slice}`),
+            splice:  this.regexp(`(?:^|,)(${this.key})${this.splice}`),
+            swap:    this.regexp(`(?:^|,)(${this.key})${this.swap}`)
+        };
+    };
 
     /**
      * @description Как найти slice
@@ -373,19 +377,9 @@ class DecodeRegex {
     public get slice() { return ':function\\(a,b\\)\\{' + 'return a\\.slice\\(b\\)' + '\\}'; };
 
     /**
-     * @description Как найти slice c помощью regexp
-     */
-    public get slice_r() { return this.regexp(`(?:^|,)(${this.key})${this.slice}`); };
-
-    /**
      * @description Как найти splice
      */
     public get splice() { return ':function\\(a,b\\)\\{' + 'a\\.splice\\(0,b\\)' + '\\}'; };
-
-    /**
-     * @description Как найти splice c помощью regexp
-     */
-    public get splice_r() { return this.regexp(`(?:^|,)(${this.key})${this.splice}`); };
 
     /**
      * @description Как найти swap
@@ -395,14 +389,6 @@ class DecodeRegex {
             'var c=a\\[0\\];a\\[0\\]=a\\[b(?:%a\\.length)?\\];a\\[b(?:%a\\.length)?\\]=c(?:;return a)?' +
             '\\}'
     };
-
-    /**
-     * @description Как найти swap c помощью regexp
-     */
-    public get swap_r() { return this.regexp(`(?:^|,)(${this.key})${this.swap}`); };
-
-
-
 
 
     public get quote() {
@@ -441,17 +427,16 @@ class DecodeRegex {
  * @description Расшифровщик ссылок на youtube videos
  */
 class DecodeVideos {
-    private readonly _format: YouTubeFormat;
-    private readonly _decoder = new DecodeRegex();
-    private readonly _html: string;
+    private readonly _local = {
+        format: null as YouTubeFormat,
+        decoder: new DecodeRegex(),
+        html: null as string,
 
-    private _body: string;
+        body: null as string
+    };
 
-    public constructor(options: {
-        html5player: string;
-        format: YouTubeFormat
-    }) {
-        this._format = options.format; this._html = options.html5player;
+    public constructor(options: { html: string; format: YouTubeFormat }) {
+        Object.assign(this._local, options);
     };
 
     /**
@@ -460,14 +445,14 @@ class DecodeVideos {
      */
     public get extract() {
         return new Promise<YouTubeFormat>(async (resolve) => {
-            new httpsClient(this._html).toString.then((page) => {
+            new httpsClient(this._local.html).toString.then((page) => {
                 if (page instanceof Error) return resolve(null);
 
-                this._body = page;
+                this._local.body = page;
                 const url = this.url;
 
-                if (url) this._format.url = url;
-                return resolve(this._format);
+                if (url) this._local.format.url = url;
+                return resolve(this._local.format);
             });
         });
     }
@@ -477,8 +462,8 @@ class DecodeVideos {
      * @private
      */
     private get parseTokens(): string[] {
-        const funAction = this._decoder.function.exec(this._body);
-        const objAction = this._decoder.object.exec(this._body);
+        const funAction = this._local.decoder.function.exec(this._local.body);
+        const objAction = this._local.decoder.object.exec(this._local.body);
 
         if (!funAction || !objAction) return null;
 
@@ -487,8 +472,8 @@ class DecodeVideos {
         const funPage = funAction[1].replace(/\$/g, "\\$");
 
         let result: RegExpExecArray, tokens: string[] = [], keys: string[] = [];
-        for (const resp of [this._decoder.reverse_r, this._decoder.slice_r, this._decoder.splice_r, this._decoder.swap_r]) {
-            result = resp.exec(objPage);
+        for (const decoder of Object.values(this._local.decoder.Regs)) {
+            result = decoder.exec(objPage);
             keys.push(this.replacer(result));
         }
 
@@ -516,21 +501,21 @@ class DecodeVideos {
      */
     private get url() {
         const tokens = this.parseTokens;
-        const cipher = this._format.signatureCipher || this._format.cipher;
+        const cipher = this._local.format.signatureCipher || this._local.format.cipher;
 
         if (cipher) {
             const params = Object.fromEntries(new URLSearchParams(cipher));
-            Object.assign(this._format, params);
-            delete this._format.signatureCipher;
-            delete this._format.cipher;
+            Object.assign(this._local.format, params);
+            delete this._local.format.signatureCipher;
+            delete this._local.format.cipher;
         }
 
-        if (tokens && this._format.s && this._format.url) {
-            const signature = this.DecodeSignature(tokens, this._format.s);
-            const Url = new URL(decodeURIComponent(this._format.url));
+        if (tokens && this._local.format.s && this._local.format.url) {
+            const signature = this.DecodeSignature(tokens, this._local.format.s);
+            const Url = new URL(decodeURIComponent(this._local.format.url));
             Url.searchParams.set('ratebypass', 'yes');
 
-            if (signature) Url.searchParams.set(this._format.sp || 'signature', signature);
+            if (signature) Url.searchParams.set(this._local.format.sp || 'signature', signature);
 
             return Url.toString();
         }
@@ -567,6 +552,7 @@ class DecodeVideos {
      */
     private replacer = (res: RegExpExecArray): string => res && res[1].replace(/\$/g, "\\$").replace(/\$|^'|^"|'$|"$/g, "");
 }
+
 
 /**
  * @description Смена позиции в Array

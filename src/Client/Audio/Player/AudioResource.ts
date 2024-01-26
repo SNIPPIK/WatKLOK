@@ -13,19 +13,18 @@ const bitrate = env.get("audio.bitrate");
  * @description Загрузчик файлов музыки для прослушивания
  */
 export class AudioResource {
-    private readonly _stream = {
-      process:   null as Process,
-      ogg: new opus.OggDemuxer({ autoDestroy: true, objectMode: true })
-    };
-
     private readonly _local = {
+        stream: {
+            process:   null as Process,
+            ogg: new opus.OggDemuxer({ autoDestroy: true, objectMode: true })
+        },
+        frame: {
+            bufferSize: 20,
+            value: 0
+        },
+
         readable: false,
         ended:    false
-    };
-
-    private readonly _frame = {
-        size:   20,
-        length: 0
     };
 
     /**
@@ -36,8 +35,8 @@ export class AudioResource {
        const {seek, path} = options;
         const { filters, speed} = Filters.getParameters(options.filters);
 
-        if (speed > 0) this._frame.size = 20 * speed;
-        if (seek > 0) this._frame.length = ((seek * 1e3) / this._frame.size);
+        if (speed > 0) this._local.frame.bufferSize = 20 * speed;
+        if (seek > 0) this._local.frame.value = ((seek * 1e3) / this._local.frame.bufferSize);
 
         //Слушаем декодер
         ["end", "close", "error"].forEach((event) => this.stream.once(event, this.cleanup));
@@ -45,20 +44,20 @@ export class AudioResource {
         //Запускаем процесс FFmpeg и подключаем его к декодеру
         const urls = path.split(":|");
 
-        this._stream.process = new Process(["-vn", "-loglevel", "panic",
+        this._local.stream.process = new Process(["-vn", "-loglevel", "panic",
             ...(urls[0] === "link" ? ["-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5"] : []),
             "-ss", `${seek}`, "-i", urls[1], "-af", filters, "-f", "opus", "-b:a", `${bitrate}`, "pipe:1"
         ]);
 
-        this._stream.ogg.once("readable", () => { this._local.readable = true; });
-        this._stream.process.stderr.once("error", (err) => this.stream.emit("error", err));
-        this._stream.process.stdout.pipe(this._stream.ogg);
+        this._local.stream.ogg.once("readable", () => { this._local.readable = true; });
+        this._local.stream.process.stderr.once("error", (err) => this.stream.emit("error", err));
+        this._local.stream.process.stdout.pipe(this._local.stream.ogg);
     };
 
     /**
      * @description Поток
      */
-    public get stream() { return this._stream.ogg; };
+    public get stream() { return this._local.stream.ogg; };
 
     /**
      * @description Начато ли чтение потока
@@ -71,7 +70,7 @@ export class AudioResource {
     public get packet() {
         const packet = this.stream?.read();
 
-        if (packet) this._frame.length++;
+        if (packet) this._local.frame.value++;
         else this.cleanup(); //Если нет пакетов, то удаляем поток
 
         return packet;
@@ -83,7 +82,7 @@ export class AudioResource {
      * @public
      */
     public get duration(): number {
-        const duration = ((this._frame.length * this._frame.size) / 1e3).toFixed(0);
+        const duration = ((this._local.frame.value * this._local.frame.bufferSize) / 1e3).toFixed(0);
 
          return parseInt(duration);
     };
@@ -92,7 +91,7 @@ export class AudioResource {
      * @description Удаляем ненужные данные
      */
     public cleanup = () => {
-        for (let [key, value] of Object.entries(this._stream)) {
+        for (let [key, value] of Object.entries(this._local.stream)) {
             if (value) {
                 if (value instanceof Process) {
                     value.process.emit("close");
@@ -101,7 +100,7 @@ export class AudioResource {
                     value?.destroy();
                     value?.removeAllListeners();
                 }
-                this._stream[key] = null;
+                this._local.stream[key] = null;
             }
         }
 

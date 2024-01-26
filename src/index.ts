@@ -26,12 +26,9 @@ else {
         });
     });
 
-    for (const event of ["SIGTERM", "SIGINT", "exit"]) process.on(event, () => {
+    for (const event of ["exit"]) process.on(event, () => {
         Logger.log("DEBUG", "[Process]: has be killed!");
         client.destroy().catch((err) => Logger.log("ERROR", err));
-
-        setTimeout(() => {
-            process.exit(0)
-        }, 1e3);
+        process.exit(0)
     });
 }

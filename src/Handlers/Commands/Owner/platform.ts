@@ -75,7 +75,6 @@ export default class extends Command {
                     const fields = [
                         `isAuth:  ${platform.auth}`,
                         `isAudio: ${platform.audio}`,
-                        `Prefix:  ${platform.prefix}`
                     ];
 
                     return {

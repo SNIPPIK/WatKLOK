@@ -1,6 +1,8 @@
-import {readFileSync, writeFileSync, existsSync, mkdirSync} from "node:fs";
+import {readFileSync, writeFileSync} from "node:fs";
+import {Logger} from "@Client";
 import process from "process";
 import os from "node:os";
+
 require("dotenv").config();
 
 /**
@@ -47,7 +49,7 @@ export const env = new class {
             //Обновляем env
             setImmediate(() => require("dotenv").config());
         } catch (e) {
-            //Logger.warn(`[ENV]: Fail save ${key} to .env`);
+            Logger.log("WARN", `[ENV]: Fail save ${key} to .env`);
         }
     };
 

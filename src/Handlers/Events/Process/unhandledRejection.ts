@@ -7,7 +7,7 @@ export default class unhandledRejection extends Event<any> {
             name: "unhandledRejection",
             type: "process",
             execute: (_, reason: any) => {
-                Logger.log("WARN", reason);
+                Logger.log("WARN", `[unhandledRejection]: ${reason}`);
             }
         });
     }
