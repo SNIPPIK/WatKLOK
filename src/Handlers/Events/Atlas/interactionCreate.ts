@@ -41,12 +41,19 @@ export default class extends Event<Events.InteractionCreate> {
      * @private
      */
     private readonly _stepCommand = (message: ClientInteraction): ICommand.all | Promise<ICommand.all> => {
+        const owners: string[] = env.get("owner.list").split(",");
         const command = db.commands.get(message.commandName);
         const {author, guild} = message;
 
         //Если пользователь пытается включить команду вне сервера
         if (!message.guild) return {
             content: `${author}, эта команда предназначена для сервера!`,
+            color: "DarkRed"
+        };
+
+        //Если пользователь пытается использовать команду разработчика
+        else if (command?.owner && !owners.includes(author.id)) return {
+            content: `${author}, эта команда предназначена для разработчиков!`,
             color: "DarkRed"
         };
 
