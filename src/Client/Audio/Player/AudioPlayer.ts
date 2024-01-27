@@ -2,6 +2,7 @@ import {AudioResource, Filter} from "@Client/Audio/Player/AudioResource";
 import {VoiceConnection} from "@discordjs/voice";
 import {TypedEmitter} from "tiny-typed-emitter";
 import {Song} from "@Client/Audio/Queue/Song";
+import {env} from "@env";
 
 /**
  * @author SNIPPIK
@@ -80,8 +81,6 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
     };
 
 
-
-
     /**
      * @description Взаимодействие с голосовым подключением
      * @param connection {VoiceConnection} Голосовое подключение
@@ -145,7 +144,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
     private set readStream(stream: AudioResource) {
         if (!stream.readable) {
             //Если не удается включить поток за 20 сек, выдаем ошибку
-            const timeout = setTimeout(() => this.emit("error", "Timeout stream!", false), 20e3);
+            const timeout = setTimeout(() => this.emit("error", "Timeout stream!", false), (env.get("player.streamTimeout") as number) * 1e3);
 
             stream.stream
                 //Включаем поток когда можно будет начать читать
@@ -228,7 +227,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
         //Выключаем плеер если сейчас играет трек
         this.stop();
 
-        for (let str of Object.keys(this._local))  this._local[str] = null;
+        for (let str of Object.keys(this._local)) this._local[str] = null;
         this._array.filters = null;
     };
 }
