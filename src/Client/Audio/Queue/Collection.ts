@@ -311,8 +311,8 @@ export class Collection extends CollectionArray {
         const queue = this.get(queueID);
 
         //Пишем о добавлении трека
-        if (queue.songs.size > 1) {
-           if (array.length === 1) new ActionMessage(getPlayerMessage<"pushSong">("pushSong", [queue]));
+        if (queue.songs.size >= 1) {
+           if (array.length === 1) setImmediate(() => new ActionMessage(getPlayerMessage<"pushSong">("pushSong", [queue])));
         } else if (!queue.player.playing) setImmediate(() => queue.player.play(queue.songs.song));
 
         //Добавляем треки в очередь
