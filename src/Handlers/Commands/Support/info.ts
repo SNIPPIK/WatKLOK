@@ -16,7 +16,7 @@ export default class extends Command {
             description: "Здесь показана моя информация!",
 
             execute: (message) => {
-                const { client, guild } = message, queue = db.music.queue.get(guild.id);
+                const { client, guild } = message, queue = db.queue.get(guild.id);
                 const Latency = (Date.now() - message.createdTimestamp < 0 ? Math.random() * 78 : Date.now() - message.createdTimestamp).toFixed(0);
                 const WS = (client.ws.ping < 0 ? Math.random() * 78 : client.ws.ping).toFixed(0);
 
@@ -38,7 +38,7 @@ export default class extends Command {
                 let Music = [
                     `• Битрейт аудио    => ${bitrate}`,
                     `• Макс очередь     => Infinite`,
-                    `• Очереди          => ${db.music.queue.size}`,
+                    `• Очереди          => ${db.queue.size}`,
                 ];
 
                 if (queue) {

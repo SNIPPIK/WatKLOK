@@ -14,7 +14,7 @@ export default class Player_toError extends Event<any> {
                 new ActionMessage(getPlayerMessage<"error">("error", [queue, err]));
 
                 //Если возникает критическая ошибка
-                if (crash) return db.music.queue.remove(queue.guild.id);
+                if (crash) return db.queue.remove(queue.guild.id);
 
                 queue.songs.shift();
                 setTimeout(() => queue.player.play(queue.songs.song), 5e3);

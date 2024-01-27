@@ -34,7 +34,7 @@ export default class extends Command {
                     description: "Укажи платформу",
                     required: true,
                     type: ApplicationCommandOptionType["String"],
-                    choices: (db.music.platforms.supported.length < 25 ? db.music.platforms.supported : db.music.platforms.supported.splice(0, 20)).map((platform) => {
+                    choices: (db.platforms.supported.length < 25 ? db.platforms.supported : db.platforms.supported.splice(0, 20)).map((platform) => {
                         return {
                             name: `${platform.name}`,
                             value: platform.name
@@ -47,11 +47,11 @@ export default class extends Command {
             execute: (message, args) => {
                 if (args[0] === "block") {
                     //Если платформа уже заблокирована
-                    if (db.music.platforms.block.includes(args[1] as API.platform)) return {
+                    if (db.platforms.block.includes(args[1] as API.platform)) return {
                         content: `${message.author}, Платформа уже заблокирована!`, color: "Yellow"
                     };
 
-                    db.music.platforms.block.push(args[1] as API.platform);
+                    db.platforms.block.push(args[1] as API.platform);
                     return  {
                         content: `${message.author}, Платформа заблокирована!`, color: "Green"
                     };
@@ -59,19 +59,19 @@ export default class extends Command {
 
                 else if (args[0] === "unblock") {
                     //Если платформа не заблокирована
-                    if (!db.music.platforms.block.includes(args[1] as API.platform)) return {
+                    if (!db.platforms.block.includes(args[1] as API.platform)) return {
                         content: `${message.author}, Платформа не заблокирована!`, color: "Yellow"
                     };
 
-                    const index = db.music.platforms.block.indexOf(args[1] as API.platform);
-                    db.music.platforms.block.splice(index - 1, 1);
+                    const index = db.platforms.block.indexOf(args[1] as API.platform);
+                    db.platforms.block.splice(index - 1, 1);
                     return  {
                         content: `${message.author}, Платформа разблокирована!`, color: "Green"
                     };
                 }
 
                 else if (args[0] === "status") {
-                    const platform = db.music.platforms.supported.find((platform) => platform.name === args[0]);
+                    const platform = db.platforms.supported.find((platform) => platform.name === args[0]);
                     const fields = [
                         `isAuth:  ${platform.auth}`,
                         `isAudio: ${platform.audio}`,

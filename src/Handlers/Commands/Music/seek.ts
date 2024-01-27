@@ -18,7 +18,7 @@ export default class extends Command {
 
             execute: (message, args) => {
                 const { author, member, guild } = message;
-                const queue = db.music.queue.get(guild.id);
+                const queue = db.queue.get(guild.id);
 
                 //Если нет очереди
                 if (!queue) return { content: `${author}, ⚠ | Музыка сейчас не играет.`, color: "Yellow" };

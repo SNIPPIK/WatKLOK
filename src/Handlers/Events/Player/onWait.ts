@@ -15,7 +15,7 @@ export default class Player_onWait extends Event<any> {
                 const removedSong = queue.loop === "off" || queue.loop === "songs" ? queue.songs.shift() : null;
                 if (removedSong && queue.loop === "songs") queue.songs.push(removedSong);
 
-                if (!queue?.songs?.song) return db.music.queue.remove(queue.guild.id);
+                if (!queue?.songs?.song) return db.queue.remove(queue.guild.id);
 
                 //Включаем трек через время
                 setTimeout(() => {

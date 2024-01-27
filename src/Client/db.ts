@@ -1,7 +1,7 @@
 import {Collection as AudioCollection} from "@Client/Audio/Queue/Collection";
 import {Filter} from "@Client/Audio/Player/AudioResource";
-import {Collection, Routes} from "discord.js";
 import {Command, Event, API, RequestAPI} from "@handler";
+import {Collection, Routes} from "discord.js";
 import {httpsClient} from "@Client/Request";
 import {Atlas, Logger} from "@Client";
 import {env} from "@env";
@@ -12,87 +12,6 @@ import {env} from "@env";
  * @description База данных бота
  */
 export const db = new class QuickDB {
-    /**
-     * @author SNIPPIK
-     * @description Класс в котором хранятся команды
-     * @private
-     */
-    private readonly _commands = new class extends Collection<string, Command> {
-        /**
-         * @description Команды для разработчика
-         * @return Command[]
-         * @public
-         */
-        public get owner() { return this.filter((command) => command.owner).toJSON(); };
-
-        /**
-         * @description Команды доступные для всех
-         * @return Command[]
-         * @public
-         */
-        public get public() { return this.filter((command) => !command.owner).toJSON(); };
-    };
-    public get commands() { return this._commands; };
-
-    /**
-     * @author SNIPPIK
-     * @description Все данные относящиеся к музыке
-     * @private
-     */
-    private readonly _music = new class {
-        private readonly _queue = new AudioCollection();
-        private readonly _filters: Filter[] = [];
-        private readonly _platform = {
-            supported: [] as RequestAPI[],
-            authorization: [] as API.platform[],
-            audio: [] as API.platform[],
-            block: [] as API.platform[]
-        };
-
-        /**
-         * @description Получаем все данные об платформе
-         * @return object
-         * @public
-         */
-        public get platforms() { return this._platform; };
-
-        /**
-         * @description Получаем CollectionQueue
-         * @return CollectionQueue
-         * @public
-         */
-        public get queue() { return this._queue; };
-
-        /**
-         * @description Получаем фильтры полученные из базы данных github
-         * @return Filter[]
-         * @public
-         */
-        public get filters() { return this._filters; };
-
-        /**
-         * @description Получаем фильтры из базы данных WatKLOK
-         * @return Promise<Error | true>
-         * @public
-         */
-        public get gettingFilters(): Promise<Error | true> {
-            return new Promise<Error | true>(async (resolve, reject) => {
-                const raw = await new httpsClient(env.get("filters.url"), {useragent: true}).toJson;
-
-                if (raw instanceof Error) return reject(raw);
-                this._filters.push(...raw);
-
-                return resolve(true);
-            });
-        };
-    }
-    public get music() { return this._music; };
-
-    /**
-     * @author SNIPPIK
-     * @description Все смайлики
-     * @private
-     */
     private readonly _emojis = {
         button: {
             resume: env.get("button.resume"),
@@ -120,8 +39,85 @@ export const db = new class QuickDB {
         noImage: env.get("image.not"),
         diskImage: env.get("image.currentPlay")
     };
+    private readonly _array = {
+        /**
+         * @author SNIPPIK
+         * @description Класс в котором хранятся команды
+         * @private
+         */
+        commands: new class extends Collection<string, Command> {
+            /**
+             * @description Команды для разработчика
+             * @return Command[]
+             * @public
+             */
+            public get owner() { return this.filter((command) => command.owner).toJSON(); };
+
+            /**
+             * @description Команды доступные для всех
+             * @return Command[]
+             * @public
+             */
+            public get public() { return this.filter((command) => !command.owner).toJSON(); };
+        },
+
+        queue: new AudioCollection(),
+        filters: [] as Filter[],
+        platforms: {
+            supported: [] as RequestAPI[],
+            authorization: [] as API.platform[],
+            audio: [] as API.platform[],
+            block: [] as API.platform[]
+        }
+    };
+    /**
+     * @description Выдаем класс с командами
+     * @public
+     */
+    public get commands() { return this._array.commands; };
+
+    /**
+     * @description Выдаем все необходимые смайлики
+     * @public
+     */
     public get emojis() { return this._emojis; };
 
+    /**
+     * @description Получаем все данные об платформе
+     * @return object
+     * @public
+     */
+    public get platforms() { return this._array.platforms; };
+
+    /**
+     * @description Получаем CollectionQueue
+     * @return CollectionQueue
+     * @public
+     */
+    public get queue() { return this._array.queue; };
+
+    /**
+     * @description Получаем фильтры полученные из базы данных github
+     * @return Filter[]
+     * @public
+     */
+    public get filters() { return this._array.filters; };
+
+    /**
+     * @description Получаем фильтры из базы данных WatKLOK
+     * @return Promise<Error | true>
+     * @public
+     */
+    private get getFilters(): Promise<Error | true> {
+        return new Promise<Error | true>(async (resolve, reject) => {
+            const raw = await new httpsClient(env.get("filters.url"), {useragent: true}).toJson;
+
+            if (raw instanceof Error) return reject(raw);
+            this._array.filters.push(...raw);
+
+            return resolve(true);
+        });
+    };
 
     /**
      * @description Загружаем команды для бота в Discord
@@ -129,7 +125,7 @@ export const db = new class QuickDB {
      * @return Promise<true>
      * @public
      */
-    public registerApplicationCommands = (client: Atlas): Promise<true> => {
+    private registerCommands = (client: Atlas): Promise<true> => {
         return new Promise<true>(async (resolve) => {
             //Загружаем все команды
             const PublicData: any = await client.rest.put(Routes.applicationCommands(client.user.id), {body: this.commands.public});
@@ -146,7 +142,7 @@ export const db = new class QuickDB {
      * @return Promise<true>
      * @public
      */
-    public initHandler = async (client: Atlas) => {
+    private initFs = async (client: Atlas) => {
         const dirs = ["Handlers/APIs", "Handlers/Commands", "Handlers/Events"];
 
         //Постепенно загружаем директории с данными
@@ -166,14 +162,14 @@ export const db = new class QuickDB {
                     }
 
                     //Загружаем APIs
-                    else if ("audio" in item) {
+                    else if (item instanceof RequestAPI) {
                         //Если нет данных, то откидываем платформу
-                        if (!item.auth) this.music.platforms.authorization.push(item.name);
+                        if (!item.auth) this.platforms.authorization.push(item.name);
 
                         //Поддерживает ли платформа получение аудио
-                        if (!item.audio) this.music.platforms.audio.push(item.name);
+                        if (!item.audio) this.platforms.audio.push(item.name);
 
-                        this.music.platforms.supported.push(item);
+                        this.platforms.supported.push(item);
                     }
 
                     //Здесь выводим сообщение об ошибке
@@ -183,6 +179,22 @@ export const db = new class QuickDB {
             } catch (err) {
                 Logger.log("ERROR", err);
             }
+        }
+    };
+
+    /**
+     * @description Запускаем db
+     * @param client {Atlas} Класс клиента
+     * @return Promise<true>
+     * @public
+     */
+    public initHandler = async (client: Atlas) => {
+        const loaders = [await this.getFilters, await this.initFs(client), await this.registerCommands(client)];
+
+        for (let n = 0; n < loaders.length; n++) {
+            const loader = loaders[n];
+
+            if (loader instanceof Error) throw loader;
         }
     };
 }

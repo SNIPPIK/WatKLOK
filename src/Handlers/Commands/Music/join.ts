@@ -13,7 +13,7 @@ export default class extends Command {
             execute: (message) => {
                 const { author, member, guild } = message;
                 const voiceChannel: VoiceChannel | StageChannel = member.voice.channel;
-                const queue = db.music.queue.get(guild.id);
+                const queue = db.queue.get(guild.id);
 
                 //Если пользователь не подключен к голосовым каналам
                 if (!member?.voice?.channel || !member?.voice) return { content: `${author}, Необходимо подключится к голосовому каналу!`, color: "Yellow" };

@@ -15,7 +15,7 @@ export default class extends Command {
                     name: "platform",
                     description: "К какой платформе относится запрос?",
                     type: ApplicationCommandOptionType["String"],
-                    choices: (db.music.platforms.supported.length < 25 ? db.music.platforms.supported : db.music.platforms.supported.splice(0, 20)).map((platform) => {
+                    choices: (db.platforms.supported.length < 25 ? db.platforms.supported : db.platforms.supported.splice(0, 20)).map((platform) => {
                         return {
                             name: `${platform.name}`,
                             value: platform.name
@@ -33,7 +33,7 @@ export default class extends Command {
 
             execute: (message: ClientMessage, args) => {
                 const { author, member, guild } = message;
-                const queue = db.music.queue.get(guild.id);
+                const queue = db.queue.get(guild.id);
                 const VoiceChannel = member?.voice?.channel;
 
                 //Если пользователь не подключен к голосовым каналам
@@ -48,7 +48,7 @@ export default class extends Command {
                     color: "Yellow"
                 };
 
-                return db.music.queue.runAPIs(message, VoiceChannel, args);
+                return db.queue.runAPIs(message, VoiceChannel, args);
             }
         });
     };

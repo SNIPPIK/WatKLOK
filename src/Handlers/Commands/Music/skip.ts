@@ -18,7 +18,7 @@ export default class extends Command {
 
             execute: (message, args) => {
                 const { author, member, guild } = message;
-                const queue = db.music.queue.get(guild.id);
+                const queue = db.queue.get(guild.id);
                 const arg = args.length > 0 ? parseInt(args.pop()) : 1;
 
                 //Если нет очереди

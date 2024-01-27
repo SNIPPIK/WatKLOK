@@ -63,7 +63,7 @@ class CollectionCycles {
                 filter: (message) => !!message.edit,
                 execute: (message) => {
                     const {guild} = message;
-                    const queue = db.music.queue.get(guild.id);
+                    const queue = db.queue.get(guild.id);
 
                     if (!queue || !queue.songs.size) return this.remove(message);
                     else if (!queue.player.hasUpdate || !queue.player.stream.duration || !message.editable) return;

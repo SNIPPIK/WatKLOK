@@ -99,7 +99,7 @@ const arrayMessages: PlayerMessage.array<any>[] = [
                 message: queue.message, embeds: [embed], time: 0, replied: true,
                 components: [queue.components as any],
                 promise: (msg: ClientMessage) => {
-                    db.music.queue.cycles.messages.push(msg);
+                    db.queue.cycles.messages.push(msg);
                 }
             }
         }

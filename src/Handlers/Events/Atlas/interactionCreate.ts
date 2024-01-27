@@ -80,7 +80,7 @@ export default class extends Event<Events.InteractionCreate> {
      * @private
      */
     private readonly _stepButton = (message: ClientInteraction): ICommand.all => {
-        const queue = db.music.queue.get(message.guild.id);
+        const queue = db.queue.get(message.guild.id);
 
         //Если нет очереди
         if (!queue) return { content: `${message.author}, ⚠ | Музыка сейчас не играет`, color: "Yellow" };

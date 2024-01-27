@@ -9,7 +9,7 @@ export default class extends Command {
 
             execute: (message) => {
                 const { author, guild, member } = message;
-                const queue = db.music.queue.get(guild.id);
+                const queue = db.queue.get(guild.id);
 
                 //Если нет очереди
                 if (!queue) return { content: `${author}, ⚠ | Музыка сейчас не играет.`, color: "Yellow" };
@@ -22,7 +22,7 @@ export default class extends Command {
                     content: `${author}, Музыка уже играет в другом голосовом канале!\nМузыка включена тут <#${queue.voice.id}>`, color: "Yellow"
                 };
 
-                db.music.queue.remove(queue.guild.id);
+                db.queue.remove(queue.guild.id);
                 return { content: `${author}, музыкальная очередь удалена!` };
             }
         });

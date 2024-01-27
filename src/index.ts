@@ -14,15 +14,7 @@ else {
         //Запускаем загрузку модулей после инициализации бота
         client.once("ready", async () => {
             Logger.log("LOG", `[Shard ${client.ID}] has connected for websocket`);
-
-            //Загружаем модули
-            for (const status of [
-                await db.music.gettingFilters,
-                await db.initHandler(client),
-                await db.registerApplicationCommands(client)
-            ]) {
-                if (status instanceof Error) throw status;
-            }
+            await db.initHandler(client);
         });
     });
 

@@ -223,12 +223,12 @@ export class Song {
      */
     public get resource(): Promise<string | Error> {
         const platform = this.platform;
-        const isDownload = db.music.queue.cycles.downloader && platform !== "DISCORD";
+        const isDownload = db.queue.cycles.downloader && platform !== "DISCORD";
 
         return new Promise<string | Error>(async (resolve) => {
             //Если трек уже кеширован, то сразу выдаем его
             if (isDownload) {
-                const info = db.music.queue.cycles.downloader.status(this);
+                const info = db.queue.cycles.downloader.status(this);
                 if (info.status === "final") return resolve(`file:|${info.path}`);
             }
 
@@ -251,7 +251,7 @@ export class Song {
 
             //Если не удается найти ссылку через n попыток
             if (!this._link) return resolve(Error(`[SONG]: Fail update link resource`));
-            else if (isDownload && this._link) void (db.music.queue.cycles.downloader.push(this));
+            else if (isDownload && this._link) void (db.queue.cycles.downloader.push(this));
             return resolve(`link:|${this.link}`)
         });
     };
@@ -263,7 +263,7 @@ export class Song {
  */
 function resource(platform: API.platform, url: string, author: string, title: string, duration: number): Promise<string> {
     return new Promise<string>(async (resolve) => {
-        if (!db.music.platforms.audio.includes(platform)) {
+        if (!db.platforms.audio.includes(platform)) {
             const callback = new ResponseAPI(platform).callback("track");
 
             //Если нет такого запроса
@@ -338,8 +338,8 @@ function searchTrack(nameSong: string, duration: number) {
  * @return API.load
  */
 function getRandomPlatform() {
-    const randomAPI = db.music.platforms.supported.filter((platform) => !db.music.platforms.audio.includes(platform.name)
-        && !db.music.platforms.authorization.includes(platform.name)
+    const randomAPI = db.platforms.supported.filter((platform) => !db.platforms.audio.includes(platform.name)
+        && !db.platforms.authorization.includes(platform.name)
         && platform.requests.find((pl) => pl.name === "search")
         && platform.requests.find((pl) => pl.name === "track")
     );

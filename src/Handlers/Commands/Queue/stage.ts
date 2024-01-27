@@ -31,7 +31,7 @@ export default class extends Command {
             execute: (message, args) => {
                 const { author, member, guild } = message;
                 const voiceChannel = member?.voice?.channel;
-                const queue = db.music.queue.get(guild.id);
+                const queue = db.queue.get(guild.id);
                 const me = message.guild.members?.me;
 
                 //Если нет очереди

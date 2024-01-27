@@ -9,7 +9,7 @@ export default class extends Command {
             description: "Отключение от голосового канала!",
             execute: (message) => {
                 const { guild, member, author } = message;
-                const queue = db.music.queue.get(guild.id);
+                const queue = db.queue.get(guild.id);
                 const voiceConnection = getVoiceConnection(guild.id);
 
                 //Если бот не подключен к голосовому каналу

@@ -31,12 +31,12 @@ export default class VoiceStateUpdate extends Event<Events.VoiceStateUpdate> {
                 /**
                  * @description Если есть очередь и нет слушателей то удаляем очередь
                  */
-                const queue = db.music.queue.get(newState.guild.id);
+                const queue = db.queue.get(newState.guild.id);
 
                 if (queue) {
                     const isBotVoice = !!(newState.channel?.members ?? oldState.channel?.members)?.find((member) => member.user.id === client.user.id);
 
-                    if (usersSize < 1 && !isBotVoice) db.music.queue.remove(queue.guild.id);
+                    if (usersSize < 1 && !isBotVoice) db.queue.remove(queue.guild.id);
                 }
             }
         });

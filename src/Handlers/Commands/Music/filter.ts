@@ -14,7 +14,7 @@ export default class extends Command {
                     name: "filters",
                     description: "Необходимо выбрать фильтр! Все доступные фильтры - all",
                     type: ApplicationCommandOptionType["String"],
-                    choices: db.music.filters.length < 25 ? db.music.filters.map((filter) => {
+                    choices: db.filters.length < 25 ? db.filters.map((filter) => {
                         return {
                             name: `${filter.names[0]} | ${filter.description.length > 75 ? `${filter.description.substring(0, 75)}...` : filter.description}`,
                             value: filter.names[0]
@@ -30,7 +30,7 @@ export default class extends Command {
 
             execute: (message, args) => {
                 const { author, member, guild } = message;
-                const queue = db.music.queue.get(guild.id);
+                const queue = db.queue.get(guild.id);
 
                 //Если нет очереди
                 if (!queue) return { content: `${author}, ⚠ | Музыка сейчас не играет`, color: "Yellow" };
@@ -71,7 +71,7 @@ export default class extends Command {
 
                     const embed: EmbedData = { title: "Все доступные фильтры", color: Colors.Yellow, thumbnail: { url: message.client.user.avatarURL() }, timestamp: new Date() };
                     //Преобразуем все фильтры в string
-                    const pages = ArraySort<Filter>(5, FilterName === "all" ? db.music.filters : queue?.player?.filters, (filter, index) => {
+                    const pages = ArraySort<Filter>(5, FilterName === "all" ? db.filters : queue?.player?.filters, (filter, index) => {
                         return `┌Номер в списке - [${index + 1}]
                     ├ **Названия:** ${filter.names ? `(${filter.names})` : `Нет`}
                     ├ **Аргументы:** ${filter.args ? `(${filter.args})` : `Нет`}

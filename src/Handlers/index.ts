@@ -260,21 +260,21 @@ export class ResponseAPI {
      * @return boolean
      * @public
      */
-    public get block() { return db.music.platforms.block.includes(this.platform); };
+    public get block() { return db.platforms.block.includes(this.platform); };
 
     /**
      * @description Выдаем bool, есть ли доступ к платформе
      * @return boolean
      * @public
      */
-    public get auth() { return db.music.platforms.authorization.includes(this.platform); };
+    public get auth() { return db.platforms.authorization.includes(this.platform); };
 
     /**
      * @description Выдаем bool, есть ли доступ к файлам аудио
      * @return boolean
      * @public
      */
-    public get audio() { return db.music.platforms.audio.includes(this.platform); };
+    public get audio() { return db.platforms.audio.includes(this.platform); };
 
     /**
      * @description Выдаем int, цвет платформы
@@ -316,7 +316,7 @@ export class ResponseAPI {
      * @public
      */
     public constructor(argument: API.platform | string) {
-        const temp = db.music.platforms.supported;
+        const temp = db.platforms.supported;
 
         //Если была указана ссылка
         if (argument.startsWith("http")) {

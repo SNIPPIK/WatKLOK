@@ -191,7 +191,7 @@ export const Filters = new class {
      * @param name {string} Имя фильтра
      * @return Filter
      */
-    public get = (name: string): Filter => db.music.filters.find((fn) => fn.names.includes(name));
+    public get = (name: string): Filter => db.filters.find((fn) => fn.names.includes(name));
 
     /**
      * @description Получаем параметры фильтров ит готовые фильтры для FFmpeg

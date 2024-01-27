@@ -21,7 +21,7 @@ export default class extends Command {
 
             execute: (message: ClientInteraction) => {
                 const { author, member, guild } = message;
-                const queue = db.music.queue.get(guild.id);
+                const queue = db.queue.get(guild.id);
                 const VoiceChannel = member?.voice?.channel;
                 const attachment = message.options.getAttachment("file");
 
@@ -43,7 +43,7 @@ export default class extends Command {
                     color: "Yellow"
                 };
 
-                return db.music.queue.runAPIs(message as any, VoiceChannel, ["DISCORD", attachment.url]);
+                return db.queue.runAPIs(message as any, VoiceChannel, ["DISCORD", attachment.url]);
             }
         });
     };
