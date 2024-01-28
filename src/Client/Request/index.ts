@@ -134,16 +134,15 @@ export class httpsClient extends Request {
      * @public
      */
     public get toJson(): Promise<null | any | Error> {
-        return new Promise((resolve) => this.toString.then((body) => {
-            if (body instanceof Error) return resolve(null);
+        return this.toString.then((body) => {
+            if (body instanceof Error) return body;
 
             try {
-                return resolve(JSON.parse(body));
-            } catch (e) {
-                Logger.log("ERROR", `[httpsClient]: Invalid json response body at ${this._options.hostname} reason: ${e.message}`);
-                return resolve(null);
+                return JSON.parse(body);
+            } catch {
+                return Error(`Invalid json response body at ${this._options.hostname}`);
             }
-        }));
+        });
     };
 
     /**
