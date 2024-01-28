@@ -88,7 +88,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      */
     public set connection(connection: VoiceConnection) {
         if (this._local.voice) {
-            if (this._local.voice.joinConfig.channelId === connection.joinConfig.channelId) return
+            if (this._local.voice.joinConfig.channelId === connection.joinConfig.channelId) return;
         }
 
         this._local.voice = connection;

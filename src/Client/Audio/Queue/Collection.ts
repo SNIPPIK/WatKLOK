@@ -12,20 +12,6 @@ import {db} from "@Client/db";
 import {env} from "@env";
 /**
  * @author SNIPPIK
- * @description Локальная база с events
- * @const _events
- */
-const _events = ["onWait", "onStart", "onError"].map((file) => {
-    const importFile = require(`../../../Handlers/Events/Player/${file}.js`);
-    const keysFile = Object.keys(importFile);
-
-    if (keysFile.length === 0) return null;
-
-    return new importFile[keysFile[0]];
-});
-
-/**
- * @author SNIPPIK
  * @description
  * @class CollectionCycles
  * @abstract
@@ -192,10 +178,8 @@ abstract class CollectionArray {
         this._local.array.push(queue);
 
         //Загружаем ивенты плеера
-        for (let n = 0; _events.length > n; n++) {
-            const event = _events[n];
-            queue.player.on(event.name, (...args: any[]) => event.execute(queue, ...args));
-        }
+        for (const event of queue.message.client.eventNames().filter((item: string) => item.match(/AudioPlayer/)) as string[])
+            queue.player.on(event.split("_")[1] as any, (...args: any[]) => queue.message.client.emit(event, queue, ...args));
 
         Logger.log("DEBUG", `Queue: create for [${queue.guild.id}]`);
     };

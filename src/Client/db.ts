@@ -144,41 +144,32 @@ export const db = new class QuickDB {
      */
     private initFs = async (client: Atlas) => {
         const dirs = ["Handlers/APIs", "Handlers/Commands", "Handlers/Events"];
+        const callbacks = [
+            (item: RequestAPI) => {
+                //Если нет данных, то откидываем платформу
+                if (!item.auth) this.platforms.authorization.push(item.name);
+
+                //Поддерживает ли платформа получение аудио
+                if (!item.audio) this.platforms.audio.push(item.name);
+
+                this.platforms.supported.push(item);
+            },
+            (item: Command) => this.commands.set(item.name, item),
+            (item: Event<unknown>) => {
+                if (item.type === "client") client.on(item.name as any, (...args: any[]) => item.execute(client, ...args));
+                else if (item.type === "player") client.on(item.name as any, item.execute);
+                else if (item.type === "process") process.on(item.name as any, item.execute);
+            }
+        ];
 
         //Постепенно загружаем директории с данными
         for (let n = 0; n < dirs.length; n++) {
             const path = dirs[n];
 
             try {
-                new loadHandlerDir<RequestAPI | Command | Event<unknown>>(path, (item, file) => {
-
-                    //Загружаем команды
-                    if (item instanceof Command) this.commands.set(item.name, item);
-
-                    //Загружаем ивенты
-                    else if (item instanceof Event) {
-                        if (item.type === "client") client.on(item.name as any, (...args: any[]) => item.execute(client, ...args));
-                        else if (item.type === "process") process.on(item.name as any, item.execute);
-                    }
-
-                    //Загружаем APIs
-                    else if (item instanceof RequestAPI) {
-                        //Если нет данных, то откидываем платформу
-                        if (!item.auth) this.platforms.authorization.push(item.name);
-
-                        //Поддерживает ли платформа получение аудио
-                        if (!item.audio) this.platforms.audio.push(item.name);
-
-                        this.platforms.supported.push(item);
-                    }
-
-                    //Здесь выводим сообщение об ошибке
-                    else Logger.log("ERROR", `[FS/${file}]: ${item.message}`);
-                });
+                new loadHandlerDir<any>(path, callbacks[n]);
                 Logger.log("LOG", `[Shard ${client.ID}] has initialize ${path}`);
-            } catch (err) {
-                Logger.log("ERROR", err);
-            }
+            } catch (err) { Logger.log("ERROR", err); }
         }
     };
 

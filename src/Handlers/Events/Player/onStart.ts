@@ -4,10 +4,10 @@ import {getPlayerMessage} from "@Client/Audio";
 import {Logger} from "@Client";
 import {ActionMessage, Event} from "@handler";
 
-export default class Player_onStart extends Event<any> {
+export default class extends Event<any> {
     public constructor() {
         super({
-            name: "onStart",
+            name: "AudioPlayer_onStart",
             type: "player",
             // @ts-ignore
             execute: (queue: ArrayQueue, seek: number) => {

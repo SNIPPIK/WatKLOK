@@ -3,10 +3,10 @@ import {getPlayerMessage} from "@Client/Audio";
 import {ActionMessage, Event} from "@handler";
 import {db} from "@Client/db";
 
-export default class Player_toError extends Event<any> {
+export default class extends Event<any> {
     public constructor() {
         super({
-            name: "error",
+            name: "AudioPlayer_error",
             type: "player",
             //@ts-ignore
             execute: (queue: ArrayQueue, err: string, crash: boolean) => {

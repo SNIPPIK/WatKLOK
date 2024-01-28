@@ -4,10 +4,10 @@ import {db} from "@Client/db";
 import {env} from "@env";
 
 const timeout = parseInt(env.get("player.timeout"));
-export default class Player_onWait extends Event<any> {
+export default class extends Event<any> {
     public constructor() {
         super({
-            name: "wait",
+            name: "AudioPlayer_wait",
             type: "player",
             //@ts-ignore
             execute: (queue: ArrayQueue) => {
