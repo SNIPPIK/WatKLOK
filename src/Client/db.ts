@@ -60,6 +60,19 @@ export const db = new class QuickDB {
              */
             public get public() { return this.filter((command) => !command.owner).toJSON(); };
         },
+        /**
+         * @author SNIPPIK
+         * @description Класс в котором хранятся ивенты (не все)
+         * @private
+         */
+        events: new class extends Array {
+            /**
+             * @description Ивенты плеера
+             * @return Event<any>[]
+             * @public
+             */
+            public get player() { return this.filter((item) => item.type === "player"); };
+        },
 
         queue: new AudioCollection(),
         filters: [] as Filter[],
@@ -70,6 +83,12 @@ export const db = new class QuickDB {
             block: [] as API.platform[]
         }
     };
+    /**
+     * @description Выдаем класс с events
+     * @public
+     */
+    public get events() { return this._array.events; };
+
     /**
      * @description Выдаем класс с командами
      * @public
@@ -157,8 +176,8 @@ export const db = new class QuickDB {
             (item: Command) => this.commands.set(item.name, item),
             (item: Event<unknown>) => {
                 if (item.type === "client") client.on(item.name as any, (...args: any[]) => item.execute(client, ...args));
-                else if (item.type === "player") client.on(item.name as any, item.execute);
                 else if (item.type === "process") process.on(item.name as any, item.execute);
+                else this.events.push(item);
             }
         ];
 

@@ -7,7 +7,7 @@ const timeout = parseInt(env.get("player.timeout"));
 export default class extends Event<any> {
     public constructor() {
         super({
-            name: "AudioPlayer_wait",
+            name: "wait",
             type: "player",
             //@ts-ignore
             execute: (queue: ArrayQueue) => {

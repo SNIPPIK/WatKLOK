@@ -7,7 +7,7 @@ import {ActionMessage, Event} from "@handler";
 export default class extends Event<any> {
     public constructor() {
         super({
-            name: "AudioPlayer_onStart",
+            name: "onStart",
             type: "player",
             // @ts-ignore
             execute: (queue: ArrayQueue, seek: number) => {

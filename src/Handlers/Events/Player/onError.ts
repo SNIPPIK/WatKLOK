@@ -6,7 +6,7 @@ import {db} from "@Client/db";
 export default class extends Event<any> {
     public constructor() {
         super({
-            name: "AudioPlayer_error",
+            name: "error",
             type: "player",
             //@ts-ignore
             execute: (queue: ArrayQueue, err: string, crash: boolean) => {

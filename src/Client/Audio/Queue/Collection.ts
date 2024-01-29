@@ -178,9 +178,7 @@ abstract class CollectionArray {
         this._local.array.push(queue);
 
         //Загружаем ивенты плеера
-        for (const event of queue.message.client.eventNames().filter((item: string) => item.match(/AudioPlayer/)) as string[])
-            queue.player.on(event.split("_")[1] as any, (...args: any[]) => queue.message.client.emit(event, queue, ...args));
-
+        for (const item of db.events.player) queue.player.on(item.name as any, (...args: any[]) => item.execute(queue as any, ...args));
         Logger.log("DEBUG", `Queue: create for [${queue.guild.id}]`);
     };
 
