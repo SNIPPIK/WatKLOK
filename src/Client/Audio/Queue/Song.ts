@@ -319,8 +319,6 @@ function searchTrack(nameSong: string, duration: number) {
         try {
             //Делаем запрос полной информации о треки для получения ссылки на исходный файл музыки
             track.callback(GoodTracks[0].url).then((track: Song) => {
-                console.log(track);
-
                 if (!track.link) return resolve(null);
                 return resolve(track.link);
             });
