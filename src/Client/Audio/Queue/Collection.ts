@@ -223,7 +223,7 @@ export class Collection extends CollectionArray {
      */
     public readonly runAPIs = (message: ClientMessage, VoiceChannel: VoiceChannel | StageChannel, argument: string[]): ICommand.all | Promise<ICommand.all> => {
         const platform = new ResponseAPI(argument[0] ?? argument[1]), platformLow = platform.platform.toLowerCase();
-        const platformError = platform.block ? 1 : platform.auth ? 2 : !argument[1].match(platform.filter) ? 3 : undefined;
+        const platformError = platform.block ? 1 : platform.auth ? 2 : !argument[1].match(platform.filter) && argument[1].startsWith("http") ? 3 : undefined;
 
         //Если есть ошибка при попытке использовать платформу
         if (platformError) {
@@ -244,7 +244,7 @@ export class Collection extends CollectionArray {
         const callback = platform.callback(type);
 
         //Если нет поддержки запроса
-        if (!callback || !argument[1].match(platform.filter)) return { color: "Yellow",
+        if (!callback) return { color: "Yellow",
             content: `⚠️ **Warning** | **${platformLow}.${type}**\n\nУ меня нет поддержки для выполнения этого запроса!`
         };
 

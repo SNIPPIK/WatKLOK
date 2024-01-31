@@ -289,8 +289,9 @@ export class ResponseAPI {
      * @public
      */
     public type = (search: string): API.callback => {
+        if (!search.startsWith("http")) return "search";
+
         try {
-            if (!search.startsWith("http")) return "search";
             return this._api.requests.find((data) => data.filter && search.match(data.filter)).name;
         } catch { return null; }
     };
