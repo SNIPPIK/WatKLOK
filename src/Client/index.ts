@@ -37,7 +37,8 @@ export class Atlas extends Client {
                 IntentsBitField.Flags["Guilds"]
             ],
             partials: [Partials.Channel, Partials.GuildMember, Partials.Message, Partials.Reaction, Partials.User],
-            shards: "auto"
+            shardCount: parseInt(env.get("shard.server")) || 1e3,
+            shards: "auto",
         });
     };
 }
@@ -49,7 +50,7 @@ export class Atlas extends Client {
  */
 export class ShardManager extends ShardingManager {
     public constructor(path: string) {
-        super(path, { token: env.get("token.discord"), mode: "process", respawn: true, totalShards: "auto", execArgv: ["-r", "tsconfig-paths/register"] });
+        super(path, { token: env.get("token.discord"), mode: env.get("shard.mode"), respawn: true, totalShards: env.get("shard.total"), execArgv: ["-r", "tsconfig-paths/register"] });
         process.title = "ShardManager";
         Logger.log("LOG", `[ShardManager] has starting`);
 

@@ -52,7 +52,7 @@ class CollectionCycles {
                     const queue = db.queue.get(guild.id);
 
                     if (!queue || !queue.songs.size) return this.remove(message);
-                    else if (!queue.player.hasUpdate || !queue.player.stream.duration || !message.editable) return;
+                    else if (!queue.player.playing || !queue.player.stream.duration || !message.editable) return;
 
                     setImmediate(() => {
                         const newEmbed: EmbedData = getPlayerMessage<"playing">("playing", [queue])["embeds"].pop();

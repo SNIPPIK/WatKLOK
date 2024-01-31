@@ -50,7 +50,7 @@ export default class extends Command {
                 else if (duration > queue.songs.song.duration.seconds) return { content: `${author}, Ты указал слишком много времени!`, color: "Yellow" };
 
                 //Если музыку нельзя пропустить из-за плеера
-                else if (!queue.player.hasSkipped) return { content: `${author}, ⚠ Музыка еще не играет!`, color: "Yellow" };
+                else if (!queue.player.playing) return { content: `${author}, ⚠ Музыка еще не играет!`, color: "Yellow" };
 
                 //Начинаем проигрывание трека с <пользователем указанного тайм кода>
                 queue.player.play(queue.songs.song, duration);

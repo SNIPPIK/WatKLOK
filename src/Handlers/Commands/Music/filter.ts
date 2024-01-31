@@ -48,7 +48,7 @@ export default class extends Command {
                 };
 
                 //Если статус плеера не позволяет пропустить поток
-                else if (!queue.player.hasSkipped) return {
+                else if (!queue.player.playing) return {
                     content: `${author} | На данном этапе невозможно пропустить поток!`,
                     color: "Yellow"
                 };

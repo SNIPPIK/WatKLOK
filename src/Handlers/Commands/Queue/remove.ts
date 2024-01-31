@@ -41,7 +41,7 @@ export default class extends Command {
                 else if (arg > queue.songs.length) return { content: `${author}, Я не могу убрать музыку, поскольку всего ${queue.songs.length}!`, color: "Yellow" };
 
                 //Если музыку нельзя пропустить из-за плеера
-                else if (!queue.player.hasSkipped) return { content: `${author}, ⚠ Музыка еще не играет!`, color: "Yellow" };
+                else if (!queue.player.playing) return { content: `${author}, ⚠ Музыка еще не играет!`, color: "Yellow" };
 
                 let {title}: Song = queue.songs[arg - 1];
 

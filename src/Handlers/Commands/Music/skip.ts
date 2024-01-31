@@ -39,7 +39,7 @@ export default class extends Command {
 
                 try {
                     //Если музыку нельзя пропустить из-за плеера
-                    if (!player.hasSkipped) return { content: `${author}, ⚠ Музыка еще не играет!`, color: "Yellow" };
+                    if (!player.playing) return { content: `${author}, ⚠ Музыка еще не играет!`, color: "Yellow" };
 
                     //Если пользователь укажет больше чем есть в очереди
                     else if (arg > songs.length) return { content: `${author}, В очереди ${songs.length}!`, color: "Yellow" };
