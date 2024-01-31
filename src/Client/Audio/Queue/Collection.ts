@@ -94,18 +94,20 @@ class CollectionCycles {
                     }
                     return true;
                 },
-                execute: async (track) => {
-                    return new Promise<boolean>(async (resolve) => {
-                        new httpsClient(track.link).request.then(async (req) => {
+                execute: (track) => {
+                    return new Promise<boolean>((resolve) => {
+                        setImmediate(() => this.remove(track));
+
+                        new httpsClient(track.link).request.then((req) => {
                             if (req instanceof Error) return resolve(false);
 
                             if (req.pipe) {
                                 const status = this.status(track);
                                 const file = createWriteStream(status.path);
 
-                                file.once("ready", async () => req.pipe(file));
+                                file.once("ready", () => req.pipe(file));
                                 file.once("error", console.warn);
-                                file.once("finish", async () => {
+                                file.once("finish", () => {
                                     const refreshName = this.status(track).path.split(".raw")[0];
                                     rename(status.path, `${refreshName}.opus`, () => null);
 
@@ -117,7 +119,6 @@ class CollectionCycles {
                                 });
                             }
 
-                            this.remove(track);
                             return resolve(false);
                         });
                     });
