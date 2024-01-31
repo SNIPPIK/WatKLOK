@@ -90,7 +90,7 @@ export default class extends RequestAPI {
  */
 class VKLib {
     private static authorization = {
-        api: "api.vk.com/method",
+        api: "https://api.vk.com/method",
         token:`?access_token=${env.get("token.vk")}`
     }
 

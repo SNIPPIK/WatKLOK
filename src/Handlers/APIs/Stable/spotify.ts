@@ -2,6 +2,18 @@ import {RequestAPI, ItemRequestAPI} from "@handler";
 import {Song} from "@Client/Audio/Queue/Song";
 import {httpsClient} from "@Client/Request";
 import {env} from "@env";
+
+//Локальная база данных
+const ldb = {
+    token: "",
+    time: 0,
+
+    api: "https://api.spotify.com/v1",
+    link: "https://open.spotify.com",
+    account: "https://accounts.spotify.com/api",
+    aut: Buffer.from(env.get("token.spotify")).toString("base64")
+};
+
 /**
  * @author SNIPPIK
  * @description Динамически загружаемый класс
@@ -109,7 +121,9 @@ export default class extends RequestAPI {
                                             url, title: api.name, image: api.images[0],
                                             items: api.tracks.items.map(({ track }) => SpotifyLib.track(track))
                                         });
-                                    } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
+                                    } catch (e) {
+                                        return reject(Error(`[APIs]: ${e}`))
+                                    }
                                 });
                             }
                         });
@@ -180,10 +194,9 @@ export default class extends RequestAPI {
  */
 class SpotifyLib {
     private static authorization = {
-        life: 0,
-        api: "api.spotify.com/v1",
-        account: "accounts.spotify.com/api",
-        token: Buffer.from(env.get("token.spotify")).toString("base64")
+        api: "https://api.spotify.com/v1",
+        account: "https://accounts.spotify.com/api",
+        aut: Buffer.from(env.get("token.spotify")).toString("base64"),
     }
     /**
      * @description Создаем запрос к SPOTIFY API и обновляем токен
@@ -191,14 +204,14 @@ class SpotifyLib {
      */
     public static API = (method: string): Promise<any | Error> => {
         return new Promise(async (resolve) => {
-            const isLoggedIn = this.authorization.token !== undefined && this.authorization.life > Date.now() + 2;
+            const isLoggedIn = ldb.token !== undefined && ldb.time > Date.now() + 2;
             if (!isLoggedIn) await this.getToken();
 
             new httpsClient(`${this.authorization.api}/${method}`, {
                 headers: {
                     "Accept": "application/json",
                     "Content-Type": "application/x-www-form-urlencoded",
-                    "Authorization": "Bearer " + this.authorization.token,
+                    "Authorization": "Bearer " + ldb.token,
                     "accept-encoding": "gzip, deflate, br"
                 }
             }).toJson.then((api) => {
@@ -210,19 +223,19 @@ class SpotifyLib {
         });
     }
 
-    private static getToken = () => {
+    private static getToken = (): Promise<void> => {
         return new httpsClient(`${this.authorization.account}/token`, {
             headers: {
                 "Accept": "application/json",
-                "Authorization": `Basic ${this.authorization.token}`,
+                "Authorization": `Basic ${this.authorization.aut}`,
                 "Content-Type": "application/x-www-form-urlencoded",
                 "accept-encoding": "gzip, deflate, br"
             },
             body: "grant_type=client_credentials",
             method: "POST"
         }).toJson.then((result) => {
-            this.authorization.life = Date.now() + result["expires_in"];
-            this.authorization.token = result["access_token"];
+            ldb.time = Date.now() + result["expires_in"];
+            ldb.token = result["access_token"];
         });
     };
 
@@ -241,14 +254,15 @@ class SpotifyLib {
      * @param track {any} Трек из Spotify API
      */
     public static track = (track: any): Song => {
-        const sortImages = track.album.images[0].width > track.album.images.pop().width ? track.album.images[0] : track.album.images.pop();
-
         return new Song({
             title: track.name,
             url: track["external_urls"]["spotify"],
-            author: track["artists"][0],
+            author: {
+                title: track["artists"][0].name,
+                url: track["artists"][0]["external_urls"]["spotify"]
+            },
             duration: { seconds: (track["duration_ms"] / 1000).toFixed(0) },
-            image: sortImages,
+            image: track.album.images.sort((item1, item2) => item1.width > item2.width)[0],
         });
     }
 }

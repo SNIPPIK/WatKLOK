@@ -3,6 +3,7 @@ import {httpsClient} from "@Client/Request";
 import {API, ResponseAPI} from "@handler";
 import {Duration} from "../index";
 import {db} from "@Client/db";
+import {Logger} from "@Client";
 /**
  * @author SNIPPIK
  * @description Все интерфейсы для работы системы треков
@@ -135,7 +136,7 @@ export class Song {
         //Изображения трека и автора
         this._images = {
             track: track?.image ?? { url: db.emojis.noImage },
-            author: track.author?.image ?? { url: db.emojis.diskImage }
+            author: { url: db.emojis.diskImage }
         };
 
         //Время трека
@@ -236,12 +237,10 @@ export class Song {
             for (let req = 0; req < 3; req++) {
                 //Если нет ссылки, то пытаемся ее получить
                 if (!this._link) {
-                    try {
-                        this._link = await resource(platform, this.url, this.author.title, this.title, this.duration.seconds);
-                    } catch {
-                        this._link = null;
-                        break;
-                    }
+                    const link = await resource(platform, this.url, this.author.title, this.title, this.duration.seconds);
+
+                    if (link instanceof Error) Logger.log("ERROR", `[${link.name}] ${link.message}`);
+                    else this._link = null;
                 }
 
                 //Проверяем ссылку работает ли она
@@ -261,38 +260,33 @@ export class Song {
  * @description Получаем исходный файл музыки
  * @return Promise<string>
  */
-function resource(platform: API.platform, url: string, author: string, title: string, duration: number): Promise<string> {
-    return new Promise<string>(async (resolve) => {
+function resource(platform: API.platform, url: string, author: string, title: string, duration: number): Promise<string | Error> {
+    return new Promise<string | Error>((resolve) => {
         if (!db.platforms.audio.includes(platform)) {
             const callback = new ResponseAPI(platform).callback("track");
 
             //Если нет такого запроса
-            if (callback) {
-                const track = await callback(url);
+            if (!callback) resolve(null);
 
-                //Если произошла ошибка при получении ссылки
-                if (track instanceof Error) return resolve(null);
-
+            callback(url).then((track) => {
+                if (track instanceof Error) return resolve(track);
                 return resolve(track.link);
+            });
+        }
+
+        //Ищем трек на сторонних ресурсах
+        searchTrack(`${author} ${title}`, duration).then((track) => {
+            if (track instanceof Error) return resolve(track);
+            else if (!track) {
+                searchTrack(title, duration).then((track) => {
+                    if (track instanceof Error) return resolve(track);
+                    else if (!track) return resolve(null);
+                    return resolve(track);
+                });
             }
-
-            //Если нет запроса, это невозможно, но мало ли!
-            return resolve(null);
-        }
-
-        //Делаем 1 запрос
-        let track = searchTrack(`${author} ${title}`, duration);
-        if (track instanceof Error) return resolve(null);
-
-        //Делаем 2 запрос, если с 1 что-то не так
-        if (!track) {
-            track = searchTrack(`${title}`, duration);
-            if (track instanceof Error) return resolve(null);
-        }
-
-        //Выводим что у нас получилось
-        return resolve(track as Promise<string>);
-    });
+            return resolve(track);
+        });
+    })
 }
 
 /**
@@ -324,9 +318,11 @@ function searchTrack(nameSong: string, duration: number) {
 
         try {
             //Делаем запрос полной информации о треки для получения ссылки на исходный файл музыки
-            track.callback(GoodTracks[0].url).then((track: any) => {
-                if (!track?.format?.url) return resolve(null);
-                return resolve(track?.format?.url);
+            track.callback(GoodTracks[0].url).then((track: Song) => {
+                console.log(track);
+
+                if (!track.link) return resolve(null);
+                return resolve(track.link);
             });
         } catch (e) { return resolve(Error(e)); }
     });
