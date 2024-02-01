@@ -251,7 +251,7 @@ export class Collection extends CollectionArray {
 
         //Отправляем сообщение о том что был сделан запрос на сервер
         new ActionMessage({message, color: "Yellow", time: 5e3,
-            content: `⚠️ **Warning** | **${platformLow}.${type}**\n\n${env.get("loading.emoji")} Ожидание ответа от сервера...\n${platform.audio ? "Эта платформа не может выдать исходный файл музыки!" : ""}`
+            content: `⚠️ **Warning** | **${platformLow}.${type}**\n\n${env.get("loading.emoji")} Ожидание ответа от сервера...\n${platform.audio ? "Эта платформа не может выдать исходный файл музыки! Поиск трека!" : ""}`
         });
 
         return new Promise<ICommand.all>((resolve) => {
