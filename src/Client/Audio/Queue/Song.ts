@@ -1,9 +1,8 @@
 import {ClientMessage} from "@handler/Events/Atlas/interactionCreate";
-import {httpsClient} from "@Client/Request";
 import {API, ResponseAPI} from "@handler";
-import {Duration} from "../index";
 import {db} from "@Client/db";
-import {Logger} from "@Client";
+import {Duration} from "..";
+import {httpsClient} from "@Client/Request";
 /**
  * @author SNIPPIK
  * @description Все интерфейсы для работы системы треков
@@ -226,7 +225,8 @@ export class Song {
         const platform = this.platform;
         const isDownload = db.queue.cycles.downloader && platform !== "DISCORD";
 
-        return new Promise<string | Error>(async (resolve) => {
+        //Создаем обещание
+        return new Promise(async (resolve) => {
             //Если трек уже кеширован, то сразу выдаем его
             if (isDownload) {
                 const info = db.queue.cycles.downloader.status(this);
@@ -234,109 +234,68 @@ export class Song {
             }
 
             //Проверяем ссылку на работоспособность, если 3 раза будет неудача ссылка будет удалена
-            for (let req = 0; req < 3; req++) {
-                //Если нет ссылки, то пытаемся ее получить
-                if (!this._link) {
-                    const link = await resource(platform, this.url, this.author.title, this.title, this.duration.seconds);
+            for (let r = 0; r < 3; r++) {
+                //Если нет ссылки
+                if (!this.link) {
+                    const link = await fetchAPIs(this);
 
-                    if (link instanceof Error) Logger.log("ERROR", `[${link.name}] ${link.message}`);
-                    else this._link = null;
+                    if (link instanceof Error) return resolve(link);
+                    else if (!link) this.link = link;
+                    else this.link = link;
                 }
 
                 //Проверяем ссылку работает ли она
-                if (await new httpsClient(this.link, {method: "HEAD"}).status) break;
-                else this._link = null;
+                if (this.link) {
+                    if (await new httpsClient(this.link, {method: "HEAD"}).status) break;
+                    else this.link = null;
+                }
             }
 
             //Если не удается найти ссылку через n попыток
-            if (!this._link) return resolve(Error(`[SONG]: Fail update link resource`));
-            else if (isDownload && this._link) void (db.queue.cycles.downloader.push(this));
+            if (!this.link) return resolve(Error(`[SONG]: Fail update link resource`));
+            else if (isDownload && this.link) void (db.queue.cycles.downloader.push(this));
             return resolve(`link:|${this.link}`)
         });
     };
 }
 
 /**
- * @description Получаем исходный файл музыки
- * @return Promise<string>
+ * @author SNIPPIK
+ * @description Ищем аудио если его нет!
+ * @param track {Song} Трек у которого нет аудио
  */
-function resource(platform: API.platform, url: string, author: string, title: string, duration: number): Promise<string | Error> {
-    return new Promise<string | Error>((resolve) => {
-        if (!db.platforms.audio.includes(platform)) {
-            const callback = new ResponseAPI(platform).callback("track");
+function fetchAPIs(track: Song): Promise<string | Error> {
+    return new Promise((resolve) => {
+        //Если платформа может самостоятельно выдать аудио
+        if (!db.platforms.audio.includes(track.platform)) {
+            const callback = new ResponseAPI(track.platform).callback("track");
 
             //Если нет такого запроса
-            if (!callback) resolve(null);
+            if (!callback) return resolve(Error(`[Song/${track.platform}]: not found callback for track`));
 
-            callback(url).then((track) => {
+            return callback(track.url).then((track) => {
                 if (track instanceof Error) return resolve(track);
                 return resolve(track.link);
             });
         }
 
-        //Ищем трек на сторонних ресурсах
-        searchTrack(`${author} ${title}`, duration).then((track) => {
-            if (track instanceof Error) return resolve(track);
-            else if (!track) {
-                searchTrack(title, duration).then((track) => {
-                    if (track instanceof Error) return resolve(track);
-                    else if (!track) return resolve(null);
-                    return resolve(track);
+        //Если платформа не может выдать аудио
+        else {
+            const youtube = new ResponseAPI("YOUTUBE");
+            const videos = youtube.callback("search")(`${track.author.title} - ${track.title}`);
+
+            return videos.then((tracks) => {
+                if (tracks instanceof Error) return resolve(tracks);
+
+                //Если подходящих треков нет, то возвращаем ничего
+                if (tracks.length === 0) return resolve(null);
+
+                //Делаем запрос полной информации о треки для получения ссылки на исходный файл музыки
+                return youtube.callback("track")(tracks[0].url).then((track: Song) => {
+                    if (!track.link) return resolve(null);
+                    return resolve(track.link);
                 });
-            }
-            return resolve(track);
-        });
-    })
-}
-
-/**
- * @description Если у платформы нет возможности дать исходный файл то ищем его на других платформах
- * @param nameSong {string} Название трека
- * @param duration {number} Длительность трека
- * @return Promise<string | Error>
- */
-function searchTrack(nameSong: string, duration: number) {
-    return new Promise<string | Error>(async (resolve) => {
-        const randomPlatform = getRandomPlatform();
-        const track = randomPlatform.requests.find((d) => d.name === "track");
-        const search = randomPlatform.requests.find((d) => d.name === "search");
-        const tracks = await search.callback(nameSong) as Song[] | Error; //Ищем треки
-
-        //Если поиск выдал ошибку или нет треков возвращаем ничего
-        if (tracks instanceof Error || tracks.length === 0) return resolve(null);
-
-        //Ищем подходящие треки
-        const GoodTracks = tracks.filter((track) => {
-            const DurationSong: number = track.duration.seconds;
-
-            //Как надо фильтровать треки
-            return DurationSong === duration || DurationSong < duration + 7 && DurationSong > duration - 5 || DurationSong < duration + 27 && DurationSong > duration - 27;
-        });
-
-        //Если подходящих треков нет, то возвращаем ничего
-        if (GoodTracks.length === 0) return resolve(null);
-
-        try {
-            //Делаем запрос полной информации о треки для получения ссылки на исходный файл музыки
-            track.callback(GoodTracks[0].url).then((track: Song) => {
-                if (!track.link) return resolve(null);
-                return resolve(track.link);
             });
-        } catch (e) { return resolve(Error(e)); }
-    });
-}
-
-/**
- * @author SNIPPIK
- * @description Получаем случайную платформу
- * @return API.load
- */
-function getRandomPlatform() {
-    const randomAPI = db.platforms.supported.filter((platform) => !db.platforms.audio.includes(platform.name)
-        && !db.platforms.authorization.includes(platform.name)
-        && platform.requests.find((pl) => pl.name === "search")
-        && platform.requests.find((pl) => pl.name === "track")
-    );
-
-    return randomAPI[Duration.randomNumber(0, randomAPI.length)];
+        }
+    })
 }
