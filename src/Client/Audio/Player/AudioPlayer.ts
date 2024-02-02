@@ -92,7 +92,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @private
      */
     protected set stream(stream: AudioResource) {
-        //if (this._db.stream) this._db.stream.cleanup();
+        if (this._db.stream) this._db.stream.cleanup();
 
         this._db.stream = stream;
         this.status = "playing";
