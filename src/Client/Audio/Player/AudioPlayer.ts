@@ -55,7 +55,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
 
         //Если больше не читается, переходим в состояние wait.
         if (!this.stream?.readable) {
-            this.stream?.stream?.emit("end");
+            this.stream?.stream?.emit("close");
             this.status = "wait";
             return false;
         }

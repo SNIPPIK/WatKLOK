@@ -1,7 +1,7 @@
 import {Atlas, Logger, ShardManager} from "@Client";
+import {db} from "@Client/db";
 import process from "process";
 import {env} from "@env";
-import {db} from "@Client/db";
 
 /**
  * @description Загружаем данные в зависимости от выбора

@@ -2,96 +2,107 @@ import {ChildProcessWithoutNullStreams, spawn} from "child_process";
 import {opus} from "prism-media";
 import {Logger} from "@Client";
 import {db} from "@Client/db";
-import {env} from "@env"
-
-const volume = parseInt(env.get("audio.volume"));
-const AudioFade = parseInt(env.get("audio.fade"));
-const bitrate = env.get("audio.bitrate");
+import {env} from "@env";
 
 /**
  * @author SNIPPIK
- * @description Загрузчик файлов музыки для прослушивания
+ * @description Сохраняет в буфер аудио пакеты
+ * @class BufferStream
  */
-export class AudioResource {
+class BufferStream {
     private readonly _local = {
-        stream: {
-            process:   null as Process,
-            ogg: new opus.OggDemuxer({ autoDestroy: true, objectMode: true })
-        },
-        frame: {
-            bufferSize: 20,
-            value: 0
-        },
+        frame: 20,
+        frames: 0,
 
-        readable: false,
-        ended:    false
+        chunks: [] as Buffer[]
     };
-
-    /**
-     * @description Создаем поток и удаляем старй если он есть
-     * @param options {any} Настройки создания потока
-     */
-   public constructor(options: { path: string; filters?: Filter[]; seek?: number; }) {
-       const {seek, path} = options;
-        const { filters, speed} = Filters.getParameters(options.filters);
-
-        if (speed > 0) this._local.frame.bufferSize = 20 * speed;
-        if (seek > 0) this._local.frame.value = ((seek * 1e3) / this._local.frame.bufferSize);
-
-        //Слушаем декодер
-        ["end", "close", "error"].forEach((event) => this.stream.once(event, this.cleanup));
-
-        //Запускаем процесс FFmpeg и подключаем его к декодеру
-        const urls = path.split(":|");
-
-        this._local.stream.process = new Process(["-vn", "-loglevel", "panic",
-            ...(urls[0] === "link" ? ["-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5"] : []),
-            "-ss", `${seek}`, "-i", urls[1], "-af", filters, "-f", "opus", "-b:a", `${bitrate}`, "pipe:1"
-        ]);
-
-        this._local.stream.ogg.once("readable", () => { this._local.readable = true; });
-        this._local.stream.process.stderr.once("error", (err) => this.stream.emit("error", err));
-        this._local.stream.process.stdout.pipe(this._local.stream.ogg);
-    };
-
-    /**
-     * @description Поток
-     */
-    public get stream() { return this._local.stream.ogg; };
-
     /**
      * @description Начато ли чтение потока
      */
-    public get readable() { return this._local.readable; };
+    public get readable() { return this._local.chunks.length > 0; };
 
     /**
      * @description Выдаем фрагмент потока
      */
     public get packet() {
-        const packet = this.stream?.read();
+        const packet = this._local.chunks.shift();
 
-        if (packet) this._local.frame.value++;
-        else this.cleanup(); //Если нет пакетов, то удаляем поток
-
+        if (packet) this._local.frames++;
         return packet;
     };
+    /**
+     * @description Сохраняем пакет в _local.chunks
+     * @param chunk {any} Пакет
+     * @protected
+     */
+    protected set packet(chunk) { this._local.chunks.push(chunk); };
 
     /**
      * @description Получаем время, время зависит от прослушанных пакетов
      * @return number
      * @public
      */
-    public get duration(): number {
-        const duration = ((this._local.frame.value * this._local.frame.bufferSize) / 1e3).toFixed(0);
+    public get duration() {
+        const duration = ((this._local.frames * this._local.frame) / 1e3).toFixed(0);
 
-         return parseInt(duration);
+        return parseInt(duration);
+    };
+
+    public constructor(seek: number, frame: number) {
+        if (frame > 0) this._local.frame = 20 * frame;
+        if (seek > 0) this._local.frames = ((seek * 1e3) / frame);
+    }
+}
+
+/**
+ * @author SNIPPIK
+ * @description Конвертирует аудио в нужный формат
+ * @class AudioResource
+ */
+export class AudioResource extends BufferStream {
+    private readonly _stream = {
+        process: null as Process,
+        opus: db.AudioOptions.isOpus ?
+            new opus.Encoder({ rate: 48_000, channels: 2, frameSize: 960 }) :
+            new opus.OggDemuxer({ autoDestroy: true, objectMode: true })
+    };
+    /**
+     * @description Поток
+     * @public
+     */
+    public get stream() { return this._stream.opus; };
+
+    /**
+     * @description Создаем поток
+     * @param options {object} Параметры для создания
+     */
+    public constructor(options: { path: string; filters?: Filter[]; seek?: number; }) {
+        const {seek, path} = options;
+        const { filters, speed} = Filters.getParameters(options.filters);
+
+        super(seek, speed);
+
+        //Запускаем процесс FFmpeg и подключаем его к декодеру
+        const urls = path.split(":|");
+        this._stream.process = new Process(["-vn", "-loglevel", "panic",
+            ...(urls[0] === "link" ? ["-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5"] : []),
+            "-ss", `${seek}`, "-i", urls[1], "-af", filters, "-f", `${db.AudioOptions.isOpus ? "s16le" : "opus"}`, "-b:a", `${db.AudioOptions.bitrate}`, "pipe:1"
+        ]);
+
+        //Слушаем декодер
+        ["end", "close", "error"].forEach((event) => this.stream.once(event, this.cleanup));
+
+        this._stream.process.stdout.pipe(this._stream.opus);
+        this._stream.opus.on("data", chunk => {
+            if (chunk) this.packet = chunk;
+        });
     };
 
     /**
      * @description Удаляем ненужные данные
      */
     public cleanup = () => {
-        for (let [key, value] of Object.entries(this._local.stream)) {
+        for (let [key, value] of Object.entries(this._stream)) {
             if (value) {
                 if (value instanceof Process) {
                     value.process.emit("close");
@@ -100,12 +111,9 @@ export class AudioResource {
                     value?.destroy();
                     value?.removeAllListeners();
                 }
-                this._local.stream[key] = null;
+                this._stream[key] = null;
             }
         }
-
-        this._local.readable = null;
-        this._local.ended = null;
     };
 }
 
@@ -199,7 +207,7 @@ export const Filters = new class {
      * @return object
      */
     public getParameters = (filters: Filter[]) => {
-        const realFilters = [`volume=${volume / 100}`]; let speed = 0;
+        const realFilters = [`volume=${db.AudioOptions.volume / 100}`]; let speed = 0;
 
         //Проверяем фильтры
         for (const filter of filters) {
@@ -216,7 +224,7 @@ export const Filters = new class {
         }
 
         //Надо ли плавное включения треков
-        if (AudioFade > 0) realFilters.push(`afade=t=in:st=0:d=${AudioFade}`);
+        if (db.AudioOptions.fade > 0) realFilters.push(`afade=t=in:st=0:d=${db.AudioOptions.fade}`);
 
         return { filters: realFilters.join(","), speed }
     }

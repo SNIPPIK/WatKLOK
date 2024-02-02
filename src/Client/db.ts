@@ -1,6 +1,7 @@
 import {Collection as AudioCollection} from "@Client/Audio/Queue/Collection";
 import {Filter} from "@Client/Audio/Player/AudioResource";
 import {Command, Event, API, RequestAPI} from "@handler";
+import {dependencies} from "../../package.json";
 import {Collection, Routes} from "discord.js";
 import {httpsClient} from "@Client/Request";
 import {Atlas, Logger} from "@Client";
@@ -83,6 +84,19 @@ export const db = new class QuickDB {
             block: [] as API.platform[]
         }
     };
+    private readonly _audio = {
+        volume:  parseInt(env.get("audio.volume")),
+        fade:    parseInt(env.get("audio.fade")),
+        bitrate: parseInt(env.get("audio.bitrate")),
+
+        isOpus:  false
+    };
+    /**
+     * @description Выдаем данные для запуска AudioResource
+     * @public
+     */
+    public get AudioOptions() { return this._audio; };
+
     /**
      * @description Выдаем класс с events
      * @public
@@ -201,11 +215,24 @@ export const db = new class QuickDB {
     public initHandler = async (client: Atlas) => {
         const loaders = [await this.getFilters, await this.initFs(client), await this.registerCommands(client)];
 
+        //Загружаем под папки в Handlers
         for (let n = 0; n < loaders.length; n++) {
             const loader = loaders[n];
 
             if (loader instanceof Error) throw loader;
         }
+
+        //Проверяем на наличие opus
+        for (const [key, value] of Object.entries(dependencies)) {
+            if (key === "opusscript" || key === "@discordjs/opus") {
+                Logger.log("LOG", `[OPUS] Has found ${key}`);
+
+                this.AudioOptions.isOpus = true;
+                break;
+            }
+        }
+
+        if (!this.AudioOptions.isOpus) Logger.log("LOG", `[OPUS] Not found OPUS, has use ogg/opus demuxer`);
     };
 }
 
