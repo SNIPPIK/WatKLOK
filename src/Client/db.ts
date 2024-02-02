@@ -87,7 +87,7 @@ export const db = new class QuickDB {
     private readonly _audio = {
         volume:  parseInt(env.get("audio.volume")),
         fade:    parseInt(env.get("audio.fade")),
-        bitrate: parseInt(env.get("audio.bitrate")),
+        bitrate: env.get("audio.bitrate"),
 
         isOpus:  false
     };

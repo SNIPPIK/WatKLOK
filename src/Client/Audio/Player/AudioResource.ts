@@ -86,11 +86,12 @@ export class AudioResource extends BufferStream {
         const urls = path.split(":|");
         this._stream.process = new Process(["-vn", "-loglevel", "panic",
             ...(urls[0] === "link" ? ["-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5"] : []),
-            "-ss", `${seek}`, "-i", urls[1], "-af", filters, "-f", `${db.AudioOptions.isOpus ? "s16le" : "opus"}`, "-b:a", `${db.AudioOptions.bitrate}`, "pipe:1"
+            "-ss", `${seek ?? 0}`, "-i", urls[1], "-af", filters, "-f", `${db.AudioOptions.isOpus ? "s16le" : "opus"}`, "-b:a", `${db.AudioOptions.bitrate}`, "pipe:1"
         ]);
 
         //Слушаем декодер
         ["end", "close", "error"].forEach((event) => this.stream.once(event, this.cleanup));
+        this._stream.process.stderr.once("error", (err) => this.stream.emit("error", err));
 
         this._stream.process.stdout.pipe(this._stream.opus);
         this._stream.opus.on("data", chunk => {
