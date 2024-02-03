@@ -13,13 +13,13 @@ else {
     client.login(env.get("token.discord")).then(() => {
         //Запускаем загрузку модулей после инициализации бота
         client.once("ready", async () => {
-            Logger.log("LOG", `[Shard ${client.ID}] has connected for websocket`);
+            Logger.log("LOG", `[Shard ${client.ID}] is connected to websocket`);
             await db.initHandler(client);
         });
     });
 
     for (const event of ["exit"]) process.on(event, () => {
-        Logger.log("DEBUG", "[Process]: has be killed!");
+        Logger.log("DEBUG", "[Process]: is killed!");
         client.destroy().catch((err) => Logger.log("ERROR", err));
         process.exit(0)
     });

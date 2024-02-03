@@ -52,13 +52,13 @@ export class ShardManager extends ShardingManager {
     public constructor(path: string) {
         super(path, { token: env.get("token.discord"), mode: env.get("shard.mode"), respawn: true, totalShards: env.get("shard.total"), execArgv: ["-r", "tsconfig-paths/register"] });
         process.title = "ShardManager";
-        Logger.log("LOG", `[ShardManager] has starting`);
+        Logger.log("LOG", `[ShardManager] running...`);
 
         //Слушаем ивент для создания осколка
         this.on("shardCreate", (shard) => {
-            shard.on("spawn", () => Logger.log("LOG",`[Shard ${shard.id}] has added to manager`));
-            shard.on("ready", () => Logger.log("LOG",`[Shard ${shard.id}] has a running`));
-            shard.on("death", () => Logger.log("LOG",`[Shard ${shard.id}] has killed`));
+            shard.on("spawn", () => Logger.log("LOG",`[Shard ${shard.id}] added to manager`));
+            shard.on("ready", () => Logger.log("LOG",`[Shard ${shard.id}] is running`));
+            shard.on("death", () => Logger.log("LOG",`[Shard ${shard.id}] is killed`));
         });
 
         //Создаем дубликат

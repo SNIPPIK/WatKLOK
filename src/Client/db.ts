@@ -164,7 +164,7 @@ export const db = new class QuickDB {
             const PublicData: any = await client.rest.put(Routes.applicationCommands(client.user.id), {body: this.commands.public});
             const OwnerData: any = await client.rest.put(Routes["applicationGuildCommands"](client.user.id, env.get("owner.server")), {body: this.commands.owner});
 
-            Logger.log("DEBUG", `[Shard ${client.ID}]: [SlashCommands]: [Upload]: Public: ${PublicData.length} | Owner: ${OwnerData.length}`);
+            Logger.log("DEBUG", `[Shard ${client.ID}] [SlashCommands] ${PublicData.length}/${OwnerData.length}`);
             return resolve(true);
         });
     };
@@ -201,7 +201,7 @@ export const db = new class QuickDB {
 
             try {
                 new loadHandlerDir<any>(path, callbacks[n]);
-                Logger.log("LOG", `[Shard ${client.ID}] has initialize ${path}`);
+                Logger.log("LOG", `[Shard ${client.ID}] have been uploaded, ${path}`);
             } catch (err) { Logger.log("ERROR", err); }
         }
     };
@@ -213,26 +213,26 @@ export const db = new class QuickDB {
      * @public
      */
     public initHandler = async (client: Atlas) => {
-        const loaders = [await this.getFilters, await this.initFs(client), await this.registerCommands(client)];
+        Logger.log("LOG", `[Shard ${client.ID}] is initialize database`);
 
-        //Загружаем под папки в Handlers
-        for (let n = 0; n < loaders.length; n++) {
-            const loader = loaders[n];
-
-            if (loader instanceof Error) throw loader;
-        }
+        //Проверяем статус получения фильтров
+        const filterStatus = await this.getFilters;
+        if (filterStatus instanceof Error) Logger.log("ERROR", `[Shard ${client.ID}] is initialize filters`);
+        else Logger.log("LOG", `[Shard ${client.ID}] is initialize filters`);
 
         //Проверяем на наличие opus
         for (const [key, value] of Object.entries(dependencies)) {
             if (key === "opusscript" || key === "@discordjs/opus") {
-                Logger.log("LOG", `[OPUS] Has found ${key}`);
+                Logger.log("LOG", `[Shard ${client.ID}] library was found ${key}`);
 
                 this.AudioOptions.isOpus = true;
                 break;
             }
         }
+        if (!this.AudioOptions.isOpus) Logger.log("LOG", `[Shard ${client.ID}] library was not found, ogg/opus demuxer will be used`);
 
-        if (!this.AudioOptions.isOpus) Logger.log("LOG", `[OPUS] Not found OPUS, has use ogg/opus demuxer`);
+        //Загружаем под папки в Handlers
+        await this.initFs(client); await this.registerCommands(client);
     };
 }
 
