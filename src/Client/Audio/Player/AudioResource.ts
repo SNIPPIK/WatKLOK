@@ -1,41 +1,63 @@
 import {ChildProcessWithoutNullStreams, spawn} from "child_process";
-import {opus} from "prism-media";
+import {Transform, TransformOptions} from "node:stream";
 import {Logger} from "@Client";
 import {db} from "@Client/db";
 import {env} from "@env";
+
+let Opus_Lib = null;
+const charCode = x => x.charCodeAt(0);
 
 /**
  * @author SNIPPIK
  * @description Сохраняет в буфер аудио пакеты
  * @class BufferStream
+ * @abstract
  */
-class BufferStream {
+abstract class BufferStream {
+    private readonly chunks: Array<Buffer> = [];
     private readonly _local = {
         frame: 20,
-        frames: 0,
-
-        chunks: [] as Buffer[]
+        frames: 0
     };
     /**
-     * @description Начато ли чтение потока
+     * @description Создаем класс буфера
+     * @param seek {number} Время пропуска
+     * @param frame {number} Длительность пакета
      */
-    public get readable() { return this._local.chunks.length > 0; };
+    public constructor(seek: number, frame: number) {
+        if (frame > 0) this._local.frame = 20 * frame;
+        if (seek > 0) this._local.frames = ((seek * 1e3) / frame);
+    };
+
+    /**
+     * @description Начато ли чтение потока
+     * @return boolean
+     * @public
+     */
+    public get readable() {
+        return this.chunks.length > 0;
+    };
 
     /**
      * @description Выдаем фрагмент потока
+     * @return Buffer
+     * @public
      */
     public get packet() {
-        const packet = this._local.chunks.shift();
+        const packet = this.chunks.shift();
 
         if (packet) this._local.frames++;
         return packet;
     };
+
     /**
      * @description Сохраняем пакет в _local.chunks
      * @param chunk {any} Пакет
      * @protected
      */
-    protected set packet(chunk) { this._local.chunks.push(chunk); };
+    public set packet(chunk) {
+        this.chunks.push(chunk);
+    };
 
     /**
      * @description Получаем время, время зависит от прослушанных пакетов
@@ -47,11 +69,139 @@ class BufferStream {
 
         return parseInt(duration);
     };
+}
 
-    public constructor(seek: number, frame: number) {
-        if (frame > 0) this._local.frame = 20 * frame;
-        if (seek > 0) this._local.frames = ((seek * 1e3) / frame);
-    }
+/**
+ * @author SNIPPIK
+ * @description Создаем кодировщик в opus
+ * @class OpusEncoder
+ */
+export class OpusEncoder extends Transform {
+    private readonly _temp = {
+        buffer: Buffer.alloc(0),
+        encoder: null,
+        frame: 960
+    };
+    private readonly _ogg = {
+        head: null,
+        bitstream: null,
+
+        OGG_HEADER: Buffer.from([...'OggS'].map(charCode)),
+        OPUS_HEAD: Buffer.from([...'OpusHead'].map(charCode)),
+        OPUS_TAGS: Buffer.from([...'OpusTags'].map(charCode))
+    };
+
+    public constructor(options: TransformOptions = {autoDestroy: true, objectMode: true}) {
+        super(Object.assign({ readableObjectMode: true }, options));
+
+        //ЕСли была найдена opus library
+        if (db.AudioOptions.opus) {
+            //Если нет сохраненной opus library
+            if (!Opus_Lib) {
+                const lib = require(db.AudioOptions.opus);
+
+                if ("OpusEncoder" in lib) Opus_Lib = lib.OpusEncoder;
+                else Opus_Lib = lib;
+            }
+
+            //Подключаем opus library
+            this._temp.encoder = new Opus_Lib(48e3, 2, 2049);
+        }
+    };
+
+    /**
+     * @description Размер буфера
+     * @private
+     */
+    private get required() { return this._temp.frame * 2 * 2; };
+
+    /**
+     * @description Декодирование в opus
+     * @private
+     */
+    private encode = (chunk: Buffer) => {
+        if (this._temp.encoder) return this._temp.encoder.encode(chunk, this._temp.frame);
+
+        if (chunk.length < 26) return false;
+        else if (!chunk.subarray(0, 4).equals(this._ogg.OGG_HEADER)) {
+            this.emit("error", Error(`capture_pattern is not ${this._ogg.OGG_HEADER}`));
+            return false;
+        } else if (chunk.readUInt8(4) !== 0) {
+            this.emit("error", Error(`stream_structure_version is not ${0}`));
+            return false;
+        }
+        const pageSegments = chunk.readUInt8(26);
+        let start = 27 + pageSegments, sizes = [], totalSize = 0;
+
+        if (chunk.length < 27 || chunk.length < 27 + pageSegments) return false;
+
+        const table = chunk.subarray(27, 27 + pageSegments);
+        const bitstream = chunk.readUInt32BE(14);
+
+        for (let i = 0; i < pageSegments;) {
+            let size = 0, x = 255;
+
+            while (x === 255) {
+                if (i >= table.length) return false;
+                x = table.readUInt8(i); i++; size += x;
+            }
+
+            sizes.push(size);
+            totalSize += size;
+        }
+
+        if (chunk.length < 27 + pageSegments + totalSize) return false;
+
+        for (const size of sizes) {
+            const segment = chunk.subarray(start, start + size);
+            const header = segment.subarray(0, 8);
+
+            if (this._ogg.head) {
+                if (header.equals(this._ogg.OPUS_TAGS)) this.emit('tags', segment);
+                else if (this._ogg.bitstream === bitstream) this.push(segment);
+            } else if (header.equals(this._ogg.OPUS_HEAD)) {
+                this.emit('head', segment);
+                this._ogg.head = segment;
+                this._ogg.bitstream = bitstream;
+            } else this.emit('unknownSegment', segment);
+
+            start += size;
+        }
+
+        return chunk.subarray(start);
+    };
+
+    _transform(chunk: Buffer, _: any, done: () => any) {
+        let n = 0, buffer = () => chunk;
+
+        if (this._temp.encoder) {
+            this._temp.buffer = Buffer.concat([this._temp.buffer, chunk]);
+            buffer = () => this._temp.buffer.subarray(n * this.required, (n + 1) * this.required);
+        }
+
+        while (this._temp.encoder ? this._temp.buffer.length >= this.required * (n + 1) : chunk) {
+            const packet = this.encode(buffer());
+
+            if (this._temp.encoder) {
+                this.push(packet); n++;
+            } else {
+                if (packet) chunk = packet;
+                else break;
+            }
+        }
+
+        if (n > 0) this._temp.buffer = this._temp.buffer.subarray(n * this.required);
+        return done();
+    };
+
+    _destroy() {
+        try {
+            if (this._temp.encoder && "delete" in this._temp.encoder) this._temp.encoder.delete();
+        } catch {}
+
+        for (let name of Object.keys(this._temp)) this._temp[name] = null;
+        for (let name of Object.keys(this._ogg)) this._ogg[name] = null;
+    };
 }
 
 /**
@@ -62,19 +212,12 @@ class BufferStream {
 export class AudioResource extends BufferStream {
     private readonly _stream = {
         process: null as Process,
-        opus: db.AudioOptions.isOpus ?
-            new opus.Encoder({ rate: 48_000, channels: 2, frameSize: 960 }) :
-            new opus.OggDemuxer({ autoDestroy: true, objectMode: true })
+        opus: new OpusEncoder()
     };
-    /**
-     * @description Поток
-     * @public
-     */
-    public get stream() { return this._stream.opus; };
-
     /**
      * @description Создаем поток
      * @param options {object} Параметры для создания
+     * @public
      */
     public constructor(options: { path: string; filters?: Filter[]; seek?: number; }) {
         const {seek, path} = options;
@@ -86,7 +229,7 @@ export class AudioResource extends BufferStream {
         const urls = path.split(":|");
         this._stream.process = new Process(["-vn", "-loglevel", "panic",
             ...(urls[0] === "link" ? ["-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5"] : []),
-            "-ss", `${seek ?? 0}`, "-i", urls[1], "-af", filters, "-f", `${db.AudioOptions.isOpus ? "s16le" : "opus"}`, "-b:a", `${db.AudioOptions.bitrate}`, "pipe:1"
+            "-ss", `${seek ?? 0}`, "-i", urls[1], "-af", filters, "-f", `${db.AudioOptions.opus ? "s16le" : "opus"}`, "-b:a", `${db.AudioOptions.bitrate}`, "pipe:1"
         ]);
 
         //Слушаем декодер
@@ -100,7 +243,17 @@ export class AudioResource extends BufferStream {
     };
 
     /**
+     * @description Поток
+     * @return opus.Encoder | opus.OggDemuxer
+     * @public
+     */
+    public get stream() {
+        return this._stream.opus;
+    };
+
+    /**
      * @description Удаляем ненужные данные
+     * @public
      */
     public cleanup = () => {
         for (let [key, value] of Object.entries(this._stream)) {
@@ -232,6 +385,7 @@ export const Filters = new class {
 }
 
 /**
+ * @author SNIPPIK
  * @description Как выглядит фильтр
  * @interface
  */

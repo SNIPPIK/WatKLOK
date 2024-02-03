@@ -50,9 +50,11 @@ export class Atlas extends Client {
  */
 export class ShardManager extends ShardingManager {
     public constructor(path: string) {
-        super(path, { token: env.get("token.discord"), mode: env.get("shard.mode"), respawn: true, totalShards: env.get("shard.total"), execArgv: ["-r", "tsconfig-paths/register"] });
+        const mode = env.get("shard.mode");
+        super(path, { token: env.get("token.discord"), mode, respawn: true, totalShards: env.get("shard.total"), execArgv: ["-r", "tsconfig-paths/register"] });
+
         process.title = "ShardManager";
-        Logger.log("LOG", `[ShardManager] running...`);
+        Logger.log("LOG", `[ShardManager/${mode}] running...`);
 
         //Слушаем ивент для создания осколка
         this.on("shardCreate", (shard) => {

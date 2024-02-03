@@ -72,7 +72,7 @@ export const db = new class QuickDB {
              * @return Event<any>[]
              * @public
              */
-            public get player() { return this.filter((item) => item.type === "player"); };
+            public get player() { return this.filter((item: Event<any>) => item.type === "player"); };
         },
 
         queue: new AudioCollection(),
@@ -89,7 +89,7 @@ export const db = new class QuickDB {
         fade:    parseInt(env.get("audio.fade")),
         bitrate: env.get("audio.bitrate"),
 
-        isOpus:  false
+        opus:  null
     };
     /**
      * @description Выдаем данные для запуска AudioResource
@@ -190,7 +190,6 @@ export const db = new class QuickDB {
             (item: Command) => this.commands.set(item.name, item),
             (item: Event<unknown>) => {
                 if (item.type === "client") client.on(item.name as any, (...args: any[]) => item.execute(client, ...args));
-                else if (item.type === "process") process.on(item.name as any, item.execute);
                 else this.events.push(item);
             }
         ];
@@ -225,11 +224,11 @@ export const db = new class QuickDB {
             if (key === "opusscript" || key === "@discordjs/opus") {
                 Logger.log("LOG", `[Shard ${client.ID}] library was found ${key}`);
 
-                this.AudioOptions.isOpus = true;
+                this.AudioOptions.opus = key;
                 break;
             }
         }
-        if (!this.AudioOptions.isOpus) Logger.log("LOG", `[Shard ${client.ID}] library was not found, ogg/opus demuxer will be used`);
+        if (!this.AudioOptions.opus) Logger.log("LOG", `[Shard ${client.ID}] library was not found, ogg/opus demuxer will be used`);
 
         //Загружаем под папки в Handlers
         await this.initFs(client); await this.registerCommands(client);
