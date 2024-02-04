@@ -3,7 +3,6 @@ require("dotenv").config();
 
 /**
  * @author SNIPPIK
- * @class env
  * @description Взаимодействуем с env
  */
 export const env = new class {

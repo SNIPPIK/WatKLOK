@@ -3,12 +3,12 @@ import {request as httpsRequest, RequestOptions} from "https";
 import {IncomingMessage, request as httpRequest} from "http";
 import {Duration} from "@Client/Audio";
 import {Logger} from "@Client";
-
 /**
  * @author SNIPPIK
  * @description Класс создающий запрос
  * @class Request
  * @abstract
+ * @private
  */
 abstract class Request {
     protected readonly _options: {
@@ -103,6 +103,7 @@ abstract class Request {
  * @author SNIPPIK
  * @description Создаем http или https запрос
  * @class httpsClient
+ * @public
  */
 export class httpsClient extends Request {
     /**

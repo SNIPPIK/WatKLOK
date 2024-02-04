@@ -3,8 +3,8 @@ import {AudioPlayer} from "@Client/Audio/Player/AudioPlayer";
 import {StageChannel, VoiceChannel} from "discord.js";
 import {joinVoiceChannel} from "@discordjs/voice";
 import {Duration} from "@Client/Audio";
-import {Song} from "./Song";
 import {db} from "@Client/db";
+import {Song} from "./Song";
 /**
  * @author SNIPPIK
  * @description Главный класс очереди

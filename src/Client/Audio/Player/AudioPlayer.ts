@@ -9,6 +9,7 @@ import {env} from "@env";
  * @description Плеер для проигрывания музыки
  * @class AudioPlayer
  * @extends TypedEmitter<AudioPlayerEvents>
+ * @public
  */
 export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
     private readonly _db = {

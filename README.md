@@ -10,7 +10,6 @@
 - Поддерживает [`Opus`](https://wikipedia.org/wiki/Opus) но может работать и без
 
 
-
 ## Настройки [`токена`](https://discord.com/developers/applications)
 
 <img align="center" alt="PGI Settings" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/main/.github/resource/PGI.png?raw=true" />
@@ -33,3 +32,9 @@
    - Запускаем бота
      - Менеджер осколков -> `npm run shard`
      - Без менеджера -> `npm run client`
+
+## Доступные opus библиотеки
+  - [`opusscript`](https://www.npmjs.com/package/opusscript)
+  - [`@discordjs/opus`](https://www.npmjs.com/package/@discordjs/opus)
+  - [`mediaplex`](https://www.npmjs.com/package/mediaplex)
+  - [`@evan/opus`](https://www.npmjs.com/package/@evan/opus)

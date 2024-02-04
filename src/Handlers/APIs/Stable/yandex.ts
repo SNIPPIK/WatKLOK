@@ -26,7 +26,7 @@ export default class extends RequestAPI {
                     public constructor() {
                         super({
                             name: "track",
-                            filter: /(album)?(track)/,
+                            filter: /album\/[0-9]+\/track\/[0-9]+/,
                             callback: (url) => {
                                 const ID = url.split(/[^0-9]/g).filter(str => str !== "");
 
@@ -42,7 +42,6 @@ export default class extends RequestAPI {
                                         if (api instanceof Error || audio instanceof Error) return reject(api);
                                         else if (!api[0]) return reject(Error("[APIs]: Не удалось получить данные о треке!"));
 
-                                        //api[0].author = await this._getAuthor(api[0]?.["artists"][0].id);
                                         const track = YandexLib.track(api[0]);
 
                                         if (audio) track.link = audio;
@@ -61,7 +60,7 @@ export default class extends RequestAPI {
                     public constructor() {
                         super({
                             name: "album",
-                            filter: /album/,
+                            filter: /album\/[0-9]+/,
                             callback: (url): any => {
                                 const ID = url.split(/[^0-9]/g).find(str => str !== "");
 
@@ -103,7 +102,7 @@ export default class extends RequestAPI {
                     public constructor() {
                         super({
                             name: "playlist",
-                            filter: /playlists/,
+                            filter: /users\/[A-Za-z0-9]+\/playlists\/[0-9]+/,
                             callback: (url) => {
                                 const user = url.split("users/")[1].split("/")[0];
                                 const playlistID = url.split("playlists/")[1]?.split("/")[0];

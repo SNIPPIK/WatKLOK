@@ -5,12 +5,15 @@ import {dependencies} from "../../package.json";
 import {Collection, Routes} from "discord.js";
 import {httpsClient} from "@Client/Request";
 import {Atlas, Logger} from "@Client";
+import {readdirSync} from "node:fs";
 import {env} from "@env";
+import {SupportOpusLibs} from "Client/Audio/Player/Opus";
 
 /**
  * @author SNIPPIK
  * @class QuickDB
  * @description База данных бота
+ * @public
  */
 export const db = new class QuickDB {
     private readonly _emojis = {
@@ -221,13 +224,16 @@ export const db = new class QuickDB {
 
         //Проверяем на наличие opus
         for (const [key, value] of Object.entries(dependencies)) {
-            if (key === "opusscript" || key === "@discordjs/opus") {
+            const lib = SupportOpusLibs.find((item) => item[0] === key);
+
+            if (lib) {
                 Logger.log("LOG", `[Shard ${client.ID}] library was found ${key}`);
 
                 this.AudioOptions.opus = key;
                 break;
             }
         }
+
         if (!this.AudioOptions.opus) Logger.log("LOG", `[Shard ${client.ID}] library was not found, ogg/opus demuxer will be used`);
 
         //Загружаем под папки в Handlers
@@ -235,9 +241,12 @@ export const db = new class QuickDB {
     };
 }
 
-
-
-import {readdirSync} from "node:fs";
+/**
+ * @author SNIPPIK
+ * @description Класс загрузки директории Handlers
+ * @class loadHandlerDir
+ * @private
+ */
 class loadHandlerDir<T> {
     private readonly path: string;
     private readonly callback: (data: T | {error: true, message: string}, file: string) => void;

@@ -1,10 +1,10 @@
 import {Client, IntentsBitField, Partials, ShardingManager} from "discord.js";
-import {env} from "@env";
 import process from "process";
-const debug = env.get("debug");
+import {env} from "@env";
 /**
  * @author SNIPPIK
  * @class Atlas
+ * @public
  */
 export class Atlas extends Client {
     /**
@@ -45,8 +45,9 @@ export class Atlas extends Client {
 
 /**
  * @author SNIPPIK
- * @class ShardManager
  * @description ShardManager, используется для большего кол-ва серверов, все крупные боты это используют
+ * @class ShardManager
+ * @public
  */
 export class ShardManager extends ShardingManager {
     public constructor(path: string) {
@@ -68,11 +69,11 @@ export class ShardManager extends ShardingManager {
     };
 }
 
-
+const debug = env.get("debug");
 /**
  * @author SNIPPIK
- * @class Logger
  * @description Простенький logger
+ * @public
  */
 export const Logger = new class {
     private readonly status = {
