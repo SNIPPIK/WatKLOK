@@ -34,7 +34,13 @@
      - Без менеджера -> `npm run client`
 
 ## Доступные opus библиотеки
+Качество звука не сильно отличается c opus или без opus!
+
   - [`opusscript`](https://www.npmjs.com/package/opusscript)
+    - Память: 10-15 Мб, полностью очищается
   - [`@discordjs/opus`](https://www.npmjs.com/package/@discordjs/opus)
+    - Необходим билд на node.js <20
   - [`mediaplex`](https://www.npmjs.com/package/mediaplex)
+    - Память: 15-20 Мб, не полностью очищается
   - [`@evan/opus`](https://www.npmjs.com/package/@evan/opus)
+    - Память: 10-20 Мб, полностью очищается

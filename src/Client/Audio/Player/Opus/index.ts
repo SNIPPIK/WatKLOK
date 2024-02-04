@@ -5,19 +5,31 @@ const charCode = (x: string) => x.charCodeAt(0);
 export const SupportOpusLibs = [
     [//https://www.npmjs.com/package/opusscript
         "opusscript",
-        (setup = [48000, 2, 2049]) => new (require("opusscript"))(...setup)
+        (setup = [48000, 2, 2049]) => {
+            const lib = require("opusscript");
+            return () => new (lib)(...setup);
+        }
     ],
     [//https://www.npmjs.com/package/@discordjs/opus
         "@discordjs/opus",
-        (setup = [48000, 2]) => new (require("@discordjs/opus").OpusEncoder)(...setup)
+        (setup = [48000, 2]) => {
+            const lib = require("@discordjs/opus").OpusEncoder;
+            return () => new (lib)(...setup);
+        }
     ],
     [//https://www.npmjs.com/package/mediaplex
         "mediaplex",
-        (setup = [48000, 2]) => new (require("mediaplex").OpusEncoder)(...setup)
+        (setup = [48000, 2]) => {
+            const lib = require("mediaplex").OpusEncoder;
+            return () => new (lib)(...setup);
+        }
     ],
     [//https://www.npmjs.com/package/@evan/opus
         "@evan/opus",
-        (setup = { channels: 2, sample_rate: 48000 }) => new (require("@evan/opus").Encoder)(setup)
+        (setup = { channels: 2, sample_rate: 48000 }) => {
+            const lib = require("@evan/opus").Encoder;
+            return () => new (lib)(setup);
+        }
     ]
 ];
 let SelectedOpusLib = null;
@@ -109,7 +121,7 @@ export class OpusEncoder extends Transform {
             //Если нет сохраненной opus library
             if (!SelectedOpusLib) {
                 const lib = SupportOpusLibs.find((item) => item[0] === db.AudioOptions.opus);
-                SelectedOpusLib = lib[1];
+                SelectedOpusLib = (lib[1] as () => any)();
             }
 
             //Подключаем opus library
@@ -149,10 +161,17 @@ export class OpusEncoder extends Transform {
      * @description Удаляем данные по завершению
      * @private
      */
+    _final(cb: () => void) {
+        this.destroy();
+        cb();
+    };
+
+    /**
+     * @description Удаляем данные по завершению
+     * @private
+     */
     _destroy() {
-        try {
-            if (this._encode.encoder && "delete" in this._encode.encoder) this._encode.encoder.delete();
-        } catch {}
+        if (typeof this._encode.encoder?.delete === 'function') this._encode.encoder!.delete!();
 
         for (let name of Object.keys(this._temp)) this._temp[name] = null;
         for (let name of Object.keys(this._encode)) this._encode[name] = null;

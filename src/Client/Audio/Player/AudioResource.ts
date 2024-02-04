@@ -43,7 +43,7 @@ export class AudioResource extends BufferStream {
 
     /**
      * @description Поток
-     * @return opus.Encoder | opus.OggDemuxer
+     * @return OpusEncoder
      * @public
      */
     public get stream() {
@@ -64,8 +64,9 @@ export class AudioResource extends BufferStream {
                     value?.destroy();
                     value?.removeAllListeners();
                 }
-                this._stream[key] = null;
             }
+
+            this._stream[key] = null;
         }
     };
 }

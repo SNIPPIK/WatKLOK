@@ -26,7 +26,7 @@ export default class extends RequestAPI {
                     public constructor() {
                         super({
                             name: "track",
-                            filter: /album\/[0-9]+\/track\/[0-9]+/,
+                            filter: /(album)?(track)/,
                             callback: (url) => {
                                 const ID = url.split(/[^0-9]/g).filter(str => str !== "");
 
@@ -60,7 +60,7 @@ export default class extends RequestAPI {
                     public constructor() {
                         super({
                             name: "album",
-                            filter: /album\/[0-9]+/,
+                            filter: /album/,
                             callback: (url): any => {
                                 const ID = url.split(/[^0-9]/g).find(str => str !== "");
 
@@ -102,7 +102,7 @@ export default class extends RequestAPI {
                     public constructor() {
                         super({
                             name: "playlist",
-                            filter: /users\/[A-Za-z0-9]+\/playlists\/[0-9]+/,
+                            filter: /playlists/,
                             callback: (url) => {
                                 const user = url.split("users/")[1].split("/")[0];
                                 const playlistID = url.split("playlists/")[1]?.split("/")[0];

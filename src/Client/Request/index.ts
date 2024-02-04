@@ -22,7 +22,7 @@ abstract class Request {
 
         //Добавлять рандомный user-agent
         useragent?: boolean;
-    } & RequestOptions;
+    } & RequestOptions = {};
     /**
      * @description Получаем протокол ссылки
      * @private
@@ -77,12 +77,12 @@ abstract class Request {
         const { hostname, pathname, search, port, protocol } = new URL(url);
 
         //Создаем стандартные настройки
-        this._options = {
+        Object.assign(this._options, {
             headers: options?.headers ?? {},
             method: options?.method ?? "GET",
             port, hostname, body: options?.body ?? null,
-            path: pathname + search, protocol,
-        };
+            path: pathname + search, protocol
+        });
 
         if (options?.useragent) {
             const OS = [ "(X11; Linux x86_64)", "(Windows NT 10.0; Win64; x64)" ];
