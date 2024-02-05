@@ -8,7 +8,7 @@ import {
     PermissionResolvable
 } from "discord.js";
 import {ClientInteraction, ClientMessage} from "@handler/Events/Atlas/interactionCreate";
-import {Song} from "@Client/Audio/Queue/Song";
+import {Song} from "@Client/Voice/Queue/Song";
 import {Atlas, Logger} from "@Client";
 import {db} from "@Client/db";
 

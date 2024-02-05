@@ -1,4 +1,4 @@
-import {ArrayQueue} from "@Client/Audio/Queue/Queue";
+import {ArrayQueue} from "@Client/Voice/Queue/Queue";
 import {Event} from "@handler";
 import {db} from "@Client/db";
 import {env} from "@env";

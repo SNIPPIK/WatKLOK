@@ -41,7 +41,7 @@
   },
 
   "include": [ // Включить в сборку
-    "src", "package.json", "tsconfig.json"
+    "src", "package.json", "tsconfig.json", "src/Client/Audio/Player/OpusD.js"
   ],
 
   "exclude": [ //Исключить из сборки

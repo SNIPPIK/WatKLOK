@@ -1,7 +1,7 @@
 import {BrotliDecompress, createBrotliDecompress, createDeflate, createGunzip, Deflate, Gunzip} from "node:zlib";
 import {request as httpsRequest, RequestOptions} from "https";
 import {IncomingMessage, request as httpRequest} from "http";
-import {Duration} from "@Client/Audio";
+import {Duration} from "@Client/Voice";
 import {Logger} from "@Client";
 /**
  * @author SNIPPIK

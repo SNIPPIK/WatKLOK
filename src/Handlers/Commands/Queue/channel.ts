@@ -1,4 +1,4 @@
-import {getPlayerMessage} from "@Client/Audio";
+import {getPlayerMessage} from "@Client/Voice";
 import {Command} from "@handler";
 import {db} from "@Client/db";
 

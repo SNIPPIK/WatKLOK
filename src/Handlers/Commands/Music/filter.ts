@@ -1,6 +1,6 @@
 import {ApplicationCommandOptionType, Colors, EmbedData} from "discord.js";
-import {Filters, Filter} from "@Client/Audio/Player/AudioResource";
-import {ArraySort} from "@Client/Audio";
+import {Filters, Filter} from "@Client/Voice/Audio";
+import {ArraySort} from "@Client/Voice";
 import {Command} from "@handler";
 import {db} from "@Client/db";
 

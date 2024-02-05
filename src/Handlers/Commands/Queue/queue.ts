@@ -1,6 +1,6 @@
 import {ClientMessage} from "@handler/Events/Atlas/interactionCreate";
-import {Duration, ArraySort} from "@Client/Audio";
-import {Song} from "@Client/Audio/Queue/Song";
+import {Duration, ArraySort} from "@Client/Voice";
+import {Song} from "@Client/Voice/Queue/Song";
 import {Command} from "@handler";
 import {db} from "@Client/db";
 

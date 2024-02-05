@@ -1,5 +1,5 @@
 import {RequestAPI, ItemRequestAPI} from "@handler";
-import {Song} from "@Client/Audio/Queue/Song";
+import {Song} from "@Client/Voice/Queue/Song";
 import {httpsClient} from "@Client/Request";
 import {env} from "@env";
 

@@ -1,6 +1,6 @@
-import {Process} from "@Client/Audio/Player/AudioResource";
 import {RequestAPI, ItemRequestAPI} from "@handler";
-import {Song} from "@Client/Audio/Queue/Song";
+import {Song} from "@Client/Voice/Queue/Song";
+import {Process} from "@Client/Voice/Audio";
 import {env} from "@env";
 /**
  * @author SNIPPIK

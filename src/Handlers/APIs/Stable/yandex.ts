@@ -1,8 +1,8 @@
 import {RequestAPI, ItemRequestAPI} from "@handler";
+import {Song} from "@Client/Voice/Queue/Song";
+import {httpsClient} from "@Client/Request";
 import crypto from "node:crypto";
 import {env} from "@env";
-import {httpsClient} from "@Client/Request";
-import {Song} from "@Client/Audio/Queue/Song";
 /**
  * @author SNIPPIK
  * @description Динамически загружаемый класс

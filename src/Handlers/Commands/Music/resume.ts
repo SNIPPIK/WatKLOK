@@ -1,4 +1,4 @@
-import {Song} from "@Client/Audio/Queue/Song";
+import {Song} from "@Client/Voice/Queue/Song";
 import {Command} from "@handler";
 import {db} from "@Client/db";
 

@@ -1,4 +1,4 @@
-import {Duration} from "@Client/Audio";
+import {Duration} from "@Client/Voice";
 import {Colors} from "discord.js";
 import {Command} from "@handler";
 import {db} from "@Client/db";

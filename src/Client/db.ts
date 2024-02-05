@@ -1,13 +1,13 @@
-import {Collection as AudioCollection} from "@Client/Audio/Queue/Collection";
-import {Filter} from "@Client/Audio/Player/AudioResource";
+import {Collection as AudioCollection} from "@Client/Voice/Queue/Collection";
 import {Command, Event, API, RequestAPI} from "@handler";
+import {OpusLibs} from "Client/Voice/Audio/Opus";
 import {dependencies} from "../../package.json";
 import {Collection, Routes} from "discord.js";
 import {httpsClient} from "@Client/Request";
+import {Filter} from "@Client/Voice/Audio";
 import {Atlas, Logger} from "@Client";
 import {readdirSync} from "node:fs";
 import {env} from "@env";
-import {SupportOpusLibs} from "Client/Audio/Player/Opus";
 
 /**
  * @author SNIPPIK
@@ -224,7 +224,7 @@ export const db = new class QuickDB {
 
         //Проверяем на наличие opus
         for (const [key, value] of Object.entries(dependencies)) {
-            const lib = SupportOpusLibs.find((item) => item[0] === key);
+            const lib = OpusLibs.find((item) => item[0] === key);
 
             if (lib) {
                 Logger.log("LOG", `[Shard ${client.ID}] library was found ${key}`);

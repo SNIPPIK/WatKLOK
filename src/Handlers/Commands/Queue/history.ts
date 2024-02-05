@@ -1,5 +1,5 @@
-import {History} from "@Client/Audio/Player/History";
-import {ArraySort} from "@Client/Audio";
+import {History} from "@Client/Voice/Player/History";
+import {ArraySort} from "@Client/Voice";
 import { Colors } from "discord.js";
 import {Command} from "@handler";
 

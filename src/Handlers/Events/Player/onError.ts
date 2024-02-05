@@ -1,5 +1,5 @@
-import {ArrayQueue} from "@Client/Audio/Queue/Queue";
-import {getPlayerMessage} from "@Client/Audio";
+import {ArrayQueue} from "@Client/Voice/Queue/Queue";
+import {getPlayerMessage} from "@Client/Voice";
 import {ActionMessage, Event} from "@handler";
 import {db} from "@Client/db";
 

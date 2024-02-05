@@ -1,5 +1,5 @@
 import { ApplicationCommandOptionType } from "discord.js";
-import {Duration} from "@Client/Audio";
+import {Duration} from "@Client/Voice";
 import {Command} from "@handler";
 import {db} from "@Client/db";
 
