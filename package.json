@@ -1,12 +1,12 @@
 {
   "name": "watklok",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Постоянно развивающийся музыкальный бот!",
   "dependencies": {
     "@discordjs/voice": "^0.16.1",
     "discord.js": "^14.14.1",
     "dotenv": "^16.3.1",
-    "sodium-native": "^4.0.4",
+    "sodium-native": "^4.0.0",
     "tiny-typed-emitter": "^2.1.0"
   },
   "devDependencies": {
