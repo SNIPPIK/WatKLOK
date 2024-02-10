@@ -53,6 +53,7 @@ process.on("uncaughtException", (err: Error) => {
  *
  * Original: https://nodejs.org/api/process.html#event-unhandledrejection
  */
-process.on("unhandledRejection", (reason, promise) => {
+process.on("unhandledRejection", (reason: string, promise) => {
+    //if (reason?.match(/acknowledged./)) return;
     Logger.log("WARN", `\n┌ Name:    unhandledRejection\n├ Reason:  ${reason}\n└ Promise: ${promise}`);
 });

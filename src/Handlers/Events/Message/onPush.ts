@@ -41,30 +41,31 @@ export default class extends PlayerEvent {
                         return;
                     }
                     return;
+                } else if ("items" in obj) {
+                    const {author, image, url, title, items} = obj;
+
+                    new ActionMessage({
+                        message: queue, replied: true, time: 12e3,
+                        embeds: [
+                            {
+                                color: Colors.Blue, timestamp: new Date(),
+                                author: {name: author?.title, url: author?.url, iconURL: db.emojis.diskImage},
+                                thumbnail: typeof image === "string" ? {url: image} : image ?? {url: db.emojis.noImage},
+
+                                footer: {
+                                    text: `${queue.author.username} | ${Duration.getTimeArray(items)} | 🎶: ${items?.length}`,
+                                    iconURL: queue.author.displayAvatarURL({})
+                                },
+                                fields: [
+                                    {
+                                        name: `**Найден плейлист**`,
+                                        value: `**❯** **[${title}](${url})**\n**❯** **Всего треков: ${items.length}**`
+                                    }
+                                ]
+                            }
+                        ]
+                    })
                 }
-                const {author, image, url, title, items} = obj as Song.playlist;
-
-                new ActionMessage({
-                    message: queue, replied: true, time: 12e3,
-                    embeds: [
-                        {
-                            color: Colors.Blue, timestamp: new Date(),
-                            author: {name: author?.title, url: author?.url, iconURL: db.emojis.diskImage},
-                            thumbnail: typeof image === "string" ? {url: image} : image ?? {url: db.emojis.noImage},
-
-                            footer: {
-                                text: `${queue.author.username} | ${Duration.getTimeArray(items)} | 🎶: ${items?.length}`,
-                                iconURL: queue.author.displayAvatarURL({})
-                            },
-                            fields: [
-                                {
-                                    name: `**Найден плейлист**`,
-                                    value: `**❯** **[${title}](${url})**\n**❯** **Всего треков: ${items.length}**`
-                                }
-                            ]
-                        }
-                    ]
-                })
             }
         });
     }

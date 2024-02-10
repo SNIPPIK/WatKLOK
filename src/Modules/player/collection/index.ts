@@ -60,14 +60,17 @@ export class Collection {
      * @public
      */
     public set = (queue: ArrayQueue) => {
-        const events = this.events.eventNames().filter((ev) => ev.match(/player/)) as AudioPlayerStatus[];
-
         this.cycles.players.push(queue.player);
         this._queues.push(queue);
-
+        
         //Загружаем ивенты плеера
-        for (const item of events) { //@ts-ignore
-            queue.player.on(item, (...args: any[]) => this.events.emit(item, queue, ...args));
+        const events = ["player/playing", "player/wait", "player/error", "player/ended"] as AudioPlayerStatus[];
+        for (let num = 0; num < events.length; num++) {
+            const event = events[num];
+            
+            queue.player.on(event, (...args) => {
+                this.events.emit<any>(event, queue, ...args);
+            });
         }
         Logger.log("DEBUG", `Queue: create for [${queue.guild.id}]`);
     };
@@ -82,7 +85,7 @@ export class Collection {
         const index = this._queues.indexOf(queue);
 
         if (index != -1) {
-            if (queue.songs.size > 0) queue.songs.splice(0, queue.songs.size);
+            this.cycles.players.remove(queue.player);
             queue.player.cleanup();
 
             this._queues.splice(index, 1);
@@ -101,7 +104,7 @@ export class Collection {
 
         //Пишем о добавлении трека
         if (queue.songs.size >= 1) {
-            if (array.length === 1) setImmediate(() => this.events.emit("message/push", queue, array));
+            //if (array.length === 1) setImmediate(() => this.events.emit("message/push", queue, array.pop()));
         } else if (!queue.player.playing) setImmediate(() => queue.player.play(queue.songs.song));
 
         //Добавляем треки в очередь
@@ -166,11 +169,12 @@ export class Collection {
 
                 if (info instanceof Song) this.pushTracks = {queueID: message.guild.id, array: [info], author: message.author};
                 else if (info instanceof Array) this.events.emit("message/search", info, platform.platform, message);
-                else {
+                else if ("items" in info) {
                     //Отправляем сообщение о том что плейлист будет добавлен в очередь
-                    this.events.emit("message/push", message, info)
+                    this.events.emit("message/push", message, info);
                     this.pushTracks = { queueID: message.guild.id, array: info.items, author: message.author };
                 }
+                return resolve(null);
             }).catch((err) => { //Если возникнет ошибка
                 Logger.log("ERROR", `[${platformLow}.${type}]: ${err}`);
 
@@ -190,7 +194,7 @@ export class Collection {
  */
 export interface CollectionEvents {
     //Сообщение о добавленном треке или плейлисте, альбоме
-    "message/push"   : (queue: ArrayQueue | ClientMessage, items: Song[] | Song.playlist) => void;
+    "message/push"   : (queue: ArrayQueue | ClientMessage, items: Song | Song.playlist) => void;
 
     //Сообщение о текущем треке
     "message/playing": (queue: ArrayQueue, seek?: number) => void;

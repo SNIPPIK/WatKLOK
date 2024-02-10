@@ -95,7 +95,7 @@ export const Logger = new class {
      * @param text {string} Текст лога
      */
     public log = (status: "DEBUG" | "WARN" | "ERROR" | "LOG", text: string): void => {
-        if (status === "DEBUG" && !debug) return;
+        if (status === "DEBUG" && !debug || !(typeof text?.replace === 'function')) return;
 
         text = text.replace(/\[/, "\x1b[100m \x1b[30m").replace(/]/, " \x1b[0m");
 

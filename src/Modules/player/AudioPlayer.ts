@@ -8,11 +8,13 @@ import {TypedEmitter} from "tiny-typed-emitter";
  * @description Плеер для проигрывания музыки
  * @class AudioPlayer
  * @extends TypedEmitter<AudioPlayerEvents>
- * @public
  */
 export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
-    private readonly _db = {
-        filters: []     as Filter[],
+    private readonly _array = {
+        filters: []     as Filter[]
+    };
+
+    private readonly _local = {
         status: "player/wait"  as AudioPlayerStatus,
         voice: null     as VoiceConnection,
         stream: null    as AudioResource
@@ -22,28 +24,28 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @return Filter[]
      * @public
      */
-    public get filters() { return this._db.filters; };
+    public get filters() { return this._array.filters; };
 
     /**
      * @description Получение голосового подключения
      * @return VoiceConnection
      * @public
      */
-    public get connection() { return this._db.voice; };
+    public get connection() { return this._local.voice; };
 
     /**
      * @description
      * @return AudioPlayerStatus
      * @public
      */
-    public get status() { return this._db.status; };
+    public get status() { return this._local.status; };
 
     /**
      * @description
      * @return AudioResource
      * @public
      */
-    public get stream() { return this._db.stream; };
+    public get stream() { return this._local.stream; };
 
     /**
      * @description Проверяем играет ли плеер
@@ -55,7 +57,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
 
         //Если больше не читается, переходим в состояние wait.
         if (!this.stream?.readable) {
-            this.stream?.stream?.emit("close");
+            this.stream?.stream?.emit("end");
             this.status = "player/wait";
             return false;
         }
@@ -63,17 +65,18 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
         return true;
     };
 
+
     /**
      * @description Взаимодействие с голосовым подключением
      * @param connection {VoiceConnection} Голосовое подключение
      * @public
      */
     public set connection(connection: VoiceConnection) {
-        if (this._db.voice) {
-            if (this._db.voice.joinConfig.channelId === connection.joinConfig.channelId) return;
+        if (this._local.voice) {
+            if (this._local.voice.joinConfig.channelId === connection.joinConfig.channelId) return
         }
 
-        this._db.voice = connection;
+        this._local.voice = connection;
     };
 
     /**
@@ -81,9 +84,9 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @param status {AudioPlayerStatus} Статус плеера
      * @private
      */
-    protected set status(status: AudioPlayerStatus) {
-        if (status !== this._db.status) this.emit(status, this);
-        this._db.status = status;
+    public set status(status: AudioPlayerStatus) {
+        if (status !== this._local.status) this.emit(status, this);
+        this._local.status = status;
     };
 
     /**
@@ -91,10 +94,19 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @param stream {AudioResource} Opus конвертор
      * @private
      */
-    protected set stream(stream: AudioResource) {
-        if (this._db.stream) this._db.stream.cleanup();
+    public set stream(stream: AudioResource) {
+        if (this.stream && this.stream !== stream) {
+            try {
+                if (!this.stream?.stream?.destroyed) this.stream?.stream?.emit("close");
+            } catch {}
 
-        this._db.stream = stream;
+            //Удаляем прошлый поток
+            this._local.stream = null;
+        }
+
+
+        //Продолжаем воспроизведение
+        this._local.stream = stream;
         this.status = "player/playing";
     };
 
@@ -115,20 +127,28 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @public
      */
     public set read(stream: AudioResource) {
-        if (stream.readable) {
-            this.stream = stream;
+        if (!stream.readable) {
+            //Если не удается включить поток за 20 сек, выдаем ошибку
+            const timeout = setTimeout(() => this.emit("player/error", this, "Timeout stream!", false), 20e3);
+
+            stream.stream
+                //Включаем поток когда можно будет начать читать
+                .once("readable", () => {
+                    this.stream = stream;
+                    clearTimeout(timeout);
+                })
+                //Если происходит ошибка, то продолжаем читать этот же поток
+                .once("error", () => {
+                    this.emit("player/error", this, "Fail read stream", false);
+                    clearTimeout(timeout);
+                });
             return;
         }
 
-        const timeout = setTimeout(() => this.emit("player/error", this, "Timeout stream!", false), 20e3);
-        stream.stream.once("readable", () => { //Включаем поток когда можно будет начать читать
-            this.stream = stream;
-            clearTimeout(timeout);
-        }).once("error", () => { //Если происходит ошибка, то продолжаем читать этот же поток
-            this.emit("player/error", this, "Fail read stream", false);
-            clearTimeout(timeout);
-        });
+        this.stream = stream;
     };
+
+
 
     /**
      * @description Ставим на паузу плеер
@@ -159,6 +179,9 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
         this.status = "player/wait";
     };
 
+
+
+
     /**
      * @description Удаляем ненужные данные
      * @public
@@ -168,6 +191,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
         //Выключаем плеер если сейчас играет трек
         this.stop();
 
-        for (let str of Object.keys(this._db)) this._db[str] = null;
+        for (let str of Object.keys(this._local)) this._local[str] = null;
+        this._array.filters = null;
     };
 }

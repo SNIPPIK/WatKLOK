@@ -31,7 +31,12 @@ export class Collection_Cycles {
                 execute: (player: AudioPlayer) => {
                     if (player.connection?.state?.status !== "ready" || player?.status === "player/pause") return;
                     else if (player?.status !== "player/playing") player.sendPacket = Buffer.from([0xf8, 0xff, 0xfe]);
-                    else player.sendPacket = player.stream.packet;
+                    else {
+                        const packet = player.stream.packet;
+
+                        if (packet) player.sendPacket = packet;
+                        else player.stop();
+                    }
                 },
             });
         };

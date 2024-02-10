@@ -18,9 +18,7 @@ export default class extends PlayerEvent {
                 if (!queue?.songs?.song) return db.queue.remove(queue.guild.id);
 
                 //Включаем трек через время
-                setTimeout(() => {
-                    queue.player.play(queue.songs.song);
-                }, timeout);
+                setTimeout(() => queue.player.play(queue.songs.song), timeout);
             }
         });
     }

@@ -23,16 +23,18 @@ abstract class MusicQueue {
              * @param seek {number} Пропуск времени
              * @public
              */
-            public play = async (track: Song, seek: number = 0) => {
-                const path = await track.resource;
-
-                if (path instanceof Error) {
-                    this.emit("player/error", this, `${path}`);
-                    return;
-                }
-
-                this.emit("player/ended", this, seek);
-                this.read = new AudioResource({path, filters: !track.options.isLive ? this.filters : [], seek});
+            public play = (track: Song, seek: number = 0) => {
+                track.resource.then((path) => {
+                    if (path instanceof Error) {
+                        this.emit("player/error", this, `${path}`);
+                        return;
+                    }
+        
+                    this.emit("player/ended", this, seek);
+                    this.read = new AudioResource({path, filters: !track.options.isLive ? this.filters : [], seek});
+                }).catch((err) => {
+                    this.emit("player/ended", this, err);
+                });
             };
         }
     };

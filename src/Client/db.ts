@@ -71,6 +71,17 @@ export const db = new class QuickDB {
             block: [] as API.platform[]
         }
     };
+    private readonly _audio = {
+        volume:  parseInt(env.get("audio.volume")),
+        fade:    parseInt(env.get("audio.fade")),
+        bitrate: env.get("audio.bitrate")
+    };
+    /**
+     * @description Выдаем данные для запуска AudioResource
+     * @public
+     */
+    public get AudioOptions() { return this._audio; };
+
     /**
      * @description Выдаем класс с командами
      * @public

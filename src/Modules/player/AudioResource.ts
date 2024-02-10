@@ -1,40 +1,29 @@
 import {ChildProcessWithoutNullStreams, spawn} from "child_process";
 import {OpusEncoder} from "@watklok/opus";
+import {db} from "@Client/db";
+
 /**
  * @author SNIPPIK
- * @description Сохраняет в буфер аудио пакеты
- * @class BufferStream
- * @abstract
+ * @description Конвертирует аудио в нужный формат
+ * @class AudioResource
  */
-export abstract class BufferStream {
-    private readonly _local = {
+export class AudioResource {
+    private readonly _streams = {
         opus: new OpusEncoder(),
+        process: null as Process
+    };
+    private readonly _temp = {
         readable: false,
         frame: 20,
         frames: 0
     };
-
-    /**
-     * @description Создаем класс буфера
-     * @param seek {number} Время пропуска
-     * @param frame {number} Длительность пакета
-     */
-    protected constructor(seek: number, frame: number) {
-        if (frame > 0) this._local.frame = 20 * frame;
-        if (seek > 0) this._local.frames = ((seek * 1e3) / frame);
-
-        this.stream.once("readable", () => {
-            this._local.readable = true;
-        })
-    };
-
     /**
      * @description Начато ли чтение потока
      * @return boolean
      * @public
      */
     public get readable() {
-        return this._local.readable;
+        return this._temp.readable;
     };
 
     /**
@@ -43,9 +32,9 @@ export abstract class BufferStream {
      * @public
      */
     public get packet() {
-        const packet = this._local.opus.read();
+        const packet = this._streams.opus.read();
 
-        if (packet) this._local.frames++;
+        if (packet) this._temp.frames++;
         return packet;
     };
 
@@ -55,7 +44,7 @@ export abstract class BufferStream {
      * @public
      */
     public get stream() {
-        return this._local.opus;
+        return this._streams.opus;
     };
 
     /**
@@ -64,19 +53,11 @@ export abstract class BufferStream {
      * @public
      */
     public get duration() {
-        const duration = ((this._local.frames * this._local.frame) / 1e3).toFixed(0);
+        const duration = ((this._temp.frames * this._temp.frame) / 1e3).toFixed(0);
 
         return parseInt(duration);
     };
-}
 
-/**
- * @author SNIPPIK
- * @description Конвертирует аудио в нужный формат
- * @class AudioResource
- */
-export class AudioResource extends BufferStream {
-    private process: Process;
     /**
      * @description Создаем поток
      * @param options {object} Параметры для создания
@@ -86,19 +67,24 @@ export class AudioResource extends BufferStream {
         const {seek, path} = options;
         const { filters, speed} = Filters.getParameters(options.filters);
 
-        super(seek, speed);
+        if (speed > 0) this._temp.frame = 20 * speed;
+        if (seek > 0) this._temp.frames = (seek * 1e3) / this._temp.frame;
+
+        this.stream.once("readable", () => {
+            this._temp.readable = true;
+        });
 
         //Запускаем процесс FFmpeg и подключаем его к декодеру
         const urls = path.split(":|");
-        this.process = new Process(["-vn", "-loglevel", "panic",
+        this._streams.process = new Process(["-vn", "-loglevel", "panic",
             ...(urls[0] === "link" ? ["-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5"] : []),
             "-ss", `${seek ?? 0}`, "-i", urls[1], "-af", filters, "-f", `${OpusEncoder.lib ? "s16le" : "opus"}`, "pipe:1"
         ]);
 
         //Слушаем декодер
-        ["end", "close", "error"].forEach((event) => this.stream.once(event, this.cleanup));
-        this.process.stderr.once("error", (err) => this.stream.emit("error", err));
-        this.process.stdout.pipe(this.stream);
+        ["end", "close", "error"].forEach((event) => this.stream.once(event, () => this.cleanup()));
+        this._streams.process.stderr.once("error", (err) => this.stream.emit("error", err));
+        this._streams.process.stdout.pipe(this.stream);
     };
 
     /**
@@ -106,16 +92,18 @@ export class AudioResource extends BufferStream {
      * @public
      */
     public cleanup = () => {
-        for (const stream of [this.process, this.stream]) {
-            if (stream instanceof Process) {
-                stream.process.emit("close");
-                stream.stdout.removeAllListeners();
+        for (let item of Object.keys(this._temp)) this._temp[item] = null;
 
-                this.process = null;
+        for(const [key, value] of Object.entries(this._streams)) {
+            if (value instanceof Process) {
+                value.process.emit("close");
+                value.stdout.removeAllListeners();
             } else {
-                stream?.destroy();
-                stream?.removeAllListeners();
+                value?.destroy();
+                value?.removeAllListeners();
             }
+
+            this._streams[key] = null;
         }
     };
 }
@@ -186,7 +174,7 @@ export const Filters = new class {
      * @return object
      */
     public getParameters = (filters: Filter[]) => {
-        const realFilters = [`volume=1`]; let speed = 0;
+        const realFilters = [`volume=${db.AudioOptions.volume / 100}`]; let speed = 0;
 
         //Проверяем фильтры
         for (const filter of filters) {
@@ -203,7 +191,7 @@ export const Filters = new class {
         }
 
         //Надо ли плавное включения треков
-        realFilters.push(`afade=t=in:st=0:d=5`);
+        realFilters.push(`afade=t=in:st=0:d=${db.AudioOptions.fade}`);
 
         return { filters: realFilters.join(","), speed }
     }
