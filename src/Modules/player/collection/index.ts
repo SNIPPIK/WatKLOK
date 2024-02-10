@@ -104,7 +104,7 @@ export class Collection {
 
         //Пишем о добавлении трека
         if (queue.songs.size >= 1) {
-            //if (array.length === 1) setImmediate(() => this.events.emit("message/push", queue, array.pop()));
+            if (array.length === 1) setImmediate(() => this.events.emit("message/push", queue, array.pop()));
         } else if (!queue.player.playing) setImmediate(() => queue.player.play(queue.songs.song));
 
         //Добавляем треки в очередь

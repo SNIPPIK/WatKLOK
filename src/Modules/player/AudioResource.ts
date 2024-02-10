@@ -82,7 +82,7 @@ export class AudioResource {
         ]);
 
         //Слушаем декодер
-        ["end", "close", "error"].forEach((event) => this.stream.once(event, () => this.cleanup()));
+        ["end", "close", "error"].forEach((event) => this.stream.once(event, this.cleanup));
         this._streams.process.stderr.once("error", (err) => this.stream.emit("error", err));
         this._streams.process.stdout.pipe(this.stream);
     };
@@ -93,8 +93,7 @@ export class AudioResource {
      */
     public cleanup = () => {
         for (let item of Object.keys(this._temp)) this._temp[item] = null;
-
-        for(const [key, value] of Object.entries(this._streams)) {
+        for (let [key, value] of Object.entries(this._streams)) {
             if (value instanceof Process) {
                 value.process.emit("close");
                 value.stdout.removeAllListeners();

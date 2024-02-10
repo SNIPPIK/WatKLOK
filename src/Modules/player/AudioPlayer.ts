@@ -10,11 +10,8 @@ import {TypedEmitter} from "tiny-typed-emitter";
  * @extends TypedEmitter<AudioPlayerEvents>
  */
 export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
-    private readonly _array = {
-        filters: []     as Filter[]
-    };
-
     private readonly _local = {
+        filters: []     as Filter[],
         status: "player/wait"  as AudioPlayerStatus,
         voice: null     as VoiceConnection,
         stream: null    as AudioResource
@@ -24,7 +21,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @return Filter[]
      * @public
      */
-    public get filters() { return this._array.filters; };
+    public get filters() { return this._local.filters; };
 
     /**
      * @description Получение голосового подключения
@@ -97,7 +94,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
     public set stream(stream: AudioResource) {
         if (this.stream && this.stream !== stream) {
             try {
-                if (!this.stream?.stream?.destroyed) this.stream?.stream?.emit("close");
+                this.stream?.stream?.emit("close");
             } catch {}
 
             //Удаляем прошлый поток
@@ -191,7 +188,10 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
         //Выключаем плеер если сейчас играет трек
         this.stop();
 
-        for (let str of Object.keys(this._local)) this._local[str] = null;
-        this._array.filters = null;
+        try {
+            this.stream?.stream?.emit("close");
+        } catch {}
+
+        for (let str of Object.keys(this._local)) this._local[str] = null;;
     };
 }
