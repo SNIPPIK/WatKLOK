@@ -20,7 +20,7 @@ export const OpusLibs = [
 ], charCode = (x: string) => x.charCodeAt(0);
 let Opus = [];
 
-const loadModule = ( modules: typeof OpusLibs ) => {
+const loadModule = ( modules: typeof OpusLibs = OpusLibs ) => {
     for (const obj of modules) {
         try {
             (obj[3] as () => any)();
@@ -29,14 +29,13 @@ const loadModule = ( modules: typeof OpusLibs ) => {
         } catch {}
     }
 };
-
-loadModule(OpusLibs);
-
+loadModule();
 
 /**
  * @author SNIPPIK
  * @description Создаем кодировщик в opus
  * @class OpusEncoder
+ * @extends Transform
  */
 export class OpusEncoder extends Transform {
     private readonly _encode = {
@@ -52,7 +51,7 @@ export class OpusEncoder extends Transform {
         bitstream: null as number
     };
     /**
-     * @description Декодирование в opus
+     * @description Декодирование фрагмента в opus
      * @private
      */
     private encode = (chunk: Buffer) => {
@@ -105,16 +104,19 @@ export class OpusEncoder extends Transform {
     };
 
     /**
-     * @description Имя используемой библиотеки
+     * @description Название библиотеки и тип аудио для ffmpeg
+     * @return {name: string, ffmpeg: string}
      * @public
      */
-    public static get lib() {
-        return Opus.length !== 0;
+    public static get lib(): {name: string, ffmpeg: string} {
+        if (Opus.length !== 0) return { name: Opus[0], ffmpeg: "s16le" };
+        return { name: "Native/Opus", ffmpeg: "opus" };
     };
 
     /**
-     * @description
+     * @description Запуск класса расшифровки в opus
      * @param options
+     * @public
      */
     public constructor(options: TransformOptions = {autoDestroy: true, objectMode: true}) {
         super(Object.assign({ readableObjectMode: true }, options));
@@ -128,8 +130,8 @@ export class OpusEncoder extends Transform {
     };
 
     /**
-     * @description Модифицируем текущий поток
-     * @private
+     * @description Модифицируем текущий фрагмент
+     * @public
      */
     _transform(chunk: Buffer, _: any, done: () => any) {
         let n = 0, buffer = () => chunk;
@@ -155,8 +157,8 @@ export class OpusEncoder extends Transform {
     };
 
     /**
-     * @description Удаляем данные по завершению
-     * @private
+     * @description Удаляем данные по окончанию
+     * @public
      */
     _final(cb: () => void) {
         this.destroy();
@@ -165,7 +167,7 @@ export class OpusEncoder extends Transform {
 
     /**
      * @description Удаляем данные по завершению
-     * @private
+     * @public
      */
     _destroy() {
         if (typeof this._encode.encoder?.delete === 'function') this._encode.encoder!.delete!();

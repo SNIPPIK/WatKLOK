@@ -1,8 +1,8 @@
 import {ApplicationCommandOptionType, ChannelType} from "discord.js";
-import {ICommand, Command} from "@handler";
+import {ICommand, Command, Assign} from "@handler";
 import {db} from "@Client/db";
 
-export default class extends Command {
+export default class extends Assign<Command> {
     public constructor() {
         super({
             name: "stage",

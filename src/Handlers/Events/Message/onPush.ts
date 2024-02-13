@@ -1,12 +1,12 @@
 import {ClientMessage} from "@handler/Events/Atlas/interactionCreate";
 import {ArrayQueue} from "@watklok/player/queue/Queue";
-import {ActionMessage, PlayerEvent} from "@handler";
+import {ActionMessage, Assign, PlayerEvent} from "@handler";
 import {Song} from "@watklok/player/queue/Song";
 import {Duration} from "@watklok/player";
 import {Colors} from "discord.js";
 import {db} from "@Client/db";
 
-export default class extends PlayerEvent {
+export default class extends Assign<PlayerEvent> {
     public constructor() {
         super({
             name: "message/push",

@@ -1,10 +1,10 @@
 import { ApplicationCommandOptionType } from "discord.js";
 import {Song} from "@watklok/player/queue/Song";
-import {Command} from "@handler";
+import {Assign, Command} from "@handler";
 import {db} from "@Client/db";
 import {Logger} from "@Client";
 
-export default class extends Command {
+export default class extends Assign<Command> {
     public constructor() {
         super({
             name: "skip",

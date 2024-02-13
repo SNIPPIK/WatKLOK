@@ -1,9 +1,9 @@
 import { AudioPlayer } from "@watklok/player/AudioPlayer";
 import {ArrayQueue} from "@watklok/player/queue/Queue";
-import {PlayerEvent} from "@handler";
+import {Assign, PlayerEvent} from "@handler";
 import {db} from "@Client/db";
 
-export default class extends PlayerEvent {
+export default class extends Assign<PlayerEvent> {
     public constructor() {
         super({
             name: "player/error",

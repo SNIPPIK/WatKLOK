@@ -1,9 +1,9 @@
 import {History} from "@watklok/player/utils/History";
 import {ArraySort} from "@watklok/player";
 import { Colors } from "discord.js";
-import {Command} from "@handler";
+import {Assign, Command} from "@handler";
 
-export default class extends Command {
+export default class extends Assign<Command> {
     public constructor() {
         super({
             name: "history",

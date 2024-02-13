@@ -60,7 +60,7 @@ export class Collection {
      * @public
      */
     public set = (queue: ArrayQueue) => {
-        this.cycles.players.push(queue.player);
+        this.cycles.players.push = queue.player;
         this._queues.push(queue);
         
         //Загружаем ивенты плеера

@@ -78,7 +78,7 @@ export class AudioResource {
         const urls = path.split(":|");
         this._streams.process = new Process(["-vn", "-loglevel", "panic",
             ...(urls[0] === "link" ? ["-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5"] : []),
-            "-ss", `${seek ?? 0}`, "-i", urls[1], "-af", filters, "-f", `${OpusEncoder.lib ? "s16le" : "opus"}`, "pipe:1"
+            "-ss", `${seek ?? 0}`, "-i", urls[1], "-af", filters, "-f", `${OpusEncoder.lib.ffmpeg}`, "pipe:1"
         ]);
 
         //Слушаем декодер

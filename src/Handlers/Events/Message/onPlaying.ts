@@ -1,10 +1,10 @@
 import {ClientMessage} from "@handler/Events/Atlas/interactionCreate";
+import {ActionMessage, Assign, PlayerEvent} from "@handler";
 import {ArrayQueue} from "@watklok/player/queue/Queue";
-import {ActionMessage, PlayerEvent} from "@handler";
 import {Duration} from "@watklok/player";
 import {db} from "@Client/db";
 
-export default class extends PlayerEvent {
+export default class extends Assign<PlayerEvent> {
     public constructor() {
         super({
             name: "message/playing",
@@ -40,9 +40,7 @@ export default class extends PlayerEvent {
                     new ActionMessage({
                         message: queue.message, embeds: [embed], time: 0, replied: true,
                         components: [queue.components as any],
-                        promise: (msg: ClientMessage) => {
-                            db.queue.cycles.messages.push(msg);
-                        }
+                        promise: (msg: ClientMessage) =>  { db.queue.cycles.messages.push = msg }
                     });
                     return;
                 }

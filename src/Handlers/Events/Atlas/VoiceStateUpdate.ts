@@ -1,6 +1,6 @@
 import {getVoiceConnection} from "@discordjs/voice";
 import {Events} from "discord.js";
-import {Event} from "@handler";
+import {Assign, Event} from "@handler";
 import {db} from "@Client/db"
 
 /**
@@ -8,7 +8,7 @@ import {db} from "@Client/db"
  * @description Класс ивента VoiceStateUpdate
  * @class VoiceStateUpdate
  */
-export default class VoiceStateUpdate extends Event<Events.VoiceStateUpdate> {
+export default class VoiceStateUpdate extends Assign<Event<Events.VoiceStateUpdate>> {
     public constructor() {
         super({
             name: Events.VoiceStateUpdate,

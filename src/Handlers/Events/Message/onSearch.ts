@@ -1,10 +1,10 @@
 import {ActionRowBuilder, Colors, StringSelectMenuBuilder} from "discord.js";
 import {ClientMessage} from "@handler/Events/Atlas/interactionCreate";
 import {Song} from "@watklok/player/queue/Song";
-import {ActionMessage, PlayerEvent} from "@handler";
+import {ActionMessage, Assign, PlayerEvent} from "@handler";
 import {db} from "@Client/db";
 
-export default class extends PlayerEvent {
+export default class extends Assign<PlayerEvent> {
     public constructor() {
         super({
             name: "message/search",

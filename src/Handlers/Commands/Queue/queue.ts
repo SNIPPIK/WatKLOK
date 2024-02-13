@@ -1,11 +1,11 @@
 import {ClientMessage} from "@handler/Events/Atlas/interactionCreate";
 import {Song} from "@watklok/player/queue/Song";
 import {Duration, ArraySort} from "@watklok/player";
-import {Command} from "@handler";
+import {Assign, Command} from "@handler";
 import {db} from "@Client/db";
 
 
-export default class extends Command {
+export default class extends Assign<Command> {
     public constructor() {
         super({
             name: "queue",

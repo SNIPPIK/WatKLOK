@@ -253,7 +253,7 @@ export class Song {
 
             //Если не удается найти ссылку через n попыток
             if (!this.link) return resolve(Error(`[SONG]: Fail update link resource`));
-            else if (isDownload && this.link) void (db.queue.cycles.downloader.push(this));
+            else if (isDownload && this.link) void (db.queue.cycles.downloader.push = this);
             return resolve(`link:|${this.link}`)
         });
     };

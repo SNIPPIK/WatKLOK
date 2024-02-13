@@ -15,17 +15,16 @@ import {db} from "@Client/db";
 /**
  * @author SNIPPIK
  * @description Загрузка команд
- * @class Command
- * @abstract
+ * @interface Command
  */
-export abstract class Command {
+export interface Command {
     /**
      * @description Имя команды
      * @default null
      * @readonly
      * @public
      */
-    public readonly name: string = null;
+    name: string;
 
     /**
      * @description Описание команды
@@ -33,7 +32,7 @@ export abstract class Command {
      * @readonly
      * @public
      */
-    public readonly description: string = "Нет описания";
+    description: string;
 
     /**
      * @description Команду может использовать только разработчик
@@ -41,7 +40,7 @@ export abstract class Command {
      * @readonly
      * @public
      */
-    public readonly owner?: boolean = false;
+    owner?: boolean;
 
     /**
      * @description Права бота
@@ -49,7 +48,7 @@ export abstract class Command {
      * @readonly
      * @public
      */
-    public readonly permissions?: PermissionResolvable[] = null;
+    permissions?: PermissionResolvable[];
 
     /**
      * @description Опции для slashCommand
@@ -57,16 +56,7 @@ export abstract class Command {
      * @readonly
      * @public
      */
-    public readonly options?: ApplicationCommandOption[] = null;
-
-    /**
-     * @description Создаем команду
-     * @param options {Command}
-     * @protected
-     */
-    protected constructor(options: Command) {
-        Object.assign(this, options);
-    };
+    options?: ApplicationCommandOption[];
 
     /**
      * @description Выполнение команды
@@ -74,23 +64,22 @@ export abstract class Command {
      * @readonly
      * @public
      */
-    public readonly execute: (message: ClientMessage | ClientInteraction, args?: string[]) => ICommand.all | Promise<ICommand.all> | void;
+    execute: (message: ClientMessage | ClientInteraction, args?: string[]) => ICommand.all | Promise<ICommand.all> | void;
 }
 
 /**
  * @author SNIPPIK
  * @description Класс для событий
- * @class Event
- * @abstract
+ * @interface Event
  */
-export abstract class Event<T> {
+export interface Event<T> {
     /**
      * @description Название ивента
      * @default null
      * @readonly
      * @public
      */
-    public readonly name: T;
+    name: T;
 
     /**
      * @description Тип ивента
@@ -98,7 +87,7 @@ export abstract class Event<T> {
      * @readonly
      * @public
      */
-    public readonly type: "process" | "client" = null;
+    type: "process" | "client";
 
     /**
      * @description Функция, которая будет запущена при вызове ивента
@@ -107,32 +96,22 @@ export abstract class Event<T> {
      * @public
      */
     //@ts-ignore
-    public execute: (client: Atlas, ...args: ClientEvents[T]) => void;
-
-    /**
-     * @description Создаем ивент
-     * @param options {Event}
-     * @protected
-     */
-    protected constructor(options: Event<T>) {
-        Object.assign(this, options);
-    };
+    execute: (client: Atlas, ...args: ClientEvents[T]) => void;
 }
 
 /**
  * @author SNIPPIK
  * @description Класс для событий
  * @class PlayerEvent
- * @abstract
  */
-export abstract class PlayerEvent {
+export interface PlayerEvent {
     /**
      * @description Название ивента
      * @default null
      * @readonly
      * @public
      */
-    public readonly name: any;
+    name: string;
 
     /**
      * @description Тип ивента
@@ -140,7 +119,7 @@ export abstract class PlayerEvent {
      * @readonly
      * @public
      */
-    public readonly type: "player" = null;
+    type: "player";
 
     /**
      * @description Функция, которая будет запущена при вызове ивента
@@ -148,14 +127,22 @@ export abstract class PlayerEvent {
      * @readonly
      * @public
      */
-    public execute: (...args: any[]) => any;
+    execute: (...args: any[]) => any;
+}
 
+/**
+ * @author SNIPPIK
+ * @description Мульти-загрузчик классов
+ * @class Assign
+ * @abstract
+ */
+export abstract class Assign<T> {
     /**
-     * @description Создаем ивент
-     * @param options {Event}
+     * @description Создаем команду
+     * @param options {Command}
      * @protected
      */
-    protected constructor(options: PlayerEvent) {
+    protected constructor(options: T) {
         Object.assign(this, options);
     };
 }

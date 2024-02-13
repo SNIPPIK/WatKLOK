@@ -1,5 +1,5 @@
 import { ActionRow, ActionRowBuilder, Attachment, BaseInteraction, BaseMessageOptions, CommandInteractionOption, EmbedData, Events, GuildMember, Message, MessagePayload, PermissionsBitField, User} from "discord.js";
-import {ActionMessage, Event, ICommand} from "@handler";
+import {ActionMessage, Assign, Event, ICommand} from "@handler";
 import {Atlas, Logger} from "@Client";
 import {db} from "@Client/db";
 import {env} from "@env";
@@ -8,7 +8,7 @@ import {env} from "@env";
  * @description Класс для взаимодействия бота с slash commands, buttons
  * @class InteractionCreate
  */
-export default class extends Event<Events.InteractionCreate> {
+export default class extends Assign<Event<Events.InteractionCreate>> {
     public constructor() {
         super({
             name: Events.InteractionCreate,

@@ -1,9 +1,9 @@
 import {ApplicationCommandOptionType, Colors, EmbedData, TextChannel} from "discord.js";
-import {ICommand, Command} from "@handler";
+import {ICommand, Command, Assign} from "@handler";
 import {Logger} from "@Client";
 import {env} from "@env";
 
-export default class extends Command {
+export default class extends Assign<Command> {
     public constructor() {
         super({
             name: "post",
