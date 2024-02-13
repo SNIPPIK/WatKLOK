@@ -3,6 +3,7 @@
 # [`WatKLOK`](https://github.com/SNIPPIK/WatKLOK) 
 - Автор: [`SNIPPIK`](https://github.com/SNIPPIK)
 - Доступные платформы: [`тут`](src/Handlers/APIs)
+- Демонстрация: [`тут`](https://www.youtube.com/watch?v=G7vgPmnt9_8)
 - Поддерживаться только /команды
 - Все сообщения удаляются через время
 - Умеет кешировать треки и сохранять историю прослушиваний
