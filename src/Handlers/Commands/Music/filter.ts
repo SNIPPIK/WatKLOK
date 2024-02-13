@@ -54,7 +54,7 @@ export default class extends Assign<Command> {
                 };
 
                 //Если текущий трек является потоковым
-                else if (queue.songs.song.options.isLive) return {
+                else if (queue.songs.song.isLive) return {
                     content: `${author}, Фильтр не может работать совместно с Live треками!`,
                     color: "Yellow"
                 };

@@ -46,7 +46,7 @@ export default class extends RequestAPI {
                                                 url, author: null, image: { url: null },
                                                 title: url.split("/").pop()?.split("?")[0],
                                                 duration: { seconds: track.format.duration },
-                                                format: { url: track.format.filename }
+                                                link: track.format.filename
                                             }));
                                         });
                                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }

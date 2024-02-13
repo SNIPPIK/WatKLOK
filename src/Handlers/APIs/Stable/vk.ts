@@ -137,7 +137,7 @@ class VKLib {
             author: this.author(track),
             image: { url: image?.["photo_1200"] ?? image?.["photo_600"] ?? image?.["photo_300"] ?? image?.["photo_270"] ?? undefined },
             duration: { seconds: track.duration.toFixed(0) },
-            format: { url: track?.url }
+            link: track?.url
         });
     };
 

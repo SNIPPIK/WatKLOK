@@ -110,7 +110,7 @@ export class Collection {
         //Добавляем треки в очередь
         for (let n = 0; array.length > n; n++) {
             const track = array[n];
-            track.requesterSong = author;
+            track.requester = author;
             queue.songs.push(track);
         }
     };

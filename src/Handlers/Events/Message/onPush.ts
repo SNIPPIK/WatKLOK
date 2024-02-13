@@ -21,11 +21,11 @@ export default class extends Assign<PlayerEvent> {
                             message: queue.message, replied: true, time: 12e3,
                             embeds: [
                                 {
-                                    color, thumbnail: image.track,
+                                    color, thumbnail: image,
                                     author: {name: author.title, iconURL: db.emojis.diskImage, url: author.url},
                                     footer: {
                                         text: `${requester.username} | ${queue.songs.time} | 🎶: ${queue.songs.size}`,
-                                        iconURL: requester.avatarURL()
+                                        iconURL: requester.avatar
                                     },
 
 

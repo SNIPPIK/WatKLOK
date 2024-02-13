@@ -36,7 +36,7 @@ export default class extends Assign<Command> {
                 };
 
                 //Если текущий трек является потоковым
-                else if (queue.songs.song.options.isLive) return { content: `${author}, А как? Это же стрим!`, color: "Yellow" };
+                else if (queue.songs.song.isLive) return { content: `${author}, А как? Это же стрим!`, color: "Yellow" };
 
                 //Если пользователь не указал время
                 else if (!args[0]) return { content: `${author}, Укажи время, пример 00:00:00!`, color: "Yellow" };

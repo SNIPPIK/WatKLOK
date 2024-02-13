@@ -6,13 +6,14 @@ import {joinVoiceChannel} from "@discordjs/voice";
 import {Duration} from "@watklok/player";
 import {db} from "@Client/db";
 import {Song} from "./Song";
+
 /**
  * @author SNIPPIK
  * @description Главный класс очереди
- * @class MusicQueue
+ * @class ServerQueue
  * @abstract
  */
-abstract class MusicQueue {
+abstract class ServerQueue {
     private readonly _local = {
         message:    null as ClientMessage,
         voice:      null as VoiceChannel | StageChannel,
@@ -31,7 +32,7 @@ abstract class MusicQueue {
                     }
         
                     this.emit("player/ended", this, seek);
-                    this.read = new AudioResource({path, filters: !track.options.isLive ? this.filters : [], seek});
+                    this.read = new AudioResource({path, filters: !track.isLive ? this.filters : [], seek});
                 }).catch((err) => {
                     this.emit("player/ended", this, err);
                 });
@@ -100,9 +101,8 @@ abstract class MusicQueue {
 /**
  * @author SNIPPIK
  * @description Создаем Array с треками для очереди
- * @class SongsQueue
  */
-class SongsQueue extends Array<Song> {
+class ServerQueueSongs extends Array<Song> {
     /**
      * @description Получаем текущий трек
      * @return Song
@@ -137,10 +137,10 @@ class SongsQueue extends Array<Song> {
  * @description Класс очереди для проигрывания треков
  * @class ArrayQueue
  */
-export class ArrayQueue extends MusicQueue {
+export class ArrayQueue extends ServerQueue {
     private readonly _options = {
-        loop: "off" as "off" | "song" | "songs",
-        songs: new SongsQueue()
+        songs: new ServerQueueSongs(),
+        loop: "off" as "off" | "song" | "songs"
     };
     /**
      * @description Сохраняем тип повтора

@@ -314,8 +314,7 @@ class YouTubeLib {
                 },
                 duration: {seconds: track["lengthSeconds"] ?? track["lengthText"]?.["simpleText"] ?? 0},
                 image: track.thumbnail["thumbnails"].pop(),
-                isLive: track["isLiveContent"] ?? track["isLive"] ?? track["is_live"],
-                format: track?.format || undefined
+                link: track?.format || undefined
             });
         } catch {
             return new Song({
@@ -324,8 +323,7 @@ class YouTubeLib {
                 title: track.title,
                 duration: {seconds: track["lengthSeconds"] ?? 0},
                 image: track.thumbnail["thumbnails"].pop(),
-                isLive: track["isLiveContent"],
-                format: track?.format || undefined
+                link: track?.format || undefined
             })
         }
     };

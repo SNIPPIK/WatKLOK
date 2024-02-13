@@ -28,11 +28,11 @@ export default class extends Assign<PlayerEvent> {
                     fields.push({name: `**Следующий трек**`, value: `**❯** **[${song.title}](${song.url})**`});
                 }
                 const embed = {
-                    color, thumbnail: image.track, fields,
+                    color, thumbnail: image, fields,
                     author: {name: author.title, url: author.url, iconURL: db.emojis.diskImage},
                     footer: {
                         text: `${requester.username} | ${queue.songs.time} | 🎶: ${queue.songs.size}`,
-                        iconURL: requester.avatarURL()
+                        iconURL: requester.avatar
                     }
                 }
 

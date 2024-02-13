@@ -1,4 +1,3 @@
-import {ClientMessage} from "@handler/Events/Atlas/interactionCreate";
 import {httpsClient} from "@Client/Request";
 import {API, ResponseAPI} from "@handler";
 import {Duration} from "@watklok/player";
@@ -21,7 +20,7 @@ export namespace Song {
         username: string;
 
         //Ссылка на аватар пользователя
-        avatarURL: () => string | null;
+        avatar: string | null;
     }
 
     /**
@@ -34,9 +33,6 @@ export namespace Song {
 
         //Ссылка на трек
         url: string;
-
-        //Трек в прямом эфире
-        isLive?: boolean;
 
         //Картинка трека
         image: image;
@@ -51,10 +47,7 @@ export namespace Song {
         };
 
         //Исходный файл
-        format?: {
-            //Ссылка на исходный файл
-            url: string | null
-        };
+        link?: string | null;
     }
 
     /**
@@ -104,117 +97,91 @@ export namespace Song {
  * @description Ключевой элемент музыки
  */
 export class Song {
-    private readonly _platform: API.platform;
-    private readonly _url: string;
-    private readonly _title: string;
-    private readonly _color: number;
-    private readonly _author: { url: string, title: string, isVerified?: boolean };
-    private readonly _duration: { seconds: number, full: string };
-    private readonly _images: { track: Song.image, author: Song.image };
-    private readonly _other: { isLive: boolean };
-    private _requester: Song.requester;
-    public _link: string = null;
+    private readonly _track: Song.track & { duration?: { full: string; seconds: number; }} & { requester?: Song.requester } = {
+        title: null, url: null, image: null, author: null, duration: null
+    };
+    private readonly _api: { platform: API.platform; color: number; } = null;
+    private readonly _duration: { full: string; seconds: number; } = null;
+
     public constructor(track: Song.track) {
-        const api = new ResponseAPI(track.url);
         const seconds = parseInt(track.duration.seconds) || 321;
+        const api = new ResponseAPI(track.url);
 
-        this._title = track.title;
-        this._url = track.url;
-        this._platform = api.platform;
-        this._color = api.color;
-
-        //Прочие
-        this._other = { isLive: track?.isLive || seconds === 0 };
-
-        //Информация об авторе
-        this._author = {
-            url: !track.author?.url || track.author?.url === "" ? "" : track.author.url,
-            title: !track.author?.title || track.author?.title === "" ? "Не найдено имя автора" : track.author.title
-        };
-
-        //Изображения трека и автора
-        this._images = {
-            track: track?.image ?? { url: db.emojis.noImage },
-            author: { url: db.emojis.diskImage }
-        };
+        //Изображения трека
+        track["image"] = track?.image ?? { url: db.emojis.noImage };
 
         //Время трека
         if (!isNaN(seconds) && !track.duration.seconds.match(/:/)) this._duration = { full: seconds === 0 ? "Live" : Duration.parseDuration(seconds), seconds };
         else this._duration = { full: track.duration.seconds, seconds };
 
-        if (track.format && track.format?.url) this._link = track.format.url;
+        //Удаляем ненужные данные
+        delete track.duration;
+
+        //Добавляем данные
+        Object.assign(this._track, track);
+        this._api = {platform: api.platform, color: api.color };
     };
-
-    /**
-     * @description Получаем цвет трека
-     * @public
-     */
-    public get color() { return this._color; };
-
     /**
      * @description Получаем название трека
      * @public
      */
-    public get title() { return this._title.substring(0, 120); };
-
+    public get title() { return this._track.title.substring(0, 120); };
     /**
      * @description Получаем ссылку на трек
      * @public
      */
-    public get url() { return this._url; };
-
+    public get url() { return this._track.url; };
     /**
      * @description Получаем данные автора трека
      * @public
      */
-    public get author() { return this._author; };
-
-    /**
-     * @description Получаем пользователя который включил трек
-     * @public
-     */
-    public get requester() { return this._requester; };
-    public set requesterSong(author: ClientMessage["author"]) {
-        const { username, id, avatar } = author;
-
-        //Пользователь, который включил трек
-        this._requester = {
-            username, id,
-            avatarURL: () => `https://cdn.discordapp.com/avatars/${id}/${avatar}.webp`
-        };
-    }
-
-    /**
-     * @description Получаем платформу у которого был взят трек
-     * @public
-     */
-    public get platform() { return this._platform; };
-
+    public get author() { return this._track.author; };
     /**
      * @description Получаем время трека
      * @public
      */
     public get duration() { return this._duration; };
-
     /**
      * @description Получаем картинки автора и трека
      * @public
      */
-    public get image() { return this._images; };
-
+    public get image() { return this._track.image; };
     /**
-     * @description Получаем доп данные
+     * @description Получаем пользователя который включил трек
      * @public
      */
-    public get options() { return this._other; };
+    public get requester() { return this._track.requester; };
+    public set requester(author) {
+        const { username, id, avatar } = author;
 
+        //Пользователь, который включил трек
+        this._track.requester = {
+            username, id,
+            avatar: `https://cdn.discordapp.com/avatars/${id}/${avatar}.webp`
+        };
+    };
     /**
      * @description Получаем ссылку на исходный файл
      * @public
      */
-    public get link() { return this._link; };
-    public set link(url: string) { this._link = url; }
+    public get link() { return this._track.link; };
+    public set link(url: string) { this._track.link = url; }
+    /**
+     * @description Трек имеет формат LIVE
+     * @public
+     */
+    public get isLive() { return this._duration.full === "Live"; };
 
+    /**
+     * @description Получаем платформу у которого был взят трек
+     * @public
+     */
+    public get platform() { return this._api.platform; };
+    /**
+     * @description Получаем цвет трека
+     * @public
+     */
+    public get color() { return this._api.color; };
 
     /**
      * @description Проверяем ссылку на доступность и выдаем ее если ссылка имеет код !==200, то обновляем
@@ -276,7 +243,7 @@ function fetchAPIs(track: Song): Promise<string | Error> {
             return callback(track.url).then((track) => {
                 if (track instanceof Error) return resolve(track);
                 return resolve(track.link);
-            });
+            }).catch((err) => resolve(Error(err)));
         }
 
         //Если платформа не может выдать аудио
@@ -294,7 +261,7 @@ function fetchAPIs(track: Song): Promise<string | Error> {
                 return youtube.callback("track")(tracks[0].url).then((track: Song) => {
                     if (!track.link) return resolve(null);
                     return resolve(track.link);
-                });
+                }).catch((err) => resolve(Error(err)));
             });
         }
     })
