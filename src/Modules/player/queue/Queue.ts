@@ -15,8 +15,11 @@ import {Song} from "./Song";
  */
 abstract class ServerQueue {
     private readonly _local = {
+        loop:       "off" as "off" | "song" | "songs",
+
         message:    null as ClientMessage,
         voice:      null as VoiceChannel | StageChannel,
+        songs:      new ServerQueueSongs(),
         player:     new class extends AudioPlayer {
             /**
              * @description Функция отвечает за циклическое проигрывание
@@ -39,6 +42,31 @@ abstract class ServerQueue {
             };
         }
     };
+    /**
+     * @description Сохраняем тип повтора
+     * @param loop {"off" | "song" | "songs"} Тип повтора
+     * @public
+     */
+    public set loop(loop: "off" | "song" | "songs") {
+        this._local.loop = loop;
+    };
+
+    /**
+     * @description Получаем класс с треками
+     * @public
+     */
+    public get songs() {
+        return this._local.songs;
+    }
+
+    /**
+     * @description Получаем настройки очереди
+     * @public
+     */
+    public get loop() {
+        return this._local.loop;
+    };
+
     /**
      * @description Выдаем сообщение
      * @return ClientMessage
@@ -96,6 +124,11 @@ abstract class ServerQueue {
             adapterCreator: this.guild.voiceAdapterCreator
         });
     };
+
+    public constructor(msg: ClientMessage, voice: VoiceChannel | StageChannel) {
+        this.message = msg;
+        this.voice = voice;
+    };
 }
 
 /**
@@ -138,31 +171,6 @@ class ServerQueueSongs extends Array<Song> {
  * @class ArrayQueue
  */
 export class ArrayQueue extends ServerQueue {
-    private readonly _options = {
-        songs: new ServerQueueSongs(),
-        loop: "off" as "off" | "song" | "songs"
-    };
-    /**
-     * @description Сохраняем тип повтора
-     * @param loop {"off" | "song" | "songs"} Тип повтора
-     * @public
-     */
-    public set loop(loop: "off" | "song" | "songs") {
-        this._options.loop = loop;
-    };
-
-    /**
-     * @description Получаем класс с треками
-     * @public
-     */
-    public get songs() { return this._options.songs; }
-
-    /**
-     * @description Получаем настройки очереди
-     * @public
-     */
-    public get loop() { return this._options.loop; };
-
     /**
      * @description Получение кнопок
      * @public
@@ -184,11 +192,5 @@ export class ArrayQueue extends ServerQueue {
         else components.push({ type: 2, emoji: {id: db.emojis.button.loop}, custom_id: 'repeat', style: 2 });
 
         return { type: 1, components };
-    };
-
-    public constructor(msg: ClientMessage, voice: VoiceChannel | StageChannel) {
-        super();
-        this.message = msg;
-        this.voice = voice;
     };
 }

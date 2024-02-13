@@ -1,6 +1,7 @@
 import {RequestAPI, ItemRequestAPI} from "@handler";
 import {Song} from "@watklok/player/queue/Song";
 import {httpsClient} from "@Client/Request";
+import {Duration} from "@watklok/player";
 import {env} from "@env";
 
 /**
@@ -105,7 +106,7 @@ export default class extends RequestAPI {
                     public constructor() {
                         super({
                             name: "artist",
-                            filter: /(channel)/gi || /@/gi,
+                            filter: /\/(channel)?(@)/gi,
                             callback: (url: string) => {
                                 return new Promise<Song[]>(async (resolve, reject) => {
                                     try {
@@ -129,7 +130,7 @@ export default class extends RequestAPI {
                                             const video = richItemRenderer?.content?.["videoRenderer"];
 
                                             return {
-                                                url: `https://youtu.be/${video["videoId"]}`, title: video.title["runs"][0].text, duration: { seconds: video["lengthText"]["simpleText"] },
+                                                url: `https://youtu.be/${video["videoId"]}`, title: video.title["runs"][0].text, duration: { full: video["lengthText"]["simpleText"] },
                                                 author: { url: `https://www.youtube.com${ID}`, title: author.title }
                                             }
                                         });
@@ -314,7 +315,7 @@ class YouTubeLib {
                 },
                 duration: {seconds: track["lengthSeconds"] ?? track["lengthText"]?.["simpleText"] ?? 0},
                 image: track.thumbnail["thumbnails"].pop(),
-                link: track?.format || undefined
+                link: track?.format?.url || undefined
             });
         } catch {
             return new Song({
@@ -323,7 +324,7 @@ class YouTubeLib {
                 title: track.title,
                 duration: {seconds: track["lengthSeconds"] ?? 0},
                 image: track.thumbnail["thumbnails"].pop(),
-                link: track?.format || undefined
+                link: track?.format?.url || undefined
             })
         }
     };

@@ -1,5 +1,5 @@
 import {ClientMessage} from "@handler/Events/Atlas/interactionCreate";
-import {Collection_Cycles} from "@watklok/player/collection/Cycles";
+import {Cycles} from "@watklok/player/collection/Cycles";
 import {ActionMessage, ICommand, ResponseAPI} from "@handler";
 import {AudioPlayer} from "@watklok/player/AudioPlayer";
 import {ArrayQueue} from "@watklok/player/queue/Queue";
@@ -16,34 +16,30 @@ import {env} from "@env";
  * @abstract
  */
 export class Collection {
-    private readonly _cycles = new Collection_Cycles();
-    private readonly _queues: ArrayQueue[] = [];
-    /**
-     * @author SNIPPIK
-     * @description Ивенты для плеера и вызова сообщений
-     * @class CollectionEv
-     */
-    private readonly _emitter = new class extends TypedEmitter<CollectionEvents & AudioPlayerEvents> {};
-
+    private readonly _local = {
+        emitter: new class extends TypedEmitter<CollectionEvents & AudioPlayerEvents> {},
+        queues: [] as ArrayQueue[],
+        cycles: new Cycles()
+    }
     /**
      * @description Получаем циклы процесса
      * @return CollectionCycles
      * @public
      */
-    public get cycles() { return this._cycles; };
+    public get cycles() { return this._local.cycles; };
 
     /**
      * @description Получаем ивенты для плеера
      * @return CollectionEvents
      * @public
      */
-    public get events() { return this._emitter; };
+    public get events() { return this._local.emitter; };
 
     /**
      * @description Получаем кол-во очередей в списке
      * @public
      */
-    public get size() { return this._queues?.length ?? 0; };
+    public get size() { return this._local.queues?.length ?? 0; };
 
     /**
      * @description Получаем очередь из ID
@@ -51,7 +47,7 @@ export class Collection {
      * @public
      */
     public get = (ID: string) => {
-        return this._queues.find((queue) => queue.guild.id === ID);
+        return this._local.queues.find((queue) => queue.guild.id === ID);
     };
 
     /**
@@ -61,7 +57,7 @@ export class Collection {
      */
     public set = (queue: ArrayQueue) => {
         this.cycles.players.push = queue.player;
-        this._queues.push(queue);
+        this._local.queues.push(queue);
         
         //Загружаем ивенты плеера
         const events = ["player/playing", "player/wait", "player/error", "player/ended"] as AudioPlayerStatus[];
@@ -82,13 +78,13 @@ export class Collection {
      */
     public remove = (ID: string) => {
         const queue = this.get(ID);
-        const index = this._queues.indexOf(queue);
+        const index = this._local.queues.indexOf(queue);
 
         if (index != -1) {
             this.cycles.players.remove(queue.player);
             queue.player.cleanup();
 
-            this._queues.splice(index, 1);
+            this._local.queues.splice(index, 1);
         }
 
         Logger.log("DEBUG", `Queue: deleted for [${ID}]`);

@@ -14,10 +14,10 @@ import {env} from "@env";
 /**
  * @author SNIPPIK
  * @description
- * @class Collection_Cycles
+ * @class Cycles
  * @abstract
  */
-export class Collection_Cycles {
+export class Cycles {
     /**
      * @author SNIPPIK
      * @description Здесь происходит управление плеерами

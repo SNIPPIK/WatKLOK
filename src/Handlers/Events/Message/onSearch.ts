@@ -15,7 +15,7 @@ export default class extends Assign<PlayerEvent> {
                     color: "DarkRed", message, replied: true
                 }));
 
-                return {
+                new ActionMessage({
                     replied: true, time: 30e3, message,
                     //Сообщение
                     embeds: [{
@@ -66,7 +66,7 @@ export default class extends Assign<PlayerEvent> {
                             collector.stop();
                         });
                     }
-                }
+                })
             }
         });
     }
