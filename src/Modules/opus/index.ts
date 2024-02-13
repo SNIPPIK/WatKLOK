@@ -46,6 +46,7 @@ export class OpusEncoder extends Transform {
         OPUS_TAGS: Buffer.from([...'OpusTags'].map(charCode))
     };
     private readonly _temp = {
+        remaining: null as Buffer,
         required: 960 * 2 * 2,
         buffer: null    as Buffer,
         bitstream: null as number
@@ -93,8 +94,21 @@ export class OpusEncoder extends Transform {
             const segment = chunk.subarray(start, start + size);
             const header = segment.subarray(0, 8);
 
+            if (this._temp.buffer) {
+                if (header.equals(this._encode.OPUS_TAGS)) this.emit('tags', segment);
+                else if (this._temp.bitstream === bitstream) this.push(segment);
+            } else if (header.equals(this._encode.OPUS_HEAD)) {
+                this.emit('head', segment);
+                this._temp.buffer = segment;
+                this._temp.bitstream = bitstream;
+            } else this.emit('unknownSegment', segment);
+
+
+            /*
             if (this._temp.bitstream === bitstream) this.push(segment);
             else if (header.equals(this._encode.OPUS_HEAD)) this._temp.bitstream = bitstream;
+
+             */
 
             start += size;
         }
@@ -109,7 +123,7 @@ export class OpusEncoder extends Transform {
      * @public
      */
     public static get lib(): {name: string, ffmpeg: string} {
-        if (Opus.length !== 0) return { name: Opus[0], ffmpeg: "s16le" };
+        if (Opus.length > 0) return { name: Opus[0], ffmpeg: "s16le" };
         return { name: "Native/Opus", ffmpeg: "opus" };
     };
 
@@ -122,7 +136,7 @@ export class OpusEncoder extends Transform {
         super(Object.assign({ readableObjectMode: true }, options));
 
         //Если была найдена opus library
-        if (Opus.length !== 0) {
+        if (Opus.length > 0) {
             //Подключаем opus library
             this._encode.encoder = new Opus[2](...Opus[1]);
             this._temp.buffer = Buffer.alloc(0);
@@ -141,6 +155,11 @@ export class OpusEncoder extends Transform {
             buffer = () => this._temp.buffer.subarray(n * this._temp.required, (n + 1) * this._temp.required);
         }
 
+        if (this._temp.remaining) {
+            chunk = Buffer.concat([this._temp.remaining, chunk]);
+            this._temp.remaining = null;
+        }
+
         while (this._encode.encoder ? this._temp.buffer.length >= this._temp.required * (n + 1) : chunk) {
             const packet = this.encode(buffer());
 
@@ -152,6 +171,7 @@ export class OpusEncoder extends Transform {
             }
         }
 
+        if (!this._encode.encoder) this._temp.remaining = chunk;
         if (n > 0) this._temp.buffer = this._temp.buffer.subarray(n * this._temp.required);
         return done();
     };
