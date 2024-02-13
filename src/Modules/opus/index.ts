@@ -102,14 +102,7 @@ export class OpusEncoder extends Transform {
                 this._temp.buffer = segment;
                 this._temp.bitstream = bitstream;
             } else this.emit('unknownSegment', segment);
-
-
-            /*
-            if (this._temp.bitstream === bitstream) this.push(segment);
-            else if (header.equals(this._encode.OPUS_HEAD)) this._temp.bitstream = bitstream;
-
-             */
-
+            
             start += size;
         }
 
