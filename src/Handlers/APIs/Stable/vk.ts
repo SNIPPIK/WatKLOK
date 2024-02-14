@@ -27,7 +27,7 @@ export default class extends RequestAPI {
                             name: "track",
                             filter: /(audio)([0-9]+_[0-9]+_[a-zA-Z0-9]+|-[0-9]+_[a-zA-Z0-9]+)/i,
                             callback: (url) => {
-                                const ID = /([0-9]+_[0-9]+_[a-zA-Z0-9]+|[0-9]+_[a-zA-Z0-9]+)/i.exec(url);
+                                const ID = /([0-9]+_[0-9]+_[a-zA-Z0-9]+|-[0-9]+_[a-zA-Z0-9]+)/i.exec(url);
 
                                 return new Promise<Song>(async (resolve, reject) => {
                                     //Если ID трека не удалось извлечь из ссылки
