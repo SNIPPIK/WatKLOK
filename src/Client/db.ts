@@ -1,6 +1,6 @@
 import {Collection as AudioCollection} from "@watklok/player/collection";
 import {Command, Event, API, RequestAPI} from "@handler";
-import {Filter} from "@watklok/player/AudioResource";
+import {Filter} from "@watklok/player/AudioPlayer";
 import {Collection, Routes} from "discord.js";
 import {httpsClient} from "@Client/Request";
 import {Atlas, Logger} from "@Client";

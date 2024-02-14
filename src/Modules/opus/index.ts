@@ -143,7 +143,8 @@ export class OpusEncoder extends Transform {
     _transform(chunk: Buffer, _: any, done: () => any) {
         let n = 0, buffer = () => chunk;
 
-        if (this._encode.encoder) {
+        if (!this._encode.encoder) setImmediate(() => this._temp.remaining = chunk);
+        else {
             this._temp.buffer = Buffer.concat([this._temp.buffer, chunk]);
             buffer = () => this._temp.buffer.subarray(n * this._temp.required, (n + 1) * this._temp.required);
         }
@@ -164,7 +165,6 @@ export class OpusEncoder extends Transform {
             }
         }
 
-        if (!this._encode.encoder) this._temp.remaining = chunk;
         if (n > 0) this._temp.buffer = this._temp.buffer.subarray(n * this._temp.required);
         return done();
     };

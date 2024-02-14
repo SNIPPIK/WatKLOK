@@ -14,16 +14,16 @@ export abstract class TimeCycle<T = unknown> {
         duration: 10e3,
         custom: {push: null, remove: null}
     };
+    private readonly _dynamics = {
+        array: [] as T[],
+        time: 0
+    };
     protected constructor(options: TimeCycleConfig<T>) { Object.assign(this._config, options); };
-
-    private readonly _array?: T[] = [];
-    private _time?: number = 0;
-
     /**
      * @description Выдаем коллекцию
      * @public
      */
-    public get array() { return this._array; }
+    public get array() { return this._dynamics.array; }
 
     /**
      * @description Добавляем элемент в очередь
@@ -32,16 +32,16 @@ export abstract class TimeCycle<T = unknown> {
      */
     public set push(data: T) {
         if (this._config.custom?.push) this._config.custom?.push(data);
-        else if (this._array.includes(data)) this.remove(data);
+        else if (this._dynamics.array.includes(data)) this.remove(data);
 
         //Добавляем данные в цикл
-        this._array.push(data);
+        this._dynamics.array.push(data);
 
         //Запускаем цикл
-        if (this._array?.length === 1) {
+        if (this._dynamics.array?.length === 1) {
             Logger.log("DEBUG", `[Cycle/${this._config.name}]: Start cycle`);
 
-            this._time = Date.now();
+            this._dynamics.time = Date.now();
             setImmediate(this._stepCycle);
         }
     };
@@ -52,12 +52,12 @@ export abstract class TimeCycle<T = unknown> {
      * @public
      */
     public remove? = (data: T) => {
-        if (this._array?.length === 0) return;
+        if (this._dynamics.array?.length === 0) return;
 
-        const index = this._array.indexOf(data);
+        const index = this._dynamics.array.indexOf(data);
         if (index != -1) {
             if (this._config.custom?.remove) this._config.custom?.remove(data);
-            this._array.splice(index, 1);
+            this._dynamics.array.splice(index, 1);
         }
     };
 
@@ -66,17 +66,17 @@ export abstract class TimeCycle<T = unknown> {
      * @private
      */
     private _stepCycle? = (): void => {
-        if (this._array?.length === 0) {
+        if (this._dynamics.array?.length === 0) {
             Logger.log("DEBUG", `[Cycle/${this._config.name}]: Stop cycle`);
-            this._time = 0;
+            this._dynamics.time = 0;
             return;
         }
 
         //Высчитываем время для выполнения
-        this._time += this._config.duration;
+        this._dynamics.time += this._config.duration;
 
 
-        for (const item of this._array.filter(this._config.filter)) {
+        for (const item of this._dynamics.array.filter(this._config.filter)) {
             try {
                 this._config.execute(item);
             } catch (error) {
@@ -85,7 +85,7 @@ export abstract class TimeCycle<T = unknown> {
         }
 
         //Выполняем функцию через ~this._time ms
-        setTimeout(this._stepCycle, this._time - Date.now());
+        setTimeout(this._stepCycle, this._dynamics.time - Date.now());
     };
 
     /**

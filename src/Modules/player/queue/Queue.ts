@@ -9,6 +9,15 @@ import {Song} from "./Song";
 
 /**
  * @author SNIPPIK
+ * @description Данные для создания очереди
+ */
+interface ServerQueueOptions {
+    voice: VoiceChannel | StageChannel;
+    message: ClientMessage;
+}
+
+/**
+ * @author SNIPPIK
  * @description Главный класс очереди
  * @class ServerQueue
  * @abstract
@@ -33,9 +42,12 @@ abstract class ServerQueue {
                         this.emit("player/error", this, `${path}`);
                         return;
                     }
-        
+
+                    const options = {path, seek};
+                    Object.assign(options, this.parseFilters);
+
                     this.emit("player/ended", this, seek);
-                    this.read = new AudioResource({path, filters: !track.isLive ? this.filters : [], seek});
+                    this.read = new AudioResource(options as any);
                 }).catch((err) => {
                     this.emit("player/ended", this, err);
                 });
@@ -57,7 +69,7 @@ abstract class ServerQueue {
      */
     public get songs() {
         return this._local.songs;
-    }
+    };
 
     /**
      * @description Получаем настройки очереди
@@ -125,9 +137,21 @@ abstract class ServerQueue {
         });
     };
 
-    public constructor(msg: ClientMessage, voice: VoiceChannel | StageChannel) {
-        this.message = msg;
-        this.voice = voice;
+    public constructor(options: ServerQueueOptions) {
+        for (const [key, value] of Object.entries(options)) {
+            try { this[key] = value; } catch (err) { throw TypeError(`Error in queue, ${key} is not found in the server queue`); }
+        }
+    };
+
+    /**
+     * @description Очищаем очередь
+     * @public
+     */
+    public cleanup = () => {
+        db.queue.cycles.players.remove(this.player);
+        this.player.cleanup();
+
+        for (let item of Object.keys(this._local)) this._local[item] = null;
     };
 }
 

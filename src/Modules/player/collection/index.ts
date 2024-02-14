@@ -64,7 +64,7 @@ export class Collection {
         for (let num = 0; num < events.length; num++) {
             const event = events[num];
             
-            queue.player.on(event, (...args) => {
+            queue.player.on(event, (...args: any[]) => {
                 this.events.emit<any>(event, queue, ...args);
             });
         }
@@ -81,9 +81,7 @@ export class Collection {
         const index = this._local.queues.indexOf(queue);
 
         if (index != -1) {
-            this.cycles.players.remove(queue.player);
-            queue.player.cleanup();
-
+            queue.cleanup();
             this._local.queues.splice(index, 1);
         }
 
@@ -114,11 +112,11 @@ export class Collection {
     /**
      * @description Начинаем запуск и поиск в системе APIs с созданием очереди
      * @param message {ClientMessage} Сообщение с сервера
-     * @param VoiceChannel {VoiceChannel | StageChannel} Голосовой канал
+     * @param voice {VoiceChannel | StageChannel} Голосовой канал
      * @param argument {string} Запрос пользователя
      * @public
      */
-    public runAPIs = (message: ClientMessage, VoiceChannel: VoiceChannel | StageChannel, argument: string[]): ICommand.all | Promise<ICommand.all> => {
+    public runAPIs = (message: ClientMessage, voice: VoiceChannel | StageChannel, argument: string[]): ICommand.all | Promise<ICommand.all> => {
         const platform = new ResponseAPI(argument[0] ?? argument[1]), platformLow = platform.platform.toLowerCase();
         const platformError = platform.block ? 1 : platform.auth ? 2 : !argument[1].match(platform.filter) && argument[1].startsWith("http") ? 3 : undefined;
 
@@ -161,7 +159,7 @@ export class Collection {
 
                 //Если нет очереди, то создаём
                 const queue = this.get(message.guild.id);
-                if (!queue) this.set(new ArrayQueue(message, VoiceChannel));
+                if (!queue) this.set(new ArrayQueue({message, voice}));
 
                 if (info instanceof Song) this.pushTracks = {queueID: message.guild.id, array: [info], author: message.author};
                 else if (info instanceof Array) this.events.emit("message/search", info, platform.platform, message);

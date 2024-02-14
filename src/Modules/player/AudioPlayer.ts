@@ -1,7 +1,8 @@
 import {AudioPlayerEvents, AudioPlayerStatus} from "@watklok/player/collection";
-import {AudioResource, Filter} from "./AudioResource";
 import {VoiceConnection} from "@discordjs/voice";
 import {TypedEmitter} from "tiny-typed-emitter";
+import {AudioResource} from "./AudioResource";
+import {db} from "@Client/db";
 
 /**
  * @author SNIPPIK
@@ -13,7 +14,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
     private readonly _local = {
         filters: []     as Filter[],
         status: "player/wait"  as AudioPlayerStatus,
-        voice: null     as VoiceConnection,
+        voice:  null    as VoiceConnection,
         stream: null    as AudioResource
     };
     /**
@@ -22,6 +23,33 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @public
      */
     public get filters() { return this._local.filters; };
+
+    /**
+     * @description Получаем параметры фильтров и готовые фильтры для FFmpeg
+     * @return object
+     */
+    public get parseFilters() {
+        const realFilters = [`volume=${db.AudioOptions.volume / 100}`]; let chunkSize = 0;
+
+        //Проверяем фильтры
+        for (const filter of this.filters) {
+
+            //Если фильтр не требует аргумента
+            if (!filter.args) realFilters.push(filter.filter);
+            else realFilters.push(filter.filter + filter.user_arg ?? "");
+
+            //Если у фильтра есть модификатор скорости
+            if (filter?.speed) {
+                if (typeof filter.speed === "number") chunkSize += Number(filter.speed);
+                else chunkSize += Number(this.filters.slice(this.filters.indexOf(filter) + 1));
+            }
+        }
+
+        //Надо ли плавное включения треков
+        realFilters.push(`afade=t=in:st=0:d=${db.AudioOptions.fade}`);
+
+        return { filters: realFilters.join(","), chunkSize }
+    };
 
     /**
      * @description Получение голосового подключения
@@ -195,4 +223,29 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
 
         for (let str of Object.keys(this._local)) this._local[str] = null;
     };
+}
+
+
+/**
+ * @author SNIPPIK
+ * @description Как выглядит фильтр
+ * @interface
+ */
+export interface Filter {
+    //Имена
+    names: string[];
+
+    //Описание
+    description: string;
+
+    //Сам фильтр
+    filter: string;
+
+    //Аргументы
+    args: false | [number, number];
+
+    user_arg: any;
+
+    //Меняется ли скорость
+    speed?: null | number;
 }

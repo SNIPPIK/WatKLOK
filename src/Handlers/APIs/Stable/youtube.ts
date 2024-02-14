@@ -1,7 +1,6 @@
 import {RequestAPI, ItemRequestAPI} from "@handler";
 import {Song} from "@watklok/player/queue/Song";
 import {httpsClient} from "@Client/Request";
-import {Duration} from "@watklok/player";
 import {env} from "@env";
 
 /**

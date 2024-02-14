@@ -11,7 +11,6 @@ export const Duration = new class {
      */
     public randomNumber = (min: number = 0, max: number) => parseInt((Math.random() * (max - min) + min).toFixed(0));
 
-
     /**
      * @description Совмещаем время всех треков из очереди
      * @param songs {} Очередь
@@ -26,7 +25,6 @@ export const Duration = new class {
         return this.parseDuration(time);
     };
 
-
     /**
      * @description Добавляем 0 к числу. Пример: 01:10
      * @param duration {string | number} Число
@@ -37,7 +35,6 @@ export const Duration = new class {
 
         return (fixed < 10) ? ("0" + fixed) : fixed;
     };
-
 
     /**
      * @description Превращаем число в 00:00
@@ -52,7 +49,6 @@ export const Duration = new class {
 
         return (days > 0 ? `${days}:` : "") + (hours > 0 || days > 0 ? `${hours}:` : "") + (minutes > 0 ? `${minutes}:` : "00:") + (seconds > 0 ? `${seconds}` : "00");
     };
-
 
     /**
      * @description Превращаем 00:00 в число

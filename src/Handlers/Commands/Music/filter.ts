@@ -1,5 +1,5 @@
 import {ApplicationCommandOptionType, Colors, EmbedData} from "discord.js";
-import {Filter} from "@watklok/player/AudioResource";
+import {Filter} from "@watklok/player/AudioPlayer";
 import {ArraySort} from "@watklok/player";
 import {Assign, Command} from "@handler";
 import {db} from "@Client/db";
