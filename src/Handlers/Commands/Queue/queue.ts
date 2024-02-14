@@ -1,6 +1,5 @@
-import {ClientMessage} from "@handler/Events/Atlas/interactionCreate";
-import {Song} from "@watklok/player/queue/Song";
 import {Duration, ArraySort} from "@watklok/player";
+import {Colors, EmbedData} from "discord.js";
 import {Assign, Command} from "@handler";
 import {db} from "@Client/db";
 
@@ -17,24 +16,36 @@ export default class extends Assign<Command> {
 
                 //Если нет очереди
                 if (!queue) return { content: `${author}, ⚠ | Музыка сейчас не играет.`, color: "Yellow" };
+                else if (queue.songs.length === 1) return { content: `${author}, ⚠ | Играет всего один трек.`, color: "Yellow" };
 
-                //Получаем то что надо было преобразовать в string[]
-                const pages = ArraySort<Song>(10, queue.songs, (song, index) => {
-                    const Duration = song.duration.full;
+                let num = 0;
+                const pages = ArraySort(5, queue.songs.slice(1), (track) => { num++;
+                    return `\`${num}\` - \`\`[${track.duration.full}]\`\` [${track.requester.username}](${track.author.url}) - [${track.title}](${track.url})`;
+                }, "\n");
+                const embed: EmbedData = {
+                    title: `Queue - ${message.guild.name}`,
+                    color: Colors.Green,
+                    fields: [
+                        {
+                            name: `**Играет:**`,
+                            value: `\`\`\`${queue.songs.song.title}\`\`\``
+                        }
+                    ],
+                    footer: {
+                        text: `${queue.songs.song.requester.username} | Лист 1 из ${pages.length} | Songs: ${queue.songs.length}/${Duration.getTimeArray(queue.songs)}`,
+                        iconURL: queue.songs.song.requester.avatar
+                    }
+                };
 
-                    return `[${index + 1}] - [${Duration}] | ${song.title}`;
-                });
-
-                const CurrentPlaying = `Current playing -> [${queue.songs.song.title}]`; //Музыка, которая играет сейчас
-                const Footer = `${Duration.getTimeArray(queue.songs)} | Лист 1 из ${pages.length} | Songs: ${queue.songs.length}`; //Что будет снизу сообщения
+                if (pages.length > 0) embed.fields.push({ name: "**Следующее:**", value: pages[0] });
 
                 return {
-                    content: `\`\`\`css\n➡️ | ${CurrentPlaying}\n\n${pages[0]}\n\n${Footer}\`\`\``, pages, page: 1,
-                    callback: (msg: ClientMessage, pages: string[], page: number) => {
-                        const CurrentPlaying = `Current playing -> [${queue.songs.song.title}]`;
-                        const Footer = `${Duration.getTimeArray(queue.songs)} | Лист ${page} из ${pages.length} | Songs: ${queue.songs.length}`;
+                    embeds: [embed], pages, page: 1,
+                    callback: (msg, pages: string[], page: number) => {
+                        embed.fields[1] = { name: "**Следующее:**", value: pages[page - 1] };
+                        const updateEmbed = { ...embed, footer: { ...embed.footer, text: `${message.author.username} | Лист ${page} из ${pages.length} | Songs: ${queue.songs.length}` } };
 
-                        return msg.edit(`\`\`\`css\n➡️ | ${CurrentPlaying}\n\n${pages[page - 1]}\n\n${Footer}\`\`\``);
+                        return msg.edit({ embeds: [updateEmbed] });
                     }
                 };
             }

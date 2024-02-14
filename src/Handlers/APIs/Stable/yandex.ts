@@ -78,12 +78,7 @@ export default class extends RequestAPI {
 
                                         const AlbumImage = YandexLib.parseImage({image: api?.["ogImage"] ?? api?.["coverUri"]});
                                         const tracks: Song.track[] = api["volumes"]?.pop().splice(0, env.get("APIs.limit.playlist"));
-                                        //const Author = await YandexLib.getAuthor(api["artists"][0]?.id);
-
-                                        const songs = tracks.map((track) => {
-                                            //track.author = Author;
-                                            return YandexLib.track(track);
-                                        });
+                                        const songs = tracks.map(YandexLib.track);
 
                                         return resolve({url, title: api.title, image: AlbumImage, items: songs});
                                     } catch (e) {

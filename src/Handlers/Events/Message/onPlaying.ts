@@ -10,31 +10,31 @@ export default class extends Assign<PlayerEvent> {
             name: "message/playing",
             type: "player",
             execute: (queue: ArrayQueue, IsReturn?: boolean) => {
-                const {color, author, image, requester, title, url, duration} = queue.songs.song;
-
-                //Делаем заготовку для progress bar'а
-                const currentTime = queue.player?.stream?.duration ?? 0;
-                const progress = `\`\`${Duration.parseDuration(currentTime)}\`\` ${new ProgressBar(currentTime, duration.seconds).bar} \`\`${duration.full}\`\``;
-                const fields = [
-                    {
-                        name: `**Сейчас играет**`,
-                        value: `**❯** **[${title}](${url})**\n${progress}`
-                    }
-                ];
+                const {color, author, image, title, url, duration} = queue.songs.song;
+                const embed = {
+                    color, thumbnail: image,
+                    author: {name: author.title, url: author.url, iconURL: db.emojis.diskImage},
+                    fields: [
+                        {
+                            name: `**Играет:**`,
+                            value: `\`\`\`${title}\`\`\``
+                        }
+                    ]
+                };
 
                 //Следующий трек
                 if (queue.songs.size > 1) {
-                    const song = queue.songs[1];
-                    fields.push({name: `**Следующий трек**`, value: `**❯** **[${song.title}](${song.url})**`});
+                    const tracks = queue.songs.slice(1, 5).map((track, index) => {
+                        return `\`${index+2}\` - \`\`[${track.duration.full}]\`\` [${track.author.title}](${track.author.url}) - [${track.title}](${track.url})`;
+                    });
+
+                    embed.fields.push({ name: `**Следующее:**`, value: tracks.join("\n") });
                 }
-                const embed = {
-                    color, thumbnail: image, fields,
-                    author: {name: author.title, url: author.url, iconURL: db.emojis.diskImage},
-                    footer: {
-                        text: `${requester.username} | ${queue.songs.time} | 🎶: ${queue.songs.size}`,
-                        iconURL: requester.avatar
-                    }
-                }
+
+                //Progress bar
+                const currentTime = queue.player?.stream?.duration ?? 0;
+                const progress = `\`\`${Duration.parseDuration(currentTime)}\`\` ${new ProgressBar(currentTime, duration.seconds).bar} \`\`${duration.full}\`\``;
+                embed.fields.push({ name: " ", value: `\n[|](${url})${progress}[|](${url})` });
 
                 if (!IsReturn) {
                     new ActionMessage({

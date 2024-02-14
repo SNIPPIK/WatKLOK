@@ -39,21 +39,7 @@ else {
 process.on("uncaughtException", (err: Error) => {
     if (err?.message?.match(/APIs/)) Logger.log("WARN", `[CODE: <90404>]: [${err.name}/${err.message}]\n${err.stack}`);
     else if (err.name?.match(/acknowledged./)) Logger.log("WARN", `[CODE: <50490>]: [${err.name}/${err.message}]\nЗапущено несколько ботов!\nЗакройте их через диспетчер!`);
-    //else if (err.name === undefined) return;
 
     //Если не прописана ошибка
     else Logger.log("ERROR", `\n┌ Name:    ${err.name}\n├ Message: ${err.message}\n└ Stack:   ${err.stack}`);
-});
-
-/**
- * Событие 'unhandledRejection' генерируется всякий раз, когда a Promise отклоняется и к обещанию не присоединяется обработчик ошибок в ходе цикла событий.
- * При программировании с использованием обещаний исключения инкапсулирующем как «отклоненные обещания».
- * Отклонения можно перехватывать и обрабатывать с помощью promise.catch() и распространять по Promise цепочке.
- * Это 'unhandledRejection' событие полезно для обнаружения и отслеживания отклоненных обещаний, отклонения которых еще не были обработаны.
- *
- * Original: https://nodejs.org/api/process.html#event-unhandledrejection
- */
-process.on("unhandledRejection1", (reason: string, promise) => {
-    //if (reason?.match(/acknowledged./)) return;
-    Logger.log("WARN", `\n┌ Name:    unhandledRejection\n├ Reason:  ${reason}\n└ Promise: ${promise}`);
 });

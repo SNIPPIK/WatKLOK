@@ -14,7 +14,7 @@ export default class extends Assign<PlayerEvent> {
             execute: (queue: ArrayQueue | ClientMessage, obj: Song | Song.playlist) => {
 
                 if (queue instanceof ArrayQueue) {
-                    const {color, author, image, title, url, duration, requester} = queue.songs.last;
+                    const {color, author, image, title, requester, duration} = queue.songs.last;
 
                     if (obj instanceof Song) {
                         new ActionMessage({
@@ -24,15 +24,13 @@ export default class extends Assign<PlayerEvent> {
                                     color, thumbnail: image,
                                     author: {name: author.title, iconURL: db.emojis.diskImage, url: author.url},
                                     footer: {
-                                        text: `${requester.username} | ${queue.songs.time} | 🎶: ${queue.songs.size}`,
+                                        text: `${requester.username} | ${duration.full} | 🎶: ${queue.songs.size}`,
                                         iconURL: requester.avatar
                                     },
-
-
                                     fields: [
                                         {
-                                            name: "**Новый трек в очереди**",
-                                            value: `**❯** **[${title}](${url}})\n**❯** \`\`${duration.full}\`\`**`
+                                            name: "**Добавлен трек:**",
+                                            value: `\`\`\`${title}\`\`\`\ `
                                         }
                                     ]
                                 }
@@ -42,10 +40,10 @@ export default class extends Assign<PlayerEvent> {
                     }
                     return;
                 } else if ("items" in obj) {
-                    const {author, image, url, title, items} = obj;
+                    const {author, image, title, items} = obj;
 
                     new ActionMessage({
-                        message: queue, replied: true, time: 12e3,
+                        message: queue, replied: true, time: 20e3,
                         embeds: [
                             {
                                 color: Colors.Blue, timestamp: new Date(),
@@ -58,8 +56,8 @@ export default class extends Assign<PlayerEvent> {
                                 },
                                 fields: [
                                     {
-                                        name: `**Найден плейлист**`,
-                                        value: `**❯** **[${title}](${url})**\n**❯** **Всего треков: ${items.length}**`
+                                        name: `**Добавлен плейлист:**`,
+                                        value: `\`\`\`${title}\`\`\`\ `
                                     }
                                 ]
                             }

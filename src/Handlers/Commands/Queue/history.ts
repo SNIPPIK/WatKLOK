@@ -1,7 +1,7 @@
 import {History} from "@watklok/player/utils/History";
 import {ArraySort} from "@watklok/player";
-import { Colors } from "discord.js";
 import {Assign, Command} from "@handler";
+import { Colors } from "discord.js";
 
 export default class extends Assign<Command> {
     public constructor() {
