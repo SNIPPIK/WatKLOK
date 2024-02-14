@@ -334,7 +334,7 @@ export class ActionMessage {
             //Если меню, то не надо удалять
             if ("page" in options) this._createMenu(message);
             else if (time !== 0) ActionMessage.delete = {message, time};
-        }).catch((err) => Logger.log("WARN", err));
+        }).catch((err) => Logger.log("ERROR", err));
     };
 
     /**

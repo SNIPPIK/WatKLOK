@@ -26,17 +26,17 @@ export default class extends RequestAPI {
                     public constructor() {
                         super({
                             name: "track",
-                            filter: /(album)?(track)/,
+                            filter: /(album)\/[0-9]+\/(track)\/[0-9]+/gi,
                             callback: (url) => {
-                                const ID = url.split(/[^0-9]/g).filter(str => str !== "");
+                                const ID = /track\/[0-9]+/gi.exec(url)?.pop()?.split("track")?.pop();
 
                                 return new Promise<Song>(async (resolve, reject) => {
                                     try {
-                                        if (ID.length < 2) return reject(Error("[APIs]: Не найден ID трека или альбома!"));
+                                        if (!ID) return reject(Error("[APIs]: Не найден ID трека!"));
 
                                         //Делаем запрос
-                                        const api = await YandexLib.API(`tracks/${ID[1]}`);
-                                        const audio = await YandexLib.getAudio(ID[1]);
+                                        const api = await YandexLib.API(`tracks/${ID}`);
+                                        const audio = await YandexLib.getAudio(ID);
 
                                         //Обрабатываем ошибки
                                         if (api instanceof Error || audio instanceof Error) return reject(api);
@@ -60,9 +60,9 @@ export default class extends RequestAPI {
                     public constructor() {
                         super({
                             name: "album",
-                            filter: /album/,
+                            filter: /(album)\/[0-9]+/,
                             callback: (url): any => {
-                                const ID = url.split(/[^0-9]/g).find(str => str !== "");
+                                const ID = /[0-9]+/.exec(url).pop();
 
                                 return new Promise<Song.playlist>(async (resolve, reject) => {
                                     //Если ID альбома не удалось извлечь из ссылки
@@ -97,22 +97,21 @@ export default class extends RequestAPI {
                     public constructor() {
                         super({
                             name: "playlist",
-                            filter: /playlists/,
+                            filter: /(users\/[a-zA-Z0-9]+).*(playlists\/[0-9]+)/,
                             callback: (url) => {
-                                const user = url.split("users/")[1].split("/")[0];
-                                const playlistID = url.split("playlists/")[1]?.split("/")[0];
+                                const ID = /(users\/[a-zA-Z0-9]+).*(playlists\/[0-9]+)/.exec(url);
 
                                 return new Promise<Song.playlist>(async (resolve, reject) => {
-                                    if (!user) return reject(Error("[APIs]: Не найден ID пользователя!"));
-                                    else if (!playlistID) return reject(Error("[APIs]: Не найден ID плейлиста!"));
+                                    if (!ID[1]) return reject(Error("[APIs]: Не найден ID пользователя!"));
+                                    else if (!ID[2]) return reject(Error("[APIs]: Не найден ID плейлиста!"));
 
                                     try {
                                         //Создаем запрос
-                                        const api = await YandexLib.API(`users/${user}/playlists/${playlistID}`);
+                                        const api = await YandexLib.API(ID.at(0));
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
-                                        else if (api.tracks.length === 0) return reject(Error("[APIs]: Я не нахожу треков в этом плейлисте!"));
+                                        else if (api?.tracks?.length === 0) return reject(Error("[APIs]: Я не нахожу треков в этом плейлисте!"));
 
                                         const image = YandexLib.parseImage({image: api?.["ogImage"] ?? api?.["coverUri"]});
                                         const tracks: any[] = api.tracks?.splice(0, env.get("APIs.limit.playlist"));
@@ -122,7 +121,7 @@ export default class extends RequestAPI {
                                             url, title: api.title, image: image, items: songs,
                                             author: {
                                                 title: api.owner.name,
-                                                url: `https://music.yandex.ru/users/${user}`
+                                                url: `https://music.yandex.ru/users/${ID[1]}`
                                             }
                                         });
                                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
@@ -139,9 +138,9 @@ export default class extends RequestAPI {
                     public constructor() {
                         super({
                             name: "artist",
-                            filter: /artist/,
+                            filter: /(artist)\/[0-9]+/,
                             callback: (url) => {
-                                const ID = url.split(/[^0-9]/g).find(str => str !== "");
+                                const ID = /[0-9]+/.exec(url);
 
                                 return new Promise<Song[]>(async (resolve, reject) => {
                                     //Если ID автора не удалось извлечь из ссылки
@@ -149,7 +148,7 @@ export default class extends RequestAPI {
 
                                     try {
                                         //Создаем запрос
-                                        const api = await YandexLib.API(`artists/${ID}/tracks`);
+                                        const api = await YandexLib.API(`artists/${ID.pop()}/tracks`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
@@ -190,7 +189,7 @@ export default class extends RequestAPI {
                         });
                     };
                 }
-            ],
+            ]
         });
     };
 }

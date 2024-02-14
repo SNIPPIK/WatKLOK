@@ -25,7 +25,10 @@ export default class extends Assign<PlayerEvent> {
                 //Следующий трек
                 if (queue.songs.size > 1) {
                     const tracks = queue.songs.slice(1, 5).map((track, index) => {
-                        return `\`${index+2}\` - \`\`[${track.duration.full}]\`\` [${track.author.title}](${track.author.url}) - [${track.title}](${track.url})`;
+                        const title = `[${track.title.slice(0, 50)}](${track.url})`;
+
+                        if (track.platform === "YOUTUBE") return `\`${index+2}.\` \`\`[${track.duration.full}]\`\` ${title}`;
+                        return `\`${index+2}.\` \`\`[${track.duration.full}]\`\` [${track.author.title}](${track.author.url}) - ${title}`;
                     });
 
                     embed.fields.push({ name: `**Следующее:**`, value: tracks.join("\n") });

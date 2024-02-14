@@ -28,7 +28,7 @@ export default class extends RequestAPI {
                             name: "track",
                             filter: /(watch|embed|youtu\.be)/gi,
                             callback: (url: string) => {
-                                const ID = YouTubeLib.getID(url);
+                                const ID = /[a-zA-Z0-9-_]{11}/.exec(url);
 
                                 return new Promise<Song>(async (resolve, reject) => {
                                     //Если ID видео не удалось извлечь из ссылки
@@ -60,9 +60,9 @@ export default class extends RequestAPI {
                     public constructor() {
                         super({
                             name: "playlist",
-                            filter: /playlist\?list=/gi,
+                            filter: /playlist\?list=[a-zA-Z0-9-_]+/gi,
                             callback: (url: string) => {
-                                const ID = YouTubeLib.getID(url, true);
+                                const ID = url.match(this.filter);
                                 let author = null;
 
                                 return new Promise<Song.playlist>(async (resolve, reject) => {
@@ -71,7 +71,7 @@ export default class extends RequestAPI {
 
                                     try {
                                         //Создаем запрос
-                                        const details = await YouTubeLib.API(`https://www.youtube.com/playlist?list=${ID}`);
+                                        const details = await YouTubeLib.API(`https://www.youtube.com/${ID.pop()}`);
 
                                         if (details instanceof Error) return reject(details);
 
@@ -279,24 +279,6 @@ class YouTubeLib {
                 });
             }).catch(() => resolve(null));
         });
-    };
-
-    /**
-     * @description Получаем ID
-     * @param url {string} Ссылка
-     * @param isPlaylist
-     */
-    public static getID = (url: string, isPlaylist: boolean = false): string => {
-        try {
-            if (typeof url !== "string") return null;
-            const parsedLink = new URL(url);
-
-            if (parsedLink.searchParams.get("list") && isPlaylist) return parsedLink.searchParams.get("list");
-            else if (parsedLink.searchParams.get("v") && !isPlaylist) return parsedLink.searchParams.get("v");
-            else if (url.match(/shorts/)) return parsedLink.pathname.split("/").pop();
-            else if (url.match(/si=/)) return parsedLink.pathname.split("/")[1].split("si=")[0];
-            else return parsedLink.pathname.split("/")[1];
-        } catch (err) { return null; }
     };
 
     /**

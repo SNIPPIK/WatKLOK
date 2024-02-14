@@ -30,7 +30,6 @@ export default class extends RequestAPI {
             url: "open.spotify.com",
 
             requests: [
-
                 /**
                  * @description Запрос данных о треке
                  */
@@ -38,9 +37,9 @@ export default class extends RequestAPI {
                     public constructor() {
                         super({
                             name: "track",
-                            filter: /track/i,
+                            filter: /track\/[0-9z]+/i,
                             callback: (url: string) => {
-                                const ID = SpotifyLib.getID(url);
+                                const ID = /track\/[a-zA-Z0-9]+/.exec(url)?.pop()?.split("track\/")?.pop();
 
                                 return new Promise<Song>(async (resolve, reject) => {
                                     //Если ID трека не удалось извлечь из ссылки
@@ -68,9 +67,9 @@ export default class extends RequestAPI {
                     public constructor() {
                         super({
                             name: "album",
-                            filter: /album/i,
+                            filter: /album\/[0-9z]+/i,
                             callback: (url: string) => {
-                                const ID = SpotifyLib.getID(url);
+                                const ID = /album\/[a-zA-Z0-9]+/.exec(url)?.pop()?.split("album\/")?.pop();
 
                                 return new Promise<Song.playlist>(async (resolve, reject) => {
                                     //Если ID альбома не удалось извлечь из ссылки
@@ -102,9 +101,9 @@ export default class extends RequestAPI {
                     public constructor() {
                         super({
                             name: "playlist",
-                            filter: /playlist/i,
+                            filter: /playlist\/[0-9z]+/i,
                             callback: (url: string) => {
-                                const ID = SpotifyLib.getID(url);
+                                const ID = /playlist\/[a-zA-Z0-9]+/.exec(url)?.pop()?.split("playlist\/")?.pop();
 
                                 return new Promise<Song.playlist>(async (resolve, reject) => {
                                     //Если ID плейлиста не удалось извлечь из ссылки
@@ -137,9 +136,9 @@ export default class extends RequestAPI {
                     public constructor() {
                         super({
                             name: "artist",
-                            filter: /artist/i,
+                            filter: /artist\/[0-9z]+/i,
                             callback: (url: string) => {
-                                const ID = SpotifyLib.getID(url);
+                                const ID = /artist\/[a-zA-Z0-9]+/.exec(url)?.pop()?.split("artist\/")?.pop();
 
                                 return new Promise<Song[]>(async (resolve, reject) => {
                                     //Если ID автора не удалось извлечь из ссылки
@@ -183,7 +182,7 @@ export default class extends RequestAPI {
                         });
                     };
                 }
-            ],
+            ]
         });
     };
 }
@@ -223,31 +222,19 @@ class SpotifyLib {
         });
     }
 
-    private static getToken = (): Promise<void> => {
-        return new httpsClient(`${this.authorization.account}/token`, {
-            headers: {
-                "Accept": "application/json",
-                "Authorization": `Basic ${this.authorization.aut}`,
-                "Content-Type": "application/x-www-form-urlencoded",
-                "accept-encoding": "gzip, deflate, br"
-            },
-            body: "grant_type=client_credentials",
-            method: "POST"
-        }).toJson.then((result) => {
-            ldb.time = Date.now() + result["expires_in"];
-            ldb.token = result["access_token"];
-        });
-    };
-
-    /**
-     * @description Получаем ID трека, плейлиста, альбома
-     * @param url {string} Ссылка на трек, плейлист, альбом
-     */
-    public static getID(url: string): string {
-        if (typeof url !== "string") return undefined;
-
-        return url?.split('/')?.at(-1);
-    }
+    private static getToken = (): Promise<void> => new httpsClient(`${this.authorization.account}/token`, {
+        headers: {
+            "Accept": "application/json",
+            "Authorization": `Basic ${this.authorization.aut}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+            "accept-encoding": "gzip, deflate, br"
+        },
+        body: "grant_type=client_credentials",
+        method: "POST"
+    }).toJson.then((result) => {
+        ldb.time = Date.now() + result["expires_in"];
+        ldb.token = result["access_token"];
+    });
 
     /**
      * @description Собираем трек в готовый образ

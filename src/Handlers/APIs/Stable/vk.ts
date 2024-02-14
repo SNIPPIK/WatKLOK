@@ -18,7 +18,6 @@ export default class extends RequestAPI {
             url: "vk.com",
 
             requests: [
-
                 /**
                  * @description Запрос данных о треке
                  */
@@ -26,9 +25,9 @@ export default class extends RequestAPI {
                     public constructor() {
                         super({
                             name: "track",
-                            filter: /audio/,
+                            filter: /(audio)([0-9]+_[0-9]+_[a-zA-Z0-9]+|-[0-9]+_[a-zA-Z0-9]+)/i,
                             callback: (url) => {
-                                const ID = VKLib.getID(url);
+                                const ID = /([0-9]+_[0-9]+_[a-zA-Z0-9]+|[0-9]+_[a-zA-Z0-9]+)/i.exec(url);
 
                                 return new Promise<Song>(async (resolve, reject) => {
                                     //Если ID трека не удалось извлечь из ссылки
@@ -36,7 +35,7 @@ export default class extends RequestAPI {
 
                                     try {
                                         //Создаем запрос
-                                        const api = await VKLib.API("audio", "getById", `&audios=${ID}`);
+                                        const api = await VKLib.API("audio", "getById", `&audios=${ID.pop()}`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
@@ -59,8 +58,7 @@ export default class extends RequestAPI {
                 new class extends ItemRequestAPI {
                     public constructor() {
                         super({
-                            name: "track",
-                            filter: /audio/,
+                            name: "search",
                             callback: (url) => {
                                 return new Promise<Song[]>(async (resolve, reject) => {
                                     try {
@@ -78,7 +76,7 @@ export default class extends RequestAPI {
                         });
                     };
                 }
-            ],
+            ]
         });
     };
 }
@@ -111,16 +109,6 @@ class VKLib {
                 return resolve(api);
             }).catch((err) => resolve(Error(`[APIs]: ${err}`)));
         });
-    };
-
-
-    /**
-     * @description Получаем ID из ссылки
-     * @param url {string} Ссылка
-     */
-    public static getID = (url: string): string => {
-        if (url.match(/\/audio/)) return url.split("/audio").at(- 1);
-        return url.split("playlist/").at(- 1);
     };
 
 
