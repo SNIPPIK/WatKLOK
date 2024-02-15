@@ -1,6 +1,6 @@
 import {RequestAPI, ItemRequestAPI} from "@handler";
 import {Song} from "@watklok/player/queue/Song";
-import {httpsClient} from "@Client/Request";
+import {httpsClient} from "@watklok/request";
 import crypto from "node:crypto";
 import {env} from "@env";
 /**

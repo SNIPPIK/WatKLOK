@@ -2,7 +2,7 @@ import {Collection as AudioCollection} from "@watklok/player/collection";
 import {Command, Event, API, RequestAPI} from "@handler";
 import {Filter} from "@watklok/player/AudioPlayer";
 import {Collection, Routes} from "discord.js";
-import {httpsClient} from "@Client/Request";
+import {httpsClient} from "@watklok/request";
 import {Atlas, Logger} from "@Client";
 import {readdirSync} from "node:fs";
 import {env} from "@env";

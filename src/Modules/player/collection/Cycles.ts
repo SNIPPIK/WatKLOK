@@ -4,7 +4,7 @@ import onPlaying from "@handler/Events/Message/onPlaying";
 import {AudioPlayer} from "@watklok/player/AudioPlayer";
 import {ActionMessage, PlayerEvent} from "@handler";
 import {Song} from "@watklok/player/queue/Song";
-import {httpsClient} from "@Client/Request";
+import {httpsClient} from "@watklok/request";
 import {TimeCycle} from "@watklok/timer";
 import {EmbedData} from "discord.js";
 import {Logger} from "@Client";

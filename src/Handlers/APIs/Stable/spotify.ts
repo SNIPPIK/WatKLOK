@@ -1,6 +1,6 @@
 import {RequestAPI, ItemRequestAPI} from "@handler";
 import {Song} from "@watklok/player/queue/Song";
-import {httpsClient} from "@Client/Request";
+import {httpsClient} from "@watklok/request";
 import {env} from "@env";
 
 //Локальная база данных

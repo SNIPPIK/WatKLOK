@@ -1,4 +1,4 @@
-import {httpsClient} from "@Client/Request";
+import {httpsClient} from "@watklok/request";
 import {API, ResponseAPI} from "@handler";
 import {Duration} from "@watklok/player";
 import {db} from "@Client/db";
