@@ -49,7 +49,7 @@ abstract class ServerQueue {
                     this.emit("player/ended", this, seek);
                     this.read = new AudioResource(options as any);
                 }).catch((err) => {
-                    this.emit("player/ended", this, err);
+                    this.emit("player/error", this, err);
                 });
             };
         }
@@ -195,26 +195,25 @@ class ServerQueueSongs extends Array<Song> {
  * @class ArrayQueue
  */
 export class ArrayQueue extends ServerQueue {
+    private readonly _components = [
+        { type: 2, emoji: {id: db.emojis.button.queue}, custom_id: 'queue', style: 2 },         //Queue list
+        { type: 2, emoji: {id: db.emojis.button.pref}, custom_id: 'last', style: 2 },           //Last song
+        { type: 2, emoji: {id: db.emojis.button.pause}, custom_id: 'resume_pause', style: 2 },  //Resume/Pause
+        { type: 2, emoji: {id: db.emojis.button.next}, custom_id: 'skip', style: 2 },           //Skip song
+        { type: 2, emoji: {id: db.emojis.button.loop}, custom_id: 'repeat', style: 2 }          //Loop
+    ];
+
     /**
      * @description Получение кнопок
      * @public
      */
     public get components() {
-        let components = [
-            { type: 2, emoji: {id: db.emojis.button.queue}, custom_id: 'queue', style: 2 }, { type: 2, emoji: {id: db.emojis.button.pref}, custom_id: 'last', style: 2 }
-        ];
-
         //Делаем проверку на кнопку ПАУЗА/ПРОДОЛЖИТЬ
-        if (this.player.status === "player/pause") components.push({ type: 2, emoji: {id: db.emojis.button.resume}, custom_id: 'resume_pause', style: 2 });
-        else components.push({ type: 2, emoji: {id: db.emojis.button.pause}, custom_id: 'resume_pause', style: 2 });
+        if (this.player.status === "player/pause") Object.assign(this._components[2], {emoji: {id: db.emojis.button.resume}});
 
-        components.push({ type: 2, emoji: {id: db.emojis.button.next}, custom_id: 'skip', style: 2 });
+        if (this.loop === "song") Object.assign(this._components[4], { emoji: {id: db.emojis.button.loop_one}, style: 1 });
+        else if (this.loop === "songs") Object.assign(this._components[4],{ emoji: {id: db.emojis.button.loop}, style: 1 });
 
-        //Делаем проверку на кнопку REPEAT
-        if (this.loop === "song") components.push({ type: 2, emoji: {id: db.emojis.button.loop_one}, custom_id: 'repeat', style: 1 });
-        else if (this.loop === "songs") components.push({ type: 2, emoji: {id: db.emojis.button.loop}, custom_id: 'repeat', style: 1 });
-        else components.push({ type: 2, emoji: {id: db.emojis.button.loop}, custom_id: 'repeat', style: 2 });
-
-        return { type: 1, components };
+        return {type: 1, components: this._components};
     };
 }

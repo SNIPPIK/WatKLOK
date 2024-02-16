@@ -118,7 +118,7 @@ export class httpsClient extends Request {
      * @public
      */
     public get toString(): Promise<string | Error> {
-        if (!workerData?.req && worker) return runWorker({type: "toString", options: this._options});
+        if (!workerData?.req && worker) return this.runWorker({type: "toString", options: this._options});
 
         return new Promise((resolve) => this.request.then((request) => {
             if (request instanceof Error) return resolve(request);
@@ -143,7 +143,7 @@ export class httpsClient extends Request {
      * @public
      */
     public get toJson(): Promise<null | any | Error> {
-        if (!workerData?.req && worker) return runWorker({type: "toJson", options: this._options});
+        if (!workerData?.req && worker) return this.runWorker({type: "toJson", options: this._options});
 
         return this.toString.then((body) => {
             if (body instanceof Error) return body;
@@ -174,7 +174,7 @@ export class httpsClient extends Request {
      * @public
      */
     public get toXML(): Promise<Error | string[]> {
-        if (!workerData?.req && worker) return runWorker({type: "toXML", options: this._options});
+        if (!workerData?.req && worker) return this.runWorker({type: "toXML", options: this._options});
 
         return this.toString.then((body) => {
             if (body instanceof Error) return Error("Not found XML data!");
@@ -184,27 +184,27 @@ export class httpsClient extends Request {
             );
         });
     };
-}
 
-/**
- * @description Поднимаем другое ядро для взаимодействия
- * @param data
- */
-function runWorker(data: {type: "toJson" | "toString" | "toXML", options: httpsClient["_options"]}): Promise<string | Error | any> {
-    return new Promise((resolve,reject) => {
-        const worker = new Worker(__filename, { workerData: {req: data}, execArgv: ["-r", "tsconfig-paths/register"]}), core = worker.threadId;
-        Logger.log("DEBUG", `[Worker/${core} | httpClient/${data.type}] is running!`);
+    /**
+     * @description Поднимаем другое ядро для взаимодействия
+     * @param data
+     */
+    private runWorker = (data: {type: "toJson" | "toString" | "toXML", options: httpsClient["_options"]}): Promise<string | Error | any> => {
+        return new Promise((resolve,reject) => {
+            const worker = new Worker(__filename, { workerData: {req: data}, execArgv: ["-r", "tsconfig-paths/register"]}), core = worker.threadId;
+            Logger.log("DEBUG", `[Worker/${core} | httpClient/${data.type}] is running!`);
 
-        worker.once("message", (data) => {
-            setImmediate(() => worker.emit("exit"));
-            resolve(data);
-        }).once("error", (err) => {
-            setImmediate(() => worker.emit("exit"));
-            reject(err);
-        }).once("exit", () => {
-            Logger.log("DEBUG", `[Worker/${core}] is exit`);
+            worker.once("message", (data) => {
+                setImmediate(() => worker.emit("exit"));
+                resolve(data);
+            }).once("error", (err) => {
+                setImmediate(() => worker.emit("exit"));
+                reject(err);
+            }).once("exit", () => {
+                Logger.log("DEBUG", `[Worker/${core}] is exit`);
+            });
         });
-    });
+    };
 }
 
 /**

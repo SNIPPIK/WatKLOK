@@ -1,19 +1,19 @@
-import process from "process";
-require("dotenv").config();
+import {DotenvPopulateInput, config} from "dotenv";
 
 /**
  * @author SNIPPIK
  * @description Взаимодействуем с env
  */
 export const env = new class {
+    private readonly dotenv = config();
     /**
      * @description Получаем значение
      * @param name {string} Имя
      * @readonly
      * @public
      */
-    public readonly get = (name: string): any => {
-        const env = process.env[name];
+    public readonly get = (name: keyof DotenvPopulateInput): any => {
+        const env = this.dotenv.parsed[name];
 
         if (!env) throw new Error(`[ENV]: Not found ${name} in .env`);
 
@@ -27,7 +27,7 @@ export const env = new class {
      * @public
      */
     public readonly check = (name: string) => {
-        const env = process.env[name];
+        const env = this.dotenv.parsed[name];
 
         return !(!env || env === "undefined");
     };

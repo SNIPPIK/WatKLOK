@@ -13,8 +13,8 @@ import {env} from "@env";
  * @description База данных бота
  * @public
  */
-export const db = new class QuickDB {
-    private readonly _emojis = {
+export class db {
+    private static readonly _emojis = {
         button: {
             resume: env.get("button.resume"),
             pause: env.get("button.pause"),
@@ -41,7 +41,7 @@ export const db = new class QuickDB {
         noImage: env.get("image.not"),
         diskImage: env.get("image.currentPlay")
     };
-    private readonly _array = {
+    private static readonly _array = {
         /**
          * @author SNIPPIK
          * @description Класс в котором хранятся команды
@@ -71,7 +71,7 @@ export const db = new class QuickDB {
             block: [] as API.platform[]
         }
     };
-    private readonly _audio = {
+    private static readonly _audio = {
         volume:  parseInt(env.get("audio.volume")),
         fade:    parseInt(env.get("audio.fade")),
         bitrate: env.get("audio.bitrate")
@@ -80,47 +80,47 @@ export const db = new class QuickDB {
      * @description Выдаем данные для запуска AudioResource
      * @public
      */
-    public get AudioOptions() { return this._audio; };
+    public static get AudioOptions() { return this._audio; };
 
     /**
      * @description Выдаем класс с командами
      * @public
      */
-    public get commands() { return this._array.commands; };
+    public static get commands() { return this._array.commands; };
 
     /**
      * @description Выдаем все необходимые смайлики
      * @public
      */
-    public get emojis() { return this._emojis; };
+    public static get emojis() { return this._emojis; };
 
     /**
      * @description Получаем все данные об платформе
      * @return object
      * @public
      */
-    public get platforms() { return this._array.platforms; };
+    public static get platforms() { return this._array.platforms; };
 
     /**
      * @description Получаем CollectionQueue
      * @return CollectionQueue
      * @public
      */
-    public get queue() { return this._array.queue; };
+    public static get queue() { return this._array.queue; };
 
     /**
      * @description Получаем фильтры полученные из базы данных github
      * @return Filter[]
      * @public
      */
-    public get filters() { return this._array.filters; };
+    public static get filters() { return this._array.filters; };
 
     /**
      * @description Получаем фильтры из базы данных WatKLOK
      * @return Promise<Error | true>
      * @public
      */
-    private get getFilters(): Promise<Error | true> {
+    private static get getFilters(): Promise<Error | true> {
         return new Promise<Error | true>(async (resolve, reject) => {
             const raw = await new httpsClient(env.get("filters.url"), {useragent: true}).toJson;
 
@@ -137,7 +137,7 @@ export const db = new class QuickDB {
      * @return Promise<true>
      * @public
      */
-    private registerCommands = (client: Atlas): Promise<true> => {
+    private static registerCommands = (client: Atlas): Promise<true> => {
         return new Promise<true>(async (resolve) => {
             //Загружаем все команды
             const PublicData: any = await client.rest.put(Routes.applicationCommands(client.user.id), {body: this.commands.public});
@@ -154,7 +154,7 @@ export const db = new class QuickDB {
      * @return Promise<true>
      * @public
      */
-    private initFs = async (client: Atlas) => {
+    private static initFs = async (client: Atlas) => {
         const dirs = ["Handlers/APIs", "Handlers/Commands", "Handlers/Events"];
         const callbacks = [
             (item: RequestAPI) => {
@@ -190,7 +190,7 @@ export const db = new class QuickDB {
      * @return Promise<true>
      * @public
      */
-    public initHandler = async (client: Atlas) => {
+    public static initHandler = async (client: Atlas) => {
         Logger.log("LOG", `[Shard ${client.ID}] is initialize database`);
 
         //Проверяем статус получения фильтров
@@ -233,20 +233,20 @@ class loadHandlerDir<T> {
 
         readdirSync(path).forEach((file) => {
             if (!file.endsWith(".js")) return;
+            const pathFile = `../../${path}/${file}`;
 
             try {
-                const importFile = require(`../../${path}/${file}`);
+                const importFile = require(pathFile);
                 const keysFile = Object.keys(importFile);
 
-                if (keysFile.length <= 0) {
-                    this.callback({ error: true, message: "TypeError: Not found imports data!"}, `${path}/${file}`);
-                    return;
-                }
-
-                this.callback(new importFile[keysFile[0]], `${path}/${file}`);
+                if (keysFile.length <= 0) this.callback({ error: true, message: "TypeError: Not found imports data!"}, `${path}/${file}`);
+                else this.callback(new importFile[keysFile[0]], `${path}/${file}`);
             } catch (e) {
                 this.callback({ error: true, message: e}, `${path}/${file}`);
             }
+
+            //Удаляем кеш загрузки
+            delete require.cache[require.resolve(pathFile)];
         });
     };
 }

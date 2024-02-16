@@ -3,19 +3,19 @@
  * @description Управление временем
  * @class Duration
  */
-export const Duration = new class {
+export class Duration {
     /**
      * @description Получаем случайное число
      * @param min {number} Мин число
      * @param max {number} Макс число
      */
-    public randomNumber = (min: number = 0, max: number) => parseInt((Math.random() * (max - min) + min).toFixed(0));
+    public static randomNumber = (min: number = 0, max: number) => parseInt((Math.random() * (max - min) + min).toFixed(0));
 
     /**
      * @description Совмещаем время всех треков из очереди
      * @param songs {} Очередь
      */
-    public getTimeArray = (songs: {duration: {seconds: number}}[]): string => {
+    public static getTimeArray = (songs: {duration: {seconds: number}}[]): string => {
         //Если трек треков
         if (songs.length === 0) return "00:00";
 
@@ -30,7 +30,7 @@ export const Duration = new class {
      * @param duration {string | number} Число
      * @return string | number
      */
-    public toSplit = (duration: string | number): string | number => {
+    public static toSplit = (duration: string | number): string | number => {
         const fixed = parseInt(duration as string);
 
         return (fixed < 10) ? ("0" + fixed) : fixed;
@@ -41,7 +41,7 @@ export const Duration = new class {
      * @param duration {number} Время в int
      * @return string
      */
-    public parseDuration = (duration: number): string => {
+    public static parseDuration = (duration: number): string => {
         const days = this.toSplit(duration / ((60 * 60) * 24) % 24) as number;
         const hours = this.toSplit(duration / (60 * 60) % 24) as number;
         const minutes = this.toSplit((duration / 60) % 60) as number;
@@ -55,7 +55,7 @@ export const Duration = new class {
      * @param duration {string} Время в формате 00:00
      * @return number
      */
-    public parseDurationString = (duration: string): number => {
+    public static parseDurationString = (duration: string): number => {
         const time = duration?.split(":").map((value) => parseInt(value)) ?? [parseInt(duration)];
 
         switch (time.length) {

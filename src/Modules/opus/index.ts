@@ -1,4 +1,5 @@
 import {Transform, TransformOptions} from "node:stream";
+import process from "node:process";
 
 export const OpusLibs = [
     [//https://www.npmjs.com/package/opusscript
@@ -24,12 +25,12 @@ const loadModule = ( modules: typeof OpusLibs = OpusLibs ) => {
     for (const obj of modules) {
         try {
             (obj[3] as () => any)();
-
             Opus.push(obj[0], obj[1], (obj[2] as any)());
+            delete require.cache[require.resolve(obj[0] as string)];
         } catch {}
     }
 };
-loadModule();
+if (!process["argv"].includes("--ShardManager")) loadModule();
 
 /**
  * @author SNIPPIK

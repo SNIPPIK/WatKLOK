@@ -1,5 +1,5 @@
 import { ActionRow, ActionRowBuilder, Attachment, BaseInteraction, BaseMessageOptions, CommandInteractionOption, EmbedData, Events, GuildMember, Message, MessagePayload, PermissionsBitField, User} from "discord.js";
-import {ActionMessage, Assign, Event, ICommand} from "@handler";
+import {ActionMessage, Assign, Command, Event, ICommand} from "@handler";
 import {Atlas, Logger} from "@Client";
 import {db} from "@Client/db";
 import {env} from "@env";
@@ -59,7 +59,7 @@ export default class extends Assign<Event<Events.InteractionCreate>> {
         };
 
         //Если прав не хватает, то уведомляем пользователя
-        const clientPermissions = this._checkPermission(command.permissions as string[], guild.members.me?.permissions);
+        const clientPermissions = this._checkPermission(command.permissions, guild.members.me?.permissions);
         if (clientPermissions) return {
             content: `Внимание ${author.tag}\nУ меня нет прав на: ${clientPermissions}`,
             color: "DarkRed", codeBlock: "css"
@@ -104,7 +104,7 @@ export default class extends Assign<Event<Events.InteractionCreate>> {
             }
 
             //Кнопка очереди
-            case "queue": return db.commands.get("queue").execute(message, ["1"]) as ICommand.all;
+            case "queue": return db.commands.get("queue").execute(message) as ICommand.all;
 
             //Кнопка пропуска
             case "skip": return db.commands.get("skip").execute(message, ["1"]) as ICommand.all;
@@ -136,12 +136,12 @@ export default class extends Assign<Event<Events.InteractionCreate>> {
      * @readonly
      * @private
      */
-    private readonly _checkPermission = (permissions: string[], Fields: Readonly<PermissionsBitField>) => {
-        const fail: string[] = [];
+    private readonly _checkPermission = (permissions: Command["permissions"], Fields: Readonly<PermissionsBitField>) => {
+        const fail: any[] = [];
 
         if (permissions && permissions?.length > 0) {
             for (const permission of permissions) {
-                if (!Fields.has(permission as any)) fail.push(permission as string);
+                if (!Fields.has(permission)) fail.push(permission);
             }
 
             return fail.join(", ");
