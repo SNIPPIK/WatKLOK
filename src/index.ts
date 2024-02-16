@@ -21,7 +21,7 @@ else {
     for (const event of ["exit"]) process.on(event, () => {
         Logger.log("DEBUG", "[Process]: is killed!");
         client.destroy().catch((err) => Logger.log("ERROR", err));
-        process.exit(0)
+        process.exit(0);
     });
 }
 

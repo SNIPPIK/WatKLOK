@@ -1,15 +1,14 @@
 import {ClientMessage} from "@handler/Events/Atlas/interactionCreate";
-import {ActionMessage, Assign, PlayerEvent} from "@handler";
-import {ArrayQueue} from "@watklok/player/queue/Queue";
+import {ActionMessage, Assign, Event} from "@handler";
 import {Duration} from "@watklok/player";
 import {db} from "@Client/db";
 
-export default class extends Assign<PlayerEvent> {
+export default class extends Assign<Event<"message/playing">> {
     public constructor() {
         super({
             name: "message/playing",
             type: "player",
-            execute: (queue: ArrayQueue, IsReturn?: boolean) => {
+            execute: (queue, isReturn) => {
                 const {color, author, image, title, url, duration} = queue.songs.song;
                 const embed = {
                     color, thumbnail: image,
@@ -39,15 +38,14 @@ export default class extends Assign<PlayerEvent> {
                 const progress = `\`\`${Duration.parseDuration(currentTime)}\`\` ${new ProgressBar(currentTime, duration.seconds).bar} \`\`${duration.full}\`\``;
                 embed.fields.push({ name: " ", value: `\n[|](${url})${progress}[|](${url})` });
 
-                if (!IsReturn) {
-                    new ActionMessage({
-                        message: queue.message, embeds: [embed], time: 0, replied: true,
-                        components: [queue.components as any],
-                        promise: (msg: ClientMessage) =>  { db.queue.cycles.messages.push = msg }
-                    });
-                    return;
-                }
-                return embed;
+                if (isReturn) return embed;
+
+                //Создаем и отправляем сообщение
+                new ActionMessage({
+                    message: queue.message, embeds: [embed], time: 0, replied: true,
+                    components: [queue.components as any],
+                    promise: (msg: ClientMessage) =>  { db.queue.cycles.messages.push = msg }
+                });
             }
         });
     }

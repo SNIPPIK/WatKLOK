@@ -1,11 +1,11 @@
 import {AudioPlayer} from "@watklok/player/AudioPlayer";
 import {ArrayQueue} from "@watklok/player/queue/Queue";
 import {History} from "@watklok/player/utils/History";
-import {Assign, PlayerEvent} from "@handler";
+import {Assign, Event} from "@handler";
 import {Logger} from "@Client";
 import {db} from "@Client/db";
 
-export default class extends Assign<PlayerEvent> {
+export default class extends Assign<Event<"player/ended">> {
     public constructor() {
         super({
             name: "player/ended",
@@ -13,7 +13,7 @@ export default class extends Assign<PlayerEvent> {
             execute: (queue: ArrayQueue, _: AudioPlayer, seek: number) => {
                 if (seek !== 0) return;
 
-                db.queue.events.emit("message/playing", queue, seek);
+                db.queue.events.emit("message/playing", queue);
                 //История треков сервера
                 try {
                     if (History.enable && queue.songs.song.platform !== "DISCORD") new History(queue.songs.song, queue.guild.id);

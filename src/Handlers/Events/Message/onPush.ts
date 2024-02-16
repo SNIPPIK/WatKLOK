@@ -1,49 +1,41 @@
-import {ClientMessage} from "@handler/Events/Atlas/interactionCreate";
 import {ArrayQueue} from "@watklok/player/queue/Queue";
-import {ActionMessage, Assign, PlayerEvent} from "@handler";
-import {Song} from "@watklok/player/queue/Song";
+import {ActionMessage, Assign, Event} from "@handler";
 import {Duration} from "@watklok/player";
 import {Colors} from "discord.js";
 import {db} from "@Client/db";
 
-export default class extends Assign<PlayerEvent> {
+export default class extends Assign<Event<"message/push">> {
     public constructor() {
         super({
             name: "message/push",
             type: "player",
-            execute: (queue: ArrayQueue | ClientMessage, obj: Song | Song.playlist) => {
+            execute: (queue, obj) => {
+                let options: any;
 
+                //Если был добавлен трек
                 if (queue instanceof ArrayQueue) {
                     const {color, author, image, title, requester, duration} = queue.songs.last;
-
-                    if (obj instanceof Song) {
-                        new ActionMessage({
-                            message: queue.message, replied: true, time: 12e3,
-                            embeds: [
-                                {
-                                    color, thumbnail: image,
-                                    author: {name: author.title, iconURL: db.emojis.diskImage, url: author.url},
-                                    footer: {
-                                        text: `${requester.username} | ${duration.full} | 🎶: ${queue.songs.size}`,
-                                        iconURL: requester.avatar
-                                    },
-                                    fields: [
-                                        {
-                                            name: "**Добавлен трек:**",
-                                            value: `\`\`\`${title}\`\`\`\ `
-                                        }
-                                    ]
-                                }
-                            ]
-                        })
-                        return;
+                    options = { message: queue.message, replied: true, time: 12e3, embeds: [
+                            {
+                                color, thumbnail: image,
+                                author: {name: author.title, iconURL: db.emojis.diskImage, url: author.url},
+                                footer: {
+                                    text: `${requester.username} | ${duration.full} | 🎶: ${queue.songs.size}`,
+                                    iconURL: requester.avatar
+                                },
+                                fields: [
+                                    {
+                                        name: "**Добавлен трек:**",
+                                        value: `\`\`\`${title}\`\`\`\ `
+                                    }
+                                ]
+                            }
+                        ]
                     }
-                    return;
+                //Если был добавлен плейлист
                 } else if ("items" in obj) {
                     const {author, image, title, items} = obj;
-
-                    new ActionMessage({
-                        message: queue, replied: true, time: 20e3,
+                    options = { message: queue, replied: true, time: 20e3,
                         embeds: [
                             {
                                 color: Colors.Blue, timestamp: new Date(),
@@ -62,8 +54,11 @@ export default class extends Assign<PlayerEvent> {
                                 ]
                             }
                         ]
-                    })
+                    }
                 }
+
+                //Создаем и отправляем сообщение
+                new ActionMessage(options);
             }
         });
     }

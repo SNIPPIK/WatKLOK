@@ -2,7 +2,7 @@ import {createWriteStream, existsSync, mkdirSync, rename} from "node:fs";
 import {ClientMessage} from "@handler/Events/Atlas/interactionCreate";
 import onPlaying from "@handler/Events/Message/onPlaying";
 import {AudioPlayer} from "@watklok/player/AudioPlayer";
-import {ActionMessage, PlayerEvent} from "@handler";
+import {ActionMessage, Event} from "@handler";
 import {Song} from "@watklok/player/queue/Song";
 import {httpsClient} from "@watklok/request";
 import {TimeCycle} from "@watklok/timer";
@@ -63,7 +63,7 @@ export class Cycles {
                         else if (!queue.player.playing || !queue.player.stream.duration || !message.editable) return;
 
                         setImmediate(() => {
-                            const newEmbed: EmbedData = (new onPlaying() as PlayerEvent).execute(queue, true);
+                            const newEmbed = (new onPlaying() as Event<"message/playing">).execute(queue, true) as EmbedData;
 
                             //Обновляем сообщение
                             message.edit({

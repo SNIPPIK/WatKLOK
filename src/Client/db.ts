@@ -167,7 +167,7 @@ export const db = new class QuickDB {
                 this.platforms.supported.push(item);
             },
             (item: Command) => this.commands.set(item.name, item),
-            (item: Event<unknown>) => {
+            (item: Event<any>) => {
                 if (item.type === "client") client.on(item.name as any, (...args: any[]) => item.execute(client, ...args)); // @ts-ignore
                 else this.queue.events.on(item.name as any, (...args: any[]) => item.execute(...args));
             }

@@ -1,20 +1,30 @@
-import {
-    ActionRowBuilder,
-    ApplicationCommandOption,
-    ClientEvents,
-    Colors,
-    CommandInteraction,
-    EmbedData,
-    PermissionResolvable
-} from "discord.js";
+import { ActionRowBuilder, ApplicationCommandOption, ClientEvents, Colors, CommandInteraction, EmbedData, PermissionResolvable } from "discord.js";
 import {ClientInteraction, ClientMessage} from "@handler/Events/Atlas/interactionCreate";
+import {AudioPlayerEvents, CollectionEvents} from "@watklok/player/collection";
+import {ArrayQueue} from "@watklok/player/queue/Queue";
 import {Song} from "@watklok/player/queue/Song";
 import {Atlas, Logger} from "@Client";
 import {db} from "@Client/db";
 
 /**
  * @author SNIPPIK
- * @description Загрузка команд
+ * @description Мульти-загрузчик классов
+ * @class Assign
+ * @abstract
+ */
+export abstract class Assign<T> {
+    /**
+     * @description Создаем команду
+     * @param options {Command}
+     * @protected
+     */
+    protected constructor(options: T) {
+        Object.assign(this, options);
+    };
+}
+/**
+ * @author SNIPPIK
+ * @description Класс для команд
  * @interface Command
  */
 export interface Command {
@@ -66,20 +76,84 @@ export interface Command {
      */
     execute: (message: ClientMessage | ClientInteraction, args?: string[]) => ICommand.all | Promise<ICommand.all> | void;
 }
+/**
+ * @author SNIPPIK
+ * @description Интерфейсы для команд
+ * @namespace ICommand
+ */
+export namespace ICommand {
+    /**
+     * @author SNIPPIK
+     * @description Если передаются все типы данных
+     * @type ICommand.all
+     */
+    export type all = (context | menu | embeds) & options
 
+    /**
+     * @author SNIPPIK
+     * @description Данные для отправки текстового сообщения
+     * @interface ICommand.context
+     */
+    export interface context {
+        content: string;
+        codeBlock?: string;
+        color?: "DarkRed" | "Blue" | "Green" | "Default" | "Yellow" | "Grey" | "Navy" | "Gold" | "Orange" | "Purple" | number;
+    }
+
+    /**
+     * @author SNIPPIK
+     * @description Данные для отправки ReactionMenu сообщения
+     * @interface ICommand.menu
+     */
+    export interface menu {
+        content?: string;
+        embeds?: EmbedData[];
+        callback: (message: ClientMessage, pages: string[], page: number) => void;
+        page: number;
+        pages: string[];
+    }
+
+    /**
+     * @author SNIPPIK
+     * @description Данные для отправки EMBED сообщения
+     * @interface ICommand.embeds
+     */
+    export interface embeds {
+        embeds: EmbedData[];
+    }
+
+    /**
+     * @author SNIPPIK
+     * @description Доп данные для ActionMessage
+     * @interface ICommand.options
+     */
+    export interface options {
+        //Компоненты, такие как кнопки
+        components?: ActionRowBuilder[];
+
+        //Что будет делать после отправки сообщения
+        promise?: (msg: ClientMessage) => void;
+
+        //Время через которое надо удалить сообщение
+        time?: number;
+
+        //Надо отвечать на это сообщение
+        replied?: boolean;
+    }
+}
 /**
  * @author SNIPPIK
  * @description Класс для событий
  * @interface Event
  */
-export interface Event<T> {
+export interface Event<T extends keyof ClientEvents | keyof CollectionEvents | keyof AudioPlayerEvents> {
     /**
      * @description Название ивента
      * @default null
      * @readonly
      * @public
      */
-    name: T;
+    name: T extends keyof CollectionEvents ? keyof CollectionEvents : T extends keyof AudioPlayerEvents ? keyof AudioPlayerEvents : keyof ClientEvents;
 
     /**
      * @description Тип ивента
@@ -87,7 +161,7 @@ export interface Event<T> {
      * @readonly
      * @public
      */
-    type: "process" | "client";
+    type: T extends keyof CollectionEvents | keyof AudioPlayerEvents ? "player" : "client";
 
     /**
      * @description Функция, которая будет запущена при вызове ивента
@@ -95,56 +169,7 @@ export interface Event<T> {
      * @readonly
      * @public
      */
-    //@ts-ignore
-    execute: (client: Atlas, ...args: ClientEvents[T]) => void;
-}
-
-/**
- * @author SNIPPIK
- * @description Класс для событий
- * @class PlayerEvent
- */
-export interface PlayerEvent {
-    /**
-     * @description Название ивента
-     * @default null
-     * @readonly
-     * @public
-     */
-    name: string;
-
-    /**
-     * @description Тип ивента
-     * @default null
-     * @readonly
-     * @public
-     */
-    type: "player";
-
-    /**
-     * @description Функция, которая будет запущена при вызове ивента
-     * @default null
-     * @readonly
-     * @public
-     */
-    execute: (...args: any[]) => any;
-}
-
-/**
- * @author SNIPPIK
- * @description Мульти-загрузчик классов
- * @class Assign
- * @abstract
- */
-export abstract class Assign<T> {
-    /**
-     * @description Создаем команду
-     * @param options {Command}
-     * @protected
-     */
-    protected constructor(options: T) {
-        Object.assign(this, options);
-    };
+    execute: T extends keyof CollectionEvents ? CollectionEvents[T] : T extends keyof AudioPlayerEvents ? (queue: ArrayQueue, ...args: Parameters<AudioPlayerEvents[T]>) => any : T extends keyof ClientEvents ? (client: Atlas, ...args: ClientEvents[T]) => void : never;
 }
 
 /**
@@ -255,7 +280,24 @@ export class ResponseAPI {
         }
     };
 }
+/**
+ * @author SNIPPIK
+ * @description Для загрузки запросов из файлов
+ * @namespace API
+ */
+export namespace API {
+    /**
+     * @description Доступные платформы
+     * @type
+     */
+    export type platform = "YOUTUBE" | "SPOTIFY" | "VK" | "DISCORD" | "YANDEX";
 
+    /**
+     * @description Доступные запросы
+     * @type
+     */
+    export type callback = "track" | "playlist" | "search" | "album" | "artist";
+}
 /**
  * @author SNIPPIK
  * @description Создаем класс для запроса на сервер
@@ -279,7 +321,6 @@ export abstract class RequestAPI {
         Object.assign(this, options);
     };
 }
-
 /**
  * @author SNIPPIK
  * @description Создаем класс для итогового запроса
@@ -299,6 +340,7 @@ export abstract class ItemRequestAPI {
         Object.assign(this, options);
     };
 }
+
 
 /**
  * @author SNIPPIK
@@ -413,108 +455,9 @@ export class ActionMessage {
         }
     };
 }
-
-
-
-/**
- *  _____           _                    __
- * |_   _|         | |                  / _|
- *   | |    _ __   | |_    ___   _ __  | |_    __ _   ___    ___   ___
- *   | |   | '_ \  | __|  / _ \ | '__| |  _|  / _` | / __|  / _ \ / __|
- *  _| |_  | | | | | |_  |  __/ | |    | |   | (_| | \__ \ |  __/ \__ \
- * |_____| |_| |_|  \__|  \___| |_|    |_|    \__,_| |___/  \___| |___/
- */
-
-
-
 /**
  * @author SNIPPIK
  * @description Данные которые нужны для отправки сообщений
  * @type IActionMessage
  */
 export type IActionMessage = ICommand.all & { message: ClientMessage | ClientInteraction }
-
-/**
- * @author SNIPPIK
- * @description Интерфейсы для команд
- * @namespace ICommand
- */
-export namespace ICommand {
-    /**
-     * @author SNIPPIK
-     * @description Если передаются все типы данных
-     * @type ICommand.all
-     */
-    export type all = (context | menu | embeds) & options
-
-    /**
-     * @author SNIPPIK
-     * @description Данные для отправки текстового сообщения
-     * @interface ICommand.context
-     */
-    export interface context {
-        content: string;
-        codeBlock?: string;
-        color?: "DarkRed" | "Blue" | "Green" | "Default" | "Yellow" | "Grey" | "Navy" | "Gold" | "Orange" | "Purple" | number;
-    }
-
-    /**
-     * @author SNIPPIK
-     * @description Данные для отправки ReactionMenu сообщения
-     * @interface ICommand.menu
-     */
-    export interface menu {
-        content?: string;
-        embeds?: EmbedData[];
-        callback: (message: ClientMessage, pages: string[], page: number) => void;
-        page: number;
-        pages: string[];
-    }
-
-    /**
-     * @author SNIPPIK
-     * @description Данные для отправки EMBED сообщения
-     * @interface ICommand.embeds
-     */
-    export interface embeds {
-        embeds: EmbedData[];
-    }
-
-    /**
-     * @author SNIPPIK
-     * @description Доп данные для ActionMessage
-     * @interface ICommand.options
-     */
-    export interface options {
-        //Компоненты, такие как кнопки
-        components?: ActionRowBuilder[];
-
-        //Что будет делать после отправки сообщения
-        promise?: (msg: ClientMessage) => void;
-
-        //Время через которое надо удалить сообщение
-        time?: number;
-
-        //Надо отвечать на это сообщение
-        replied?: boolean;
-    }
-}
-
-/**
- * @author SNIPPIK
- * @description Для загрузки запросов из файлов
- * @namespace API
- */
-export namespace API {
-    /**
-     * @description Доступные платформы
-     * @type
-     */
-    export type platform = "YOUTUBE" | "SPOTIFY" | "VK" | "DISCORD" | "YANDEX";
-
-    /**
-     * @description Доступные запросы
-     * @type
-     */
-    export type callback = "track" | "playlist" | "search" | "album" | "artist";
-}

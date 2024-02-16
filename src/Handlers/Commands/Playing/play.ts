@@ -48,7 +48,7 @@ export default class extends Assign<Command> {
                     color: "Yellow"
                 };
 
-                return db.queue.runAPIs(message, VoiceChannel, args);
+                db.queue.events.emit("collection/api", message, VoiceChannel, args);
             }
         });
     };

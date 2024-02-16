@@ -43,7 +43,7 @@ export default class extends Assign<Command> {
                     color: "Yellow"
                 };
 
-                return db.queue.runAPIs(message as any, VoiceChannel, ["DISCORD", attachment.url]);
+                db.queue.events.emit("collection/api", message as any, VoiceChannel, ["DISCORD", attachment.url]);
             }
         });
     };

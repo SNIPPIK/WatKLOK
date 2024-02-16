@@ -30,7 +30,7 @@ export class AudioResource {
      * @return Buffer
      * @public
      */
-    public get packet() {
+    public get packet(): Buffer {
         const packet = this._streams.opus.read();
 
         if (packet) this._temp.frames++;

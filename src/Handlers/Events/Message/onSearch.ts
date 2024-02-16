@@ -1,15 +1,13 @@
 import {ActionRowBuilder, Colors, StringSelectMenuBuilder} from "discord.js";
-import {ClientMessage} from "@handler/Events/Atlas/interactionCreate";
-import {Song} from "@watklok/player/queue/Song";
-import {ActionMessage, Assign, PlayerEvent} from "@handler";
+import {ActionMessage, Assign, Event} from "@handler";
 import {db} from "@Client/db";
 
-export default class extends Assign<PlayerEvent> {
+export default class extends Assign<Event<"message/search">> {
     public constructor() {
         super({
             name: "message/search",
             type: "player",
-            execute: (tracks: Song[], platform: string, message: ClientMessage) => {
+            execute: (tracks, platform, message) => {
                 if (tracks?.length < 1 || !tracks) return void (new ActionMessage({
                     content: `${message.author} | Я не смог найти музыку с таким названием. Попробуй другое название!`,
                     color: "DarkRed", message, replied: true
