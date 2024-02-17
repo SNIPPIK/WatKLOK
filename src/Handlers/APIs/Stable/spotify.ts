@@ -33,7 +33,7 @@ export default class extends RequestAPI {
                 /**
                  * @description Запрос данных о треке
                  */
-                new class extends ItemRequestAPI {
+                new class extends ItemRequestAPI<"track"> {
                     public constructor() {
                         super({
                             name: "track",
@@ -63,7 +63,7 @@ export default class extends RequestAPI {
                 /**
                  * @description Запрос данных об альбоме
                  */
-                new class extends ItemRequestAPI {
+                new class extends ItemRequestAPI<"album"> {
                     public constructor() {
                         super({
                             name: "album",
@@ -97,7 +97,7 @@ export default class extends RequestAPI {
                 /**
                  * @description Запрос данных об плейлисте
                  */
-                new class extends ItemRequestAPI {
+                new class extends ItemRequestAPI<"playlist"> {
                     public constructor() {
                         super({
                             name: "playlist",
@@ -132,7 +132,7 @@ export default class extends RequestAPI {
                 /**
                  * @description Запрос данных треков артиста
                  */
-                new class extends ItemRequestAPI {
+                new class extends ItemRequestAPI<"artist"> {
                     public constructor() {
                         super({
                             name: "artist",
@@ -162,7 +162,7 @@ export default class extends RequestAPI {
                 /**
                  * @description Запрос данных по поиску
                  */
-                new class extends ItemRequestAPI {
+                new class extends ItemRequestAPI<"search"> {
                     public constructor() {
                         super({
                             name: "search",

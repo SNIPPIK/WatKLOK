@@ -1,6 +1,8 @@
 import {ChildProcessWithoutNullStreams, spawn} from "child_process";
 import {OpusEncoder} from "@watklok/opus";
 
+const cleaner = (events: string[], stream: any, cleanup: () => any) => events.forEach((event) => stream.once(event, cleanup));
+
 /**
  * @author SNIPPIK
  * @description Конвертирует аудио в нужный формат
@@ -69,7 +71,7 @@ export class AudioResource {
         if (seek > 0) this._temp.frames = (seek * 1e3) / this._temp.frame;
 
         //Слушаем OpusEncoder
-        ["end", "close", "error"].forEach((event) => this.stream.once(event, this.cleanup));
+        cleaner(["end", "close", "error"], this.stream, this.cleanup);
         this.stream.once("readable", () => { this._temp.readable = true; });
 
         //Запускаем процесс FFmpeg и подключаем его к OpusEncoder'у
@@ -110,32 +112,32 @@ export class AudioResource {
 export class Process {
     private readonly _process: ChildProcessWithoutNullStreams;
     /**
+     * @description Получаем ChildProcessWithoutNullStreams
+     * @return ChildProcessWithoutNullStreams
+     * @public
+     */
+    public get process() { return this._process; };
+
+    /**
      * @description Зарезервирован для вывода данных, как правило (хотя и не обязательно)
      * @return internal.Readable
      * @public
      */
-    public get stdout() { return this?._process?.stdout; };
+    public get stdout() { return this?.process?.stdout; };
 
     /**
      * @description Зарезервирован для чтения команд пользователя или входных данных.
      * @return internal.Writable
      * @public
      */
-    public get stdin() { return this?._process?.stdin; };
+    public get stdin() { return this?.process?.stdin; };
 
     /**
      * @description Зарезервирован для вывода диагностических и отладочных сообщений в текстовом виде.
      * @return internal.Readable
      * @public
      */
-    public get stderr() { return this?._process?.stderr; };
-
-    /**
-     * @description Получаем ChildProcessWithoutNullStreams
-     * @return ChildProcessWithoutNullStreams
-     * @public
-     */
-    public get process() { return this._process; };
+    public get stderr() { return this?.process?.stderr; };
 
     /**
      * @description Задаем параметры и запускаем процесс
@@ -145,7 +147,7 @@ export class Process {
     public constructor(args: string[], name: string = "ffmpeg") {
         this._process = spawn(name, args);
 
-        ["end", "close", "error"].forEach((event) => this.process.once(event, this.cleanup));
+        cleaner(["end", "close", "error"], this.process, this.cleanup);
     };
 
     /**
@@ -158,6 +160,6 @@ export class Process {
             std.destroy();
         }
 
-        if (!this._process?.killed) this._process.kill();
+        if (!this.process?.killed) this.process.kill();
     };
 }

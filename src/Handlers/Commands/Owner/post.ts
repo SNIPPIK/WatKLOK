@@ -1,5 +1,5 @@
 import {ApplicationCommandOptionType, Colors, EmbedData, TextChannel} from "discord.js";
-import {ICommand, Command, Assign} from "@handler";
+import {Command, Assign} from "@handler";
 import {Logger} from "@Client";
 import {env} from "@env";
 
@@ -22,7 +22,7 @@ export default class extends Assign<Command> {
                 const {author, client} = message;
                 const channel = client.channels.cache.get(env.get("owner.news")) as TextChannel;
 
-                return new Promise<ICommand.all>((resolve) => {
+                return new Promise((resolve) => {
                     if (channel) {
                         channel.send({ //@ts-ignore
                             embeds: [{

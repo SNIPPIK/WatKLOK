@@ -21,7 +21,7 @@ export default class extends RequestAPI {
                 /**
                  * @description Запрос данных о треке
                  */
-                new class extends ItemRequestAPI {
+                new class extends ItemRequestAPI<"track"> {
                     public constructor() {
                         super({
                             name: "track",
@@ -55,7 +55,7 @@ export default class extends RequestAPI {
                 /**
                  * @description Запрос данных по поиску
                  */
-                new class extends ItemRequestAPI {
+                new class extends ItemRequestAPI<"search"> {
                     public constructor() {
                         super({
                             name: "search",

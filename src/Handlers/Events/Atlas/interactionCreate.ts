@@ -1,5 +1,5 @@
 import { ActionRow, ActionRowBuilder, Attachment, BaseInteraction, BaseMessageOptions, CommandInteractionOption, EmbedData, Events, GuildMember, Message, MessagePayload, PermissionsBitField, User} from "discord.js";
-import {ActionMessage, Assign, Command, Event, ICommand} from "@handler";
+import {ActionMessage, Assign, Command, Event} from "@handler";
 import {Atlas, Logger} from "@Client";
 import {db} from "@Client/db";
 import {env} from "@env";
@@ -23,12 +23,12 @@ export default class extends Assign<Event<Events.InteractionCreate>> {
                 const status = message?.isCommand() ? true : message?.isButton() ? false : null;
 
                 if (status || status === false) {
-                    const ICommand = (status ? this._stepCommand : this._stepButton)(message);
+                    const item = (status ? this._stepCommand : this._stepButton)(message);
 
                     //Если есть данные, то отправляем их в тестовый канал
-                    if (ICommand) {
-                        if (!(ICommand instanceof Promise)) return void new ActionMessage({...ICommand, message});
-                        ICommand.then(data => new ActionMessage({...data, message})).catch((err) => Logger.log("ERROR", err));
+                    if (item) {
+                        if (!(item instanceof Promise)) return void new ActionMessage({...item as any, message});
+                        item.then(data => new ActionMessage({...data, message})).catch((err) => Logger.log("ERROR", err));
                     }
                 }
             }
@@ -41,7 +41,7 @@ export default class extends Assign<Event<Events.InteractionCreate>> {
      * @readonly
      * @private
      */
-    private readonly _stepCommand = (message: ClientInteraction): ICommand.all | Promise<ICommand.all> => {
+    private readonly _stepCommand = (message: ClientInteraction) => {
         const owners: string[] = env.get("owner.list").split(",");
         const command = db.commands.get(message.commandName);
         const {author, guild} = message;
@@ -79,7 +79,7 @@ export default class extends Assign<Event<Events.InteractionCreate>> {
      * @readonly
      * @private
      */
-    private readonly _stepButton = (message: ClientInteraction): ICommand.all => {
+    private readonly _stepButton = (message: ClientInteraction) => {
         const queue = db.queue.get(message.guild.id);
 
         //Если нет очереди
@@ -104,21 +104,21 @@ export default class extends Assign<Event<Events.InteractionCreate>> {
             }
 
             //Кнопка очереди
-            case "queue": return db.commands.get("queue").execute(message) as ICommand.all;
+            case "queue": return db.commands.get("queue").execute(message);
 
             //Кнопка пропуска
-            case "skip": return db.commands.get("skip").execute(message, ["1"]) as ICommand.all;
+            case "skip": return db.commands.get("skip").execute(message, ["1"]);
 
             //Кнопка повтора
-            case "repeat": return db.commands.get("repeat").execute(message, [queue.loop === "songs" ? "song": "songs"]) as ICommand.all;
+            case "repeat": return db.commands.get("repeat").execute(message, [queue.loop === "songs" ? "song": "songs"]);
 
             //Кнопка паузы
             case "resume_pause": {
                 //Если плеер играет
-                if (queue.player.status === "player/playing") return db.commands.get("pause").execute(message) as ICommand.all;
+                if (queue.player.status === "player/playing") return db.commands.get("pause").execute(message);
 
                 //Если плеер стоит на паузе
-                else if (queue.player.status === "player/pause") return db.commands.get("resume").execute(message) as ICommand.all;
+                else if (queue.player.status === "player/pause") return db.commands.get("resume").execute(message);
 
                 //Если статус плеера не совпадает ни с чем
                 return { content: `${message.author}, на данном этапе, паузу не возможно поставить!`, color: "Yellow" };

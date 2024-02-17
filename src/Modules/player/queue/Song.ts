@@ -236,12 +236,12 @@ function fetchAPIs(track: Song): Promise<string | Error> {
     return new Promise((resolve) => {
         //Если платформа может самостоятельно выдать аудио
         if (!db.platforms.audio.includes(track.platform)) {
-            const callback = new ResponseAPI(track.platform).callback("track");
+            const api = new ResponseAPI(track.platform).find("track");
 
             //Если нет такого запроса
-            if (!callback) return resolve(Error(`[Song/${track.platform}]: not found callback for track`));
+            if (!api) return resolve(Error(`[Song/${track.platform}]: not found callback for track`));
 
-            return callback(track.url).then((track) => {
+            return api.callback(track.url).then((track: Song | Error) => {
                 if (track instanceof Error) return resolve(track);
                 return resolve(track.link);
             }).catch((err) => resolve(Error(err)));
@@ -250,7 +250,7 @@ function fetchAPIs(track: Song): Promise<string | Error> {
         //Если платформа не может выдать аудио
         else {
             const youtube = new ResponseAPI("YOUTUBE");
-            const videos = youtube.callback("search")(`${track.author.title} - ${track.title}`);
+            const videos = youtube.find("search").callback(`${track.author.title} - ${track.title}`);
 
             return videos.then((tracks) => {
                 if (tracks instanceof Error) return resolve(tracks);
@@ -259,8 +259,8 @@ function fetchAPIs(track: Song): Promise<string | Error> {
                 if (tracks.length === 0) return resolve(null);
 
                 //Делаем запрос полной информации о треки для получения ссылки на исходный файл музыки
-                return youtube.callback("track")(tracks[0].url).then((track: Song) => {
-                    if (!track.link) return resolve(null);
+                return youtube.find("track").callback(tracks[0].url).then((track) => {
+                    if (track instanceof Error || !track.link) return resolve(null);
                     return resolve(track.link);
                 }).catch((err) => resolve(Error(err)));
             });

@@ -1,4 +1,5 @@
 import {Client, IntentsBitField, Partials, ShardingManager} from "discord.js";
+import {threadId} from "node:worker_threads";
 import process from "process";
 import {env} from "@env";
 /**
@@ -104,6 +105,6 @@ export const Logger = new class {
         const spaces = 130 - (extStatus.length + text.length) - (time.length);
         const extText = spaces < 0 ? `${text}\x1b[0m` : `${text}\x1b[0m${" ".repeat(spaces) + time}`;
 
-        console.log(`\x1b[35m|\x1b[0m ${extStatus} `  + `${this.colors[status]}${extText}`);
+        console.log(`\x1b[35m${threadId} |\x1b[0m ${extStatus} `  + `${this.colors[status]}${extText}`);
     };
 }

@@ -17,18 +17,17 @@ export default class extends Assign<Event<"collection/api">> {
                 else if (platform.auth) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}**\n\nНет данных для авторизации, запрос не может быть выполнен!`));
                 else if (!argument[1].match(platform.filter) && argument[1].startsWith("http")) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}**\n\nЭтот запрос не относится к этой платформе!`));
 
-                const type = platform.type(argument[1]);
-                const callback = type ? platform.callback(type) : null;
+                const api = platform.find(argument[1]);
 
-                if (!type) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}.${type}**\n\nУ меня нет поддержки этого запроса!`));
-                else if (!callback) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}.${type}**\n\nУ меня нет поддержки для выполнения этого запроса!`));
+                if (!api || !api?.name) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}}**\n\nУ меня нет поддержки этого запроса!`));
+                else if (!api) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}.${api.name}**\n\nУ меня нет поддержки для выполнения этого запроса!`));
 
                 //Отправляем сообщение о том что запрос производится
-                event.emit("collection/error", message, `⚠️ **Warning** | **${name}.${type}**\n\n${env.get("loading.emoji")} Ожидание ответа от сервера...\n${platform.audio ? "Эта платформа не может выдать исходный файл музыки! Поиск трека!" : ""}`, "Yellow");
+                event.emit("collection/error", message, `⚠️ **Warning** | **${name}.${api.name}**\n\n${env.get("loading.emoji")} Ожидание ответа от сервера...\n${platform.audio ? "Эта платформа не может выдать исходный файл музыки! Поиск трека!" : ""}`, "Yellow");
 
-                callback(argument[1]).then((item) => {
-                    if (!item) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}.${type}**\n\n**❯** Данные не были получены!`));
-                    else if (item instanceof Error) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}.${type}**\n\n**❯** При получении данных была получена ошибка!`));
+                api.callback(argument[1]).then((item) => {
+                    if (!item) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}.${api.name}**\n\n**❯** Данные не были получены!`));
+                    else if (item instanceof Error) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}.${api.name}**\n\n**❯** При получении данных была получена ошибка!`));
                     else if (item instanceof Array) return void (event.emit("message/search", item, platform.platform, message));
 
                     let queue = collection.get(message.guild.id);
@@ -47,8 +46,8 @@ export default class extends Assign<Event<"collection/api">> {
                         track.requester = message.author;
                         queue.songs.push(track);
                     }
-                }).catch((err) => { //Отправляем сообщение об ошибке
-                    event.emit("collection/error", message, `⛔️ **Error** | **${name}.${type}**\n\n**❯** **${err.message}**`);
+                }).catch((err: Error) => { //Отправляем сообщение об ошибке
+                    event.emit("collection/error", message, `⛔️ **Error** | **${name}.${api.name}**\n\n**❯** **${err.message}**`);
                 });
             }
         });

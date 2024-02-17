@@ -74,73 +74,9 @@ export interface Command {
      * @readonly
      * @public
      */
-    execute: (message: ClientMessage | ClientInteraction, args?: string[]) => ICommand.all | Promise<ICommand.all> | void;
+    execute: (message: ClientMessage | ClientInteraction, args?: string[]) => Promise<IActionMessage> | IActionMessage | void;
 }
-/**
- * @author SNIPPIK
- * @description Интерфейсы для команд
- * @namespace ICommand
- */
-export namespace ICommand {
-    /**
-     * @author SNIPPIK
-     * @description Если передаются все типы данных
-     * @type ICommand.all
-     */
-    export type all = (context | menu | embeds) & options
 
-    /**
-     * @author SNIPPIK
-     * @description Данные для отправки текстового сообщения
-     * @interface ICommand.context
-     */
-    export interface context {
-        content: string;
-        codeBlock?: string;
-        color?: "DarkRed" | "Blue" | "Green" | "Default" | "Yellow" | "Grey" | "Navy" | "Gold" | "Orange" | "Purple" | number;
-    }
-
-    /**
-     * @author SNIPPIK
-     * @description Данные для отправки ReactionMenu сообщения
-     * @interface ICommand.menu
-     */
-    export interface menu {
-        content?: string;
-        embeds?: EmbedData[];
-        callback: (message: ClientMessage, pages: string[], page: number) => void;
-        page: number;
-        pages: string[];
-    }
-
-    /**
-     * @author SNIPPIK
-     * @description Данные для отправки EMBED сообщения
-     * @interface ICommand.embeds
-     */
-    export interface embeds {
-        embeds: EmbedData[];
-    }
-
-    /**
-     * @author SNIPPIK
-     * @description Доп данные для ActionMessage
-     * @interface ICommand.options
-     */
-    export interface options {
-        //Компоненты, такие как кнопки
-        components?: ActionRowBuilder[];
-
-        //Что будет делать после отправки сообщения
-        promise?: (msg: ClientMessage) => void;
-
-        //Время через которое надо удалить сообщение
-        time?: number;
-
-        //Надо отвечать на это сообщение
-        replied?: boolean;
-    }
-}
 /**
  * @author SNIPPIK
  * @description Класс для событий
@@ -172,13 +108,14 @@ export interface Event<T extends keyof ClientEvents | keyof CollectionEvents | k
     execute: T extends keyof CollectionEvents ? CollectionEvents[T] : T extends keyof AudioPlayerEvents ? (queue: ArrayQueue, ...args: Parameters<AudioPlayerEvents[T]>) => any : T extends keyof ClientEvents ? (client: Atlas, ...args: ClientEvents[T]) => void : never;
 }
 
+
 /**
  * @author SNIPPIK
  * @description Получаем ответ от локальной базы APIs
  * @class ResponseAPI
  */
 export class ResponseAPI {
-    private readonly _api: RequestAPI = null;
+    private readonly _api: RequestAPI;
     /**
      * @description Выдаем название
      * @return API.platform
@@ -223,31 +160,21 @@ export class ResponseAPI {
     public get color() { return this._api.color; };
 
     /**
-     * @description Получаем тип запроса
-     * @param search {string} Ссылка или название трека
-     * @public
-     */
-    public type = (search: string): API.callback => {
-        if (!search.startsWith("http")) return "search";
-
-        try {
-            return this._api.requests.find((data) => data.filter && search.match(data.filter)).name;
-        } catch { return null; }
-    };
-
-    /**
      * @description Получаем функцию в зависимости от типа платформы и запроса
-     * @param type {callback} Тип запроса
+     * @param type {find} Тип запроса
      * @public
      */
-    public callback (type: "track"): (url: string) => Promise<Song | Error>;
-    public callback (type: "search" | "artist"): (url: string) => Promise<Song[] | Error>;
-    public callback (type: "playlist" | "album"): (url: string) => Promise<Song.playlist | Error>;
-    public callback (type: API.callback): (url: string) => Promise<Song.playlist | Song[] | Song | Error>;
-    public callback(type: any): any {
+    public find<T extends API.callbacks>(type: string | T): ItemRequestAPI<T> {
         try {
-            return this._api.requests.find((data) => data.name === type).callback;
-        } catch { return null; }
+            const callback = this._api.requests.find((item) => item.name === type || item.filter && type.match(item.filter));
+
+            if (!callback) return null;
+
+            //@ts-ignore
+            return callback;
+        } catch {
+            return undefined;
+        }
     };
 
     /**
@@ -296,7 +223,13 @@ export namespace API {
      * @description Доступные запросы
      * @type
      */
-    export type callback = "track" | "playlist" | "search" | "album" | "artist";
+    export type callbacks = "track" | "playlist" | "search" | "album" | "artist";
+
+    /**
+     * @description Функция запроса
+     * @type
+     */
+    export type callback<T> = Promise<(T extends "track" ? Song : T extends "playlist" | "album" ? Song.playlist : T extends "search" | "artist" ? Song[] : never) | Error>
 }
 /**
  * @author SNIPPIK
@@ -311,7 +244,7 @@ export abstract class RequestAPI {
     public readonly auth: boolean;
     public readonly filter: RegExp;
     public readonly color: number;
-    public readonly requests: ItemRequestAPI[];
+    public readonly requests: ItemRequestAPI<API.callbacks>[];
 
     /**
      * @description Сохраняем базу данных
@@ -327,16 +260,16 @@ export abstract class RequestAPI {
  * @class ItemRequestAPI
  * @abstract
  */
-export abstract class ItemRequestAPI {
-    public readonly name: API.callback;
+export abstract class ItemRequestAPI<T extends API.callbacks> {
+    public readonly name: T;
     public readonly filter?: RegExp;
-    public readonly callback?: (url: string) => Promise<Error | Song | Song[] | Song.playlist>;
+    public readonly callback?: (url: string) => API.callback<T>;
 
     /**
      * @description Сохраняем базу данных
      * @param options
      */
-    protected constructor(options: ItemRequestAPI) {
+    protected constructor(options: ItemRequestAPI<T>) {
         Object.assign(this, options);
     };
 }
@@ -348,12 +281,12 @@ export abstract class ItemRequestAPI {
  * @class ActionMessage
  */
 export class ActionMessage {
-    private readonly _options: IActionMessage = null;
+    private readonly _options: IActionMessage & { message: ClientMessage | ClientInteraction } = null;
     /**
      * @description Создаем сообщение
-     * @param options {IActionMessage} Настройки сообщения
+     * @param options {object} Настройки сообщения
      */
-    public constructor(options: IActionMessage = null) {
+    public constructor(options: ActionMessage["_options"]) {
         if ("content" in options && !("page" in options)) {
             options = {
                 ...options, embeds: [{
@@ -385,7 +318,7 @@ export class ActionMessage {
      * @return void
      */
     private _createMenu = (message: ClientMessage) => {
-        let {page, pages, callback} = this._options as ICommand.menu;
+        let {page, pages, callback} = this._options as any;
 
         for (const [key, emoji] of Object.entries({back: "⬅️", cancel: "🗑", next: "➡️"})) {
             message.react(emoji).then(() => message.createReactionCollector({
@@ -455,9 +388,23 @@ export class ActionMessage {
         }
     };
 }
+
 /**
  * @author SNIPPIK
- * @description Данные которые нужны для отправки сообщений
- * @type IActionMessage
+ * @description Данные для отправки сообщения
  */
-export type IActionMessage = ICommand.all & { message: ClientMessage | ClientInteraction }
+type IActionMessage = {
+    //Компоненты, такие как кнопки
+    components?: ActionRowBuilder[];
+
+    //Что будет делать после отправки сообщения
+    promise?: (msg: ClientMessage) => void;
+
+    //Время через которое надо удалить сообщение
+    time?: number;
+
+    //Надо отвечать на это сообщение
+    replied?: boolean;
+} & ({ content: string; codeBlock?: string; color?: "DarkRed" | "Blue" | "Green" | "Default" | "Yellow" | "Grey" | "Navy" | "Gold" | "Orange" | "Purple" | number;
+} | { content?: string; embeds?: EmbedData[]; callback: (message: ClientMessage, pages: string[], page: number) => void; page: number; pages: string[];
+} | { embeds: EmbedData[]; });

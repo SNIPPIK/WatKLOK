@@ -9,15 +9,6 @@ import {Song} from "./Song";
 
 /**
  * @author SNIPPIK
- * @description Данные для создания очереди
- */
-interface ServerQueueOptions {
-    voice: VoiceChannel | StageChannel;
-    message: ClientMessage;
-}
-
-/**
- * @author SNIPPIK
  * @description Главный класс очереди
  * @class ServerQueue
  * @abstract
@@ -137,7 +128,7 @@ abstract class ServerQueue {
         });
     };
 
-    public constructor(options: ServerQueueOptions) {
+    public constructor(options: { voice: VoiceChannel | StageChannel; message: ClientMessage; }) {
         for (const [key, value] of Object.entries(options)) {
             try { this[key] = value; } catch (err) { throw TypeError(`Error in queue, ${key} is not found in the server queue`); }
         }

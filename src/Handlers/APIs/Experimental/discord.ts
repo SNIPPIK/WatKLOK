@@ -22,13 +22,13 @@ export default class extends RequestAPI {
                 /**
                  * @description Запрос данных о треке
                  */
-                new class extends ItemRequestAPI {
+                new class extends ItemRequestAPI<"track"> {
                     public constructor() {
                         super({
                             name: "track",
                             filter: /attachments/,
                             callback: (url) => {
-                                return new Promise<Song>(async (resolve, reject) => {
+                                return new Promise<Song>((resolve, reject) => {
                                     try {
                                         const FFprobe = new Process(["-print_format", "json", "-show_format", "-i", url], env.get("ffprobe.path"));
                                         let temp = "";
@@ -39,7 +39,7 @@ export default class extends RequestAPI {
                                         });
 
                                         //При закрытии процесса выдаем данные
-                                        FFprobe.process.once("close", () => {
+                                        FFprobe.process.once("exit", () => {
                                             const track = JSON.parse(temp + "}");
 
                                             return resolve(new Song({

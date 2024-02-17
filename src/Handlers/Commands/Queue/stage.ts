@@ -1,5 +1,5 @@
 import {ApplicationCommandOptionType, ChannelType} from "discord.js";
-import {ICommand, Command, Assign} from "@handler";
+import {Command, Assign} from "@handler";
 import {db} from "@Client/db";
 
 export default class extends Assign<Command> {
@@ -52,7 +52,7 @@ export default class extends Assign<Command> {
                 //Если голосовой канал не трибуна
                 else if (voiceChannel.type === ChannelType["GuildVoice"]) return { content: `${author}, этот голосовой канал не является трибуной!`, color: "Yellow" }
 
-                return new Promise<ICommand.all>((resolve) => {
+                return new Promise((resolve) => {
                     (args[0] === "join" ? me.voice.setSuppressed : me.voice.setRequestToSpeak)(true)
                         .then(() => {
                             if (args[0] === "join") return resolve({content: `${author}, подключение к трибуне произведено!`, color: "Green"});
