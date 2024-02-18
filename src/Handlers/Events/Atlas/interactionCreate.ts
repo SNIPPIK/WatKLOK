@@ -41,7 +41,7 @@ export default class extends Assign<Event<Events.InteractionCreate>> {
      * @readonly
      * @private
      */
-    private readonly _stepCommand = (message: ClientInteraction) => {
+    private _stepCommand = (message: ClientInteraction) => {
         const owners: string[] = env.get("owner.list").split(",");
         const command = db.commands.get(message.commandName);
         const {author, guild} = message;
@@ -79,7 +79,7 @@ export default class extends Assign<Event<Events.InteractionCreate>> {
      * @readonly
      * @private
      */
-    private readonly _stepButton = (message: ClientInteraction) => {
+    private _stepButton = (message: ClientInteraction) => {
         const queue = db.queue.get(message.guild.id);
 
         //Если нет очереди
@@ -136,7 +136,7 @@ export default class extends Assign<Event<Events.InteractionCreate>> {
      * @readonly
      * @private
      */
-    private readonly _checkPermission = (permissions: Command["permissions"], Fields: Readonly<PermissionsBitField>) => {
+    private _checkPermission = (permissions: Command["permissions"], Fields: Readonly<PermissionsBitField>) => {
         const fail: any[] = [];
 
         if (permissions && permissions?.length > 0) {

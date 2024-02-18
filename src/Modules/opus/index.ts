@@ -63,6 +63,22 @@ export class OpusEncoder extends Transform {
     };
 
     /**
+     * @description Запуск класса расшифровки в opus
+     * @param options
+     * @public
+     */
+    public constructor(options: TransformOptions = {autoDestroy: true, objectMode: true}) {
+        super(Object.assign({ readableObjectMode: true }, options));
+
+        //Если была найдена opus library
+        if (Opus.length > 0) {
+            //Подключаем opus library
+            this._encode.encoder = new Opus[2](...Opus[1]);
+            this._temp.buffer = Buffer.alloc(0);
+        }
+    };
+
+    /**
      * @description Декодирование фрагмента в opus
      * @private
      */
@@ -152,22 +168,6 @@ export class OpusEncoder extends Transform {
 
         if (n > 0) this._temp.buffer = this._temp.buffer.subarray(n * this._temp.required);
         return done();
-    };
-
-    /**
-     * @description Запуск класса расшифровки в opus
-     * @param options
-     * @public
-     */
-    public constructor(options: TransformOptions = {autoDestroy: true, objectMode: true}) {
-        super(Object.assign({ readableObjectMode: true }, options));
-
-        //Если была найдена opus library
-        if (Opus.length > 0) {
-            //Подключаем opus library
-            this._encode.encoder = new Opus[2](...Opus[1]);
-            this._temp.buffer = Buffer.alloc(0);
-        }
     };
 
     /**

@@ -112,8 +112,8 @@ export class Song {
         track["image"] = track?.image ?? { url: db.emojis.noImage };
 
         //Время трека
-        if (!isNaN(seconds) && !track.duration.seconds.match(/:/)) this._duration = { full: seconds === 0 ? "Live" : Duration.parseDuration(seconds), seconds };
-        else this._duration = { full: track.duration.seconds, seconds };
+        if (isNaN(seconds) || !seconds) this._duration = { full: "Live", seconds: 0 };
+        else this._duration = { full: Duration.parseDuration(seconds), seconds };
 
         //Удаляем ненужные данные
         delete track.duration;

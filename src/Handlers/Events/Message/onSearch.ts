@@ -14,15 +14,12 @@ export default class extends Assign<Event<"message/search">> {
                 }));
 
                 new ActionMessage({
-                    replied: true, time: 30e3, message,
-                    //Сообщение
-                    embeds: [{
+                    replied: true, time: 30e3, message, embeds: [{
                         color: Colors.White, timestamp: new Date(),
                         author: {name: message.guild.name, iconURL: db.emojis.diskImage},
                         title: "Вот что мне удалось найти!"
                     }],
-
-                    //Треки под сообщением
+                    //Список треков под сообщением
                     components: [new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId("menu-builder").setPlaceholder("Найденные треки")
                         .setOptions(...tracks.map((track) => {
                                 return {
@@ -64,7 +61,7 @@ export default class extends Assign<Event<"message/search">> {
                             collector.stop();
                         });
                     }
-                })
+                });
             }
         });
     }

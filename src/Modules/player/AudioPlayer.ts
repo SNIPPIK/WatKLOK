@@ -1,4 +1,4 @@
-import {AudioPlayerEvents, AudioPlayerStatus} from "@watklok/player/collection";
+import {AudioPlayerEvents} from "@watklok/player/collection";
 import {VoiceConnection} from "@discordjs/voice";
 import {TypedEmitter} from "tiny-typed-emitter";
 import {AudioResource} from "./AudioResource";
@@ -12,10 +12,10 @@ import {db} from "@Client/db";
  */
 export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
     private readonly _local = {
-        filters: []     as Filter[],
-        status: "player/wait"  as AudioPlayerStatus,
-        voice:  null    as VoiceConnection,
-        stream: null    as AudioResource
+        status: "player/wait"   as keyof AudioPlayerEvents,
+        filters: []             as Filter[],
+        voice:  null            as VoiceConnection,
+        stream: null            as AudioResource
     };
     /**
      * @description Выдаем базу с фильтрами
@@ -106,10 +106,10 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
 
     /**
      * @description Смена статуса плеера, если не знаешь что делаешь, то лучше не трогай!
-     * @param status {AudioPlayerStatus} Статус плеера
+     * @param status {keyof AudioPlayerEvents} Статус плеера
      * @private
      */
-    public set status(status: AudioPlayerStatus) {
+    public set status(status: keyof AudioPlayerEvents) {
         if (status !== this._local.status) this.emit(status, this);
         this._local.status = status;
     };
