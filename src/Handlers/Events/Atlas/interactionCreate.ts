@@ -59,7 +59,7 @@ export default class extends Assign<Event<Events.InteractionCreate>> {
         };
 
         //Если прав не хватает, то уведомляем пользователя
-        const clientPermissions = this._checkPermission(command.permissions, guild.members.me?.permissions);
+        const clientPermissions = this._checkPermission(command.permissions, message.channel.permissionsFor(guild.members.me));
         if (clientPermissions) return {
             content: `Внимание ${author.tag}\nУ меня нет прав на: ${clientPermissions}`,
             color: "DarkRed", codeBlock: "css"
