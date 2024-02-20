@@ -126,7 +126,11 @@ export class Song {
      * @description Получаем название трека
      * @public
      */
-    public get title() { return this._track.title.substring(0, 120); };
+    public get title() {
+        if (!this._track.title) return "null";
+
+        return this._track.title.substring(0, 120);
+    };
     /**
      * @description Получаем ссылку на трек
      * @public
@@ -167,11 +171,6 @@ export class Song {
      */
     public get link() { return this._track.link; };
     public set link(url: string) { this._track.link = url; }
-    /**
-     * @description Трек имеет формат LIVE
-     * @public
-     */
-    public get isLive() { return this._duration.full === "Live"; };
 
     /**
      * @description Получаем платформу у которого был взят трек

@@ -1,5 +1,3 @@
-import { AudioPlayer } from "@watklok/player/AudioPlayer";
-import {ArrayQueue} from "@watklok/player/queue/Queue";
 import {Assign, Event} from "@handler";
 import {db} from "@Client/db";
 
@@ -8,7 +6,7 @@ export default class extends Assign<Event<"player/error">> {
         super({
             name: "player/error",
             type: "player",
-            execute: (queue: ArrayQueue, _: AudioPlayer, err: string, crash: boolean) => {
+            execute: (queue, _, err, crash = false) => {
                 //Выводим сообщение об ошибке
                 db.queue.events.emit("message/error", queue, err);
 

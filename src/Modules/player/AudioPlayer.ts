@@ -139,7 +139,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
         try {
             if (packet) this.connection.playOpusPacket(packet);
         } catch (err) { //Если возникает ошибка, то выключаем плеер
-            this.emit("player/error", this, err, true);
+            this.emit("player/error", this, `${err}`, true);
         }
     };
 

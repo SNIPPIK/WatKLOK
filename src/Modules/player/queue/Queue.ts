@@ -29,7 +29,7 @@ abstract class ServerQueue {
             public play = (track: Song, seek: number = 0) => {
                 track.resource.then((path) => {
                     if (path instanceof Error) {
-                        this.emit("player/error", this, `${path}`);
+                        this.emit("player/error", this, `Failed to getting link audio! Error: ${path}`);
                         return;
                     }
 
@@ -39,7 +39,7 @@ abstract class ServerQueue {
                     this.emit("player/ended", this, seek);
                     this.read = new AudioResource(options as any);
                 }).catch((err) => {
-                    this.emit("player/error", this, err);
+                    this.emit("player/error", this, `${err}`);
                 });
             };
         }

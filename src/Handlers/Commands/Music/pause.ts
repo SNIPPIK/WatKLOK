@@ -27,7 +27,7 @@ export default class extends Assign<Command> {
                 else if (queue.player.status === "player/pause") return { content: `${author}, ⚠ | Музыка уже приостановлена!`, color: "Yellow" };
 
                 //Если текущий трек является потоковым
-                else if (queue.songs.song.isLive) return { content: `${author}, ⚠ | Это бесполезно!`, color: "Yellow" };
+                else if (queue.songs.song.duration.seconds === 0) return { content: `${author}, ⚠ | Это бесполезно!`, color: "Yellow" };
 
                 //Приостанавливаем музыку если она играет
                 queue.player.pause();
