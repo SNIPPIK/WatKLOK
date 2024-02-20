@@ -2,7 +2,6 @@ import {ClientMessage} from "@handler/Events/Atlas/interactionCreate";
 import {AudioResource} from "@watklok/player/AudioResource";
 import {AudioPlayer} from "@watklok/player/AudioPlayer";
 import {StageChannel, VoiceChannel} from "discord.js";
-import {joinVoiceChannel} from "@discordjs/voice";
 import {Duration} from "@watklok/player";
 import {db} from "@Client/db";
 import {Song} from "./Song";
@@ -121,8 +120,13 @@ abstract class ServerQueue {
      */
     public set voice(voice: VoiceChannel | StageChannel) {
         this._local.voice = voice;
-        this.player.connection = joinVoiceChannel({
-            selfDeaf: true, guildId: this.guild.id, channelId: voice.id,
+        this.player.connection = db.queue.voice.joinVoiceChannel({
+            selfDeaf: true,
+            selfMute: false,
+
+            guildId: this.guild.id,
+            channelId: voice.id,
+
             adapterCreator: this.guild.voiceAdapterCreator
         });
     };
