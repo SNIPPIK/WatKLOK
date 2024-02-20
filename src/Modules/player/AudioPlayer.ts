@@ -122,7 +122,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
     public set stream(stream: AudioResource) {
         //Удаляем прошлый поток
         if (this.stream && this.stream !== stream) {
-            this.cleanupStream();
+            try { this.stream?.stream?.emit("close"); } catch {}
             this._local.stream = null;
         }
 
@@ -206,22 +206,12 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @public
      */
     public cleanup = () => {
-        this.cleanupStream();
+        try { this.stream?.stream?.emit("close"); } catch {}
         this.removeAllListeners();
         //Выключаем плеер если сейчас играет трек
         this.stop();
 
         for (let str of Object.keys(this._local)) this._local[str] = null;
-    };
-
-    /**
-     * @description Уничтожаем поток
-     * @private
-     */
-    private cleanupStream = () => {
-        try {
-            this.stream?.stream?.emit("close");
-        } catch {}
     };
 }
 

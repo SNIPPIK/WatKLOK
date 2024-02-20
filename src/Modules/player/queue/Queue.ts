@@ -6,7 +6,6 @@ import {joinVoiceChannel} from "@discordjs/voice";
 import {Duration} from "@watklok/player";
 import {db} from "@Client/db";
 import {Song} from "./Song";
-
 /**
  * @author SNIPPIK
  * @description Главный класс очереди

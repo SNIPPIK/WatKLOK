@@ -110,13 +110,15 @@ export class AudioResource {
  * @class Process
  */
 export class Process {
-    private readonly _process: ChildProcessWithoutNullStreams;
+    private readonly _temp = {
+        process: null as ChildProcessWithoutNullStreams
+    };
     /**
      * @description Получаем ChildProcessWithoutNullStreams
      * @return ChildProcessWithoutNullStreams
      * @public
      */
-    public get process() { return this._process; };
+    public get process() { return this._temp.process; };
 
     /**
      * @description Зарезервирован для вывода данных, как правило (хотя и не обязательно)
@@ -145,7 +147,7 @@ export class Process {
      * @param name {string} Имя процесса
      */
     public constructor(args: string[], name: string = "ffmpeg") {
-        this._process = spawn(name, args);
+        this._temp.process = spawn(name, args);
 
         cleaner(["end", "close", "error"], this.process, this.cleanup);
     };
@@ -161,5 +163,6 @@ export class Process {
         }
 
         if (!this.process?.killed) this.process.kill();
+        for (let item of Object.keys(this._temp)) this._temp[item] = null;
     };
 }

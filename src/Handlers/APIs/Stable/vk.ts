@@ -1,4 +1,4 @@
-import {RequestAPI, ItemRequestAPI} from "@handler";
+import {RequestAPI, RequestAPI_item} from "@handler";
 import {Song} from "@watklok/player/queue/Song";
 import {httpsClient} from "@watklok/request";
 import {env} from "@env";
@@ -21,7 +21,7 @@ export default class extends RequestAPI {
                 /**
                  * @description Запрос данных о треке
                  */
-                new class extends ItemRequestAPI<"track"> {
+                new class extends RequestAPI_item<"track"> {
                     public constructor() {
                         super({
                             name: "track",
@@ -55,7 +55,7 @@ export default class extends RequestAPI {
                 /**
                  * @description Запрос данных по поиску
                  */
-                new class extends ItemRequestAPI<"search"> {
+                new class extends RequestAPI_item<"search"> {
                     public constructor() {
                         super({
                             name: "search",
@@ -90,7 +90,7 @@ class VKLib {
     private static authorization = {
         api: "https://api.vk.com/method",
         token:`?access_token=${env.get("token.vk")}`
-    }
+    };
 
     /**
      * @description Делаем запрос к VK API

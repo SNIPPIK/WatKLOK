@@ -1,5 +1,5 @@
 import {Process} from "@watklok/player/AudioResource";
-import {RequestAPI, ItemRequestAPI} from "@handler";
+import {RequestAPI, RequestAPI_item} from "@handler";
 import {Song} from "@watklok/player/queue/Song";
 import {env} from "@env";
 /**
@@ -22,7 +22,7 @@ export default class extends RequestAPI {
                 /**
                  * @description Запрос данных о треке
                  */
-                new class extends ItemRequestAPI<"track"> {
+                new class extends RequestAPI_item<"track"> {
                     public constructor() {
                         super({
                             name: "track",
@@ -39,7 +39,7 @@ export default class extends RequestAPI {
                                         });
 
                                         //При закрытии процесса выдаем данные
-                                        FFprobe.process.once("exit", () => {
+                                        FFprobe.process.once("close", () => {
                                             const track = JSON.parse(temp + "}");
 
                                             return resolve(new Song({
@@ -52,7 +52,7 @@ export default class extends RequestAPI {
                                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
                                 });
                             }
-                        })
+                        });
                     }
                 }
             ]

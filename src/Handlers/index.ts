@@ -22,6 +22,7 @@ export abstract class Assign<T> {
         Object.assign(this, options);
     };
 }
+
 /**
  * @author SNIPPIK
  * @description Класс для команд
@@ -164,7 +165,7 @@ export class ResponseAPI {
      * @param type {find} Тип запроса
      * @public
      */
-    public find<T extends API.callbacks>(type: string | T): ItemRequestAPI<T> {
+    public find<T extends API.callbacks>(type: string | T): RequestAPI_item<T> {
         try {
             const callback = this._api.requests.find((item) => item.name === type || item.filter && type.match(item.filter));
 
@@ -244,7 +245,7 @@ export abstract class RequestAPI {
     public readonly auth: boolean;
     public readonly filter: RegExp;
     public readonly color: number;
-    public readonly requests: ItemRequestAPI<API.callbacks>[];
+    public readonly requests: RequestAPI_item<API.callbacks>[];
 
     /**
      * @description Сохраняем базу данных
@@ -257,10 +258,10 @@ export abstract class RequestAPI {
 /**
  * @author SNIPPIK
  * @description Создаем класс для итогового запроса
- * @class ItemRequestAPI
+ * @class RequestAPI_item
  * @abstract
  */
-export abstract class ItemRequestAPI<T extends API.callbacks> {
+export abstract class RequestAPI_item<T extends API.callbacks> {
     public readonly name: T;
     public readonly filter?: RegExp;
     public readonly callback?: (url: string) => API.callback<T>;
@@ -269,7 +270,7 @@ export abstract class ItemRequestAPI<T extends API.callbacks> {
      * @description Сохраняем базу данных
      * @param options
      */
-    protected constructor(options: ItemRequestAPI<T>) {
+    protected constructor(options: RequestAPI_item<T>) {
         Object.assign(this, options);
     };
 }

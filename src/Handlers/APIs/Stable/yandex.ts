@@ -1,4 +1,4 @@
-import {RequestAPI, ItemRequestAPI} from "@handler";
+import {RequestAPI, RequestAPI_item} from "@handler";
 import {Song} from "@watklok/player/queue/Song";
 import {httpsClient} from "@watklok/request";
 import crypto from "node:crypto";
@@ -22,7 +22,7 @@ export default class extends RequestAPI {
                 /**
                  * @description Запрос данных о треке
                  */
-                new class extends ItemRequestAPI<"track"> {
+                new class extends RequestAPI_item<"track"> {
                     public constructor() {
                         super({
                             name: "track",
@@ -56,7 +56,7 @@ export default class extends RequestAPI {
                 /**
                  * @description Запрос данных об альбоме
                  */
-                new class extends ItemRequestAPI<"album"> {
+                new class extends RequestAPI_item<"album"> {
                     public constructor() {
                         super({
                             name: "album",
@@ -93,7 +93,7 @@ export default class extends RequestAPI {
                 /**
                  * @description Запрос данных об плейлисте
                  */
-                new class extends ItemRequestAPI<"playlist"> {
+                new class extends RequestAPI_item<"playlist"> {
                     public constructor() {
                         super({
                             name: "playlist",
@@ -134,7 +134,7 @@ export default class extends RequestAPI {
                 /**
                  * @description Запрос данных треков артиста
                  */
-                new class extends ItemRequestAPI<"artist"> {
+                new class extends RequestAPI_item<"artist"> {
                     public constructor() {
                         super({
                             name: "artist",
@@ -165,7 +165,7 @@ export default class extends RequestAPI {
                 /**
                  * @description Запрос данных по поиску
                  */
-                new class extends ItemRequestAPI<"search"> {
+                new class extends RequestAPI_item<"search"> {
                     public constructor() {
                         super({
                             name: "search",

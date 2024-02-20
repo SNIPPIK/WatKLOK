@@ -36,7 +36,7 @@ export default class extends Assign<Event<"message/playing">> {
                 //Progress bar
                 const currentTime = queue.player?.stream?.duration ?? 0;
                 const progress = `\`\`${Duration.parseDuration(currentTime)}\`\` ${new ProgressBar(currentTime, duration.seconds).bar} \`\`${duration.full}\`\``;
-                embed.fields.push({ name: " ", value: `\n[|](${url})${progress}[|](${url})` });
+                embed.fields.push({ name: " ", value: `\n[|](${url})${progress}` });
 
                 if (isReturn) return embed;
 

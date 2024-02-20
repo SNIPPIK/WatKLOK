@@ -165,21 +165,25 @@ export class Collection<T extends ArrayQueue> {
                             });
                         }
                     });
-                }
+                };
                 /**
                  * @description Получаем статус скачивания и путь до файла
                  * @param track {Song}
                  */
                 public readonly status = (track: Song): {status: "not" | "final" | "download", path: string} => {
-                    const dirname = __dirname.split("\\src")[0].replaceAll("\\", "/");
-                    const author = track.author.title.replace(/[|,'";*/\\{}!?.:<>]/gi, "");
-                    const song = track.title.replace(/[|,'";*/\\{}!?.:<>]/gi, "");
-                    const fullPath = `${dirname}/${env.get("cached.dir")}/Audio/[${author}]/[${song}]`;
+                    try {
+                        const dirname = __dirname.split("\\src")[0].replaceAll("\\", "/");
+                        const author = track.author.title.replace(/[|,'";*/\\{}!?.:<>]/gi, "");
+                        const song = track.title.replace(/[|,'";*/\\{}!?.:<>]/gi, "");
+                        const fullPath = `${dirname}/${env.get("cached.dir")}/Audio/[${author}]/[${song}]`;
 
 
-                    if (existsSync(`${fullPath}.opus`)) return { status: "final", path: `${fullPath}.opus` };
-                    else if (existsSync(`${fullPath}.raw`)) return { status: "download", path: `${fullPath}.raw` };
-                    return { status: "not", path: `${fullPath}.raw` };
+                        if (existsSync(`${fullPath}.opus`)) return {status: "final", path: `${fullPath}.opus`};
+                        else if (existsSync(`${fullPath}.raw`)) return {status: "download", path: `${fullPath}.raw`};
+                        return {status: "not", path: `${fullPath}.raw`};
+                    } catch {
+                        return { status: "not", path: null };
+                    }
                 };
             } : null;
             public get downloader() { return this._downloader; };
