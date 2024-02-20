@@ -19,7 +19,7 @@ export default class extends Assign<Event<"collection/api">> {
 
                 const api = platform.find(argument[1]);
 
-                if (!api || !api?.name) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}}**\n\nУ меня нет поддержки этого запроса!`));
+                if (!api || !api?.name) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}**\n\nУ меня нет поддержки этого запроса!`));
                 else if (!api) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}.${api.name}**\n\nУ меня нет поддержки для выполнения этого запроса!`));
 
                 //Отправляем сообщение о том что запрос производится

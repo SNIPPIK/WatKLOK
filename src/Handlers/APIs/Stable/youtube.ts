@@ -294,7 +294,7 @@ class YouTubeLib {
                     title: track["shortBylineText"]["runs"][0].text ?? track.author ?? undefined,
                     url: `https://www.youtube.com${track["shortBylineText"]["runs"][0]["navigationEndpoint"]["browseEndpoint"]["canonicalBaseUrl"] || track["shortBylineText"]["runs"][0]["navigationEndpoint"]["commandMetadata"]["webCommandMetadata"].url}`,
                 },
-                duration: {seconds: track["lengthSeconds"] ?? track["lengthText"]?.["simpleText"] ?? 0},
+                duration: { seconds: track["lengthSeconds"] ?? track["lengthText"]?.["simpleText"] ?? 0 },
                 image: track.thumbnail["thumbnails"].pop(),
                 link: track?.format?.url || undefined
             });
@@ -303,7 +303,7 @@ class YouTubeLib {
                 author: { title: track.author, url: `https://www.youtube.com/channel/${track.channelId}` },
                 url: `https://youtu.be/${track["videoId"]}`,
                 title: track.title,
-                duration: {seconds: track["lengthSeconds"] ?? 0},
+                duration: { seconds: track["lengthSeconds"] ?? 0 },
                 image: track.thumbnail["thumbnails"].pop(),
                 link: track?.format?.url || undefined
             })

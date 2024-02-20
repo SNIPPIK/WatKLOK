@@ -105,15 +105,21 @@ export class Song {
     private readonly _duration: { full: string; seconds: number; } = null;
 
     public constructor(track: Song.track) {
-        const seconds = parseInt(track.duration.seconds) || 321;
+        //Высчитываем время
+        if (track.duration.seconds.match(/:/)) {
+            this._duration = { full: track.duration.seconds, seconds: Duration.parseDurationString(track.duration.seconds) };
+        } else {
+            const seconds = parseInt(track.duration.seconds) || 321;
+
+            //Время трека
+            if (isNaN(seconds) || !seconds) this._duration = { full: "Live", seconds: 0 };
+            else this._duration = { full: Duration.parseDuration(seconds), seconds };
+        }
+
         const api = new ResponseAPI(track.url);
 
         //Изображения трека
         track["image"] = track?.image ?? { url: db.emojis.noImage };
-
-        //Время трека
-        if (isNaN(seconds) || !seconds) this._duration = { full: "Live", seconds: 0 };
-        else this._duration = { full: Duration.parseDuration(seconds), seconds };
 
         //Удаляем ненужные данные
         delete track.duration;
