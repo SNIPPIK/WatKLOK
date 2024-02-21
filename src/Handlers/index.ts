@@ -4,7 +4,56 @@ import {AudioPlayerEvents, CollectionEvents} from "@watklok/player/collection";
 import {ArrayQueue} from "@watklok/player/queue/Queue";
 import {Song} from "@watklok/player/queue/Song";
 import {Atlas, Logger} from "@Client";
+import {readdirSync} from "node:fs";
 import {db} from "@Client/db";
+
+/**
+ * @author SNIPPIK
+ * @description Класс загрузки директории Handlers
+ * @class loadHandlerDir
+ * @private
+ */
+export class loadHandlerDir<T> {
+    private readonly path: string;
+    private readonly callback: (data: T | {error: true, message: string}, file: string) => void;
+
+    public constructor(path: string, callback: (data: T | {error: true, message: string}, file: string) => void) {
+        this.path = `src/${path}`; this.callback = callback;
+
+        readdirSync(this.path).forEach((dir) => {
+            if (dir.endsWith(".js")) return;
+            return this.readDir(dir);
+        });
+    };
+
+    /**
+     * @description Загружаем файлы из директории
+     * @param dir {string} Директория из которой будем читать
+     * @return void
+     * @private
+     */
+    private readonly readDir = (dir?: string) => {
+        const path = dir ? `${this.path}/${dir}` : this.path;
+
+        readdirSync(path).forEach((file) => {
+            if (!file.endsWith(".js")) return;
+            const pathFile = `../../${path}/${file}`;
+
+            try {
+                const importFile = require(pathFile);
+                const keysFile = Object.keys(importFile);
+
+                if (keysFile.length <= 0) this.callback({ error: true, message: "TypeError: Not found imports data!"}, `${path}/${file}`);
+                else this.callback(new importFile[keysFile[0]], `${path}/${file}`);
+            } catch (e) {
+                this.callback({ error: true, message: e}, `${path}/${file}`);
+            }
+
+            //Удаляем кеш загрузки
+            delete require.cache[require.resolve(pathFile)];
+        });
+    };
+}
 
 /**
  * @author SNIPPIK
@@ -22,93 +71,6 @@ export abstract class Assign<T> {
         Object.assign(this, options);
     };
 }
-
-/**
- * @author SNIPPIK
- * @description Класс для команд
- * @interface Command
- */
-export interface Command {
-    /**
-     * @description Имя команды
-     * @default null
-     * @readonly
-     * @public
-     */
-    name: string;
-
-    /**
-     * @description Описание команды
-     * @default "Нет описания"
-     * @readonly
-     * @public
-     */
-    description: string;
-
-    /**
-     * @description Команду может использовать только разработчик
-     * @default false
-     * @readonly
-     * @public
-     */
-    owner?: boolean;
-
-    /**
-     * @description Права бота
-     * @default null
-     * @readonly
-     * @public
-     */
-    permissions?: PermissionResolvable[];
-
-    /**
-     * @description Опции для slashCommand
-     * @default null
-     * @readonly
-     * @public
-     */
-    options?: ApplicationCommandOption[];
-
-    /**
-     * @description Выполнение команды
-     * @default null
-     * @readonly
-     * @public
-     */
-    execute: (message: ClientMessage | ClientInteraction, args?: string[]) => Promise<IActionMessage> | IActionMessage | void;
-}
-
-/**
- * @author SNIPPIK
- * @description Класс для событий
- * @interface Event
- */
-export interface Event<T extends keyof ClientEvents | keyof CollectionEvents | keyof AudioPlayerEvents> {
-    /**
-     * @description Название ивента
-     * @default null
-     * @readonly
-     * @public
-     */
-    name: T extends keyof CollectionEvents ? keyof CollectionEvents : T extends keyof AudioPlayerEvents ? keyof AudioPlayerEvents : keyof ClientEvents;
-
-    /**
-     * @description Тип ивента
-     * @default null
-     * @readonly
-     * @public
-     */
-    type: T extends keyof CollectionEvents | keyof AudioPlayerEvents ? "player" : "client";
-
-    /**
-     * @description Функция, которая будет запущена при вызове ивента
-     * @default null
-     * @readonly
-     * @public
-     */
-    execute: T extends keyof CollectionEvents ? CollectionEvents[T] : T extends keyof AudioPlayerEvents ? (queue: ArrayQueue, ...args: Parameters<AudioPlayerEvents[T]>) => any : T extends keyof ClientEvents ? (client: Atlas, ...args: ClientEvents[T]) => void : never;
-}
-
 
 /**
  * @author SNIPPIK
@@ -411,3 +373,90 @@ type IActionMessage = {
 } & ({ content: string; codeBlock?: string; color?: "DarkRed" | "Blue" | "Green" | "Default" | "Yellow" | "Grey" | "Navy" | "Gold" | "Orange" | "Purple" | number;
 } | { content?: string; embeds?: EmbedData[]; callback: (message: ClientMessage, pages: string[], page: number) => void; page: number; pages: string[];
 } | { embeds: EmbedData[]; });
+
+
+/**
+ * @author SNIPPIK
+ * @description Класс для команд
+ * @interface Command
+ */
+export interface Command {
+    /**
+     * @description Имя команды
+     * @default null
+     * @readonly
+     * @public
+     */
+    name: string;
+
+    /**
+     * @description Описание команды
+     * @default "Нет описания"
+     * @readonly
+     * @public
+     */
+    description: string;
+
+    /**
+     * @description Команду может использовать только разработчик
+     * @default false
+     * @readonly
+     * @public
+     */
+    owner?: boolean;
+
+    /**
+     * @description Права бота
+     * @default null
+     * @readonly
+     * @public
+     */
+    permissions?: PermissionResolvable[];
+
+    /**
+     * @description Опции для slashCommand
+     * @default null
+     * @readonly
+     * @public
+     */
+    options?: ApplicationCommandOption[];
+
+    /**
+     * @description Выполнение команды
+     * @default null
+     * @readonly
+     * @public
+     */
+    execute: (message: ClientMessage | ClientInteraction, args?: string[]) => Promise<IActionMessage> | IActionMessage | void;
+}
+
+/**
+ * @author SNIPPIK
+ * @description Класс для событий
+ * @interface Event
+ */
+export interface Event<T extends keyof ClientEvents | keyof CollectionEvents | keyof AudioPlayerEvents> {
+    /**
+     * @description Название ивента
+     * @default null
+     * @readonly
+     * @public
+     */
+    name: T extends keyof CollectionEvents ? keyof CollectionEvents : T extends keyof AudioPlayerEvents ? keyof AudioPlayerEvents : keyof ClientEvents;
+
+    /**
+     * @description Тип ивента
+     * @default null
+     * @readonly
+     * @public
+     */
+    type: T extends keyof CollectionEvents | keyof AudioPlayerEvents ? "player" : "client";
+
+    /**
+     * @description Функция, которая будет запущена при вызове ивента
+     * @default null
+     * @readonly
+     * @public
+     */
+    execute: T extends keyof CollectionEvents ? CollectionEvents[T] : T extends keyof AudioPlayerEvents ? (queue: ArrayQueue, ...args: Parameters<AudioPlayerEvents[T]>) => any : T extends keyof ClientEvents ? (client: Atlas, ...args: ClientEvents[T]) => void : never;
+}

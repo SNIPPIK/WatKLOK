@@ -1,11 +1,9 @@
-import { DiscordGatewayAdapterCreator, VoiceConnection, VoiceConnectionStatus } from "@discordjs/voice";
 import {createWriteStream, existsSync, mkdirSync, rename} from "node:fs";
 import {ClientMessage} from "@handler/Events/Atlas/interactionCreate";
 import {EmbedData, StageChannel, VoiceChannel} from "discord.js";
 import onPlaying from "@handler/Events/Message/onPlaying";
 import {AudioPlayer} from "@watklok/player/AudioPlayer";
 import {ArrayQueue} from "@watklok/player/queue/Queue";
-import {GatewayOpcodes} from "discord-api-types/v10";
 import {Song} from "@watklok/player/queue/Song";
 import {TypedEmitter} from "tiny-typed-emitter";
 import {ActionMessage, Event} from "@handler";
@@ -190,82 +188,6 @@ export class Collection<T extends ArrayQueue> {
             } : null;
             public get downloader() { return this._downloader; };
         },
-        voice: new class {
-            private readonly voices = new Map<string, VoiceConnection>;
-            /**
-             * @description Получение голосового подключения
-             * @param voice {VoiceConnection | string} Голосовое подключение или ID сервера
-             * @public
-             */
-            public getVoice = (voice: VoiceConnection | string): VoiceConnection => {
-                if (typeof voice === "string") return this.voices.get(voice);
-                return this.voices.get(voice.joinConfig.guildId)
-            };
-
-            /**
-             * @description Сохранение голосового подключения
-             * @param voice {VoiceConnection} Голосовое подключение
-             * @public
-             */
-            public setVoice = (voice: VoiceConnection): void => {
-                this.voices.set(voice.joinConfig.guildId, voice);
-            };
-
-            /**
-             * @description Сохранение голосового подключения
-             * @param voice {VoiceConnection | string} Голосовое подключение или ID сервера
-             * @public
-             */
-            public removeVoice = (voice: VoiceConnection | string): void => {
-                const key = typeof voice === "string" ? voice : voice.joinConfig.guildId;
-                const connection = this.voices.get(key);
-
-                if (connection) {
-                    connection.disconnect();
-                    connection.destroy(false);
-                    this.voices.delete(key);
-                }
-            };
-
-            /**
-             * @description Подключение к голосовому каналу
-             * @param config {JoinConfig} Данные для подключения
-             * @public
-             */
-            public joinVoiceChannel = (config: JoinConfig): VoiceConnection => {
-                let connection = this.getVoice(config.guildId);
-
-                //Если нет голосового подключения, то создаем и сохраняем в базу
-                if (!connection) {
-                    connection = new VoiceConnection(config as any, {adapterCreator: config.adapterCreator});
-                    this.setVoice(connection);
-                }
-
-                //Если есть голосовое подключение, то подключаемся заново
-                if (connection && connection.state.status !== VoiceConnectionStatus.Destroyed) {
-                    if (connection.state.status === VoiceConnectionStatus.Disconnected) connection.rejoin(config);
-                    else if (!connection.state.adapter.sendPayload(this.payload(config))) connection.state = { ...connection.state, status: "disconnected" as any, reason: 1 };
-                }
-
-                return connection;
-            };
-
-            /**
-             * @description
-             * @param config {JoinConfig} Данные для подключения
-             */
-            private payload = (config: JoinConfig) => {
-                return {
-                    op: GatewayOpcodes.VoiceStateUpdate,
-                    d: {
-                        guild_id: config.guildId,
-                        channel_id: config.channelId,
-                        self_deaf: config.selfDeaf,
-                        self_mute: config.selfMute
-                    }
-                }
-            };
-        },
         queues: [] as T[]
     };
     /**
@@ -274,13 +196,6 @@ export class Collection<T extends ArrayQueue> {
      * @public
      */
     public get cycles() { return this._local.cycles; };
-
-    /**
-     * @description Получаем управление голосовыми каналами
-     * @return Voice
-     * @public
-     */
-    public get voice() { return this._local.voice; };
 
     /**
      * @description Получаем ивенты для плеера
@@ -386,12 +301,4 @@ export interface AudioPlayerEvents {
 
     //Плеер получил ошибку
     "player/error": (player: AudioPlayer, err: string, critical?: boolean) => void;
-}
-
-interface JoinConfig {
-    selfDeaf:   boolean;
-    guildId:    string;
-    channelId:  string;
-    selfMute:   boolean;
-    adapterCreator?: DiscordGatewayAdapterCreator
 }

@@ -120,7 +120,7 @@ abstract class ServerQueue {
      */
     public set voice(voice: VoiceChannel | StageChannel) {
         this._local.voice = voice;
-        this.player.connection = db.queue.voice.joinVoiceChannel({
+        this.player.connection = db.voice.join({
             selfDeaf: true,
             selfMute: false,
 

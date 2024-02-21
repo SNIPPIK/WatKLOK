@@ -1,10 +1,11 @@
+import {DiscordGatewayAdapterCreator, VoiceConnection, VoiceConnectionStatus, JoinConfig} from "@discordjs/voice";
 import {Collection as AudioCollection} from "@watklok/player/collection";
-import {Command, Event, API, RequestAPI} from "@handler";
+import {Command, Event, API, RequestAPI, loadHandlerDir} from "@handler";
+import {GatewayOpcodes} from "discord-api-types/v10";
 import {Filter} from "@watklok/player/AudioPlayer";
 import {Collection, Routes} from "discord.js";
 import {httpsClient} from "@watklok/request";
 import {Atlas, Logger} from "@Client";
-import {readdirSync} from "node:fs";
 import {env} from "@env";
 
 /**
@@ -76,6 +77,82 @@ export class db {
         fade:    parseInt(env.get("audio.fade")),
         bitrate: env.get("audio.bitrate")
     };
+    private static readonly _voice =  new class {
+        private readonly voices = new Map<string, VoiceConnection>;
+        /**
+         * @description Получение голосового подключения
+         * @param voice {VoiceConnection | string} Голосовое подключение или ID сервера
+         * @public
+         */
+        public get = (voice: VoiceConnection | string): VoiceConnection => {
+            if (typeof voice === "string") return this.voices.get(voice);
+            return this.voices.get(voice.joinConfig.guildId)
+        };
+
+        /**
+         * @description Сохранение голосового подключения
+         * @param voice {VoiceConnection} Голосовое подключение
+         * @public
+         */
+        public set = (voice: VoiceConnection): void => {
+            this.voices.set(voice.joinConfig.guildId, voice);
+        };
+
+        /**
+         * @description Сохранение голосового подключения
+         * @param voice {VoiceConnection | string} Голосовое подключение или ID сервера
+         * @public
+         */
+        public remove = (voice: VoiceConnection | string): void => {
+            const key = typeof voice === "string" ? voice : voice.joinConfig.guildId;
+            const connection = this.voices.get(key);
+
+            if (connection) {
+                connection.disconnect();
+                connection.destroy(true);
+                this.voices.delete(key);
+            }
+        };
+
+        /**
+         * @description Подключение к голосовому каналу
+         * @param config {JoinConfig} Данные для подключения
+         * @public
+         */
+        public join = (config: JoinConfig & { adapterCreator?: DiscordGatewayAdapterCreator }): VoiceConnection => {
+            let connection = this.get(config.guildId);
+
+            //Если нет голосового подключения, то создаем и сохраняем в базу
+            if (!connection) {
+                connection = new VoiceConnection(config as any, {adapterCreator: config.adapterCreator});
+                this.set(connection);
+            }
+
+            //Если есть голосовое подключение, то подключаемся заново
+            if (connection && connection.state.status !== VoiceConnectionStatus.Destroyed) {
+                if (connection.state.status === VoiceConnectionStatus.Disconnected) connection.rejoin(config);
+                else if (!connection.state.adapter.sendPayload(this.payload(config))) connection.state = { ...connection.state, status: "disconnected" as any, reason: 1 };
+            }
+
+            return connection;
+        };
+
+        /**
+         * @description
+         * @param config {JoinConfig} Данные для подключения
+         */
+        private payload = (config: JoinConfig) => {
+            return {
+                op: GatewayOpcodes.VoiceStateUpdate,
+                d: {
+                    guild_id: config.guildId,
+                    channel_id: config.channelId,
+                    self_deaf: config.selfDeaf,
+                    self_mute: config.selfMute
+                }
+            }
+        };
+    }
     /**
      * @description Выдаем данные для запуска AudioResource
      * @public
@@ -83,23 +160,11 @@ export class db {
     public static get AudioOptions() { return this._audio; };
 
     /**
-     * @description Выдаем класс с командами
+     * @description Получаем управление голосовыми каналами
+     * @return Voice
      * @public
      */
-    public static get commands() { return this._array.commands; };
-
-    /**
-     * @description Выдаем все необходимые смайлики
-     * @public
-     */
-    public static get emojis() { return this._emojis; };
-
-    /**
-     * @description Получаем все данные об платформе
-     * @return object
-     * @public
-     */
-    public static get platforms() { return this._array.platforms; };
+    public static get voice() { return this._voice; };
 
     /**
      * @description Получаем CollectionQueue
@@ -132,12 +197,31 @@ export class db {
     };
 
     /**
+     * @description Получаем все данные об платформе
+     * @return object
+     * @public
+     */
+    public static get platforms() { return this._array.platforms; };
+
+    /**
+     * @description Выдаем класс с командами
+     * @public
+     */
+    public static get commands() { return this._array.commands; };
+
+    /**
+     * @description Выдаем все необходимые смайлики
+     * @public
+     */
+    public static get emojis() { return this._emojis; };
+
+    /**
      * @description Загружаем команды для бота в Discord
      * @param client {Atlas} Класс клиента
      * @return Promise<true>
      * @public
      */
-    private static registerCommands = (client: Atlas): Promise<true> => {
+    private static registerCommands = (client: Atlas): Promise<boolean> => {
         return new Promise<true>(async (resolve) => {
             //Загружаем все команды
             const PublicData: any = await client.rest.put(Routes.applicationCommands(client.user.id), {body: this.commands.public});
@@ -154,7 +238,7 @@ export class db {
      * @return Promise<true>
      * @public
      */
-    private static initFs = async (client: Atlas) => {
+    private static initFs = async (client: Atlas): Promise<void> => {
         const dirs = ["Handlers/APIs", "Handlers/Commands", "Handlers/Events"];
         const callbacks = [
             (item: RequestAPI) => {
@@ -190,7 +274,7 @@ export class db {
      * @return Promise<true>
      * @public
      */
-    public static initHandler = async (client: Atlas) => {
+    public static initHandler = async (client: Atlas): Promise<void> => {
         Logger.log("LOG", `[Shard ${client.ID}] is initialize database`);
 
         //Проверяем статус получения фильтров
@@ -200,53 +284,5 @@ export class db {
 
         //Загружаем под папки в Handlers
         await this.initFs(client); await this.registerCommands(client);
-    };
-}
-
-/**
- * @author SNIPPIK
- * @description Класс загрузки директории Handlers
- * @class loadHandlerDir
- * @private
- */
-class loadHandlerDir<T> {
-    private readonly path: string;
-    private readonly callback: (data: T | {error: true, message: string}, file: string) => void;
-
-    public constructor(path: string, callback: (data: T | {error: true, message: string}, file: string) => void) {
-        this.path = `src/${path}`; this.callback = callback;
-
-        readdirSync(this.path).forEach((dir) => {
-            if (dir.endsWith(".js")) return;
-            return this.readDir(dir);
-        });
-    };
-
-    /**
-     * @description Загружаем файлы из директории
-     * @param dir {string} Директория из которой будем читать
-     * @return void
-     * @private
-     */
-    private readonly readDir = (dir?: string) => {
-        const path = dir ? `${this.path}/${dir}` : this.path;
-
-        readdirSync(path).forEach((file) => {
-            if (!file.endsWith(".js")) return;
-            const pathFile = `../../${path}/${file}`;
-
-            try {
-                const importFile = require(pathFile);
-                const keysFile = Object.keys(importFile);
-
-                if (keysFile.length <= 0) this.callback({ error: true, message: "TypeError: Not found imports data!"}, `${path}/${file}`);
-                else this.callback(new importFile[keysFile[0]], `${path}/${file}`);
-            } catch (e) {
-                this.callback({ error: true, message: e}, `${path}/${file}`);
-            }
-
-            //Удаляем кеш загрузки
-            delete require.cache[require.resolve(pathFile)];
-        });
     };
 }
