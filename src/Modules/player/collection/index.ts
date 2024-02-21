@@ -300,5 +300,5 @@ export interface AudioPlayerEvents {
     "player/playing": (player: AudioPlayer) => void;
 
     //Плеер получил ошибку
-    "player/error": (player: AudioPlayer, err: string, critical?: boolean) => void;
+    "player/error": (player: AudioPlayer, err: string, type?: "crash" | "skip") => void;
 }

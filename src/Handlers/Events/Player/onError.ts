@@ -6,16 +6,17 @@ export default class extends Assign<Event<"player/error">> {
         super({
             name: "player/error",
             type: "player",
-            execute: (queue, _, err, crash = false) => {
+            execute: (queue, _, err, crash) => {
                 //Выводим сообщение об ошибке
                 db.queue.events.emit("message/error", queue, err);
 
                 //Если возникает критическая ошибка
-                if (crash) return db.queue.remove(queue.guild.id);
-
-                queue.songs.shift();
-                //Включаем трек через время
-                setTimeout(() => queue.player.play(queue.songs.song), 5e3);
+                if (crash === "crash") return db.queue.remove(queue.guild.id);
+                else if (crash === "skip") {
+                    queue.songs.shift();
+                    //Включаем трек через время
+                    setTimeout(() => queue.player.play(queue.songs.song), 5e3);
+                }
             }
         });
     }

@@ -110,12 +110,14 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @private
      */
     public set status(status: keyof AudioPlayerEvents) {
-        if (status === "player/pause" || status === "player/wait") {
-            this.stream?.stream?.emit("pause");
-            this.sendPacket = Buffer.from([0xf8, 0xff, 0xfe]);
-        }
+        if (status !== this._local.status) {
+            if (status === "player/pause" || status === "player/wait") {
+                this.stream?.stream?.emit("pause");
+                this.sendPacket = Buffer.from([0xf8, 0xff, 0xfe]);
+            }
 
-        if (status !== this._local.status) this.emit(status, this);
+            this.emit(status, this);
+        }
         this._local.status = status;
     };
 
@@ -145,15 +147,28 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
             if (packet) this.connection.playOpusPacket(packet);
         } catch (err: any) {
             //Подключаемся к голосовому каналу заново
-            if (err.match(/getaddrinfo/)) {
-                try {
+            if ((`${err}`).match(/getaddrinfo/)) {
+                this.status = "player/pause";
+                this.emit("player/error", this, `Attempt to reconnect to the voice channel!`);
+
+                for (let r = 0; r === 2; r++) {
+                    if (this.connection.state.status === "ready") break;
+
                     this.connection.rejoin();
+                }
+
+                //Если попытка подключится удалась
+                if (this.connection.state.status === "ready") {
+                    this.status = "player/playing";
                     return;
-                } catch {}
+                } else {
+                    this.emit("player/error", this, `The reconnection attempt failed!`, "crash");
+                    return;
+                }
             }
 
             //Если возникает не исправимая ошибка, то выключаем плеер
-            this.emit("player/error", this, `${err}`, true);
+            this.emit("player/error", this, `${err}`, "crash");
         }
     };
 
@@ -164,7 +179,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
     public set read(stream: AudioResource) {
         if (!stream.readable) {
             //Если не удается включить поток за 20 сек, выдаем ошибку
-            const timeout = setTimeout(() => this.emit("player/error", this, "Timeout stream!", false), 20e3);
+            const timeout = setTimeout(() => this.emit("player/error", this, "Timeout stream!", "skip"), 20e3);
 
             stream.stream
                 //Включаем поток когда можно будет начать читать
@@ -174,7 +189,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
                 })
                 //Если происходит ошибка, то продолжаем читать этот же поток
                 .once("error", () => {
-                    this.emit("player/error", this, "Fail read stream", false);
+                    this.emit("player/error", this, "Fail read stream", "skip");
                     clearTimeout(timeout);
                 });
             return;
