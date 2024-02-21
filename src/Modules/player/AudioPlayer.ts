@@ -110,6 +110,11 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @private
      */
     public set status(status: keyof AudioPlayerEvents) {
+        if (status === "player/pause" || status === "player/wait") {
+            this.stream?.stream?.emit("pause");
+            this.sendPacket = Buffer.from([0xf8, 0xff, 0xfe]);
+        }
+
         if (status !== this._local.status) this.emit(status, this);
         this._local.status = status;
     };
@@ -132,13 +137,22 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
     };
 
     /**
-     * @description Передача пакетов в голосовой канал
+     * @description Передача пакета в голосовой канал
      * @public
      */
     public set sendPacket(packet: Buffer) {
         try {
             if (packet) this.connection.playOpusPacket(packet);
-        } catch (err) { //Если возникает ошибка, то выключаем плеер
+        } catch (err: any) {
+            //Подключаемся к голосовому каналу заново
+            if (err.match(/getaddrinfo/)) {
+                try {
+                    this.connection.rejoin();
+                    return;
+                } catch {}
+            }
+
+            //Если возникает не исправимая ошибка, то выключаем плеер
             this.emit("player/error", this, `${err}`, true);
         }
     };
@@ -176,7 +190,6 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      */
     public pause = (): void => {
         if (this.status !== "player/playing") return;
-        this.connection.configureNetworking();
         this.status = "player/pause";
     };
 
@@ -186,7 +199,6 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      */
     public resume = (): void => {
         if (this.status !== "player/pause") return;
-        this.connection.configureNetworking();
         this.status = "player/playing";
     };
 
@@ -196,10 +208,8 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      */
     public stop = (): void => {
         if (this.status === "player/wait") return;
-        this.connection.configureNetworking();
         this.status = "player/wait";
     };
-
 
     /**
      * @description Удаляем ненужные данные

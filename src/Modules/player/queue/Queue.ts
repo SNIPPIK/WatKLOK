@@ -125,10 +125,8 @@ abstract class ServerQueue {
             selfMute: false,
 
             guildId: this.guild.id,
-            channelId: voice.id,
-
-            adapterCreator: this.guild.voiceAdapterCreator
-        });
+            channelId: voice.id
+        }, this.guild.voiceAdapterCreator);
     };
 
     public constructor(options: { voice: VoiceChannel | StageChannel; message: ClientMessage; }) {

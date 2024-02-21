@@ -1,4 +1,4 @@
-import {DiscordGatewayAdapterCreator, VoiceConnection, VoiceConnectionStatus, JoinConfig} from "@discordjs/voice";
+import {DiscordGatewayAdapterCreator, VoiceConnection, VoiceConnectionStatus} from "@discordjs/voice";
 import {Collection as AudioCollection} from "@watklok/player/collection";
 import {Command, Event, API, RequestAPI, loadHandlerDir} from "@handler";
 import {GatewayOpcodes} from "discord-api-types/v10";
@@ -77,7 +77,7 @@ export class db {
         fade:    parseInt(env.get("audio.fade")),
         bitrate: env.get("audio.bitrate")
     };
-    private static readonly _voice =  new class {
+    private static readonly _voice =  new class Voice<T extends {guildId: string, selfDeaf?: boolean, selfMute?: boolean, channelId: string}> {
         private readonly voices = new Map<string, VoiceConnection>;
         /**
          * @description Получение голосового подключения
@@ -116,21 +116,22 @@ export class db {
 
         /**
          * @description Подключение к голосовому каналу
-         * @param config {JoinConfig} Данные для подключения
+         * @param config {} Данные для подключения
+         * @param adapterCreator {DiscordGatewayAdapterCreator}
          * @public
          */
-        public join = (config: JoinConfig & { adapterCreator?: DiscordGatewayAdapterCreator }): VoiceConnection => {
+        public join = (config: T, adapterCreator: DiscordGatewayAdapterCreator): VoiceConnection => {
             let connection = this.get(config.guildId);
 
             //Если нет голосового подключения, то создаем и сохраняем в базу
             if (!connection) {
-                connection = new VoiceConnection(config as any, {adapterCreator: config.adapterCreator});
+                connection = new VoiceConnection(config as any, {adapterCreator});
                 this.set(connection);
             }
 
             //Если есть голосовое подключение, то подключаемся заново
             if (connection && connection.state.status !== VoiceConnectionStatus.Destroyed) {
-                if (connection.state.status === VoiceConnectionStatus.Disconnected) connection.rejoin(config);
+                if (connection.state.status === VoiceConnectionStatus.Disconnected) connection.rejoin(config as any);
                 else if (!connection.state.adapter.sendPayload(this.payload(config))) connection.state = { ...connection.state, status: "disconnected" as any, reason: 1 };
             }
 
@@ -139,9 +140,9 @@ export class db {
 
         /**
          * @description
-         * @param config {JoinConfig} Данные для подключения
+         * @param config {} Данные для подключения
          */
-        private payload = (config: JoinConfig) => {
+        private payload = (config: T) => {
             return {
                 op: GatewayOpcodes.VoiceStateUpdate,
                 d: {

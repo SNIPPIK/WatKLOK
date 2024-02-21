@@ -226,9 +226,9 @@ export abstract class RequestAPI {
  * @abstract
  */
 export abstract class RequestAPI_item<T extends API.callbacks> {
-    public readonly name: T;
-    public readonly filter?: RegExp;
     public readonly callback?: (url: string) => API.callback<T>;
+    public readonly filter?: RegExp;
+    public readonly name: T;
 
     /**
      * @description Сохраняем базу данных
