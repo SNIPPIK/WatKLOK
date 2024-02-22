@@ -238,17 +238,12 @@ class YouTubeLib {
      * @param data {any} <videoData>.streamingData
      * @param html5player {string} Ссылка на плеер дешифровки
      */
-    public static extractStreamingData = async (data: any, html5player: string): Promise<YouTubeFormat> => {
-        let videos: YouTubeFormat[] = [];
+    public static extractStreamingData = (data: any, html5player: string): Promise<YouTubeFormat> => {
+        return new Promise(async (resolve) => {
+            const format = data["adaptiveFormats"].filter((item: YouTubeFormat) => item.mimeType.match(/opus/) || item.mimeType.match(/audio/));
 
-        for (const item of data["adaptiveFormats"]) {
-            if (item.mimeType.match(/opus/) || item.mimeType.match(/audio/)) {
-                videos.push(await new DecodeVideos({html: html5player, format: item}).extract);
-                break;
-            }
-        }
-
-        return videos?.pop();
+            return resolve(await new DecodeVideos({html: html5player, format: format?.pop()}).extract);
+        });
     };
 
     /**
