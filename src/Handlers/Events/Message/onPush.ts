@@ -1,5 +1,6 @@
 import {ArrayQueue} from "@watklok/player/queue/Queue";
 import {ActionMessage, Assign, Event} from "@handler";
+import {Song} from "@watklok/player/queue/Song";
 import {Duration} from "@watklok/player";
 import {Colors} from "discord.js";
 import {db} from "@Client/db";
@@ -14,7 +15,7 @@ export default class extends Assign<Event<"message/push">> {
 
                 //Если был добавлен трек
                 if (queue instanceof ArrayQueue) {
-                    const {color, author, image, title, requester, duration} = queue.songs[1];
+                    const {color, author, image, title, requester, duration} = obj as Song;
                     options = { message: queue.message, replied: true, time: 12e3, embeds: [
                             {
                                 color, thumbnail: image,
