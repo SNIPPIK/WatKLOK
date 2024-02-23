@@ -61,7 +61,7 @@ abstract class ServerQueue {
     };
 
     /**
-     * @description Получаем настройки очереди
+     * @description Получаем тип повтора
      * @public
      */
     public get loop() {

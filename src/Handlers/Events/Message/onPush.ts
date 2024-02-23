@@ -14,7 +14,7 @@ export default class extends Assign<Event<"message/push">> {
 
                 //Если был добавлен трек
                 if (queue instanceof ArrayQueue) {
-                    const {color, author, image, title, requester, duration} = queue.songs.last;
+                    const {color, author, image, title, requester, duration} = queue.songs[1];
                     options = { message: queue.message, replied: true, time: 12e3, embeds: [
                             {
                                 color, thumbnail: image,
