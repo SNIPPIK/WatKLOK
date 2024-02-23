@@ -15,14 +15,13 @@ export default class extends Assign<Event<"message/push">> {
 
                 //Если был добавлен трек
                 if (queue instanceof ArrayQueue) {
-                    const {color, author, image, title, requester, duration} = obj as Song;
+                    const {color, author, image, title, duration} = obj as Song;
                     options = { message: queue.message, replied: true, time: 12e3, embeds: [
                             {
                                 color, thumbnail: image,
                                 author: {name: author.title, iconURL: db.emojis.diskImage, url: author.url},
                                 footer: {
-                                    text: `${requester.username} | ${duration.full} | 🎶: ${queue.songs.size}`,
-                                    iconURL: requester.avatar
+                                    text: `${duration.full} | 🎶: ${queue.songs.size}`
                                 },
                                 fields: [
                                     {
