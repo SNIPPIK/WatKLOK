@@ -208,12 +208,10 @@ export class Song {
 
             //Проверяем ссылку на работоспособность, если 3 раза будет неудача ссылка будет удалена
             for (let r = 0; r < 3; r++) {
-                //Если нет ссылки
                 if (!this.link) {
                     const link = await fetchAPIs(this);
 
                     if (link instanceof Error) return resolve(link);
-                    else if (!link) this.link = link;
                     else this.link = link;
                 }
 
@@ -246,7 +244,7 @@ function fetchAPIs(track: Song): Promise<string | Error> {
             //Если нет такого запроса
             if (!api) return resolve(Error(`[Song/${track.platform}]: not found callback for track`));
 
-            return api.callback(track.url).then((track: Song | Error) => {
+            api.callback(track.url).then((track: Song | Error) => {
                 if (track instanceof Error) return resolve(track);
                 return resolve(track.link);
             }).catch((err) => resolve(Error(err)));
@@ -255,16 +253,11 @@ function fetchAPIs(track: Song): Promise<string | Error> {
         //Если платформа не может выдать аудио
         else {
             const youtube = new ResponseAPI("YOUTUBE");
-            const videos = youtube.find("search").callback(`${track.author.title} - ${track.title}`);
 
-            return videos.then((tracks) => {
-                if (tracks instanceof Error) return resolve(tracks);
+            youtube.find("search").callback(`${track.author.title} - ${track.title}`).then((videos) => {
+                if (videos instanceof Error || videos.length === 0) return resolve(null);
 
-                //Если подходящих треков нет, то возвращаем ничего
-                if (tracks.length === 0) return resolve(null);
-
-                //Делаем запрос полной информации о треки для получения ссылки на исходный файл музыки
-                return youtube.find("track").callback(tracks[0].url).then((track) => {
+                youtube.find("track").callback(videos.at(-1).url).then((track) => {
                     if (track instanceof Error || !track.link) return resolve(null);
                     return resolve(track.link);
                 }).catch((err) => resolve(Error(err)));
