@@ -442,9 +442,9 @@ class DecodeVideos {
 
         if (!funAction || !objAction) return null;
 
-        const object = objAction[1].replace(/\$/g, "\\$");
-        const objPage = objAction[2].replace(/\$/g, "\\$");
-        const funPage = funAction[1].replace(/\$/g, "\\$");
+        const object = objAction.at(1)?.replace(/\$/g, "\\$");
+        const objPage = objAction.at(2)?.replace(/\$/g, "\\$");
+        const funPage = funAction.at(1)?.replace(/\$/g, "\\$");
 
         let result: RegExpExecArray, tokens: string[] = [], keys: string[] = [];
         for (const decoder of Object.values(this._local.decoder.Regs)) {
@@ -525,7 +525,7 @@ class DecodeVideos {
      * @param res {RegExpExecArray}
      * @private
      */
-    private replacer = (res: RegExpExecArray): string => res && res[1].replace(/\$/g, "\\$").replace(/\$|^'|^"|'$|"$/g, "");
+    private replacer = (res: RegExpExecArray): string => res && res.at(1)?.replace(/\$/g, "\\$").replace(/\$|^'|^"|'$|"$/g, "");
 }
 
 
