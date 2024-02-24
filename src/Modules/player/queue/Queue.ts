@@ -26,6 +26,11 @@ abstract class ServerQueue {
              * @public
              */
             public play = (track: Song, seek: number = 0) => {
+                if (!track || !track.resource) {
+                    this.emit("player/wait", this);
+                    return;
+                }
+                
                 track.resource.then((path) => {
                     if (path instanceof Error) {
                         this.emit("player/error", this, `Failed to getting link audio! Error: ${path}`, "skip");
