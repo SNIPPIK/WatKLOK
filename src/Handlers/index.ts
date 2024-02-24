@@ -129,11 +129,16 @@ export class ResponseAPI {
      */
     public find<T extends API.callbacks>(type: string | T): RequestAPI_item<T> {
         try {
-            if (!type.startsWith("http")) type = "search";
-
             const callback = this._api.requests.find((item) => item.name === type || item.filter && type.match(item.filter));
 
-            if (!callback) return null;
+            if (!callback) {
+                if (!type.startsWith("http")) {
+                    const requests = this._api.requests.find((item) => item.name === "search");
+                    //@ts-ignore
+                    if (requests) return requests;
+                }
+                return null;
+            }
 
             //@ts-ignore
             return callback;
