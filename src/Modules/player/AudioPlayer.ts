@@ -1,5 +1,5 @@
 import {AudioPlayerEvents} from "@watklok/player/collection";
-import {VoiceConnection} from "@discordjs/voice";
+import {VoiceConnection} from "@watklok/voice/VoiceConnection";
 import {TypedEmitter} from "tiny-typed-emitter";
 import {AudioResource} from "./AudioResource";
 import {db} from "@Client/db";
@@ -8,7 +8,7 @@ import {db} from "@Client/db";
  * @author SNIPPIK
  * @description Плеер для проигрывания музыки
  * @class AudioPlayer
- * @extends TypedEmitter<AudioPlayerEvents>
+ * @extends EventEmitter
  */
 export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
     private readonly _local = {
@@ -98,7 +98,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      */
     public set connection(connection: VoiceConnection) {
         if (this._local.voice) {
-            if (this._local.voice.joinConfig.channelId === connection.joinConfig.channelId) return;
+            if (this._local.voice.config.channelId === connection.config.channelId) return;
         }
 
         this._local.voice = connection;
@@ -110,14 +110,12 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @private
      */
     public set status(status: keyof AudioPlayerEvents) {
+        //Если новый статус не является старым
         if (status !== this._local.status) {
-            if (status === "player/pause" || status === "player/wait") {
-                this.stream?.stream?.emit("pause");
-                this.sendPacket = Buffer.from([0xf8, 0xff, 0xfe]);
-            }
-
+            if (status === "player/pause" || status === "player/wait") this.stream?.stream?.emit("pause");
             this.emit(status, this);
         }
+
         this._local.status = status;
     };
 
@@ -127,13 +125,13 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @private
      */
     public set stream(stream: AudioResource) {
-        //Удаляем прошлый поток
-        if (this.stream && this.stream !== stream) {
-            try { this.stream?.stream?.emit("close"); } catch {}
+        //Если есть текущий поток
+        if (this.stream && this.stream?.stream) {
+            this.stream?.stream?.emit("close");
             this._local.stream = null;
         }
 
-        //Продолжаем воспроизведение
+        //Подключаем новый поток
         this._local.stream = stream;
         this.status = "player/playing";
     };
@@ -144,7 +142,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      */
     public set sendPacket(packet: Buffer) {
         try {
-            if (packet) this.connection.playOpusPacket(packet);
+            if (packet) this.connection.playOpusPacket(packet)
         } catch (err: any) {
             //Подключаемся к голосовому каналу заново
             if ((`${err}`).match(/getaddrinfo/)) {
@@ -177,25 +175,30 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @public
      */
     public set read(stream: AudioResource) {
-        if (!stream.readable) {
-            //Если не удается включить поток за 20 сек, выдаем ошибку
-            const timeout = setTimeout(() => this.emit("player/error", this, "Timeout stream!", "skip"), 20e3);
-
-            stream.stream
-                //Включаем поток когда можно будет начать читать
-                .once("readable", () => {
-                    this.stream = stream;
-                    clearTimeout(timeout);
-                })
-                //Если происходит ошибка, то продолжаем читать этот же поток
-                .once("error", () => {
-                    this.emit("player/error", this, "Fail read stream", "skip");
-                    clearTimeout(timeout);
-                });
+        //Если стрим можно прочитать
+        if (stream.readable) {
+            this.stream = stream;
             return;
         }
 
-        this.stream = stream;
+        const timeout = setTimeout(() => {
+            this.emit("player/error", this, "Timeout stream!", "skip");
+        }, 25e3);
+
+        stream.stream
+
+            //Включаем поток когда можно будет начать читать
+            .once("readable", () => {
+                this.stream = stream;
+                clearTimeout(timeout);
+            })
+
+            //Если происходит ошибка, то продолжаем читать этот же поток
+            .once("error", () => {
+                this.emit("player/error", this, "Fail read stream", "skip");
+                clearTimeout(timeout);
+            });
+
     };
 
 
@@ -239,7 +242,6 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
         for (let str of Object.keys(this._local)) this._local[str] = null;
     };
 }
-
 
 /**
  * @author SNIPPIK

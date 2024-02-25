@@ -1,5 +1,5 @@
-import {getVoiceConnection} from "@discordjs/voice";
 import {Assign, Command} from "@handler";
+import {Voice} from "@watklok/voice";
 import {db} from "@Client/db";
 
 export default class extends Assign<Command> {
@@ -10,7 +10,7 @@ export default class extends Assign<Command> {
             execute: (message) => {
                 const { guild, member, author } = message;
                 const queue = db.queue.get(guild.id);
-                const voiceConnection = getVoiceConnection(guild.id);
+                const voiceConnection = Voice.get(guild.id);
 
                 //Если бот не подключен к голосовому каналу
                 if (!voiceConnection) return { content: `${author}, я не подключен к голосовому каналу!`, color: "Yellow" };

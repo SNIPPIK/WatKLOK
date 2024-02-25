@@ -3,6 +3,7 @@ import {AudioResource} from "@watklok/player/AudioResource";
 import {AudioPlayer} from "@watklok/player/AudioPlayer";
 import {StageChannel, VoiceChannel} from "discord.js";
 import {Duration} from "@watklok/player";
+import {Voice} from "@watklok/voice";
 import {db} from "@Client/db";
 import {Song} from "./Song";
 /**
@@ -30,10 +31,10 @@ abstract class ServerQueue {
                     this.emit("player/wait", this);
                     return;
                 }
-                
+
                 track.resource.then((path) => {
                     if (path instanceof Error) {
-                        this.emit("player/error", this, `Failed to getting link audio! Error: ${path}`, "skip");
+                        this.emit("player/error", this, `Failed to getting link audio!\n\n${path.name}\n- ${path.message}`, "skip");
                         return;
                     }
 
@@ -125,7 +126,7 @@ abstract class ServerQueue {
      */
     public set voice(voice: VoiceChannel | StageChannel) {
         this._local.voice = voice;
-        this.player.connection = db.voice.join({
+        this.player.connection = Voice.join({
             selfDeaf: true,
             selfMute: false,
 

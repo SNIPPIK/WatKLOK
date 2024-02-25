@@ -1,7 +1,5 @@
 import {ChildProcessWithoutNullStreams, spawn} from "child_process";
-import {OpusEncoder} from "@watklok/opus";
-
-const cleaner = (events: string[], stream: any, cleanup: () => any) => events.forEach((event) => stream.once(event, cleanup));
+import {OpusEncoder} from "@watklok/voice/utils/Opus";
 
 /**
  * @author SNIPPIK
@@ -23,9 +21,14 @@ export class AudioResource {
      * @return boolean
      * @public
      */
-    public get readable() {
-        return this._temp.readable;
-    };
+    public get readable() { return this._temp.readable; };
+
+    /**
+     * @description Поток
+     * @return OpusEncoder
+     * @public
+     */
+    public get stream() { return this._streams.opus; };
 
     /**
      * @description Выдаем фрагмент потока
@@ -37,15 +40,6 @@ export class AudioResource {
 
         if (packet) this._temp.frames++;
         return packet;
-    };
-
-    /**
-     * @description Поток
-     * @return OpusEncoder
-     * @public
-     */
-    public get stream() {
-        return this._streams.opus;
     };
 
     /**
@@ -71,7 +65,7 @@ export class AudioResource {
         if (seek > 0) this._temp.frames = (seek * 1e3) / this._temp.frame;
 
         //Слушаем OpusEncoder
-        cleaner(["end", "close", "error"], this.stream, this.cleanup);
+        ["end", "close", "error"].forEach((event) => this.stream.once(event, this.cleanup));
         this.stream.once("readable", () => { this._temp.readable = true; });
 
         //Запускаем процесс FFmpeg и подключаем его к OpusEncoder'у
@@ -91,7 +85,6 @@ export class AudioResource {
      * @public
      */
     public cleanup = () => {
-        for (let item of Object.keys(this._temp)) this._temp[item] = null;
         for (let [key, value] of Object.entries(this._streams)) {
             if (value instanceof Process) value.cleanup();
             else {
@@ -101,6 +94,8 @@ export class AudioResource {
 
             this._streams[key] = null;
         }
+
+        for (let item of Object.keys(this._temp)) this._temp[item] = null;
     };
 }
 
@@ -149,7 +144,7 @@ export class Process {
     public constructor(args: string[], name: string = "ffmpeg") {
         this._temp.process = spawn(name, args);
 
-        cleaner(["end", "close", "error"], this.process, this.cleanup);
+        ["end", "close", "error"].forEach((event) => this.process.once(event, this.cleanup));
     };
 
     /**
@@ -158,11 +153,13 @@ export class Process {
      */
     public cleanup = () => {
         for (const std of [this.stdout, this.stdin, this.stderr]) {
-            std.removeAllListeners();
-            std.destroy();
+            try {
+                std?.destroy();
+                std?.removeAllListeners();
+            } catch {}
         }
 
-        if (!this.process?.killed) this.process.kill();
+        if (!this.process?.killed) this.process?.kill();
         for (let item of Object.keys(this._temp)) this._temp[item] = null;
     };
 }

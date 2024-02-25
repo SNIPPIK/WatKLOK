@@ -227,11 +227,11 @@ export class Collection<T extends ArrayQueue> {
     public set = (queue: T) => {
         this.cycles.players.push = queue.player;
         this._local.queues.push(queue);
-        
+
         //Загружаем ивенты плеера
         for (const event of this.events.player) {
             queue.player.on(event as keyof AudioPlayerEvents, (...args: any[]) => {
-                this.events.emit<any>(event, queue, ...args);
+                this.events.emit(event as any, queue, ...args);
             });
         }
 

@@ -134,9 +134,11 @@ export class ResponseAPI {
             if (!callback) {
                 if (!type.startsWith("http")) {
                     const requests = this._api.requests.find((item) => item.name === "search");
+
                     //@ts-ignore
                     if (requests) return requests;
                 }
+
                 return null;
             }
 

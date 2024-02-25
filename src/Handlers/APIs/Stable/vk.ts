@@ -40,8 +40,7 @@ export default class extends RequestAPI {
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
 
-                                        const track = VKLib.track(api.response.pop());
-
+                                        const track = VKLib.track(api.response.pop(), url);
                                         return resolve(track);
                                     } catch (e) {
                                         return reject(Error(`[APIs]: ${e}`))
@@ -115,12 +114,13 @@ class VKLib {
     /**
      * @description Из полученных данных подготавливаем трек для Player<Queue>
      * @param track {any} Любой трек из VK
+     * @param url - Ссылка на трек
      */
-    public static track = (track: any): Song => {
+    public static track = (track: any, url: string = null): Song => {
         const image = track?.album?.["thumb"];
 
         return new Song({
-            url: `https://vk.com/audio${track["owner_id"]}_${track.id}`,
+            url: url || `https://vk.com/audio${track["owner_id"]}_${track.id}`,
             title: track.title,
             author: this.author(track),
             image: { url: image?.["photo_1200"] ?? image?.["photo_600"] ?? image?.["photo_300"] ?? image?.["photo_270"] ?? undefined },

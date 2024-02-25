@@ -1,7 +1,5 @@
-import {DiscordGatewayAdapterCreator, VoiceConnection, VoiceConnectionStatus} from "@discordjs/voice";
 import {Collection as AudioCollection} from "@watklok/player/collection";
 import {Command, Event, API, RequestAPI, loadHandlerDir} from "@handler";
-import {GatewayOpcodes} from "discord-api-types/v10";
 import {Filter} from "@watklok/player/AudioPlayer";
 import {Collection, Routes} from "discord.js";
 import {httpsClient} from "@watklok/request";
@@ -77,95 +75,11 @@ export class db {
         fade:    parseInt(env.get("audio.fade")),
         bitrate: env.get("audio.bitrate")
     };
-    private static readonly _voice =  new class Voice<T extends {guildId: string, selfDeaf?: boolean, selfMute?: boolean, channelId: string}> {
-        private readonly voices = new Map<string, VoiceConnection>;
-        /**
-         * @description Получение голосового подключения
-         * @param voice {VoiceConnection | string} Голосовое подключение или ID сервера
-         * @public
-         */
-        public get = (voice: VoiceConnection | string): VoiceConnection => {
-            if (typeof voice === "string") return this.voices.get(voice);
-            return this.voices.get(voice.joinConfig.guildId)
-        };
-
-        /**
-         * @description Сохранение голосового подключения
-         * @param voice {VoiceConnection} Голосовое подключение
-         * @public
-         */
-        public set = (voice: VoiceConnection): void => {
-            this.voices.set(voice.joinConfig.guildId, voice);
-        };
-
-        /**
-         * @description Сохранение голосового подключения
-         * @param voice {VoiceConnection | string} Голосовое подключение или ID сервера
-         * @public
-         */
-        public remove = (voice: VoiceConnection | string): void => {
-            const key = typeof voice === "string" ? voice : voice.joinConfig.guildId;
-            const connection = this.voices.get(key);
-
-            if (connection) {
-                connection.disconnect();
-                connection.destroy(true);
-                this.voices.delete(key);
-            }
-        };
-
-        /**
-         * @description Подключение к голосовому каналу
-         * @param config {} Данные для подключения
-         * @param adapterCreator {DiscordGatewayAdapterCreator}
-         * @public
-         */
-        public join = (config: T, adapterCreator: DiscordGatewayAdapterCreator): VoiceConnection => {
-            let connection = this.get(config.guildId);
-
-            //Если нет голосового подключения, то создаем и сохраняем в базу
-            if (!connection) {
-                connection = new VoiceConnection(config as any, {adapterCreator});
-                this.set(connection);
-            }
-
-            //Если есть голосовое подключение, то подключаемся заново
-            if (connection && connection.state.status !== VoiceConnectionStatus.Destroyed) {
-                if (connection.state.status === VoiceConnectionStatus.Disconnected) connection.rejoin(config as any);
-                else if (!connection.state.adapter.sendPayload(this.payload(config))) connection.state = { ...connection.state, status: "disconnected" as any, reason: 1 };
-            }
-
-            return connection;
-        };
-
-        /**
-         * @description
-         * @param config {} Данные для подключения
-         */
-        private payload = (config: T) => {
-            return {
-                op: GatewayOpcodes.VoiceStateUpdate,
-                d: {
-                    guild_id: config.guildId,
-                    channel_id: config.channelId,
-                    self_deaf: config.selfDeaf,
-                    self_mute: config.selfMute
-                }
-            }
-        };
-    }
     /**
      * @description Выдаем данные для запуска AudioResource
      * @public
      */
     public static get AudioOptions() { return this._audio; };
-
-    /**
-     * @description Получаем управление голосовыми каналами
-     * @return Voice
-     * @public
-     */
-    public static get voice() { return this._voice; };
 
     /**
      * @description Получаем CollectionQueue

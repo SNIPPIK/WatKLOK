@@ -1,4 +1,5 @@
 import {Assign, Event} from "@handler";
+import {Voice} from "@watklok/voice";
 import {Events} from "discord.js";
 import {db} from "@Client/db"
 
@@ -14,7 +15,7 @@ export default class VoiceStateUpdate extends Assign<Event<Events.VoiceStateUpda
             type: "client",
             execute: (client, oldState, newState) => {
                 const Guild = oldState.guild;
-                const voice = db.voice.get(Guild.id);
+                const voice = Voice.get(Guild.id);
                 const ChannelID = oldState?.channel?.id || newState?.channel?.id;
 
                 /**
@@ -23,7 +24,7 @@ export default class VoiceStateUpdate extends Assign<Event<Events.VoiceStateUpda
                 if (Guild && voice) {
                     const usersSize = (newState.channel?.members ?? oldState.channel?.members)?.filter((member) => !member.user.bot && member.voice?.channel?.id === ChannelID)?.size;
 
-                    if (voice && usersSize < 1 && voice.joinConfig.channelId === oldState?.channelId) db.voice.remove(voice);
+                    if (voice && usersSize < 1 && voice.config.channelId === oldState?.channelId) Voice.remove(voice);
                 }
 
                 /**

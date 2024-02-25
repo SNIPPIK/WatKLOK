@@ -98,7 +98,7 @@ export const Logger = new class {
     public log = (status: "DEBUG" | "WARN" | "ERROR" | "LOG", text: string): void => {
         if (status === "DEBUG" && !debug || !(typeof text?.replace === 'function')) return;
 
-        text = text.replace(/\[/, "\x1b[100m \x1b[30m").replace(/]/, " \x1b[0m");
+        text = text.replace(/\[/g, "\x1b[100m \x1b[30m").replace(/]/g, " \x1b[0m");
 
         const extStatus = this.status[status];
         const time = `\x1b[90m${new Date().toLocaleTimeString()}\x1b[0m`;

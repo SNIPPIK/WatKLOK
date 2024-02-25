@@ -16,7 +16,15 @@
 <img align="center" alt="PGI Settings" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/main/.github/resource/PGI.png?raw=true" />
 <img align="center" alt="Bot Permissions" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/main/.github/resource/Bot Permissions.png?raw=true" />
 
-
+## Зависимости
+- [`Opus Library`](src/Modules/voice/utils/Opus.ts) | Поддерживаемые библиотеки, опциональна!
+  - [`opusscript`](https://www.npmjs.com/package/opusscript)
+  - [`@discordjs/opus`](https://www.npmjs.com/package/@discordjs/opus)
+  - [`mediaplex`](https://www.npmjs.com/package/mediaplex)
+  - [`@evan/opus`](https://www.npmjs.com/package/@evan/opus)
+- [`Sodium Library`](src/Modules/voice/utils/Sodium.ts) | Поддерживаемые библиотеки, необходима!
+  - [`sodium-native`](https://www.npmjs.com/package/sodium-native)
+  - [`sodium`](https://www.npmjs.com/package/sodium)
 
 ## Как запустить
 1. Необходима [`Node.js`](https://nodejs.org/ru/)
@@ -33,10 +41,3 @@
    - Запускаем бота
      - Менеджер осколков -> `npm run shard`
      - Без менеджера -> `npm run client`
-
-## Доступные opus библиотеки
-Качество звука не сильно отличается c opus или без opus!
-  - [`opusscript`](https://www.npmjs.com/package/opusscript)
-  - [`@discordjs/opus`](https://www.npmjs.com/package/@discordjs/opus)
-  - [`mediaplex`](https://www.npmjs.com/package/mediaplex)
-  - [`@evan/opus`](https://www.npmjs.com/package/@evan/opus)

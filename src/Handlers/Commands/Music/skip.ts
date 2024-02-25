@@ -50,7 +50,7 @@ export default class extends Assign<Command> {
                     }
 
                     player.stop();
-                    return arg > 1 ? { content: `⏭️ | Skip to song [${args}] | ${title}`, codeBlock: "css", color: "Green" } : { content: `⏭️ | Skip song | ${title}`, codeBlock: "css", color: "Green" }
+                    return arg > 1 ? { content: `⏭️ | Skip to song [${arg}] | ${title}`, codeBlock: "css", color: "Green" } : { content: `⏭️ | Skip song | ${title}`, codeBlock: "css", color: "Green" }
                 } catch (err) {
                     Logger.log("ERROR", err);
                     return { content: `${author}, Ошибка... попробуй еще раз!!!`, color: "DarkRed" };

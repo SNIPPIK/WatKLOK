@@ -214,7 +214,7 @@ class YandexLib {
             new httpsClient(`${this.authorization.api}/${method}`, {
                 headers: { "Authorization": "OAuth " + this.authorization.token }, method: "GET"
             }).toJson.then((req) => {
-                if (!req) return resolve(Error("[APIs]: Не удалось получить данные!"));
+                if (!req || req instanceof Error) return resolve(Error("[APIs]: Не удалось получить данные!"));
                 else if (!this.authorization.token) return resolve(Error("[APIs]: Не удалось залогиниться!"));
                 else if (req?.error?.name === "session-expired") return resolve(Error("[APIs]: Токен не действителен!"));
                 else if (req?.error?.name === "not-allowed") return resolve(Error("[APIs]: Токен не был допущен! Необходимо обновить!"));
@@ -234,7 +234,8 @@ class YandexLib {
             try {
                 const api = await this.API(`tracks/${ID}/download-info`);
 
-                if (!api || api instanceof Error) return resolve(Error("[APIs]: Невозможно получить исходный файл!"));
+                if (!api) return resolve(Error("[APIs]: Невозможно получить исходный файл!"));
+                else if (api instanceof Error) return resolve(api);
                 else if (api.length === 0) return resolve(Error("[APIs]: Не удалось найти исходный файл музыки!"));
 
                 const url = api.find((data: any) => data.codec !== "aac");
