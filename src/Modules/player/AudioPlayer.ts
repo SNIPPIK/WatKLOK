@@ -1,4 +1,3 @@
-import {AudioPlayerEvents} from "@watklok/player/collection";
 import {VoiceConnection} from "@watklok/voice/VoiceConnection";
 import {TypedEmitter} from "tiny-typed-emitter";
 import {AudioResource} from "./AudioResource";
@@ -241,6 +240,28 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
 
         for (let str of Object.keys(this._local)) this._local[str] = null;
     };
+}
+
+/**
+ * @author SNIPPIK
+ * @description Ивенты плеера
+ * @interface AudioPlayerEvents
+ */
+export interface AudioPlayerEvents {
+    //Плеер начал играть новый трек
+    "player/ended": (player: AudioPlayer, seek: number) => void;
+
+    //Плеер закончил играть трек
+    "player/wait": (player: AudioPlayer) => void;
+
+    //Плеер встал на паузу
+    "player/pause": (player: AudioPlayer) => void;
+
+    //Плеер играет
+    "player/playing": (player: AudioPlayer) => void;
+
+    //Плеер получил ошибку
+    "player/error": (player: AudioPlayer, err: string, type?: "crash" | "skip") => void;
 }
 
 /**

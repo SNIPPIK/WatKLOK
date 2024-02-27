@@ -1,67 +1,32 @@
 import type { GatewayVoiceServerUpdateDispatchData, GatewayVoiceStateUpdateDispatchData } from 'discord-api-types/v10';
 import {VoiceConnection, VoiceConnectionStatus} from "@watklok/voice/VoiceConnection";
 import {GatewayOpcodes} from "discord-api-types/v10";
+import {Collection} from "@handler";
 
 /**
  * @author SNIPPIK
  * @description База с голосовыми подключениями
  */
-export class Voice {
-    private static readonly voices = new Map<string, VoiceConnection>;
-    /**
-     * @description Получение голосового подключения
-     * @param voice {VoiceConnection | string} Голосовое подключение или ID сервера
-     * @public
-     */
-    public static get = (voice: VoiceConnection | string): VoiceConnection => {
-        if (typeof voice === "string") return this.voices.get(voice);
-        return this.voices.get(voice.config.guildId);
-    };
-
-    /**
-     * @description Сохранение голосового подключения
-     * @param voice {VoiceConnection} Голосовое подключение
-     * @public
-     */
-    public static set = (voice: VoiceConnection): void => {
-        this.voices.set(voice.config.guildId, voice);
-    };
-
-    /**
-     * @description Сохранение голосового подключения
-     * @param voice {VoiceConnection | string} Голосовое подключение или ID сервера
-     * @public
-     */
-    public static remove = (voice: VoiceConnection | string): void => {
-        const key = typeof voice === "string" ? voice : voice.config.guildId;
-        const connection = this.voices.get(key);
-
-        if (connection) {
-            connection.disconnect();
-            connection.destroy();
-            this.voices.delete(key);
-        }
-    };
-
+export const Voice = new class Voice extends Collection<VoiceConnection> {
     /**
      * @description Подключение к голосовому каналу
      * @param config {} Данные для подключения
      * @param adapterCreator {DiscordGatewayAdapterCreator}
      * @public
      */
-    public static join = (config: VoiceConfig, adapterCreator: DiscordGatewayAdapterCreator): VoiceConnection => {
+    public join = (config: VoiceConfig, adapterCreator: DiscordGatewayAdapterCreator): VoiceConnection => {
         let connection = this.get(config.guildId);
 
         //Если нет голосового подключения, то создаем и сохраняем в базу
         if (!connection) {
             connection = new VoiceConnection(config as any, {adapterCreator});
-            this.set(connection);
+            this.set(config.guildId, connection);
         }
 
         //Если есть голосовое подключение, то подключаемся заново
         if (connection && connection.state.status !== VoiceConnectionStatus.Destroyed) {
             if (connection.state.status === VoiceConnectionStatus.Disconnected) connection.rejoin(config as any);
-            else if (!connection.state.adapter.sendPayload(Voice.payload(config))) connection.state = { ...connection.state, status: "disconnected" as any, reason: 1 };
+            else if (!connection.state.adapter.sendPayload(this.payload(config))) connection.state = { ...connection.state, status: "disconnected" as any, reason: 1 };
         }
 
         return connection;
@@ -71,7 +36,7 @@ export class Voice {
      * @description
      * @param config {} Данные для подключения
      */
-    public static payload = (config: VoiceConfig) => {
+    public payload = (config: VoiceConfig) => {
         return {
             op: GatewayOpcodes.VoiceStateUpdate,
             d: {

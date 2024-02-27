@@ -86,3 +86,5 @@ export function ArraySort<V>(number: number = 5, array: V[], callback: (value: V
 
     return pages;
 }
+
+export {AudioPlayerEvents} from "@watklok/player/AudioPlayer";

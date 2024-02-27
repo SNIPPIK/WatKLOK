@@ -32,7 +32,7 @@ export default class extends Assign<Event<"collection/api">> {
 
                     let queue = collection.get(message.guild.id);
                     if (!queue) {
-                        collection.set(new ArrayQueue({message, voice}));
+                        collection.set(message.guild.id, new ArrayQueue({message, voice}), collection.runQueue);
                         queue = collection.get(message.guild.id);
 
                         setImmediate(() => queue.player.play(queue.songs.song));

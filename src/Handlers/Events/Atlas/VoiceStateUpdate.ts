@@ -24,7 +24,7 @@ export default class VoiceStateUpdate extends Assign<Event<Events.VoiceStateUpda
                 if (Guild && voice) {
                     const usersSize = (newState.channel?.members ?? oldState.channel?.members)?.filter((member) => !member.user.bot && member.voice?.channel?.id === ChannelID)?.size;
 
-                    if (voice && usersSize < 1 && voice.config.channelId === oldState?.channelId) Voice.remove(voice);
+                    if (voice && usersSize < 1 && voice.config.channelId === oldState?.channelId) Voice.remove(Guild.id);
                 }
 
                 /**

@@ -6,6 +6,7 @@ import {Duration} from "@watklok/player";
 import {Voice} from "@watklok/voice";
 import {db} from "@Client/db";
 import {Song} from "./Song";
+
 /**
  * @author SNIPPIK
  * @description Главный класс очереди
