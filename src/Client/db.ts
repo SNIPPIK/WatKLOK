@@ -244,7 +244,7 @@ namespace LocalDataBase {
              * @public
              */
             public runQueue = (queue: ArrayQueue) => {
-                this.cycles.players.push = queue.player;
+                this.cycles.players.set(queue.player);
 
                 //Загружаем ивенты плеера
                 for (const event of this.events.player) {

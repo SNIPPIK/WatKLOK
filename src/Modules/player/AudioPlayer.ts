@@ -58,14 +58,14 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
     public get connection() { return this._local.voice; };
 
     /**
-     * @description
+     * @description Текущий статус плеера
      * @return AudioPlayerStatus
      * @public
      */
     public get status() { return this._local.status; };
 
     /**
-     * @description
+     * @description Текущий стрим
      * @return AudioResource
      * @public
      */

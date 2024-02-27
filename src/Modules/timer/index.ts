@@ -7,57 +7,57 @@ import {Logger} from "@Client";
  * @abstract
  */
 export abstract class TimeCycle<T = unknown> {
+    private readonly _temp = {
+        array: [] as T[],
+        time: 0
+    };
     public readonly _config: TimeCycleConfig<T> = {
         name: "timeCycle",
         execute: null,
         filter: null,
         duration: 10e3,
-        custom: {push: null, remove: null}
-    };
-    private readonly _dynamics = {
-        array: [] as T[],
-        time: 0
+        custom: {push: null}
     };
     protected constructor(options: TimeCycleConfig<T>) { Object.assign(this._config, options); };
     /**
      * @description Выдаем коллекцию
      * @public
      */
-    public get array() { return this._dynamics.array; }
+    public get array() { return this._temp.array; }
 
     /**
      * @description Добавляем элемент в очередь
-     * @param data {any} Сам элемент
+     * @param item - Объект T
      * @public
      */
-    public set push(data: T) {
-        if (this._config.custom?.push) this._config.custom?.push(data);
-        else if (this._dynamics.array.includes(data)) this.remove(data);
+    public set = (item: T) => {
+        if (this._config.custom?.push) this._config.custom?.push(item);
+        else if (this._temp.array.includes(item)) this.remove(item);
 
         //Добавляем данные в цикл
-        this._dynamics.array.push(data);
+        this._temp.array.push(item);
 
         //Запускаем цикл
-        if (this._dynamics.array?.length === 1) {
+        if (this._temp.array?.length === 1 && this._temp.time === 0) {
             Logger.log("DEBUG", `[Cycle/${this._config.name}]: Start cycle`);
 
-            this._dynamics.time = Date.now();
+            this._temp.time = Date.now();
             setImmediate(this._stepCycle);
         }
     };
 
     /**
      * @description Удаляем элемент из очереди
-     * @param data {any} Сам элемент
+     * @param item - Объект T
      * @public
      */
-    public remove? = (data: T) => {
-        if (this._dynamics.array?.length === 0) return;
+    public remove = (item: T) => {
+        if (this._temp.array?.length === 0) return;
+        const index = this._temp.array.indexOf(item);
 
-        const index = this._dynamics.array.indexOf(data);
         if (index != -1) {
-            if (this._config.custom?.remove) this._config.custom?.remove(data);
-            this._dynamics.array.splice(index, 1);
+            if (this._config.custom?.remove) this._config.custom?.remove(item);
+            this._temp.array.splice(index, 1);
         }
     };
 
@@ -65,38 +65,29 @@ export abstract class TimeCycle<T = unknown> {
      * @description Выполняем this._execute
      * @private
      */
-    private _stepCycle? = (): void => {
-        if (this._dynamics.array?.length === 0) {
+    private _stepCycle = (): void => {
+        if (this._temp.array?.length === 0) {
             Logger.log("DEBUG", `[Cycle/${this._config.name}]: Stop cycle`);
-            this._dynamics.time = 0;
+            this._temp.time = 0;
             return;
         }
 
         //Высчитываем время для выполнения
-        this._dynamics.time += this._config.duration;
+        this._temp.time += this._config.duration;
 
+        for (let item of this._temp.array) {
+            const filtered = this._config.filter(item);
 
-        for (const item of this._dynamics.array.filter(this._config.filter)) {
             try {
-                this._config.execute(item);
+                if (filtered) this._config.execute(item);
             } catch (error) {
-                this._removeItem(error, item);
+                this.remove(item);
+                Logger.log("WARN", `[Cycle/${this._config.name}]: Error in this._execute | ${error}`);
             }
         }
 
         //Выполняем функцию через ~this._time ms
-        setTimeout(this._stepCycle, this._dynamics.time - Date.now());
-    };
-
-    /**
-     * @description Удаляем объект выдающий ошибку
-     * @param err {string} Ошибка из-за которой объект был удален
-     * @param item {any} Объект который будет удален
-     * @private
-     */
-    private _removeItem? = (err: string, item: T) => {
-        Logger.log("WARN", `[Cycle/${this._config.name}]: Error in this._execute | ${err}`);
-        this.remove(item);
+        setTimeout(this._stepCycle, this._temp.time - Date.now());
     };
 }
 

@@ -31,6 +31,16 @@ const SodiumLibs = {
             sodium.api.randombytes_buf(buffer);
             return buffer;
         }
+    }),
+    "libsodium-wrappers": (sodium: any): Methods => ({
+        open: sodium.crypto_secretbox_open_easy,
+        close: sodium.crypto_secretbox_easy,
+        random: sodium.randombytes_buf,
+    }),
+    "tweetnacl": (sodium: any): Methods => ({
+        open: sodium.secretbox.open,
+        close: sodium.secretbox,
+        random: sodium.randomBytes,
     })
 };
 export const Sodium: Methods = {

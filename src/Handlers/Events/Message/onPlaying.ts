@@ -44,7 +44,7 @@ export default class extends Assign<Event<"message/playing">> {
                 new ActionMessage({
                     message: queue.message, embeds: [embed], time: 0, replied: true,
                     components: [queue.components as any],
-                    promise: (msg: ClientMessage) =>  { db.queue.cycles.messages.push = msg }
+                    promise: (msg: ClientMessage) =>  { db.queue.cycles.messages.set(msg) }
                 });
             }
         });
