@@ -25,16 +25,24 @@ export default class extends Assign<Event<"collection/api">> {
                 //Отправляем сообщение о том что запрос производится
                 event.emit("collection/error", message, `⚠️ **Warning** | **${name}.${api.name}**\n\n${env.get("loading.emoji")} Ожидание ответа от сервера...\n${platform.audio ? "Эта платформа не может выдать исходный файл музыки! Поиск трека!" : ""}`, "Yellow");
 
-                api.callback(argument[1]).then((item) => {
-                    if (!item) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}.${api.name}**\n\n**❯** Данные не были получены!`));
-                    else if (item instanceof Error) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}.${api.name}**\n\n**❯** При получении данных была получена ошибка!`));
-                    else if (item instanceof Array) return void (event.emit("message/search", item, platform.platform, message));
+                api.callback(argument[1]).then((item): void => {
+                    //Если нет данных или была получена ошибка
+                    if (!item || item instanceof Error) {
+                        event.emit("collection/error", message, `⚠️ **Warning** | **${name}.${api.name}**\n\n**❯** Данные не были получены!`);
+                        return;
+                    }
+                    //Если был указан поиск
+                    else if (item instanceof Array) {
+                        event.emit("message/search", item, platform.platform, message);
+                        return;
+                    }
 
                     let queue = collection.get(message.guild.id);
                     if (!queue) {
-                        collection.set(message.guild.id, new ArrayQueue({message, voice}), collection.runQueue);
-                        queue = collection.get(message.guild.id);
+                        const item = new ArrayQueue({message, voice});
+                        queue = item;
 
+                        collection.set(message.guild.id, item, collection.runQueue);
                         setImmediate(() => queue.player.play(queue.songs.song));
                     }
 

@@ -1,7 +1,8 @@
+import {MessageConstructor} from "@Client/MessageConstructor";
 import {ArrayQueue} from "@watklok/player/queue/Queue";
-import {ActionMessage, Assign, Event} from "@handler";
 import {Song} from "@watklok/player/queue/Song";
 import {Duration} from "@watklok/player";
+import {Assign, Event} from "@handler";
 import {Colors} from "discord.js";
 import {db} from "@Client/db";
 
@@ -58,7 +59,7 @@ export default class extends Assign<Event<"message/push">> {
                 }
 
                 //Создаем и отправляем сообщение
-                new ActionMessage(options);
+                new MessageConstructor(options);
             }
         });
     }

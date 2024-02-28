@@ -1,8 +1,9 @@
-import {ActionMessage, API, Collection, Command, Event, loadHandlerDir, RequestAPI} from "@handler";
+import {API, Collection, Command, Event, loadHandlerDir, RequestAPI} from "@handler";
 import {AudioPlayer, AudioPlayerEvents, Filter} from "@watklok/player/AudioPlayer";
 import {EmbedData, Routes, StageChannel, VoiceChannel} from "discord.js";
 import {createWriteStream, existsSync, mkdirSync, rename} from "node:fs";
 import {ClientMessage} from "@handler/Events/Atlas/interactionCreate";
+import {MessageConstructor} from "@Client/MessageConstructor";
 import onPlaying from "@handler/Events/Message/onPlaying";
 import {ArrayQueue} from "@watklok/player/queue/Queue";
 import {Song} from "@watklok/player/queue/Song";
@@ -139,7 +140,7 @@ namespace LocalDataBase {
                                 },
                                 custom: {
                                     remove: (item) => {
-                                        ActionMessage.delete = {message: item, time: 200}
+                                        MessageConstructor.delete = {message: item, time: 200}
                                     },
                                     push: (item) => {
                                         const old = this.array.find(msg => msg.guild.id === item.guild.id);

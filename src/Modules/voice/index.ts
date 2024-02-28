@@ -117,6 +117,4 @@ export interface DiscordGatewayAdapterImplementerMethods {
  * разработчик вернет некоторые методы, которые может вызывать библиотека - например, для отправки сообщений на
  * шлюз или для подачи сигнала о том, что адаптер может быть удален.
  */
-export type DiscordGatewayAdapterCreator = (
-    methods: DiscordGatewayAdapterLibraryMethods,
-) => DiscordGatewayAdapterImplementerMethods;
+export type DiscordGatewayAdapterCreator = ( methods: DiscordGatewayAdapterLibraryMethods) => DiscordGatewayAdapterImplementerMethods;

@@ -98,12 +98,11 @@ export namespace Song {
  * @description Ключевой элемент музыки
  */
 export class Song {
-    private readonly _track: Song.track & { duration?: { full: string; seconds: number; }} & { requester?: Song.requester } = {
-        title: null, url: null, image: null, author: null, duration: null
-    };
     private readonly _api: { platform: API.platform; color: number; } = null;
     private readonly _duration: { full: string; seconds: number; } = null;
-
+    private readonly _track: Song.track & { requester?: Song.requester; duration?: { full: string; seconds: number; }} = {
+        title: null, url: null, image: null, author: null, duration: null
+    };
     public constructor(track: Song.track) {
         //Высчитываем время
         if (track.duration.seconds.match(/:/)) {
@@ -200,32 +199,36 @@ export class Song {
 
         //Создаем обещание
         return new Promise(async (resolve) => {
-            //Если трек уже кеширован, то сразу выдаем его
-            if (isDownload) {
-                const info = db.queue.cycles.downloader.status(this);
-                if (info.status === "final") return resolve(`file:|${info.path}`);
-            }
-
-            //Проверяем ссылку на работоспособность, если 3 раза будет неудача ссылка будет удалена
-            for (let r = 0; r < 3; r++) {
-                if (!this.link) {
-                    const link = await fetchAPIs(this);
-
-                    if (link instanceof Error) return resolve(link);
-                    else this.link = link;
+            try {
+                //Если трек уже кеширован, то сразу выдаем его
+                if (isDownload) {
+                    const info = db.queue.cycles.downloader.status(this);
+                    if (info.status === "final") return resolve(`file:|${info.path}`);
                 }
 
-                //Проверяем ссылку работает ли она
-                if (this.link) {
-                    if (await new httpsClient(this.link, {method: "HEAD"}).status) break;
-                    else this.link = null;
-                }
-            }
+                //Проверяем ссылку на работоспособность, если 3 раза будет неудача ссылка будет удалена
+                for (let r = 0; r < 3; r++) {
+                    if (!this.link) {
+                        const link = await fetchAPIs(this);
 
-            //Если не удается найти ссылку через n попыток
-            if (!this.link) return resolve(Error(`[SONG]: Fail update link resource`));
-            else if (isDownload && this.link) void (db.queue.cycles.downloader.set(this));
-            return resolve(`link:|${this.link}`)
+                        if (link instanceof Error) return resolve(link);
+                        else this.link = link;
+                    }
+
+                    //Проверяем ссылку работает ли она
+                    if (this.link) {
+                        if (await new httpsClient(this.link, {method: "HEAD"}).status) break;
+                        else this.link = null;
+                    }
+                }
+
+                //Если не удается найти ссылку через n попыток
+                if (!this.link) return resolve(Error(`[SONG]: Fail update link resource`));
+                else if (isDownload && this.link) void (db.queue.cycles.downloader.set(this));
+                return resolve(`link:|${this.link}`);
+            } catch (err) {
+                return Error(`[SONG]: ${err}`);
+            }
         });
     };
 }

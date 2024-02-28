@@ -1,5 +1,6 @@
 import {ClientMessage} from "@handler/Events/Atlas/interactionCreate";
-import {ActionMessage, Assign, Event} from "@handler";
+import {MessageConstructor} from "@Client/MessageConstructor";
+import {Assign, Event} from "@handler";
 import {Duration} from "@watklok/player";
 import {db} from "@Client/db";
 
@@ -41,7 +42,7 @@ export default class extends Assign<Event<"message/playing">> {
                 if (isReturn) return embed;
 
                 //Создаем и отправляем сообщение
-                new ActionMessage({
+                new MessageConstructor({
                     message: queue.message, embeds: [embed], time: 0, replied: true,
                     components: [queue.components as any],
                     promise: (msg: ClientMessage) =>  { db.queue.cycles.messages.set(msg) }

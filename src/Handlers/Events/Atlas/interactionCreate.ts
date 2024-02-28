@@ -1,5 +1,6 @@
 import { ActionRow, ActionRowBuilder, Attachment, BaseInteraction, BaseMessageOptions, CommandInteractionOption, EmbedData, Events, GuildMember, Message, MessagePayload, PermissionsBitField, User} from "discord.js";
-import {ActionMessage, Assign, Command, Event} from "@handler";
+import {MessageConstructor} from "@Client/MessageConstructor";
+import {Assign, Command, Event} from "@handler";
 import {Atlas, Logger} from "@Client";
 import {db} from "@Client/db";
 import {env} from "@env";
@@ -8,7 +9,7 @@ import {env} from "@env";
  * @description Класс для взаимодействия бота с slash commands, buttons
  * @class InteractionCreate
  */
-export default class extends Assign<Event<Events.InteractionCreate>> {
+export default class Interaction extends Assign<Event<Events.InteractionCreate>> {
     public constructor() {
         super({
             name: Events.InteractionCreate,
@@ -23,12 +24,15 @@ export default class extends Assign<Event<Events.InteractionCreate>> {
                 const status = message?.isCommand() ? true : message?.isButton() ? false : null;
 
                 if (status || status === false) {
-                    const item = (status ? this._stepCommand : this._stepButton)(message);
+                    const item = (status ? Interaction._stepCommand : Interaction._stepButton)(message);
 
                     //Если есть данные, то отправляем их в тестовый канал
                     if (item) {
-                        if (!(item instanceof Promise)) return void new ActionMessage({...item as any, message});
-                        item.then(data => new ActionMessage({...data, message})).catch((err) => Logger.log("ERROR", err));
+                        if (item instanceof Promise) {
+                            item.then(data => new MessageConstructor({...data, message})).catch((err) => Logger.log("ERROR", err));
+                            return;
+                        }
+                        new MessageConstructor({...item as any, message});
                     }
                 }
             }
@@ -41,7 +45,7 @@ export default class extends Assign<Event<Events.InteractionCreate>> {
      * @readonly
      * @private
      */
-    private _stepCommand = (message: ClientInteraction) => {
+    private static _stepCommand = (message: ClientInteraction) => {
         const owners: string[] = env.get("owner.list").split(",");
         const command = db.commands.get(message.commandName);
         const {author, guild} = message;
@@ -79,7 +83,7 @@ export default class extends Assign<Event<Events.InteractionCreate>> {
      * @readonly
      * @private
      */
-    private _stepButton = (message: ClientInteraction) => {
+    private static _stepButton = (message: ClientInteraction) => {
         const queue = db.queue.get(message.guild.id);
 
         //Если нет очереди
@@ -136,7 +140,7 @@ export default class extends Assign<Event<Events.InteractionCreate>> {
      * @readonly
      * @private
      */
-    private _checkPermission = (permissions: Command["permissions"], Fields: Readonly<PermissionsBitField>) => {
+    private static _checkPermission = (permissions: Command["permissions"], Fields: Readonly<PermissionsBitField>) => {
         const fail: any[] = [];
 
         if (permissions && permissions?.length > 0) {

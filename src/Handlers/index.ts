@@ -1,11 +1,12 @@
-import { ActionRowBuilder, ApplicationCommandOption, ClientEvents, Colors, CommandInteraction, EmbedData, PermissionResolvable } from "discord.js";
+import { ApplicationCommandOption, ClientEvents, PermissionResolvable } from "discord.js";
 import {ClientInteraction, ClientMessage} from "@handler/Events/Atlas/interactionCreate";
+import {MessageConstructorType} from "@Client/MessageConstructor";
 import {AudioPlayerEvents} from "@watklok/player/AudioPlayer";
 import {ArrayQueue} from "@watklok/player/queue/Queue";
 import {CollectionAudioEvents, db} from "@Client/db";
 import {Song} from "@watklok/player/queue/Song";
-import {Atlas, Logger} from "@Client";
 import {readdirSync} from "node:fs";
+import {Atlas} from "@Client";
 
 /**
  * @author SNIPPIK
@@ -31,7 +32,7 @@ export abstract class Collection<K> {
     public filter = (fn: (item: K) => boolean) => {
         const items: K[] = [];
 
-        for (let [name, item] of this.array) {
+        for (let [_, item] of this.array) {
             if (fn(item)) items.push(item);
         }
 
@@ -195,120 +196,6 @@ export class loadHandlerDir<T> {
 
 /**
  * @author SNIPPIK
- * @description Создает сообщения для отправки на Discord
- * @class ActionMessage
- */
-export class ActionMessage {
-    private readonly _options: IActionMessage & { message: ClientMessage | ClientInteraction } = null;
-    /**
-     * @description Создаем сообщение
-     * @param options {object} Настройки сообщения
-     */
-    public constructor(options: ActionMessage["_options"]) {
-        if ("content" in options && !("page" in options)) {
-            options = {
-                ...options, embeds: [{
-                    color: typeof options.color === "number" ? options.color : Colors[options.color] ?? 258044,
-                    description: options.codeBlock ? `\`\`\`${options.codeBlock}\n${options.content}\n\`\`\`` : options.content
-                }]
-            }
-            delete options["content"];
-        }
-
-        this._options = options;
-
-        this.channel.then((message) => {
-            const {time, promise} = this._options;
-
-            if (!message) return;
-            //Если надо выполнить действия после
-            if (promise) promise(message);
-
-            //Если меню, то не надо удалять
-            if ("page" in options) this._createMenu(message);
-            else if (time !== 0) ActionMessage.delete = {message, time};
-        }).catch((err) => Logger.log("ERROR", err));
-    };
-
-    /**
-     * @description Создаем меню с объектами
-     * @param message {ClientMessage}
-     * @return void
-     */
-    private _createMenu = (message: ClientMessage) => {
-        let {page, pages, callback} = this._options as any;
-
-        for (const [key, emoji] of Object.entries({back: "⬅️", cancel: "🗑", next: "➡️"})) {
-            message.react(emoji).then(() => message.createReactionCollector({
-                filter: (reaction, user) => reaction.emoji.name === emoji && user.id !== message.client.user.id,
-                time: 60e3
-            }).on("collect", ({users}): void => {
-                users.remove(this._options.message.author).catch(() => null);
-
-                //Удаляем сообщение
-                if (key === "cancel") ActionMessage.delete = {message, time: 2e3};
-
-                //Если нельзя поменять страницу
-                else if (page === pages.length || page < 1) return;
-
-                //Выбираем что делать со страничкой, пролистать вперед или назад
-                else if (key === "next") page++;
-                else page--;
-
-                //Возвращаем функцию
-                return callback(message, pages, page);
-            }))
-        }
-    };
-
-    /**
-     * @description Получаем канал на который будет отослано сообщение
-     * @return Promise<ClientMessage>
-     */
-    protected get channel(): Promise<ClientMessage> {
-        const {message, replied} = this._options;
-
-        if ("replied" in message && !(message as any).replied && !replied) {
-            if (message.isRepliable()) return message.reply(this.messageOptions);
-            return message.followUp(this.messageOptions);
-        }
-
-        return message.channel.send(this.messageOptions) as Promise<ClientMessage>;
-    };
-
-    /**
-     * @description Получаем данные для отправки сообщения
-     * @return object
-     */
-    protected get messageOptions() {
-        return { // @ts-ignore
-            content: this._options.content, embeds: this._options?.embeds,
-            fetchReply: true, components: this._options.components as any
-        };
-    };
-
-    /**
-     * @description Удаление сообщения через указанное время
-     * @param options
-     */
-    public static set delete(options: { message: CommandInteraction | ClientMessage, time?: number }) {
-        const {message, time} = options;
-
-        //Удаляем сообщение
-        if ("deletable" in message && message.deletable) {
-            setTimeout(() => message.delete().catch(() => {
-            }), time ?? 15e3);
-
-            //Удаляем ответ пользователю
-        } else if ("replied" in message && !(message as any).replied) {
-            setTimeout(() => (message as CommandInteraction)?.deleteReply().catch(() => {
-            }), time ?? 15e3);
-        }
-    };
-}
-
-/**
- * @author SNIPPIK
  * @description Получаем ответ от локальной базы APIs
  * @class ResponseAPI
  */
@@ -443,26 +330,6 @@ export namespace API {
 
 /**
  * @author SNIPPIK
- * @description Данные для отправки сообщения
- */
-type IActionMessage = {
-    //Компоненты, такие как кнопки
-    components?: ActionRowBuilder[];
-
-    //Что будет делать после отправки сообщения
-    promise?: (msg: ClientMessage) => void;
-
-    //Время через которое надо удалить сообщение
-    time?: number;
-
-    //Надо отвечать на это сообщение
-    replied?: boolean;
-} & ({ content: string; codeBlock?: string; color?: "DarkRed" | "Blue" | "Green" | "Default" | "Yellow" | "Grey" | "Navy" | "Gold" | "Orange" | "Purple" | number;
-} | { content?: string; embeds?: EmbedData[]; callback: (message: ClientMessage, pages: string[], page: number) => void; page: number; pages: string[];
-} | { embeds: EmbedData[]; });
-
-/**
- * @author SNIPPIK
  * @description Класс для команд
  * @interface Command
  */
@@ -513,7 +380,7 @@ export interface Command {
      * @readonly
      * @public
      */
-    execute: (message: ClientMessage | ClientInteraction, args?: string[]) => Promise<IActionMessage> | IActionMessage | void;
+    execute: (message: ClientMessage | ClientInteraction, args?: string[]) => Promise<MessageConstructorType> | MessageConstructorType | void;
 }
 
 /**

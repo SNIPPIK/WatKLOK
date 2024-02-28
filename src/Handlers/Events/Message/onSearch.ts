@@ -1,5 +1,6 @@
 import {ActionRowBuilder, Colors, StringSelectMenuBuilder} from "discord.js";
-import {ActionMessage, Assign, Event} from "@handler";
+import {MessageConstructor} from "@Client/MessageConstructor";
+import {Assign, Event} from "@handler";
 import {db} from "@Client/db";
 
 export default class extends Assign<Event<"message/search">> {
@@ -8,12 +9,12 @@ export default class extends Assign<Event<"message/search">> {
             name: "message/search",
             type: "player",
             execute: (tracks, platform, message) => {
-                if (tracks?.length < 1 || !tracks) return void (new ActionMessage({
+                if (tracks?.length < 1 || !tracks) return void (new MessageConstructor({
                     content: `${message.author} | Я не смог найти музыку с таким названием. Попробуй другое название!`,
                     color: "DarkRed", message, replied: true
                 }));
 
-                new ActionMessage({
+                new MessageConstructor({
                     replied: true, time: 30e3, message, embeds: [{
                         color: Colors.White, timestamp: new Date(),
                         author: {name: message.guild.name, iconURL: db.emojis.diskImage},
@@ -48,8 +49,8 @@ export default class extends Assign<Event<"message/search">> {
                                 //Ищем команду и выполняем ее
                                 const command = db.commands.get("play").execute(message, [platform, id]);
                                 if (command) {
-                                    if ((command instanceof Promise)) command.then((d) => new ActionMessage({...d, message}));
-                                    else new ActionMessage({...command, message});
+                                    if ((command instanceof Promise)) command.then((d) => new MessageConstructor({...d, message}));
+                                    else new MessageConstructor({...command, message});
                                 }
                             }
 
@@ -57,7 +58,7 @@ export default class extends Assign<Event<"message/search">> {
                             interaction?.deleteReply();
 
                             //Удаляем данные
-                            ActionMessage.delete = {message: msg};
+                            MessageConstructor.delete = {message: msg};
                             collector.stop();
                         });
                     }
