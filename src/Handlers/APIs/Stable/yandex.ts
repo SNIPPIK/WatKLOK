@@ -1,13 +1,13 @@
 import {Song} from "@watklok/player/queue/Song";
 import {httpsClient} from "@watklok/request";
 import crypto from "node:crypto";
-import {API} from "@handler";
+import {API, Constructor} from "@handler";
 import {env} from "@env";
 /**
  * @author SNIPPIK
  * @description Динамически загружаемый класс
  */
-class YandexAPI extends API.request {
+class YandexAPI extends Constructor.Assign<API.request> {
     public constructor() {
         super({
             name: "YANDEX",

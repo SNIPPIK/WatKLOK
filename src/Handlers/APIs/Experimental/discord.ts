@@ -1,13 +1,13 @@
 import {Process} from "@watklok/player/AudioResource";
 import {Song} from "@watklok/player/queue/Song";
-import {API} from "@handler";
+import {API, Constructor} from "@handler";
 import {env} from "@env";
 
 /**
  * @author SNIPPIK
  * @description Динамически загружаемый класс
  */
-export default class extends API.request {
+export default class extends Constructor.Assign<API.request> {
     public constructor() {
         super({
             name: "DISCORD",

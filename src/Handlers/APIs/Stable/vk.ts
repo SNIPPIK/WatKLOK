@@ -1,12 +1,12 @@
 import {Song} from "@watklok/player/queue/Song";
 import {httpsClient} from "@watklok/request";
-import {API} from "@handler";
+import {API, Constructor} from "@handler";
 import {env} from "@env";
 /**
  * @author SNIPPIK
  * @description Динамически загружаемый класс
  */
-class VkAPI extends API.request {
+class VkAPI extends Constructor.Assign<API.request> {
     public constructor() {
         super({
             name: "VK",

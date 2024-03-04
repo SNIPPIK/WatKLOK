@@ -142,8 +142,7 @@ export class Process {
      * @param name {string} Имя процесса
      */
     public constructor(args: string[], name: string = "ffmpeg") {
-        this._temp.process = spawn(name, Object.assign(["-threads", 1], args));
-
+        this._temp.process = spawn(name, args);
         ["end", "close", "error"].forEach((event) => this.process.once(event, this.cleanup));
     };
 

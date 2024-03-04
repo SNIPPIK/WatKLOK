@@ -147,9 +147,9 @@ export namespace Constructor {
             const item: any = this.array.get(ID);
 
             if (item) {
+                if ("disconnect" in item) item?.disconnect();
                 if ("cleanup" in item) item?.cleanup();
                 if ("destroy" in item) item?.destroy();
-                if ("disconnect" in item) item?.disconnect();
 
                 this.array.delete(ID);
             }
@@ -313,27 +313,18 @@ export namespace API {
     /**
      * @author SNIPPIK
      * @description Создаем класс для запроса на сервер
-     * @class request
+     * @interface request
      * @abstract
      */
-    export abstract class request {
-        public readonly name: API.platform;
-        public readonly url: string;
-        public readonly audio: boolean;
-        public readonly auth: boolean;
-        public readonly filter: RegExp;
-        public readonly color: number;
-        public readonly requests: item<API.callbacks>[];
-
-        /**
-         * @description Сохраняем базу данных
-         * @param options
-         */
-        protected constructor(options: request) {
-            Object.assign(this, options);
-        };
+    export interface request {
+        name: API.platform;
+        url: string;
+        audio: boolean;
+        auth: boolean;
+        filter: RegExp;
+        color: number;
+        requests: item<API.callbacks>[];
     }
-
     /**
      * @author SNIPPIK
      * @description Создаем класс для итогового запроса
