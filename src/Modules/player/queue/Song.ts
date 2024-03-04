@@ -1,7 +1,7 @@
 import {httpsClient} from "@watklok/request";
-import {API, ResponseAPI} from "@handler";
 import {Duration} from "@watklok/player";
 import {db} from "@Client/db";
+import {API} from "@handler";
 
 /**
  * @author SNIPPIK
@@ -115,7 +115,7 @@ export class Song {
             else this._duration = { full: Duration.parseDuration(seconds), seconds };
         }
 
-        const api = new ResponseAPI(track.url);
+        const api = new API.response(track.url);
 
         //Изображения трека
         track["image"] = track?.image ?? { url: db.emojis.noImage };
@@ -242,7 +242,7 @@ function fetchAPIs(track: Song): Promise<string | Error> {
     return new Promise((resolve) => {
         //Если платформа может самостоятельно выдать аудио
         if (!db.platforms.audio.includes(track.platform)) {
-            const api = new ResponseAPI(track.platform).find("track");
+            const api = new API.response(track.platform).find("track");
 
             //Если нет такого запроса
             if (!api) return resolve(Error(`[Song/${track.platform}]: not found callback for track`));
@@ -255,7 +255,7 @@ function fetchAPIs(track: Song): Promise<string | Error> {
 
         //Если платформа не может выдать аудио
         else {
-            const youtube = new ResponseAPI("YOUTUBE");
+            const youtube = new API.response("YOUTUBE");
 
             youtube.find("search").callback(`${track.author.title} - ${track.title}`).then((videos) => {
                 if (videos instanceof Error || videos.length === 0) return resolve(null);

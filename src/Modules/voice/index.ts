@@ -1,13 +1,13 @@
 import type { GatewayVoiceServerUpdateDispatchData, GatewayVoiceStateUpdateDispatchData } from 'discord-api-types/v10';
 import {VoiceConnection, VoiceConnectionStatus} from "@watklok/voice/VoiceConnection";
 import {GatewayOpcodes} from "discord-api-types/v10";
-import {Collection} from "@handler";
+import {Constructor} from "@handler";
 
 /**
  * @author SNIPPIK
  * @description База с голосовыми подключениями
  */
-export const Voice = new class Voice extends Collection<VoiceConnection> {
+export const Voice = new class Voice extends Constructor.Collection<VoiceConnection> {
     /**
      * @description Подключение к голосовому каналу
      * @param config {} Данные для подключения

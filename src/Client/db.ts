@@ -1,16 +1,14 @@
-import {API, Collection, Command, Event, loadHandlerDir, RequestAPI} from "@handler";
 import {AudioPlayer, AudioPlayerEvents, Filter} from "@watklok/player/AudioPlayer";
 import {EmbedData, Routes, StageChannel, VoiceChannel} from "discord.js";
 import {createWriteStream, existsSync, mkdirSync, rename} from "node:fs";
-import {ClientMessage} from "@handler/Events/Atlas/interactionCreate";
-import {MessageConstructor} from "@Client/MessageConstructor";
-import onPlaying from "@handler/Events/Message/onPlaying";
+import {API, Constructor, Command, Event, Handler} from "@handler";
+import onPlaying from "@handler/Events/Player/message";
 import {ArrayQueue} from "@watklok/player/queue/Queue";
 import {Song} from "@watklok/player/queue/Song";
 import {TypedEmitter} from "tiny-typed-emitter";
 import {httpsClient} from "@watklok/request";
 import {TimeCycle} from "@watklok/timer";
-import {Atlas, Logger} from "@Client";
+import {Client, Logger} from "@Client";
 import {env} from "@env";
 
 namespace LocalDataBase {
@@ -19,8 +17,8 @@ namespace LocalDataBase {
      * @description Коллекция команд
      * @abstract
      */
-    export abstract class Commands {
-        protected readonly _commands = new class extends Collection<Command> {
+    abstract class Commands {
+        protected readonly _commands = new class extends Constructor.Collection<Command> {
             /**
              * @description Команды для разработчика
              * @return Command[]
@@ -43,11 +41,11 @@ namespace LocalDataBase {
 
         /**
          * @description Загружаем команды для бота в Discord
-         * @param client {Atlas} Класс клиента
+         * @param client {Client} Класс клиента
          * @return Promise<true>
          * @public
          */
-        public registerCommands = (client: Atlas): Promise<boolean> => {
+        public registerCommands = (client: Client): Promise<boolean> => {
             return new Promise<true>(async (resolve) => {
                 //Загружаем все команды
                 const PublicData: any = await client.rest.put(Routes.applicationCommands(client.user.id), {body: this.commands.public});
@@ -64,8 +62,8 @@ namespace LocalDataBase {
      * @description Коллекция для взаимодействия с Audio
      * @abstract
      */
-    export abstract class Audio extends Commands {
-        protected readonly _array = new class extends Collection<ArrayQueue> {
+    abstract class Audio extends Commands {
+        protected readonly _array = new class extends Constructor.Collection<ArrayQueue> {
             private readonly _local = {
                 emitter: new class extends TypedEmitter<CollectionAudioEvents & AudioPlayerEvents> {
                     private _playerEvents: (keyof AudioPlayerEvents)[] = null;
@@ -113,7 +111,7 @@ namespace LocalDataBase {
                      * @description Здесь происходит управление сообщениями от плеера
                      * @private
                      */
-                    private readonly _messages = new class extends TimeCycle<ClientMessage> {
+                    private readonly _messages = new class extends TimeCycle<Client.message> {
                         public constructor() {
                             super({
                                 name: "Message",
@@ -127,7 +125,7 @@ namespace LocalDataBase {
                                     else if (!queue.player.playing || !queue.player.stream.duration || !message.editable) return;
 
                                     setImmediate(() => {
-                                        const newEmbed = (new onPlaying() as Event<"message/playing">).execute(queue, true) as EmbedData;
+                                        const newEmbed = (new onPlaying[0]() as Event<"message/playing">).execute(queue, true) as EmbedData;
 
                                         //Обновляем сообщение
                                         message.edit({
@@ -140,7 +138,7 @@ namespace LocalDataBase {
                                 },
                                 custom: {
                                     remove: (item) => {
-                                        MessageConstructor.delete = {message: item, time: 200}
+                                        Constructor.message.delete = {message: item, time: 200}
                                     },
                                     push: (item) => {
                                         const old = this.array.find(msg => msg.guild.id === item.guild.id);
@@ -216,7 +214,7 @@ namespace LocalDataBase {
                          * @description Получаем статус скачивания и путь до файла
                          * @param track {Song}
                          */
-                        public readonly status = (track: Song): {status: "not" | "final" | "download", path: string} => {
+                        public status = (track: Song): {status: "not" | "final" | "download", path: string} => {
                             try {
                                 const dirname = __dirname.split("\\src")[0].replaceAll("\\", "/");
                                 const author = track.author.title.replace(/[|,'";*/\\{}!?.:<>]/gi, "");
@@ -317,9 +315,9 @@ namespace LocalDataBase {
      * @description Коллекция для взаимодействия с APIs
      * @abstract
      */
-    export abstract class APIs extends Audio {
+    abstract class APIs extends Audio {
         protected readonly _platforms = {
-            supported: [] as RequestAPI[],
+            supported: [] as API.request[],
             authorization: [] as API.platform[],
             audio: [] as API.platform[],
             block: [] as API.platform[]
@@ -376,14 +374,14 @@ namespace LocalDataBase {
 
         /**
          * @description Загружаем Imports
-         * @param client {Atlas} Класс клиента
+         * @param client {Client} Класс клиента
          * @return Promise<true>
          * @public
          */
-        private initFs = async (client: Atlas): Promise<void> => {
+        private initFs = async (client: Client): Promise<void> => {
             const dirs = ["Handlers/APIs", "Handlers/Commands", "Handlers/Events"];
             const callbacks = [
-                (item: RequestAPI) => {
+                (item: API.request) => {
                     //Если нет данных, то откидываем платформу
                     if (!item.auth) this.platforms.authorization.push(item.name);
 
@@ -404,19 +402,21 @@ namespace LocalDataBase {
                 const path = dirs[n];
 
                 try {
-                    new loadHandlerDir<any>(path, callbacks[n]);
+                    new Handler<any>({ path, callback: callbacks[n] });
                     Logger.log("LOG", `[Shard ${client.ID}] have been uploaded, ${path}`);
-                } catch (err) { Logger.log("ERROR", err); }
+                } catch (err) {
+                    Logger.log("ERROR", err);
+                }
             }
         };
 
         /**
          * @description Запускаем db
-         * @param client {Atlas} Класс клиента
+         * @param client {Client} Класс клиента
          * @return Promise<true>
          * @public
          */
-        public initHandler = async (client: Atlas): Promise<void> => {
+        public initHandler = async (client: Client): Promise<void> => {
             Logger.log("LOG", `[Shard ${client.ID}] is initialize database`);
 
             //Проверяем статус получения фильтров
@@ -437,7 +437,7 @@ namespace LocalDataBase {
  */
 export interface CollectionAudioEvents {
     //Сообщение о добавленном треке или плейлисте, альбоме
-    "message/push": (queue: ArrayQueue | ClientMessage, items: Song | Song.playlist) => void;
+    "message/push": (queue: ArrayQueue | Client.message, items: Song | Song.playlist) => void;
 
     //Сообщение о текущем треке
     "message/playing": (queue: ArrayQueue, isReturn?: boolean) => void | EmbedData;
@@ -446,13 +446,13 @@ export interface CollectionAudioEvents {
     "message/error": (queue: ArrayQueue, error?: string | Error) => void;
 
     //Сообщение о поиске и выборе трека
-    "message/search": (tracks: Song[], platform: string, message: ClientMessage) => void;
+    "message/search": (tracks: Song[], platform: string, message: Client.message) => void;
 
     //Добавляем и создаем очередь
-    "collection/api": (message: ClientMessage, voice: VoiceChannel | StageChannel, argument: string[]) => void;
+    "collection/api": (message: Client.message, voice: VoiceChannel | StageChannel, argument: string[]) => void;
 
     //Если во время добавления трека или плейлиста произошла ошибка
-    "collection/error": (message: ClientMessage, error: string, color?: "DarkRed" | "Yellow") => void;
+    "collection/error": (message: Client.message, error: string, color?: "DarkRed" | "Yellow") => void;
 }
 
 /**

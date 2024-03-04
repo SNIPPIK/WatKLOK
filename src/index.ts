@@ -1,4 +1,4 @@
-import {Atlas, Logger, ShardManager} from "@Client";
+import {Client, Logger, ShardManager} from "@Client";
 import process from "node:process";
 import {db} from "@Client/db";
 import {env} from "@env";
@@ -8,7 +8,7 @@ import {env} from "@env";
  */
 if (process["argv"].includes("--ShardManager")) new ShardManager(__filename);
 else {
-    const client = new Atlas();
+    const client = new Client();
 
     client.login(env.get("token.discord")).then(() => {
         //Запускаем загрузку модулей после инициализации бота

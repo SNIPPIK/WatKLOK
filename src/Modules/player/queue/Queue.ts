@@ -1,9 +1,9 @@
-import {ClientMessage} from "@handler/Events/Atlas/interactionCreate";
 import {AudioResource} from "@watklok/player/AudioResource";
 import {AudioPlayer} from "@watklok/player/AudioPlayer";
 import {StageChannel, VoiceChannel} from "discord.js";
 import {Duration} from "@watklok/player";
 import {Voice} from "@watklok/voice";
+import {Client} from "@Client";
 import {db} from "@Client/db";
 import {Song} from "./Song";
 
@@ -17,7 +17,7 @@ abstract class ServerQueue {
     private readonly _local = {
         loop:       "off" as "off" | "song" | "songs",
 
-        message:    null as ClientMessage,
+        message:    null as Client.message,
         voice:      null as VoiceChannel | StageChannel,
         songs:      new ServerQueueSongs(),
         player:     new class extends AudioPlayer {
@@ -77,10 +77,10 @@ abstract class ServerQueue {
 
     /**
      * @description Выдаем сообщение
-     * @return ClientMessage
+     * @return Client.message
      * @public
      */
-    public get message(): ClientMessage {
+    public get message() {
         return this._local.message;
     };
 
@@ -113,10 +113,10 @@ abstract class ServerQueue {
 
     /**
      * @description Записываем сообщение в базу для дальнейшего использования
-     * @param message {ClientMessage} Сохраняемое сообщение
+     * @param message - Сохраняемое сообщение
      * @public
      */
-    public set message(message: ClientMessage) {
+    public set message(message: Client.message) {
         this._local.message = message;
     };
 
@@ -136,7 +136,7 @@ abstract class ServerQueue {
         }, this.guild.voiceAdapterCreator);
     };
 
-    public constructor(options: { voice: VoiceChannel | StageChannel; message: ClientMessage; }) {
+    public constructor(options: { voice: VoiceChannel | StageChannel; message: Client.message; }) {
         for (const [key, value] of Object.entries(options)) {
             try { this[key] = value; } catch (err) { throw TypeError(`Error in queue, ${key} is not found in the server queue`); }
         }

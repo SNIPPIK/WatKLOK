@@ -1,13 +1,29 @@
-import {Client, IntentsBitField, Partials, ShardingManager} from "discord.js";
+import {
+    ActionRow,
+    ActionRowBuilder,
+    Attachment,
+    BaseInteraction,
+    BaseMessageOptions,
+    Client as DS_Client,
+    EmbedData,
+    GuildMember,
+    IntentsBitField,
+    Message,
+    MessagePayload,
+    Partials,
+    ShardingManager,
+    User
+} from "discord.js";
 import {threadId} from "node:worker_threads";
 import process from "process";
 import {env} from "@env";
+
 /**
  * @author SNIPPIK
- * @class Atlas
+ * @class Client
  * @public
  */
-export class Atlas extends Client {
+export class Client extends DS_Client {
     /**
      * @description Получаем ID осколка
      * @return number
@@ -69,6 +85,66 @@ export class ShardManager extends ShardingManager {
         this.spawn({ amount: "auto", delay: -1 }).catch((err: Error) => Logger.log("ERROR",`[ShardManager]: ${err}`));
     };
 }
+
+/**
+ * @author SNIPPIK
+ * @description Здесь хранятся данные выдаваемые от discord
+ * @namespace Client
+ */
+export namespace Client {
+    /**
+     * @author SNIPPIK
+     * @class interact
+     * @description Структура сообщения с тестового канала вызванная через "/"
+     */
+    // @ts-ignore
+    export interface interact extends BaseInteraction {
+        client: Client;
+        member: GuildMember; customId: string; commandName: string; author: User;
+        deferReply: () => Promise<void>; deleteReply: () => Promise<void>;
+        options?: {
+            _hoistedOptions: any[];
+            getAttachment?: (name: string) => Attachment
+        };
+        reply: message["channel"]["send"];
+        replied?: boolean;
+        followUp: interact["reply"];
+    }
+
+    /**
+     * @author SNIPPIK
+     * @class message
+     * @description Структура сообщения с текстового канала
+     */
+    // @ts-ignore
+    export interface message extends Message {
+        client: Client;
+        channel: { send(options: SendMessageOptions & { fetchReply?: boolean }): Promise<message> };
+        edit(content: SendMessageOptions): Promise<message>
+        reply(options: SendMessageOptions): Promise<message>
+        user: null;
+    }
+
+    /**
+     * @description Аргументы для отправки сообщения
+     */
+    type SendMessageOptions = string | MessagePayload | BaseMessageOptions | {
+        embeds?: EmbedData[],
+        components?: ActionRow<any> | ActionRowBuilder<any>
+    };
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 const debug = env.get("debug");
 /**
