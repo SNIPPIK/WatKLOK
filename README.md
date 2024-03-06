@@ -19,7 +19,8 @@
 <img align="center" alt="PGI Settings" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/main/.github/resource/PGI.png?raw=true" />
 <img align="center" alt="Bot Permissions" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/main/.github/resource/Bot Permissions.png?raw=true" />
 
-## Как запустить
+
+## <img alt="Avatar" width="20px" src="https://raw.githubusercontent.com/SNIPPIK/WatKLOK/main/.github/resource/Icons/Note.png" /> Как запустить
 1. Необходима [`Node.js`](https://nodejs.org/ru/)
 2. Качаем проект [`тут`](https://codeload.github.com/SNIPPIK/WatKLOK/zip/refs/heads/main)
 3. Установить [`FFmpeg и FFprobe`](https://github.com/BtbN/FFmpeg-Builds/releases)
@@ -35,8 +36,8 @@
      - Менеджер осколков -> `npm run shard`
      - Без менеджера -> `npm run client`
 
-
-## Библиотеки для конвертации аудио
+    
+## <img alt="Avatar" width="20px" src="https://raw.githubusercontent.com/SNIPPIK/WatKLOK/main/.github/resource/Icons/Disk.gif" /> Библиотеки для конвертации аудио
 - [`Opus Library`](src/Modules/voice/utils/Opus.ts) | Поддерживаемые библиотеки, опциональна!
     - [`opusscript`](https://www.npmjs.com/package/opusscript)
     - [`@discordjs/opus`](https://www.npmjs.com/package/@discordjs/opus)
