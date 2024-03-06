@@ -1,19 +1,4 @@
-import {
-    ActionRow,
-    ActionRowBuilder,
-    Attachment,
-    BaseInteraction,
-    BaseMessageOptions,
-    Client as DS_Client,
-    EmbedData,
-    GuildMember,
-    IntentsBitField,
-    Message,
-    MessagePayload,
-    Partials,
-    ShardingManager,
-    User
-} from "discord.js";
+import {ActionRow, ActionRowBuilder,Attachment,BaseInteraction,BaseMessageOptions,Client as DS_Client,EmbedData,GuildMember,IntentsBitField,Message,MessagePayload,Partials,ShardingManager,User} from "discord.js";
 import {threadId} from "node:worker_threads";
 import process from "process";
 import {env} from "@env";

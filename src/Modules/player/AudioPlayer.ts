@@ -7,7 +7,7 @@ import {db} from "@Client/db";
  * @author SNIPPIK
  * @description Плеер для проигрывания музыки
  * @class AudioPlayer
- * @extends EventEmitter
+ * @extends TypedEmitter
  */
 export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
     private readonly _local = {

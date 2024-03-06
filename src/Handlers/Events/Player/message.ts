@@ -1,5 +1,5 @@
 import {ActionRowBuilder, Colors, StringSelectMenuBuilder} from "discord.js";
-import {ArrayQueue} from "@watklok/player/queue/Queue";
+import {Queue} from "@watklok/player/queue/Queue";
 import {Song} from "@watklok/player/queue/Song";
 import {Constructor, Event} from "@handler";
 import {Duration} from "@watklok/player";
@@ -113,7 +113,7 @@ class onPush extends Constructor.Assign<Event<"message/push">> {
                 let options: any;
 
                 //Если был добавлен трек
-                if (queue instanceof ArrayQueue) {
+                if (queue instanceof Queue.Music) {
                     const {color, author, image, title, duration} = obj as Song;
                     options = { message: queue.message, replied: true, time: 12e3, embeds: [
                             {

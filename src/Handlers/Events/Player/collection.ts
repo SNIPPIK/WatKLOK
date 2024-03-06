@@ -1,4 +1,4 @@
-import {ArrayQueue} from "@watklok/player/queue/Queue";
+import {Queue} from "@watklok/player/queue/Queue";
 import {API, Constructor, Event} from "@handler";
 import {Song} from "@watklok/player/queue/Song";
 import {Logger} from "@Client";
@@ -45,7 +45,7 @@ class onAPI extends Constructor.Assign<Event<"collection/api">> {
 
                     let queue = collection.get(message.guild.id);
                     if (!queue) {
-                        const item = new ArrayQueue({message, voice});
+                        const item = new Queue.Music({message, voice});
                         queue = item;
 
                         collection.set(message.guild.id, item, collection.runQueue);

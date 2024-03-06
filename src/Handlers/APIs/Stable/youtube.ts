@@ -242,9 +242,17 @@ class YouTubeLib {
      */
     public static extractStreamingData = (data: any, html5player: string): Promise<YouTubeFormat> => {
         return new Promise(async (resolve) => {
-            const format = data["adaptiveFormats"].filter((item: YouTubeFormat) => item.mimeType.match(/opus/) || item.mimeType.match(/audio/));
+            let format = null;
 
-            return resolve(await new DecodeVideos({html: html5player, format: format?.pop()}).extract);
+            for (const item of data["adaptiveFormats"]) {
+                if (item.mimeType.match(/opus|audio/) && !item.mimeType.match(/ec-3/)) {
+                    format = item;
+                    break;
+                }
+            }
+
+            const decoded = await new DecodeVideos({html: html5player, format}).extract;
+            return resolve(decoded);
         });
     };
 

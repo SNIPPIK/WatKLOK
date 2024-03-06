@@ -1,6 +1,6 @@
 import {ActionRowBuilder, ApplicationCommandOption,ClientEvents,Colors,EmbedData,PermissionResolvable} from "discord.js";
 import {AudioPlayerEvents} from "@watklok/player/AudioPlayer";
-import {ArrayQueue} from "@watklok/player/queue/Queue";
+import {Queue} from "@watklok/player/queue/Queue";
 import {CollectionAudioEvents, db} from "@Client/db";
 import {Song} from "@watklok/player/queue/Song";
 import {Client, Logger} from "@Client";
@@ -605,5 +605,5 @@ export interface Event<T extends keyof ClientEvents | keyof CollectionAudioEvent
      * @readonly
      * @public
      */
-    execute: T extends keyof CollectionAudioEvents ? CollectionAudioEvents[T] : T extends keyof AudioPlayerEvents ? (queue: ArrayQueue, ...args: Parameters<AudioPlayerEvents[T]>) => any : T extends keyof ClientEvents ? (client: Client, ...args: ClientEvents[T]) => void : never;
+    execute: T extends keyof CollectionAudioEvents ? CollectionAudioEvents[T] : T extends keyof AudioPlayerEvents ? (queue: Queue.Music, ...args: Parameters<AudioPlayerEvents[T]>) => any : T extends keyof ClientEvents ? (client: Client, ...args: ClientEvents[T]) => void : never;
 }

@@ -73,8 +73,8 @@ abstract class Request {
 
     /**
      * @description Инициализируем класс
-     * @param url {string} Ссылка
-     * @param options {any} Опции
+     * @param url - Ссылка
+     * @param options - Опции
      * @public
      */
     public constructor(url: string, options?: httpsClient["_options"]) {
@@ -114,7 +114,6 @@ abstract class Request {
 export class httpsClient extends Request {
     /**
      * @description Получаем страницу в формате string
-     * @requires {request}
      * @public
      */
     public get toString(): Promise<string | Error> {
@@ -139,7 +138,6 @@ export class httpsClient extends Request {
 
     /**
      * @description Получаем со страницы JSON (Работает только тогда когда все страница JSON)
-     * @requires {toString}
      * @public
      */
     public get toJson(): Promise<null | any | Error> {
@@ -158,7 +156,6 @@ export class httpsClient extends Request {
 
     /**
      * @description Проверяем ссылку на работоспособность
-     * @requires {request}
      * @public
      */
     public get status(): Promise<boolean> | false {
@@ -187,7 +184,7 @@ export class httpsClient extends Request {
 
     /**
      * @description Поднимаем другое ядро для взаимодействия
-     * @param data
+     * @param data - Данные для запуска на другом потоке
      */
     private runWorker = (data: {type: "toJson" | "toString" | "toXML", options: httpsClient["_options"]}): Promise<string | Error | any> => {
         return new Promise((resolve,reject) => {

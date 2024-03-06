@@ -1,7 +1,7 @@
 import {Song} from "@watklok/player/queue/Song";
 import {httpsClient} from "@watklok/request";
-import crypto from "node:crypto";
 import {API, Constructor} from "@handler";
+import crypto from "node:crypto";
 import {env} from "@env";
 /**
  * @author SNIPPIK

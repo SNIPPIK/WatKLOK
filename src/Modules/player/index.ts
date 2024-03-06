@@ -9,18 +9,22 @@ export class Duration {
      * @param min {number} Мин число
      * @param max {number} Макс число
      */
-    public static randomNumber = (min: number = 0, max: number) => parseInt((Math.random() * (max - min) + min).toFixed(0));
+    public static randomNumber = (min: number = 0, max: number) => {
+        const fixed = (Math.random() * (max - min) + min).toFixed(0);
+        return parseInt(fixed);
+    };
 
     /**
      * @description Совмещаем время всех треков из очереди
      * @param songs {} Очередь
      */
     public static getTimeArray = (songs: {duration: {seconds: number}}[]): string => {
-        //Если трек треков
-        if (songs.length === 0) return "00:00";
+        let time: number = 0;
 
-        let time = 0;
-        for (let i = 0; i < songs.length; i++) time += songs[i].duration.seconds;
+        //Если есть треки в списке
+        if (songs.length > 0) {
+            for (let item of songs) time += item.duration.seconds;
+        }
 
         return this.parseDuration(time);
     };
@@ -86,5 +90,3 @@ export function ArraySort<V>(number: number = 5, array: V[], callback: (value: V
 
     return pages;
 }
-
-export {AudioPlayerEvents} from "@watklok/player/AudioPlayer";

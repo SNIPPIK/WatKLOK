@@ -10,16 +10,16 @@ import {Song} from "./Song";
 /**
  * @author SNIPPIK
  * @description Главный класс очереди
- * @class ServerQueue
+ * @class BaseQueue
  * @abstract
  */
-abstract class ServerQueue {
+abstract class BaseQueue {
     private readonly _local = {
-        loop:       "off" as "off" | "song" | "songs",
+        repeat:     "off" as "off" | "song" | "songs",
+        shuffle:    false as boolean,
 
         message:    null as Client.message,
         voice:      null as VoiceChannel | StageChannel,
-        songs:      new ServerQueueSongs(),
         player:     new class extends AudioPlayer {
             /**
              * @description Функция отвечает за циклическое проигрывание
@@ -51,28 +51,37 @@ abstract class ServerQueue {
         }
     };
     /**
+     * @description Получаем данные перетасовки
+     * @public
+     */
+    public get shuffle(): boolean {
+        return this._local.shuffle;
+    };
+
+    /**
+     * @description Сохраняем данные перетасовки
+     * @param bol - Параметр boolean
+     * @public
+     */
+    public set shuffle(bol) {
+        this._local.shuffle = bol;
+    };
+
+    /**
      * @description Сохраняем тип повтора
      * @param loop {"off" | "song" | "songs"} Тип повтора
      * @public
      */
-    public set loop(loop: "off" | "song" | "songs") {
-        this._local.loop = loop;
-    };
-
-    /**
-     * @description Получаем класс с треками
-     * @public
-     */
-    public get songs() {
-        return this._local.songs;
+    public set repeat(loop: "off" | "song" | "songs") {
+        this._local.repeat = loop;
     };
 
     /**
      * @description Получаем тип повтора
      * @public
      */
-    public get loop() {
-        return this._local.loop;
+    public get repeat() {
+        return this._local.repeat;
     };
 
     /**
@@ -156,63 +165,78 @@ abstract class ServerQueue {
 
 /**
  * @author SNIPPIK
- * @description Создаем Array с треками для очереди
+ * @description Список очередей для работы плеера
+ * @namespace Queue
  */
-class ServerQueueSongs extends Array<Song> {
+export namespace Queue {
     /**
-     * @description Получаем текущий трек
-     * @return Song
-     * @public
+     * @author SNIPPIK
+     * @description Класс очереди для проигрывания треков
+     * @class Music
      */
-    public get song(): Song { return this.at(0); };
+    export class Music extends BaseQueue {
+        private readonly _components = [
+            { type: 2, emoji: {id: db.emojis.button.shuffle},   custom_id: 'shuffle',       style: 2 },  //Shuffle
+            { type: 2, emoji: {id: db.emojis.button.pref},      custom_id: 'last',          style: 2 },  //Last song
+            { type: 2, emoji: {id: db.emojis.button.pause},     custom_id: 'resume_pause',  style: 2 },  //Resume/Pause
+            { type: 2, emoji: {id: db.emojis.button.next},      custom_id: 'skip',          style: 2 },  //Skip song
+            { type: 2, emoji: {id: db.emojis.button.loop},      custom_id: 'repeat',        style: 2 }   //Loop
+        ];
+        /**
+         * @author SNIPPIK
+         * @description Создаем Array с треками для очереди
+         */
+        private readonly _songs = new class Songs extends Array<Song> {
+            /**
+             * @description Получаем текущий трек
+             * @return Song
+             * @public
+             */
+            public get song(): Song { return this.at(0); };
 
-    /**
-     * @description Получаем последний трек в очереди
-     * @return Song
-     * @public
-     */
-    public get last(): Song { return this.at(-1); };
+            /**
+             * @description Получаем последний трек в очереди
+             * @return Song
+             * @public
+             */
+            public get last(): Song { return this.at(-1); };
 
-    /**
-     * @description Кол-во треков в очереди
-     * @return number
-     * @public
-     */
-    public get size(): number { return this.length; };
+            /**
+             * @description Кол-во треков в очереди
+             * @return number
+             * @public
+             */
+            public get size(): number { return this.length; };
 
-    /**
-     * @description Общее время треков
-     * @return string
-     * @public
-     */
-    public get time() { return Duration.getTimeArray(this as Array<Song>); };
-}
+            /**
+             * @description Общее время треков
+             * @return string
+             * @public
+             */
+            public get time() { return Duration.getTimeArray(this as Array<Song>); };
+        };
+        /**
+         * @description Получаем доступ к трекам
+         * @public
+         */
+        public get songs() {
+            return this._songs;
+        };
 
-/**
- * @author SNIPPIK
- * @description Класс очереди для проигрывания треков
- * @class ArrayQueue
- */
-export class ArrayQueue extends ServerQueue {
-    private readonly _components = [
-        { type: 2, emoji: {id: db.emojis.button.queue}, custom_id: 'queue', style: 2 },         //Queue list
-        { type: 2, emoji: {id: db.emojis.button.pref}, custom_id: 'last', style: 2 },           //Last song
-        { type: 2, emoji: {id: db.emojis.button.pause}, custom_id: 'resume_pause', style: 2 },  //Resume/Pause
-        { type: 2, emoji: {id: db.emojis.button.next}, custom_id: 'skip', style: 2 },           //Skip song
-        { type: 2, emoji: {id: db.emojis.button.loop}, custom_id: 'repeat', style: 2 }          //Loop
-    ];
+        /**
+         * @description Получение кнопок
+         * @public
+         */
+        public get components() {
+            if (this.shuffle) Object.assign(this._components[0], {style: 1});
 
-    /**
-     * @description Получение кнопок
-     * @public
-     */
-    public get components() {
-        //Делаем проверку на кнопку ПАУЗА/ПРОДОЛЖИТЬ
-        if (this.player.status === "player/pause") Object.assign(this._components[2], {emoji: {id: db.emojis.button.resume}});
+            //Делаем проверку на кнопку ПАУЗА/ПРОДОЛЖИТЬ
+            if (this.player.status === "player/pause") Object.assign(this._components[2], {emoji: {id: db.emojis.button.resume}});
 
-        if (this.loop === "song") Object.assign(this._components[4], { emoji: {id: db.emojis.button.loop_one}, style: 1 });
-        else if (this.loop === "songs") Object.assign(this._components[4],{ emoji: {id: db.emojis.button.loop}, style: 1 });
+            if (this.repeat === "song") Object.assign(this._components[4], { emoji: {id: db.emojis.button.loop_one}, style: 1 });
+            else if (this.repeat === "songs") Object.assign(this._components[4],{ emoji: {id: db.emojis.button.loop}, style: 1 });
 
-        return {type: 1, components: this._components};
-    };
+            return {type: 1, components: this._components};
+        };
+    }
 }

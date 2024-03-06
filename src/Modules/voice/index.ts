@@ -10,8 +10,8 @@ import {Constructor} from "@handler";
 export const Voice = new class Voice extends Constructor.Collection<VoiceConnection> {
     /**
      * @description Подключение к голосовому каналу
-     * @param config {} Данные для подключения
-     * @param adapterCreator {DiscordGatewayAdapterCreator}
+     * @param config - Данные для подключения
+     * @param adapterCreator - Для отправки пакетов
      * @public
      */
     public join = (config: VoiceConfig, adapterCreator: DiscordGatewayAdapterCreator): VoiceConnection => {
@@ -33,8 +33,8 @@ export const Voice = new class Voice extends Constructor.Collection<VoiceConnect
     };
 
     /**
-     * @description
-     * @param config {} Данные для подключения
+     * @description Отправка данных на Discord
+     * @param config - Данные для подключения
      */
     public payload = (config: VoiceConfig) => {
         return {

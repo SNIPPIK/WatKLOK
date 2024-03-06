@@ -47,10 +47,10 @@ class Command_Skip extends Constructor.Assign<Command> {
                     if (!player.playing) return { content: `${author}, ⚠ Музыка еще не играет!`, color: "Yellow" };
 
                     //Если пользователь укажет больше чем есть в очереди
-                    else if (arg > songs.length || arg < queue.songs.length) return { content: `${author}, В очереди ${songs.length}!`, color: "Yellow" };
+                    else if (arg > songs.length && arg < queue.songs.length) return { content: `${author}, В очереди ${songs.length}!`, color: "Yellow" };
 
                     else if (arg > 1) {
-                        if (queue.loop === "songs") for (let i = 0; i < arg - 2; i++) songs.push(songs.shift());
+                        if (queue.repeat === "songs") for (let i = 0; i < arg - 2; i++) songs.push(songs.shift());
                         else queue.songs.splice(arg - 2, 1);
                     }
 
@@ -106,7 +106,7 @@ class Command_Remove extends Constructor.Assign<Command> {
                 else if (isNaN(arg)) return { content: `${author}, Это не число!`, color: "Yellow" };
 
                 //Если аргумент больше кол-ва треков
-                else if (arg > queue.songs.length || arg < queue.songs.length) return { content: `${author}, Я не могу убрать музыку, поскольку всего ${queue.songs.length}!`, color: "Yellow" };
+                else if (arg > queue.songs.length && arg < queue.songs.length) return { content: `${author}, Я не могу убрать музыку, поскольку всего ${queue.songs.length}!`, color: "Yellow" };
 
                 //Если музыку нельзя пропустить из-за плеера
                 else if (!queue.player.playing) return { content: `${author}, ⚠ Музыка еще не играет!`, color: "Yellow" };
@@ -114,7 +114,7 @@ class Command_Remove extends Constructor.Assign<Command> {
                 let {title} = queue.songs[arg - 1];
 
                 if (arg === 1) {
-                    if (queue.loop !== "off") {
+                    if (queue.repeat !== "off") {
                         queue.songs.splice(0, 1); //Удаляем первый трек
                         queue.player.stop();
                     } else queue.player.stop();

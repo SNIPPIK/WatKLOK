@@ -3,7 +3,7 @@ import {EmbedData, Routes, StageChannel, VoiceChannel} from "discord.js";
 import {createWriteStream, existsSync, mkdirSync, rename} from "node:fs";
 import {API, Constructor, Command, Event, Handler} from "@handler";
 import onPlaying from "@handler/Events/Player/message";
-import {ArrayQueue} from "@watklok/player/queue/Queue";
+import {Queue} from "@watklok/player/queue/Queue";
 import {Song} from "@watklok/player/queue/Song";
 import {TypedEmitter} from "tiny-typed-emitter";
 import {httpsClient} from "@watklok/request";
@@ -63,7 +63,7 @@ namespace LocalDataBase {
      * @abstract
      */
     abstract class Audio extends Commands {
-        protected readonly _array = new class extends Constructor.Collection<ArrayQueue> {
+        protected readonly _array = new class extends Constructor.Collection<Queue.Music> {
             private readonly _local = {
                 emitter: new class extends TypedEmitter<CollectionAudioEvents & AudioPlayerEvents> {
                     private _playerEvents: (keyof AudioPlayerEvents)[] = null;
@@ -242,7 +242,7 @@ namespace LocalDataBase {
              * Добавлять при создании очереди! В function set
              * @public
              */
-            public runQueue = (queue: ArrayQueue) => {
+            public runQueue = (queue: Queue.Music) => {
                 this.cycles.players.set(queue.player);
 
                 //Загружаем ивенты плеера
@@ -270,8 +270,7 @@ namespace LocalDataBase {
         protected readonly _filters: Filter[] = [];
         private readonly _audio = {
             volume:  parseInt(env.get("audio.volume")),
-            fade:    parseInt(env.get("audio.fade")),
-            bitrate: env.get("audio.bitrate")
+            fade:    parseInt(env.get("audio.fade"))
         };
         /**
          * @description Выдаем данные для запуска AudioResource
@@ -346,7 +345,7 @@ namespace LocalDataBase {
                 loop_one: env.get("button.loop_one"),
                 pref: env.get("button.pref"),
                 next: env.get("button.next"),
-                queue: env.get("button.queue")
+                shuffle: env.get("button.shuffle")
             },
 
             progress: {
@@ -437,13 +436,13 @@ namespace LocalDataBase {
  */
 export interface CollectionAudioEvents {
     //Сообщение о добавленном треке или плейлисте, альбоме
-    "message/push": (queue: ArrayQueue | Client.message, items: Song | Song.playlist) => void;
+    "message/push": (queue: Queue.Music | Client.message, items: Song | Song.playlist) => void;
 
     //Сообщение о текущем треке
-    "message/playing": (queue: ArrayQueue, isReturn?: boolean) => void | EmbedData;
+    "message/playing": (queue: Queue.Music, isReturn?: boolean) => void | EmbedData;
 
     //Сообщение об ошибке
-    "message/error": (queue: ArrayQueue, error?: string | Error) => void;
+    "message/error": (queue: Queue.Music, error?: string | Error) => void;
 
     //Сообщение о поиске и выборе трека
     "message/search": (tracks: Song[], platform: string, message: Client.message) => void;

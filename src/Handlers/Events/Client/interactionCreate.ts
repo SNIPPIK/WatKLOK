@@ -84,16 +84,25 @@ class Interaction extends Constructor.Assign<Event<Events.InteractionCreate>> {
      * @private
      */
     private static _stepButton = (message: Client.interact) => {
+        const { author, member, guild } = message;
         const queue = db.queue.get(message.guild.id);
 
         //Если нет очереди
         if (!queue) return { content: `${message.author}, ⚠ | Музыка сейчас не играет`, color: "Yellow" };
 
+        //Если пользователь не подключен к голосовым каналам
+        else if (!member?.voice?.channel || !member?.voice) return { content: `${author}, Необходимо подключится к голосовому каналу!`, color: "Yellow" };
+
+        //Если есть очередь и пользователь не подключен к тому же голосовому каналу
+        else if (queue && queue.voice && member?.voice?.channel?.id !== queue.voice.id && guild.members.me.voice.channel) return {
+            content: `${author}, Музыка уже играет в другом голосовом канале!\nМузыка включена тут <#${queue.voice.id}>`, color: "Yellow"
+        };
+
         switch (message.customId) {
             //Кнопка возврата прошлого трека
             case "last": {
                 //Если играет всего один трек
-                if (queue.songs.size === 1) return { content: `${message.author}, но играет всего один трек!`, color: "Yellow" };
+                if (queue.songs.size < 2) return { content: `${message.author}, но играет всего один трек!`, color: "Yellow" };
 
                 else if (queue.songs.length > 1) {
                     const index = 0 ?? queue.songs.length - 1;
@@ -107,14 +116,32 @@ class Interaction extends Constructor.Assign<Event<Events.InteractionCreate>> {
                 return { content: `${message.author}, прошлый трек был возвращен!`, color: "Green" };
             }
 
-            //Кнопка очереди
-            case "queue": return db.commands.get("queue").execute(message);
+            //Кнопка перетасовки
+            case "shuffle": {
+                if (queue.songs.size < 2) return { content: `${message.author}, но играет всего один трек!`, color: "Yellow" };
+                queue.shuffle = !queue.shuffle;
+
+                return { content: `${message.author}, перетасовка треков ${queue.shuffle ? "включена" : "выключена"}!`, color: "Green" };
+            }
 
             //Кнопка пропуска
             case "skip": return db.commands.get("skip").execute(message, ["1"]);
 
             //Кнопка повтора
-            case "repeat": return db.commands.get("repeat").execute(message, [queue.loop === "songs" ? "song": "songs"]);
+            case "repeat": {
+                const loop = queue.repeat;
+
+                if (loop === "off") {
+                    queue.repeat = "songs";
+                    return { content: `🔁 | Повтор всей музыки`, codeBlock: "css"};
+                } else if (loop === "songs") {
+                    queue.repeat = "song";
+                    return { content: `🔂 | Повтор  | ${queue.songs[0].title}`, codeBlock: "css"};
+                }
+
+                queue.repeat = "off";
+                return { content: `❌ | Повтор выключен`, codeBlock: "css"};
+            }
 
             //Кнопка паузы
             case "resume_pause": {

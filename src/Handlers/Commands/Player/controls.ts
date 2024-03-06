@@ -172,15 +172,15 @@ class Command_Repeat extends Constructor.Assign<Command> {
 
                 switch (argument) {
                     case "song": {
-                        queue.loop = "song";
+                        queue.repeat = "song";
                         return { content: `🔂 | Повтор  | ${queue.songs[0].title}`, codeBlock: "css"};
                     }
                     case "songs": {
-                        queue.loop = "songs";
+                        queue.repeat = "songs";
                         return { content: `🔁 | Повтор всей музыки`, codeBlock: "css"};
                     }
                     case "off": {
-                        queue.loop = "off";
+                        queue.repeat = "off";
                         return { content: `❌ | Повтор выключен`, codeBlock: "css"};
                     }
                 }

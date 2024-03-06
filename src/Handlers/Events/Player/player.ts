@@ -36,8 +36,16 @@ class onWait extends Constructor.Assign<Event<"player/wait">> {
             type: "player",
             execute: (queue) => {
                 //Проверяем надо ли удалить из очереди трек
-                const removedSong = queue.loop === "off" || queue.loop === "songs" ? queue.songs.shift() : null;
-                if (removedSong && queue.loop === "songs") queue.songs.push(removedSong);
+                const removedSong = queue.repeat === "off" || queue.repeat === "songs" ? queue.songs.shift() : null;
+                if (removedSong && queue.repeat === "songs") queue.songs.push(removedSong);
+
+                //Проверяем надо ли перетасовывать очередь
+                if (queue.shuffle && queue.repeat === "off") {
+                    for (let i = queue.songs.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [queue.songs[i], queue.songs[j]] = [queue.songs[j], queue.songs[i]];
+                    }
+                }
 
                 if (!queue?.songs?.song) return db.queue.remove(queue.guild.id);
 
@@ -66,6 +74,10 @@ class onError extends Constructor.Assign<Event<"player/error">> {
                 if (crash === "crash") return db.queue.remove(queue.guild.id);
                 else if (crash === "skip") {
                     queue.songs.shift();
+
+                    //Если нет плеер, то нет смысла продолжать
+                    if (!queue.player) return;
+
                     //Включаем трек через время
                     setTimeout(() => queue.player.play(queue.songs.song), 5e3);
                 }

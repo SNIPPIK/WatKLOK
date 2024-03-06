@@ -25,7 +25,7 @@ class Command_Play extends Constructor.Assign<Command> {
                     type: ApplicationCommandOptionType["String"],
                     choices: (db.platforms.supported.length < 25 ? db.platforms.supported : db.platforms.supported.splice(0, 20)).map((platform) => {
                         return {
-                            name: `${platform.name}`,
+                            name: `[${platform.requests.length}] ${platform.name} | ${platform.url}`,
                             value: platform.name
                         }
                     }),
