@@ -1,3 +1,6 @@
+<center><img src="https://raw.githubusercontent.com/SNIPPIK/WatKLOK/main/.github/resource/Icons/BG.png" alt="centered image" height="50"></center>
+
+
 [<img align="right" alt="Avatar" width="350px" src="https://raw.githubusercontent.com/SNIPPIK/WatKLOK/main/.github/resource/Icons/Bot.png" />]()
 
 # [`WatKLOK`](https://github.com/SNIPPIK/WatKLOK) 
