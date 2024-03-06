@@ -23,7 +23,7 @@
    - `Windows` | Скачать [`FFmpeg`](https://ffmpeg.org/) и распаковать в любое место
      - Указать `ffmpeg.path` и `ffprobe.path` в [`env`](.env)
    - `Linux` | (sudo apt install or sudo pacman -S) ffmpeg
-4. [`Настраиваем конфиг`](https://github.com/SNIPPIK/WatKLOK?tab=readme-ov-file#Как-настроить-env-файл) .env
+4. [`Настраиваем конфиг`](#Как-настроить-env-файл) .env
 5. Открываем консоль или терминал в директории проекта
    - Устанавливаем все зависимости `npm i`
    - Выполняем сборку `npm i -g typescript`
