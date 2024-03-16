@@ -229,12 +229,15 @@ export namespace Queue {
          */
         public get components() {
             if (this.shuffle) Object.assign(this._components[0], {style: 1});
+            else Object.assign(this._components[0], {style: 2});
 
             //Делаем проверку на кнопку ПАУЗА/ПРОДОЛЖИТЬ
             if (this.player.status === "player/pause") Object.assign(this._components[2], {emoji: {id: db.emojis.button.resume}});
+            else Object.assign(this._components[2], {emoji: {id: db.emojis.button.pause}});
 
             if (this.repeat === "song") Object.assign(this._components[4], { emoji: {id: db.emojis.button.loop_one}, style: 1 });
             else if (this.repeat === "songs") Object.assign(this._components[4],{ emoji: {id: db.emojis.button.loop}, style: 1 });
+            else Object.assign(this._components[4],{ emoji: {id: db.emojis.button.loop}, style: 2 });
 
             return {type: 1, components: this._components};
         };
