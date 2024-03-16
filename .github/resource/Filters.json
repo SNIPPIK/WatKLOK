@@ -43,12 +43,6 @@
     "speed": 1.25
   },
   {
-    "names": ["karaoke"],
-    "description": "Тип интерактивного развлечения",
-    "filter": "stereotools=mlev=0.1",
-    "args": false
-  },
-  {
     "names": ["echo"],
     "description": "Отражение звука, которое доходит до слушателя с задержкой после прямого звука",
     "filter": "aecho=0.8:0.9:1000:0.3",
