@@ -34,9 +34,8 @@
     //Сокращения
     "paths": {
       "@env": ["./env"],
-      "@Client": ["./Client/index"], "@Client/*": ["./Client/*"],
-      "@handler/*": ["./Handlers/*"], "@handler": ["./Handlers/index"],
-      "@watklok/*": ["./Modules/*"]
+      "@handler/*": ["./handlers/*"], "@handler": ["./handlers/index"],
+      "@lib/*": ["./libs/*"]
     }
   },
 
