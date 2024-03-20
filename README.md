@@ -5,7 +5,7 @@
 
 # [`WatKLOK`](https://github.com/SNIPPIK/WatKLOK) 
 - Автор: [`SNIPPIK`](https://github.com/SNIPPIK)
-- Доступные платформы: [`тут`](src/Handlers/APIs)
+- Доступные платформы: [`тут`](src/handlers/APIs)
 - Демонстрация: [`тут`](https://www.youtube.com/watch?v=G7vgPmnt9_8)
 - Поддерживаться только /команды
 - Все сообщения удаляются через время
@@ -38,12 +38,12 @@
 
     
 ## <img alt="Avatar" width="20px" src="https://raw.githubusercontent.com/SNIPPIK/WatKLOK/main/.github/resource/Icons/Disk.gif" /> Библиотеки для конвертации аудио
-- [`Opus Library`](src/Modules/voice/utils/Opus.ts) | Поддерживаемые библиотеки, опциональна!
+- [`Opus Library`](src/libs/voice/utils/Opus.ts) | Поддерживаемые библиотеки, опциональна!
     - [`opusscript`](https://www.npmjs.com/package/opusscript)
     - [`@discordjs/opus`](https://www.npmjs.com/package/@discordjs/opus)
     - [`mediaplex`](https://www.npmjs.com/package/mediaplex)
     - [`@evan/opus`](https://www.npmjs.com/package/@evan/opus)
-- [`Sodium Library`](src/Modules/voice/utils/Sodium.ts) | Поддерживаемые библиотеки, необходима!
+- [`Sodium Library`](src/libs/voice/utils/Sodium.ts) | Поддерживаемые библиотеки, необходима!
     - [`sodium-native`](https://www.npmjs.com/package/sodium-native)
     - [`sodium`](https://www.npmjs.com/package/sodium)
 
