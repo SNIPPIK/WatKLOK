@@ -1,5 +1,4 @@
 import {History} from "@lib/player/utils/History";
-import {Duration, ArraySort} from "@lib/player";
 import {Command, Constructor} from "@handler";
 import {Colors, EmbedData} from "discord.js";
 import {db} from "@lib/db";
@@ -23,7 +22,7 @@ class Command_Queue extends Constructor.Assign<Command> {
                 else if (queue.songs.length === 1) return { content: `${author}, ⚠ | Играет всего один трек.`, color: "Yellow" };
 
                 let num = 0;
-                const pages = ArraySort(5, queue.songs.slice(1), (track) => { num++;
+                const pages = queue.songs.slice(1).ArraySort(5, (track) => { num++;
                     return `\`${num}\` - \`\`[${track.duration.full}]\`\` [${track.requester.username}](${track.author.url}) - [${track.title}](${track.url})`;
                 }, "\n");
                 const embed: EmbedData = {
@@ -36,7 +35,7 @@ class Command_Queue extends Constructor.Assign<Command> {
                         }
                     ],
                     footer: {
-                        text: `${queue.songs.song.requester.username} | Лист 1 из ${pages.length} | Songs: ${queue.songs.length}/${Duration.getTimeArray(queue.songs)}`,
+                        text: `${queue.songs.song.requester.username} | Лист 1 из ${pages.length} | Songs: ${queue.songs.length}/${queue.songs.time()}`,
                         iconURL: queue.songs.song.requester.avatar
                     }
                 };
@@ -125,7 +124,7 @@ class Command_History extends Constructor.Assign<Command> {
                 const jsonFile = JSON.parse(file);
 
                 //Создаем странички
-                const pages = ArraySort<any>(10, jsonFile.tracks, (track) =>
+                const pages = (jsonFile.tracks as any[]).ArraySort(10, (track) =>
                     `\`\`${track.platform.toUpperCase()}\`\` | \`\`${track.total}\`\` -> [${track.author.title}](${track.author.url}) - [${track.title}](${track.url})`, "\n"
                 );
 

@@ -2,7 +2,6 @@ import {ActionRowBuilder, Colors, StringSelectMenuBuilder} from "discord.js";
 import {Queue} from "@lib/player/queue/Queue";
 import {Song} from "@lib/player/queue/Song";
 import {Constructor, Event} from "@handler";
-import {Duration} from "@lib/player";
 import {Client} from "@lib/discord";
 import {db} from "@lib/db";
 
@@ -83,7 +82,7 @@ class onPlaying extends Constructor.Assign<Event<"message/playing">> {
 
                 //Progress bar
                 const currentTime = queue.player?.stream?.duration?.current ?? 0;
-                const progress = `\`\`${Duration.parseDuration(currentTime)}\`\` ${new ProgressBar(currentTime, duration.seconds).bar} \`\`${duration.full}\`\``;
+                const progress = `\`\`${currentTime.duration()}\`\` ${new ProgressBar(currentTime, duration.seconds).bar} \`\`${duration.full}\`\``;
                 embed.fields.push({ name: " ", value: `\n[|](${url})${progress}` });
 
                 if (isReturn) return embed;
@@ -144,7 +143,7 @@ class onPush extends Constructor.Assign<Event<"message/push">> {
                                 thumbnail: typeof image === "string" ? {url: image} : image ?? {url: db.emojis.noImage},
 
                                 footer: {
-                                    text: `${queue.author.username} | ${Duration.getTimeArray(items)} | 🎶: ${items?.length}`,
+                                    text: `${queue.author.username} | ${items.time()} | 🎶: ${items?.length}`,
                                     iconURL: queue.author.displayAvatarURL({})
                                 },
                                 fields: [

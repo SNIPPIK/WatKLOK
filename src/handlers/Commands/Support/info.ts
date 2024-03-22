@@ -1,8 +1,6 @@
 import {Command, Constructor} from "@handler";
-import {Duration} from "@lib/player";
 import {Colors} from "discord.js";
 import {db} from "@lib/db";
-import {env} from "@env";
 import os from "node:os";
 
 const cpu = os.cpus();
@@ -61,7 +59,7 @@ export default class extends Constructor.Assign<Command> {
                         author: { name: "Разработчик: @snippik", iconURL: client.user.displayAvatarURL(), url: `https://t.me/snippik` },
                         title: `Информация`,
                         footer: {
-                            text: `Latency - ${Latency} | Api - ${WS} | Uptime: ${Duration.parseDuration(client.uptime / 1000)}`,
+                            text: `Latency - ${Latency} | Api - ${WS} | Uptime: ${(client.uptime / 1000).duration()}`,
                             iconURL: client.user.displayAvatarURL()
                         },
 

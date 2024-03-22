@@ -1,6 +1,4 @@
 import {ApplicationCommandOptionType, Colors, EmbedData} from "discord.js";
-import {ArraySort, Duration} from "@lib/player";
-import {Filter} from "@lib/player/AudioPlayer";
 import {Command, Constructor} from "@handler";
 import {db} from "@lib/db";
 
@@ -49,7 +47,7 @@ class Command_Seek extends Constructor.Assign<Command> {
                 //Если пользователь не указал время
                 else if (!args[0]) return { content: `${author}, Укажи время, пример 00:00:00!`, color: "Yellow" };
 
-                const duration = Duration.parseDurationString(args[0]);
+                const duration = args[0].duration();
 
                 //Если пользователь написал что-то не так
                 if (isNaN(duration)) return { content: `${author}, Я не могу определить что ты написал, попробуй еще раз!`, color: "Yellow" };
@@ -145,7 +143,7 @@ class Command_Filter extends Constructor.Assign<Command> {
 
                     const embed: EmbedData = { title: "Все доступные фильтры", color: Colors.Yellow, thumbnail: { url: message.client.user.avatarURL() }, timestamp: new Date() };
                     //Преобразуем все фильтры в string
-                    const pages = ArraySort<Filter>(5, FilterName === "all" ? db.filters : queue?.player?.filters, (filter, index) => {
+                    const pages = (FilterName === "all" ? db.filters : queue?.player?.filters).ArraySort(5, (filter, index) => {
                         return `┌Номер в списке - [${index + 1}]
                     ├ **Названия:** ${filter.names ? `(${filter.names})` : `Нет`}
                     ├ **Аргументы:** ${filter.args ? `(${filter.args})` : `Нет`}
