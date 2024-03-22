@@ -1,5 +1,5 @@
 import {ApplicationCommandOptionType} from "discord.js";
-import {Constructor, Command} from "@handler";
+import {Constructor, handler} from "@handler";
 import {db} from "@lib/db";
 
 /**
@@ -7,7 +7,7 @@ import {db} from "@lib/db";
  * @command pause
  * @description Приостановить воспроизведение текущего трека
  */
-class Command_Pause extends Constructor.Assign<Command> {
+class Command_Pause extends Constructor.Assign<handler.Command> {
     public constructor() {
         super({
             name: "pause",
@@ -48,7 +48,7 @@ class Command_Pause extends Constructor.Assign<Command> {
  * @command resume
  * @description Возобновить воспроизведение текущего трека
  */
-class Command_Resume extends Constructor.Assign<Command> {
+class Command_Resume extends Constructor.Assign<handler.Command> {
     public constructor() {
         super({
             name: "resume",
@@ -90,7 +90,7 @@ class Command_Resume extends Constructor.Assign<Command> {
  * @command stop
  * @description Удаление музыкальной очереди
  */
-class Command_Stop extends Constructor.Assign<Command> {
+class Command_Stop extends Constructor.Assign<handler.Command> {
     public constructor() {
         super({
             name: "stop",
@@ -125,7 +125,7 @@ class Command_Stop extends Constructor.Assign<Command> {
  *
  * @param type - Тип повтора
  */
-class Command_Repeat extends Constructor.Assign<Command> {
+class Command_Repeat extends Constructor.Assign<handler.Command> {
     public constructor() {
         super({
             name: "repeat",
@@ -189,4 +189,8 @@ class Command_Repeat extends Constructor.Assign<Command> {
     };
 }
 
+/**
+ * @export default
+ * @description Делаем классы глобальными
+ */
 export default Object.values({Command_Pause, Command_Resume, Command_Stop, Command_Repeat});

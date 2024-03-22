@@ -1,7 +1,7 @@
 import {ActionRowBuilder, Colors, StringSelectMenuBuilder} from "discord.js";
+import {Constructor, handler} from "@handler";
 import {Queue} from "@lib/player/queue/Queue";
 import {Song} from "@lib/player/queue/Song";
-import {Constructor, Event} from "@handler";
 import {Client} from "@lib/discord";
 import {db} from "@lib/db";
 
@@ -10,7 +10,7 @@ import {db} from "@lib/db";
  * @event message/error
  * @description Сообщение об ошибке
  */
-class onError extends Constructor.Assign<Event<"message/error">> {
+class onError extends Constructor.Assign<handler.Event<"message/error">> {
     public constructor() {
         super({
             name: "message/error",
@@ -34,7 +34,7 @@ class onError extends Constructor.Assign<Event<"message/error">> {
                             ],
                             author: {name: author.title, url: author.url, iconURL: db.emojis.diskImage},
                             footer: {
-                                text: `${requester.username} | ${queue.songs.time} | 🎶: ${queue.songs.size}`,
+                                text: `${requester.username} | ${queue.songs.time()} | 🎶: ${queue.songs.size}`,
                                 iconURL: requester?.avatar
                             }
                         }
@@ -50,7 +50,7 @@ class onError extends Constructor.Assign<Event<"message/error">> {
  * @event message/playing
  * @description Сообщение о том что сейчас играет
  */
-class onPlaying extends Constructor.Assign<Event<"message/playing">> {
+class onPlaying extends Constructor.Assign<handler.Event<"message/playing">> {
     public constructor() {
         super({
             name: "message/playing",
@@ -68,7 +68,7 @@ class onPlaying extends Constructor.Assign<Event<"message/playing">> {
                     ]
                 };
 
-                //Следующий трек
+                //Следующий трек или треки
                 if (queue.songs.size > 1) {
                     const tracks = queue.songs.slice(1, 5).map((track, index) => {
                         const title = `[${track.title.slice(0, 50)}](${track.url})`;
@@ -77,7 +77,8 @@ class onPlaying extends Constructor.Assign<Event<"message/playing">> {
                         return `\`${index+2}.\` \`\`[${track.duration.full}]\`\` [${track.author.title}](${track.author.url}) - ${title}`;
                     });
 
-                    embed.fields.push({ name: `**Следующее:**`, value: tracks.join("\n") });
+                    if (queue.songs.size > 5) embed.fields.push({ name: `**Следующее - ${queue.songs.size}**`, value: tracks.join("\n") });
+                    else embed.fields.push({ name: `**Следующее: **`, value: tracks.join("\n") });
                 }
 
                 //Progress bar
@@ -105,7 +106,7 @@ class onPlaying extends Constructor.Assign<Event<"message/playing">> {
  * @event message/push
  * @description Сообщение о добавленном треке или плейлисте
  */
-class onPush extends Constructor.Assign<Event<"message/push">> {
+class onPush extends Constructor.Assign<handler.Event<"message/push">> {
     public constructor() {
         super({
             name: "message/push",
@@ -169,7 +170,7 @@ class onPush extends Constructor.Assign<Event<"message/push">> {
  * @event message/search
  * @description Сообщение с выбором трека
  */
-class onSearch extends Constructor.Assign<Event<"message/search">> {
+class onSearch extends Constructor.Assign<handler.Event<"message/search">> {
     public constructor() {
         super({
             name: "message/search",
@@ -234,8 +235,6 @@ class onSearch extends Constructor.Assign<Event<"message/search">> {
     }
 }
 
-export default Object.values({onPlaying, onError, onSearch, onPush});
-
 /**
  * @author SNIPPIK
  * @description Обработчик прогресс бара трека
@@ -280,3 +279,9 @@ class ProgressBar {
         return bar;
     };
 }
+
+/**
+ * @export default
+ * @description Делаем классы глобальными
+ */
+export default Object.values({onPlaying, onError, onSearch, onPush});

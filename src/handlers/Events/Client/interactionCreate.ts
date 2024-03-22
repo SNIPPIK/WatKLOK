@@ -1,5 +1,5 @@
 import {CommandInteractionOption, Events, PermissionsBitField} from "discord.js";
-import {Command, Constructor, Event} from "@handler";
+import {Constructor, handler} from "@handler";
 import {Client, Logger} from "@lib/discord";
 import {db} from "@lib/db";
 import {env} from "@env";
@@ -9,7 +9,7 @@ import {env} from "@env";
  * @description Класс для взаимодействия бота с slash commands, buttons
  * @class InteractionCreate
  */
-class Interaction extends Constructor.Assign<Event<Events.InteractionCreate>> {
+class Interaction extends Constructor.Assign<handler.Event<Events.InteractionCreate>> {
     public constructor() {
         super({
             name: Events.InteractionCreate,
@@ -167,7 +167,7 @@ class Interaction extends Constructor.Assign<Event<Events.InteractionCreate>> {
      * @readonly
      * @private
      */
-    private static _checkPermission = (permissions: Command["permissions"], Fields: Readonly<PermissionsBitField>) => {
+    private static _checkPermission = (permissions: handler.Command["permissions"], Fields: Readonly<PermissionsBitField>) => {
         const fail: any[] = [];
 
         if (permissions && permissions?.length > 0) {
@@ -182,4 +182,8 @@ class Interaction extends Constructor.Assign<Event<Events.InteractionCreate>> {
     };
 }
 
+/**
+ * @export default
+ * @description Делаем классы глобальными
+ */
 export default Object.values({Interaction});

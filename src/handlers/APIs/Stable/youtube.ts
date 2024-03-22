@@ -7,7 +7,7 @@ import {env} from "@env";
  * @author SNIPPIK
  * @description Динамически загружаемый класс
  */
-class YouTubeAPI extends Constructor.Assign<API.request> {
+class currentAPI extends Constructor.Assign<API.request> {
     public constructor() {
         super({
             name: "YOUTUBE",
@@ -36,15 +36,15 @@ class YouTubeAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const result = await YouTubeLib.API(`https://www.youtube.com/watch?v=${ID}&has_verified=1`);
+                                        const result = await currentAPI.API(`https://www.youtube.com/watch?v=${ID}&has_verified=1`);
 
                                         //Если возникла ошибка при получении данных
                                         if (result instanceof Error) return reject(result);
 
-                                        const format = await YouTubeLib.extractStreamingData(result["streamingData"], result["html5"]);
+                                        const format = await currentAPI.extractStreamingData(result["streamingData"], result["html5"]);
 
                                         result["videoDetails"]["format"] = {url: format.url};
-                                        const track = YouTubeLib.track(result["videoDetails"]);
+                                        const track = currentAPI.track(result["videoDetails"]);
 
                                         return resolve(track);
                                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
@@ -72,7 +72,7 @@ class YouTubeAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const details = await YouTubeLib.API(`https://www.youtube.com/${ID.pop()}`);
+                                        const details = await currentAPI.API(`https://www.youtube.com/${ID.pop()}`);
 
                                         if (details instanceof Error) return reject(details);
 
@@ -80,12 +80,12 @@ class YouTubeAPI extends Constructor.Assign<API.request> {
                                         const microformat: any = details["microformat"]["microformatDataRenderer"];
                                         const items: Song[] = details["contents"]["twoColumnBrowseResultsRenderer"]["tabs"][0]["tabRenderer"]
                                             .content["sectionListRenderer"]["contents"][0]["itemSectionRenderer"]["contents"][0]["playlistVideoListRenderer"]["contents"]
-                                            .splice(0, env.get("APIs.limit.playlist")).map(({playlistVideoRenderer}) => YouTubeLib.track(playlistVideoRenderer));
+                                            .splice(0, env.get("APIs.limit.playlist")).map(({playlistVideoRenderer}) => currentAPI.track(playlistVideoRenderer));
 
-                                        //Если нет автора плейлиста то это альбом автора
+                                        //Если нет автора плейлиста, то это альбом автора
                                         if (sidebar.length > 1) {
                                             const authorData = details["sidebar"]["playlistSidebarRenderer"].items[1]["playlistSidebarSecondaryInfoRenderer"]["videoOwner"]["videoOwnerRenderer"];
-                                            author = await YouTubeLib.getChannel({ id: authorData["navigationEndpoint"]["browseEndpoint"]["browseId"], name: authorData.title["runs"][0].text });
+                                            author = await currentAPI.getChannel({ id: authorData["navigationEndpoint"]["browseEndpoint"]["browseId"], name: authorData.title["runs"][0].text });
                                         } else author = items.at(-1).author;
 
                                         return resolve({
@@ -116,7 +116,7 @@ class YouTubeAPI extends Constructor.Assign<API.request> {
                                         else ID = `channel/${url.split("channel/")[1]}`;
 
                                         //Создаем запрос
-                                        const details = await YouTubeLib.API(`https://www.youtube.com/${ID}/videos`);
+                                        const details = await currentAPI.API(`https://www.youtube.com/${ID}/videos`);
 
                                         if (details instanceof Error) return reject(details);
 
@@ -154,7 +154,7 @@ class YouTubeAPI extends Constructor.Assign<API.request> {
                                 return new Promise<Song[]>(async (resolve, reject) => {
                                     try {
                                         //Создаем запрос
-                                        const details = await YouTubeLib.API(`https://www.youtube.com/results?search_query=${url.split(" ").join("+")}`);
+                                        const details = await currentAPI.API(`https://www.youtube.com/results?search_query=${url.split(" ").join("+")}`);
 
                                         //Если при получении данных возникла ошибка
                                         if (details instanceof Error) return reject(details);
@@ -164,7 +164,7 @@ class YouTubeAPI extends Constructor.Assign<API.request> {
                                         if (vanilla_videos?.length === 0 || !vanilla_videos) return reject(Error(`[APIs]: Не удалось найти: ${url}`));
 
                                         let filtered_ = vanilla_videos?.filter((video: any) => video && video?.["videoRenderer"] && video?.["videoRenderer"]?.["videoId"])?.splice(0, env.get("APIs.limit.search"));
-                                        let videos = filtered_.map(({ videoRenderer }: any) => YouTubeLib.track(videoRenderer));
+                                        let videos = filtered_.map(({ videoRenderer }: any) => currentAPI.track(videoRenderer));
 
                                         return resolve(videos);
                                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
@@ -176,21 +176,232 @@ class YouTubeAPI extends Constructor.Assign<API.request> {
             ]
         });
     };
-}
 
-export default Object.values({YouTubeAPI});
+    /**
+     * @author SNIPPIK
+     * @description Строчки для расшифровки
+     */
+    protected static regexp = new class {
+        /**
+         * @description Как найти var
+         */
+        public get var() { return `[a-zA-Z_\\$]\\w*`; };
+
+        /**
+         * @description Как найти single
+         */
+        public get single() { return `'[^'\\\\]*(:?\\\\[\\s\\S][^'\\\\]*)*'`; };
+
+        /**
+         * @description Как найти duo
+         */
+        public get duo() { return `"[^"\\\\]*(:?\\\\[\\s\\S][^"\\\\]*)*"`; };
+
+        /**
+         * @description Как найти empty
+         */
+        public get empty() { return `(?:''|"")`; };
+
+        /**
+         * @description Как найти reverse
+         */
+        public get reverse() { return ':function\\(a\\)\\{' + '(?:return )?a\\.reverse\\(\\)' + '\\}'; };
+
+        public get Regs() {
+            return {
+                reverse: this.regexp(`(?:^|,)(${this.key})${this.reverse}`),
+                slice:   this.regexp(`(?:^|,)(${this.key})${this.slice}`),
+                splice:  this.regexp(`(?:^|,)(${this.key})${this.splice}`),
+                swap:    this.regexp(`(?:^|,)(${this.key})${this.swap}`)
+            };
+        };
+
+        /**
+         * @description Как найти slice
+         */
+        public get slice() { return ':function\\(a,b\\)\\{' + 'return a\\.slice\\(b\\)' + '\\}'; };
+
+        /**
+         * @description Как найти splice
+         */
+        public get splice() { return ':function\\(a,b\\)\\{' + 'a\\.splice\\(0,b\\)' + '\\}'; };
+
+        /**
+         * @description Как найти swap
+         */
+        public get swap() {
+            return ':function\\(a,b\\)\\{' +
+                'var c=a\\[0\\];a\\[0\\]=a\\[b(?:%a\\.length)?\\];a\\[b(?:%a\\.length)?\\]=c(?:;return a)?' +
+                '\\}'
+        };
 
 
-/**
- * @author SNIPPIK
- * @class YouTubeLib
- */
-class YouTubeLib {
+        public get quote() {
+            return `(?:${this.single}|${this.duo})`;
+        };
+
+        public get prop() {
+            return `(?:\\.${this.var}|\\[${this.quote}\\])`;
+        };
+
+        public get key() {
+            return `(?:${this.var}|${this.quote})`
+        };
+
+        public get object() {
+            const key = this.key;
+
+            return this.regexp(`var (${this.var})=\\{((?:(?:${key}${this.reverse}|${key}${this.slice}|${key}${this.splice}|${key}${this.swap}),?\\r?\\n?)+)};`)
+        };
+
+        public get function() {
+            return this.regexp(
+                `${`function(?: ${this.var})?\\(a\\)\\{` + `a=a\\.split\\(${this.empty}\\);\\s*` + `((?:(?:a=)?${this.var}`
+                }${this.prop}\\(a,\\d+\\);)+)` +
+                `return a\\.join\\(${this.empty}\\)` +
+                `\\}`
+            );
+        };
+
+        protected readonly regexp = (pattern: string) => new RegExp(pattern, "m");
+    };
+
+    /**
+     * @author SNIPPIK
+     * @description Расшифровщик ссылок на youtube videos
+     */
+    protected static decode = class {
+        private readonly _local = {
+            format: null as YouTubeFormat,
+            decoder: currentAPI.regexp,
+            html: null as string,
+
+            body: null as string
+        };
+
+        public constructor(options: { html: string; format: YouTubeFormat }) {
+            Object.assign(this._local, options);
+        };
+
+        /**
+         * @description Получаем исходную ссылку на файл
+         * @public
+         */
+        public get extract() {
+            return new Promise<YouTubeFormat>(async (resolve) => {
+                new httpsClient(this._local.html).toString.then((page) => {
+                    if (page instanceof Error) return resolve(null);
+
+                    this._local.body = page;
+                    const url = this.url;
+
+                    if (url) this._local.format.url = url;
+                    return resolve(this._local.format);
+                });
+            });
+        }
+
+        /**
+         * @description Берем данные с youtube html5player
+         * @private
+         */
+        private get parseTokens(): string[] {
+            const funAction = this._local.decoder.function.exec(this._local.body);
+            const objAction = this._local.decoder.object.exec(this._local.body);
+
+            if (!funAction || !objAction) return null;
+
+            const object = objAction.at(1)?.replace(/\$/g, "\\$");
+            const objPage = objAction.at(2)?.replace(/\$/g, "\\$");
+            const funPage = funAction.at(1)?.replace(/\$/g, "\\$");
+
+            let result: RegExpExecArray, tokens: string[] = [], keys: string[] = [];
+            for (const decoder of Object.values(this._local.decoder.Regs)) {
+                result = decoder.exec(objPage);
+                keys.push(this.replacer(result));
+            }
+
+            const parsedKeys = `(${keys.join('|')})`;
+            const tokenizeRegexp = new RegExp(`(?:a=)?${object}(?:\\.${parsedKeys}|\\['${parsedKeys}'\\]|\\["${parsedKeys}"\\])` + `\\(a,(\\d+)\\)`, 'g');
+
+            while ((result = tokenizeRegexp.exec(funPage)) !== null) {
+                (() => {
+                    const key = result[1] || result[2] || result[3];
+                    switch (key) {
+                        case keys[0]: return tokens.push('rv');
+                        case keys[1]: return tokens.push(`sl${result[4]}`);
+                        case keys[2]: return tokens.push(`sp${result[4]}`);
+                        case keys[3]: return tokens.push(`sw${result[4]}`);
+                    }
+                })();
+            }
+
+            return tokens;
+        }
+
+        /**
+         * @description Получаем ссылку на файл
+         * @private
+         */
+        private get url() {
+            const tokens = this.parseTokens;
+            const cipher = this._local.format.signatureCipher || this._local.format.cipher;
+
+            if (cipher) {
+                const params = Object.fromEntries(new URLSearchParams(cipher));
+                Object.assign(this._local.format, params);
+                delete this._local.format.signatureCipher;
+                delete this._local.format.cipher;
+            }
+
+            if (tokens && this._local.format.s && this._local.format.url) {
+                const signature = this.DecodeSignature(tokens, this._local.format.s);
+                const Url = new URL(decodeURIComponent(this._local.format.url));
+                Url.searchParams.set('ratebypass', 'yes');
+
+                if (signature) Url.searchParams.set(this._local.format.sp || 'signature', signature);
+
+                return Url.toString();
+            }
+
+            return null;
+        };
+
+        /**
+         * @description Проводим некоторые манипуляции с signature
+         * @param tokens {string[]}
+         * @param signature {string}
+         * @private
+         */
+        private DecodeSignature = (tokens: string[], signature: string): string => {
+            let sig = signature.split(""), position: any;
+
+            for (const token of tokens) {
+                const nameToken = token.slice(2);
+
+                switch (token.slice(0, 2)) {
+                    case "sw": { position = parseInt(nameToken); sig.swap(position); break; }
+                    case "sl": { position = parseInt(nameToken); sig = sig.slice(position); break; }
+                    case "sp": { position = parseInt(nameToken); sig.splice(0, position); break; }
+                    case "rv": { sig.reverse(); break; }
+                }
+            }
+            return sig.join("");
+        };
+
+        /**
+         * @description Уменьшаем кол-во кода
+         * @param res {RegExpExecArray}
+         * @private
+         */
+        private replacer = (res: RegExpExecArray): string => res && res.at(1)?.replace(/\$/g, "\\$").replace(/\$|^'|^"|'$|"$/g, "");
+    };
+
     /**
      * @description Получаем страницу и ищем на ней данные
      * @param url {string} Ссылка на видео
      */
-    public static API = (url: string): Promise<Error | any> => {
+    protected static API = (url: string): Promise<Error | any> => {
         return new Promise((resolve) => {
             new httpsClient(url, {useragent: true,
                 headers: { "accept-language": "en-US,en;q=0.9,en-US;q=0.8,en;q=0.7", "accept-encoding": "gzip, deflate, br" }
@@ -214,7 +425,7 @@ class YouTubeLib {
      * @description Получаем данные из страницы
      * @param input {string} Страница
      */
-    public static extractInitialDataResponse = (input: string): any | Error | null => {
+    protected static extractInitialDataResponse = (input: string): any | Error | null => {
         const startPattern: string = input.match("var ytInitialPlayerResponse = ") ? "var ytInitialPlayerResponse = " : "var ytInitialData = ";
         const startIndex = input.indexOf(startPattern);
         const endIndex = input.indexOf("};", startIndex + startPattern.length);
@@ -241,10 +452,10 @@ class YouTubeLib {
      * @param data {any} <videoData>.streamingData
      * @param html5player {string} Ссылка на плеер дешифровки
      */
-    public static extractStreamingData = (data: any, html5player: string): Promise<YouTubeFormat> => {
+    protected static extractStreamingData = (data: any, html5player: string): Promise<YouTubeFormat> => {
         return new Promise(async (resolve) => {
             const format = (data["adaptiveFormats"] as YouTubeFormat[]).find((item) => item.mimeType.match(/opus|audio/) && !item.mimeType.match(/ec-3/));
-            const decoded = await new DecodeVideos({html: html5player, format}).extract;
+            const decoded = await new this.decode({html: html5player, format}).extract;
             return resolve(decoded);
         });
     };
@@ -254,7 +465,7 @@ class YouTubeLib {
      * @param id {string} ID канала
      * @param name {string} Название канала
      */
-    public static getChannel = ({ id, name }: { id: string, name?: string }): Promise<Song.author> => {
+    protected static getChannel = ({ id, name }: { id: string, name?: string }): Promise<Song.author> => {
         return new Promise<Song.author>((resolve) => {
             new httpsClient(`https://www.youtube.com/channel/${id}/channels?flow=grid&view=0&pbj=1`, {
                 headers: {
@@ -283,7 +494,7 @@ class YouTubeLib {
      * @description Подготавливаем трек к отправке
      * @param track {any} Видео
      */
-    public static track(track: any): any {
+    protected static track(track: any): any {
         try {
             return new Song({
                 url: `https://youtu.be/${track["videoId"]}`,
@@ -309,240 +520,11 @@ class YouTubeLib {
     };
 }
 
-
 /**
- * @author SNIPPIK
- * @description Строчки для расшифровки
+ * @export default
+ * @description Делаем классы глобальными
  */
-class DecodeRegex {
-    /**
-     * @description Как найти var
-     */
-    public get var() { return `[a-zA-Z_\\$]\\w*`; };
-
-    /**
-     * @description Как найти single
-     */
-    public get single() { return `'[^'\\\\]*(:?\\\\[\\s\\S][^'\\\\]*)*'`; };
-
-    /**
-     * @description Как найти duo
-     */
-    public get duo() { return `"[^"\\\\]*(:?\\\\[\\s\\S][^"\\\\]*)*"`; };
-
-    /**
-     * @description Как найти empty
-     */
-    public get empty() { return `(?:''|"")`; };
-
-    /**
-     * @description Как найти reverse
-     */
-    public get reverse() { return ':function\\(a\\)\\{' + '(?:return )?a\\.reverse\\(\\)' + '\\}'; };
-
-    public get Regs() {
-        return {
-            reverse: this.regexp(`(?:^|,)(${this.key})${this.reverse}`),
-            slice:   this.regexp(`(?:^|,)(${this.key})${this.slice}`),
-            splice:  this.regexp(`(?:^|,)(${this.key})${this.splice}`),
-            swap:    this.regexp(`(?:^|,)(${this.key})${this.swap}`)
-        };
-    };
-
-    /**
-     * @description Как найти slice
-     */
-    public get slice() { return ':function\\(a,b\\)\\{' + 'return a\\.slice\\(b\\)' + '\\}'; };
-
-    /**
-     * @description Как найти splice
-     */
-    public get splice() { return ':function\\(a,b\\)\\{' + 'a\\.splice\\(0,b\\)' + '\\}'; };
-
-    /**
-     * @description Как найти swap
-     */
-    public get swap() {
-        return ':function\\(a,b\\)\\{' +
-            'var c=a\\[0\\];a\\[0\\]=a\\[b(?:%a\\.length)?\\];a\\[b(?:%a\\.length)?\\]=c(?:;return a)?' +
-            '\\}'
-    };
-
-
-    public get quote() {
-        return `(?:${this.single}|${this.duo})`;
-    };
-
-    public get prop() {
-        return `(?:\\.${this.var}|\\[${this.quote}\\])`;
-    };
-
-    public get key() {
-        return `(?:${this.var}|${this.quote})`
-    };
-
-    public get object() {
-        const key = this.key;
-
-        return this.regexp(`var (${this.var})=\\{((?:(?:${key}${this.reverse}|${key}${this.slice}|${key}${this.splice}|${key}${this.swap}),?\\r?\\n?)+)};`)
-    };
-
-    public get function() {
-        return this.regexp(
-            `${`function(?: ${this.var})?\\(a\\)\\{` + `a=a\\.split\\(${this.empty}\\);\\s*` + `((?:(?:a=)?${this.var}`
-            }${this.prop}\\(a,\\d+\\);)+)` +
-            `return a\\.join\\(${this.empty}\\)` +
-            `\\}`
-        );
-    };
-
-    protected readonly regexp = (pattern: string) => new RegExp(pattern, "m");
-}
-
-
-/**
- * @author SNIPPIK
- * @description Расшифровщик ссылок на youtube videos
- */
-class DecodeVideos {
-    private readonly _local = {
-        format: null as YouTubeFormat,
-        decoder: new DecodeRegex(),
-        html: null as string,
-
-        body: null as string
-    };
-
-    public constructor(options: { html: string; format: YouTubeFormat }) {
-        Object.assign(this._local, options);
-    };
-
-    /**
-     * @description Получаем исходную ссылку на файл
-     * @public
-     */
-    public get extract() {
-        return new Promise<YouTubeFormat>(async (resolve) => {
-            new httpsClient(this._local.html).toString.then((page) => {
-                if (page instanceof Error) return resolve(null);
-
-                this._local.body = page;
-                const url = this.url;
-
-                if (url) this._local.format.url = url;
-                return resolve(this._local.format);
-            });
-        });
-    }
-
-    /**
-     * @description Берем данные с youtube html5player
-     * @private
-     */
-    private get parseTokens(): string[] {
-        const funAction = this._local.decoder.function.exec(this._local.body);
-        const objAction = this._local.decoder.object.exec(this._local.body);
-
-        if (!funAction || !objAction) return null;
-
-        const object = objAction.at(1)?.replace(/\$/g, "\\$");
-        const objPage = objAction.at(2)?.replace(/\$/g, "\\$");
-        const funPage = funAction.at(1)?.replace(/\$/g, "\\$");
-
-        let result: RegExpExecArray, tokens: string[] = [], keys: string[] = [];
-        for (const decoder of Object.values(this._local.decoder.Regs)) {
-            result = decoder.exec(objPage);
-            keys.push(this.replacer(result));
-        }
-
-        const parsedKeys = `(${keys.join('|')})`;
-        const tokenizeRegexp = new RegExp(`(?:a=)?${object}(?:\\.${parsedKeys}|\\['${parsedKeys}'\\]|\\["${parsedKeys}"\\])` + `\\(a,(\\d+)\\)`, 'g');
-
-        while ((result = tokenizeRegexp.exec(funPage)) !== null) {
-            (() => {
-                const key = result[1] || result[2] || result[3];
-                switch (key) {
-                    case keys[0]: return tokens.push('rv');
-                    case keys[1]: return tokens.push(`sl${result[4]}`);
-                    case keys[2]: return tokens.push(`sp${result[4]}`);
-                    case keys[3]: return tokens.push(`sw${result[4]}`);
-                }
-            })();
-        }
-
-        return tokens;
-    }
-
-    /**
-     * @description Получаем ссылку на файл
-     * @private
-     */
-    private get url() {
-        const tokens = this.parseTokens;
-        const cipher = this._local.format.signatureCipher || this._local.format.cipher;
-
-        if (cipher) {
-            const params = Object.fromEntries(new URLSearchParams(cipher));
-            Object.assign(this._local.format, params);
-            delete this._local.format.signatureCipher;
-            delete this._local.format.cipher;
-        }
-
-        if (tokens && this._local.format.s && this._local.format.url) {
-            const signature = this.DecodeSignature(tokens, this._local.format.s);
-            const Url = new URL(decodeURIComponent(this._local.format.url));
-            Url.searchParams.set('ratebypass', 'yes');
-
-            if (signature) Url.searchParams.set(this._local.format.sp || 'signature', signature);
-
-            return Url.toString();
-        }
-
-        return null;
-    };
-
-    /**
-     * @description Проводим некоторые манипуляции с signature
-     * @param tokens {string[]}
-     * @param signature {string}
-     * @private
-     */
-    private DecodeSignature = (tokens: string[], signature: string): string => {
-        let sig = signature.split(""), position: any;
-
-        for (const token of tokens) {
-            const nameToken = token.slice(2);
-
-            switch (token.slice(0, 2)) {
-                case "sw": { position = parseInt(nameToken); swapPositions<string>(sig, position); break; }
-                case "sl": { position = parseInt(nameToken); sig = sig.slice(position); break; }
-                case "sp": { position = parseInt(nameToken); sig.splice(0, position); break; }
-                case "rv": { sig.reverse(); break; }
-            }
-        }
-        return sig.join("");
-    };
-
-    /**
-     * @description Уменьшаем кол-во кода
-     * @param res {RegExpExecArray}
-     * @private
-     */
-    private replacer = (res: RegExpExecArray): string => res && res.at(1)?.replace(/\$/g, "\\$").replace(/\$|^'|^"|'$|"$/g, "");
-}
-
-
-/**
- * @description Смена позиции в Array
- * @param array {Array<any>} Array
- * @param position {number} Номер позиции
- */
-function swapPositions<V>(array: V[], position: number): void {
-    const first = array[0];
-    array[0] = array[position];
-    array[position] = first;
-}
-
+export default Object.values({currentAPI});
 
 /**
  * @description Так выглядит youtube video or audio format

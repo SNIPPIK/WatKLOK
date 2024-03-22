@@ -1,12 +1,12 @@
 import {ApplicationCommandOptionType, Colors} from "discord.js";
-import {Constructor, Command} from "@handler";
+import {Constructor, handler} from "@handler";
 
 /**
  * @class Command_Eval
  * @description Стандартная команда eval
  * @param query - Js код
  */
-class Command_Eval extends Constructor.Assign<Command> {
+class Command_Eval extends Constructor.Assign<handler.Command> {
     public constructor() {
         super({
             name: "eval",
@@ -58,4 +58,8 @@ class Command_Eval extends Constructor.Assign<Command> {
     };
 }
 
+/**
+ * @export default
+ * @description Делаем классы глобальными
+ */
 export default Object.values({Command_Eval});

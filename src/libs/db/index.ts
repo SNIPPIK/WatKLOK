@@ -1,7 +1,7 @@
 import {AudioPlayer, AudioPlayerEvents, Filter} from "@lib/player/AudioPlayer";
 import {EmbedData, Routes, StageChannel, VoiceChannel} from "discord.js";
 import {createWriteStream, existsSync, mkdirSync, rename} from "node:fs";
-import {API, Constructor, Command, Event, Handler} from "@handler";
+import {API, Constructor, handler, Handler} from "@handler";
 import onPlaying from "@handler/Events/Player/message";
 import {TypedEmitter} from "tiny-typed-emitter";
 import {Queue} from "@lib/player/queue/Queue";
@@ -18,7 +18,7 @@ namespace LocalDataBase {
      * @abstract
      */
     abstract class Commands {
-        protected readonly _commands = new class extends Constructor.Collection<Command> {
+        protected readonly _commands = new class extends Constructor.Collection<handler.Command> {
             /**
              * @description Команды для разработчика
              * @return Command[]
@@ -125,7 +125,7 @@ namespace LocalDataBase {
                                     else if (!queue.player.playing || !queue.player.stream.duration || !message.editable) return;
 
                                     setImmediate(() => {
-                                        const newEmbed = (new onPlaying[0]() as Event<"message/playing">).execute(queue, true) as EmbedData;
+                                        const newEmbed = (new onPlaying[0]() as handler.Event<"message/playing">).execute(queue, true) as EmbedData;
 
                                         //Обновляем сообщение
                                         message.edit({
@@ -389,8 +389,8 @@ namespace LocalDataBase {
 
                     this.platforms.supported.push(item);
                 },
-                (item: Command) => this.commands.set(item.name, item),
-                (item: Event<any>) => {
+                (item: handler.Command) => this.commands.set(item.name, item),
+                (item: handler.Event<any>) => {
                     if (item.type === "client") client.on(item.name as any, (...args: any[]) => item.execute(client, ...args)); // @ts-ignore
                     else this.queue.events.on(item.name as any, (...args: any[]) => item.execute(...args));
                 }

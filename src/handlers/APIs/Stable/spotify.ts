@@ -3,22 +3,12 @@ import {httpsClient} from "@lib/request";
 import {API, Constructor} from "@handler";
 import {env} from "@env";
 
-//Локальная база данных
-const ldb = {
-    token: "",
-    time: 0,
-
-    api: "https://api.spotify.com/v1",
-    link: "https://open.spotify.com",
-    account: "https://accounts.spotify.com/api",
-    aut: Buffer.from(env.get("token.spotify")).toString("base64")
-};
-
 /**
  * @author SNIPPIK
  * @description Динамически загружаемый класс
+ * @API Spotify
  */
-class SpotifyAPI extends Constructor.Assign<API.request> {
+class currentAPI extends Constructor.Assign<API.request> {
     public constructor() {
         super({
             name: "SPOTIFY",
@@ -47,11 +37,11 @@ class SpotifyAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const api = await SpotifyLib.API(`tracks/${ID}`);
+                                        const api = await currentAPI.API(`tracks/${ID}`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
-                                        const track = SpotifyLib.track(api)
+                                        const track = currentAPI.track(api)
 
                                         return resolve(track);
                                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
@@ -78,12 +68,12 @@ class SpotifyAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const api: Error | any = await SpotifyLib.API(`albums/${ID}?offset=0&limit=${env.get("APIs.limit.playlist")}`);
+                                        const api: Error | any = await currentAPI.API(`albums/${ID}?offset=0&limit=${env.get("APIs.limit.playlist")}`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
 
-                                        const tracks = api.tracks.items.map(SpotifyLib.track)
+                                        const tracks = api.tracks.items.map(currentAPI.track)
 
                                         return resolve({ url, title: api.name, image: api.images[0], items: tracks, author: api?.["artists"][0] });
                                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
@@ -110,11 +100,11 @@ class SpotifyAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const api: Error | any = await SpotifyLib.API(`playlists/${ID}?offset=0&limit=${env.get("APIs.limit.playlist")}`);
+                                        const api: Error | any = await currentAPI.API(`playlists/${ID}?offset=0&limit=${env.get("APIs.limit.playlist")}`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
-                                        const tracks = api.tracks.items.map(({ track }) => SpotifyLib.track(track));
+                                        const tracks = api.tracks.items.map(({ track }) => currentAPI.track(track));
 
                                         return resolve({ url, title: api.name, image: api.images[0], items: tracks });
                                     } catch (e) {
@@ -143,12 +133,12 @@ class SpotifyAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const api = await SpotifyLib.API(`artists/${ID}/top-tracks?market=ES&limit=${env.get("APIs.limit.author")}`);
+                                        const api = await currentAPI.API(`artists/${ID}/top-tracks?market=ES&limit=${env.get("APIs.limit.author")}`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
 
-                                        return resolve((api.tracks?.items ?? api.tracks).map(SpotifyLib.track));
+                                        return resolve((api.tracks?.items ?? api.tracks).map(currentAPI.track));
                                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
                                 });
                             }
@@ -167,12 +157,12 @@ class SpotifyAPI extends Constructor.Assign<API.request> {
                                 return new Promise<Song[]>(async (resolve, reject) => {
                                     try {
                                         //Создаем запрос
-                                        const api: Error | any = await SpotifyLib.API(`search?q=${url}&type=track&limit=${env.get("APIs.limit.search")}`);
+                                        const api: Error | any = await currentAPI.API(`search?q=${url}&type=track&limit=${env.get("APIs.limit.search")}`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
 
-                                        return resolve(api.tracks.items.map(SpotifyLib.track));
+                                        return resolve(api.tracks.items.map(currentAPI.track));
                                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
                                 });
                             }
@@ -182,65 +172,69 @@ class SpotifyAPI extends Constructor.Assign<API.request> {
             ]
         });
     };
-}
 
-export default Object.values({SpotifyAPI});
-
-/**
- * @author SNIPPIK
- * @class SpotifyLib
- */
-class SpotifyLib {
-    private static authorization = {
+    /**
+     * @description Данные для создания запросов
+     * @protected
+     */
+    protected static authorization = {
+        link: "https://open.spotify.com",
         api: "https://api.spotify.com/v1",
         account: "https://accounts.spotify.com/api",
         aut: Buffer.from(env.get("token.spotify")).toString("base64"),
+
+        token: "",
+        time:0
     };
 
     /**
      * @description Создаем запрос к SPOTIFY API и обновляем токен
      * @param method {string} Ссылка api
      */
-    public static API = (method: string): Promise<any | Error> => {
+    protected static API = (method: string): Promise<any | Error> => {
         return new Promise(async (resolve) => {
-            const isLoggedIn = ldb.token !== undefined && ldb.time > Date.now() + 2;
-            if (!isLoggedIn) await this.getToken();
+            try {
+                //Нужно обновить токен
+                if (!(this.authorization.token !== undefined && this.authorization.time > Date.now() + 2)) {
+                    const token = await new httpsClient(`${this.authorization.account}/token`, {
+                        headers: {
+                            "Accept": "application/json",
+                            "Authorization": `Basic ${this.authorization.aut}`,
+                            "Content-Type": "application/x-www-form-urlencoded",
+                            "accept-encoding": "gzip, deflate, br"
+                        },
+                        body: "grant_type=client_credentials",
+                        method: "POST"
+                    }).toJson;
 
-            new httpsClient(`${this.authorization.api}/${method}`, {
-                headers: {
-                    "Accept": "application/json",
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "Authorization": "Bearer " + ldb.token,
-                    "accept-encoding": "gzip, deflate, br"
+                    if (token instanceof Error) return resolve(token);
+
+                    this.authorization.time = Date.now() + token["expires_in"];
+                    this.authorization.token = token["access_token"];
                 }
-            }).toJson.then((api) => {
-                if (!api) return resolve(Error("[APIs]: Не удалось получить данные!"));
-                else if (api.error) return resolve(Error(`[APIs]: ${api.error.message}`));
+            } finally {
+                new httpsClient(`${this.authorization.api}/${method}`, {
+                    headers: {
+                        "Accept": "application/json",
+                        "Content-Type": "application/x-www-form-urlencoded",
+                        "Authorization": "Bearer " + this.authorization.token,
+                        "accept-encoding": "gzip, deflate, br"
+                    }
+                }).toJson.then((api) => {
+                    if (!api) return resolve(Error("[APIs]: Не удалось получить данные!"));
+                    else if (api.error) return resolve(Error(`[APIs]: ${api.error.message}`));
 
-                return resolve(api);
-            }).catch((err) => resolve(Error(`[APIs]: ${err}`)));
+                    return resolve(api);
+                }).catch((err) => resolve(Error(`[APIs]: ${err}`)));
+            }
         });
-    }
-
-    private static getToken = (): Promise<void> => new httpsClient(`${this.authorization.account}/token`, {
-        headers: {
-            "Accept": "application/json",
-            "Authorization": `Basic ${this.authorization.aut}`,
-            "Content-Type": "application/x-www-form-urlencoded",
-            "accept-encoding": "gzip, deflate, br"
-        },
-        body: "grant_type=client_credentials",
-        method: "POST"
-    }).toJson.then((result) => {
-        ldb.time = Date.now() + result["expires_in"];
-        ldb.token = result["access_token"];
-    });
+    };
 
     /**
      * @description Собираем трек в готовый образ
      * @param track {any} Трек из Spotify API
      */
-    public static track = (track: any): Song => {
+    protected static track = (track: any): Song => {
         return new Song({
             title: track.name,
             url: track["external_urls"]["spotify"],
@@ -253,3 +247,9 @@ class SpotifyLib {
         });
     }
 }
+
+/**
+ * @export default
+ * @description Делаем классы глобальными
+ */
+export default Object.values({currentAPI});

@@ -1,5 +1,5 @@
 import {ApplicationCommandOptionType} from "discord.js";
-import {Command, Constructor} from "@handler";
+import {Constructor, handler} from "@handler";
 import {Client} from "@lib/discord";
 import {db} from "@lib/db";
 
@@ -11,7 +11,7 @@ import {db} from "@lib/db";
  * @param platform - Тип платформы
  * @param request - Ссылка или название трека для поиска
  */
-class Command_Play extends Constructor.Assign<Command> {
+class Command_Play extends Constructor.Assign<handler.Command> {
     public constructor() {
         super({
             name: "play",
@@ -69,7 +69,7 @@ class Command_Play extends Constructor.Assign<Command> {
  *
  * @param file - Прикрепленный файл
  */
-class Command_PlayFile extends Constructor.Assign<Command> {
+class Command_PlayFile extends Constructor.Assign<handler.Command> {
     public constructor() {
         super({
             name: "play-file",
@@ -120,7 +120,7 @@ class Command_PlayFile extends Constructor.Assign<Command> {
  * @command replay
  * @description Повтор текущего трека
  */
-class Command_Replay extends Constructor.Assign<Command> {
+class Command_Replay extends Constructor.Assign<handler.Command> {
     public constructor() {
         super({
             name: "replay",
@@ -150,4 +150,8 @@ class Command_Replay extends Constructor.Assign<Command> {
     };
 }
 
+/**
+ * @export default
+ * @description Делаем классы глобальными
+ */
 export default Object.values({Command_Play, Command_PlayFile, Command_Replay});

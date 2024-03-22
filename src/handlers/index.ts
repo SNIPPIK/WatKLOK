@@ -472,60 +472,92 @@ export namespace API {
     export type callback<T> = Promise<(T extends "track" ? Song : T extends "playlist" | "album" ? Song.playlist : T extends "search" | "artist" ? Song[] : never) | Error>
 }
 
-
-/**
- * @author SNIPPIK
- * @description Интерфейс для команд
- * @interface Command
- */
-export interface Command {
+export namespace handler {
     /**
-     * @description Имя команды
-     * @default null
-     * @readonly
-     * @public
+     * @author SNIPPIK
+     * @description Интерфейс для команд
+     * @interface Command
      */
-    name: string;
+    export interface Command {
+        /**
+         * @description Имя команды
+         * @default null
+         * @readonly
+         * @public
+         */
+        name: string;
+
+        /**
+         * @description Описание команды
+         * @default "Нет описания"
+         * @readonly
+         * @public
+         */
+        description: string;
+
+        /**
+         * @description Команду может использовать только разработчик
+         * @default false
+         * @readonly
+         * @public
+         */
+        owner?: boolean;
+
+        /**
+         * @description Права бота
+         * @default null
+         * @readonly
+         * @public
+         */
+        permissions?: PermissionResolvable[];
+
+        /**
+         * @description Опции для slashCommand
+         * @default null
+         * @readonly
+         * @public
+         */
+        options?: ApplicationCommandOption[];
+
+        /**
+         * @description Выполнение команды
+         * @default null
+         * @readonly
+         * @public
+         */
+        execute: (message: Client.message | Client.interact, args?: string[]) => Promise<ConstructorMessage> | ConstructorMessage | void;
+    }
 
     /**
-     * @description Описание команды
-     * @default "Нет описания"
-     * @readonly
-     * @public
+     * @author SNIPPIK
+     * @description Интерфейс для событий
+     * @interface Event
      */
-    description: string;
+    export interface Event<T extends keyof ClientEvents | keyof CollectionAudioEvents | keyof AudioPlayerEvents> {
+        /**
+         * @description Название ивента
+         * @default null
+         * @readonly
+         * @public
+         */
+        name: T extends keyof CollectionAudioEvents ? keyof CollectionAudioEvents : T extends keyof AudioPlayerEvents ? keyof AudioPlayerEvents : keyof ClientEvents;
 
-    /**
-     * @description Команду может использовать только разработчик
-     * @default false
-     * @readonly
-     * @public
-     */
-    owner?: boolean;
+        /**
+         * @description Тип ивента
+         * @default null
+         * @readonly
+         * @public
+         */
+        type: T extends keyof CollectionAudioEvents | keyof AudioPlayerEvents ? "player" : "client";
 
-    /**
-     * @description Права бота
-     * @default null
-     * @readonly
-     * @public
-     */
-    permissions?: PermissionResolvable[];
-
-    /**
-     * @description Опции для slashCommand
-     * @default null
-     * @readonly
-     * @public
-     */
-    options?: ApplicationCommandOption[];
-
-    /**
-     * @description Выполнение команды
-     * @default null
-     * @readonly
-     * @public
-     */
-    execute: (message: Client.message | Client.interact, args?: string[]) => Promise<ConstructorMessage> | ConstructorMessage | void;
+        /**
+         * @description Функция, которая будет запущена при вызове ивента
+         * @default null
+         * @readonly
+         * @public
+         */
+        execute: T extends keyof CollectionAudioEvents ? CollectionAudioEvents[T] : T extends keyof AudioPlayerEvents ? (queue: Queue.Music, ...args: Parameters<AudioPlayerEvents[T]>) => any : T extends keyof ClientEvents ? (client: Client, ...args: ClientEvents[T]) => void : never;
+    }
 }
 
 /**
@@ -576,34 +608,3 @@ namespace MessageConstructors {
  * @type ConstructorMessage
  */
 type ConstructorMessage = (MessageConstructors.menu | MessageConstructors.embeds | MessageConstructors.simple) & MessageConstructors.main;
-
-/**
- * @author SNIPPIK
- * @description Интерфейс для событий
- * @interface Event
- */
-export interface Event<T extends keyof ClientEvents | keyof CollectionAudioEvents | keyof AudioPlayerEvents> {
-    /**
-     * @description Название ивента
-     * @default null
-     * @readonly
-     * @public
-     */
-    name: T extends keyof CollectionAudioEvents ? keyof CollectionAudioEvents : T extends keyof AudioPlayerEvents ? keyof AudioPlayerEvents : keyof ClientEvents;
-
-    /**
-     * @description Тип ивента
-     * @default null
-     * @readonly
-     * @public
-     */
-    type: T extends keyof CollectionAudioEvents | keyof AudioPlayerEvents ? "player" : "client";
-
-    /**
-     * @description Функция, которая будет запущена при вызове ивента
-     * @default null
-     * @readonly
-     * @public
-     */
-    execute: T extends keyof CollectionAudioEvents ? CollectionAudioEvents[T] : T extends keyof AudioPlayerEvents ? (queue: Queue.Music, ...args: Parameters<AudioPlayerEvents[T]>) => any : T extends keyof ClientEvents ? (client: Client, ...args: ClientEvents[T]) => void : never;
-}

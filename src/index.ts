@@ -93,6 +93,17 @@ const prototypes: { type: any, name: string, value: any}[] = [
             return time.duration();
         }
     },
+    {
+        type: Array.prototype,
+        name: "swap",
+        value: function(position: number) {
+            const first = this[0];
+            this[0] = this[position];
+            this[position] = first;
+
+            return this
+        }
+    },
 
     //String
     {
@@ -135,6 +146,15 @@ const prototypes: { type: any, name: string, value: any}[] = [
             return parseInt(fixed);
         }
     },
+    {
+        type: Number.prototype,
+        name: "bytes",
+        value: function() {
+            const sizes = ["Bytes", "KB", "MB", "GB"];
+            const i = Math.floor(Math.log(this) / Math.log(1024));
+            return `${(this / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+        }
+    }
 ];
 
 /**
@@ -161,7 +181,13 @@ declare global {
          * @description Совмещаем время всех треков из очереди
          * @return string
          */
-        time(): string
+        time(): string;
+
+        /**
+         * @description Смена позиции в Array
+         * @param position {number} Номер позиции
+         */
+        swap(position: number): this;
     }
     interface String {
         /**
@@ -172,6 +198,13 @@ declare global {
         duration(): number;
     }
     interface Number {
+        /**
+         * @prototype Number
+         * @description превращаем число в байты
+         * @return string
+         */
+        bytes(): string;
+
         /**
          * @prototype Number
          * @description Превращаем число в 00:00

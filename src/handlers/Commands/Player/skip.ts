@@ -1,5 +1,5 @@
 import { ApplicationCommandOptionType } from "discord.js";
-import {Command, Constructor} from "@handler";
+import {handler, Constructor} from "@handler";
 import {Logger} from "@lib/discord";
 import {db} from "@lib/db";
 
@@ -9,7 +9,7 @@ import {db} from "@lib/db";
  * @description Пропуск текущей музыки или под номером!
  * @param value - Номер пропускаемого трека
  */
-class Command_Skip extends Constructor.Assign<Command> {
+class Command_Skip extends Constructor.Assign<handler.Command> {
     public constructor() {
         super({
             name: "skip",
@@ -71,7 +71,7 @@ class Command_Skip extends Constructor.Assign<Command> {
  * @description Эта команда удаляет из очереди музыку под указанным номером!
  * @param value - Номер трека который будет удален из очереди
  */
-class Command_Remove extends Constructor.Assign<Command> {
+class Command_Remove extends Constructor.Assign<handler.Command> {
     public constructor() {
         super({
             name: "remove",
@@ -127,4 +127,8 @@ class Command_Remove extends Constructor.Assign<Command> {
     };
 }
 
+/**
+ * @export default
+ * @description Делаем классы глобальными
+ */
 export default Object.values({Command_Skip, Command_Remove});

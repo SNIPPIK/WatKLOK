@@ -1,5 +1,5 @@
 import {History} from "@lib/player/utils/History";
-import {Command, Constructor} from "@handler";
+import {Constructor, handler} from "@handler";
 import {Colors, EmbedData} from "discord.js";
 import {db} from "@lib/db";
 
@@ -8,7 +8,7 @@ import {db} from "@lib/db";
  * @command queue
  * @description Список добавленных треков
  */
-class Command_Queue extends Constructor.Assign<Command> {
+class Command_Queue extends Constructor.Assign<handler.Command> {
     public constructor() {
         super({
             name: "queue",
@@ -61,7 +61,7 @@ class Command_Queue extends Constructor.Assign<Command> {
  * @command channel
  * @description Смена текстового канала для музыкальной очереди этого сервера
  */
-class Command_Channel extends Constructor.Assign<Command> {
+class Command_Channel extends Constructor.Assign<handler.Command> {
     public constructor() {
         super({
             name: "channel",
@@ -104,7 +104,7 @@ class Command_Channel extends Constructor.Assign<Command> {
  * @command history
  * @description История прослушиваний этого сервера
  */
-class Command_History extends Constructor.Assign<Command> {
+class Command_History extends Constructor.Assign<handler.Command> {
     public constructor() {
         super({
             name: "history",
@@ -146,4 +146,8 @@ class Command_History extends Constructor.Assign<Command> {
     };
 }
 
+/**
+ * @export default
+ * @description Делаем классы глобальными
+ */
 export default Object.values({Command_Queue, Command_Channel, Command_History});

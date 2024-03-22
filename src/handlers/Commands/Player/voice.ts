@@ -1,5 +1,5 @@
 import {ApplicationCommandOptionType, StageChannel, VoiceChannel, ChannelType} from "discord.js";
-import {Constructor, Command} from "@handler";
+import {Constructor, handler} from "@handler";
 import {Voice} from "@lib/voice";
 import {db} from "@lib/db";
 
@@ -8,7 +8,7 @@ import {db} from "@lib/db";
  * @command join
  * @description Подключение к вашему голосовому каналу!
  */
-class Command_Join extends Constructor.Assign<Command> {
+class Command_Join extends Constructor.Assign<handler.Command> {
     public constructor() {
         super({
             name: "join",
@@ -41,7 +41,7 @@ class Command_Join extends Constructor.Assign<Command> {
  * @command leave
  * @description Отключение от голосового канала!
  */
-class Command_Leave extends Constructor.Assign<Command> {
+class Command_Leave extends Constructor.Assign<handler.Command> {
     public constructor() {
         super({
             name: "leave",
@@ -78,7 +78,7 @@ class Command_Leave extends Constructor.Assign<Command> {
  * @description Запрос на транслирование музыки в трибуну!
  * @param choice - Запрос или подключение
  */
-class Command_Stage extends Constructor.Assign<Command> {
+class Command_Stage extends Constructor.Assign<handler.Command> {
     public constructor() {
         super({
             name: "stage",
@@ -142,4 +142,8 @@ class Command_Stage extends Constructor.Assign<Command> {
     };
 }
 
+/**
+ * @export default
+ * @description Делаем классы глобальными
+ */
 export default Object.values({Command_Join, Command_Leave, Command_Stage});

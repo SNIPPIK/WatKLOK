@@ -1,12 +1,14 @@
 import {Song} from "@lib/player/queue/Song";
-import {httpsClient} from "@lib/request";
 import {API, Constructor} from "@handler";
+import {httpsClient} from "@lib/request";
 import {env} from "@env";
+
 /**
  * @author SNIPPIK
  * @description Динамически загружаемый класс
+ * @API VK
  */
-class VkAPI extends Constructor.Assign<API.request> {
+class currentAPI extends Constructor.Assign<API.request> {
     public constructor() {
         super({
             name: "VK",
@@ -35,12 +37,12 @@ class VkAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const api = await VKLib.API("audio", "getById", `&audios=${ID.pop()}`);
+                                        const api = await currentAPI.API("audio", "getById", `&audios=${ID.pop()}`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
 
-                                        const track = VKLib.track(api.response.pop(), url);
+                                        const track = currentAPI.track(api.response.pop(), url);
                                         return resolve(track);
                                     } catch (e) {
                                         return reject(Error(`[APIs]: ${e}`))
@@ -62,11 +64,11 @@ class VkAPI extends Constructor.Assign<API.request> {
                                 return new Promise<Song[]>(async (resolve, reject) => {
                                     try {
                                         //Создаем запрос
-                                        const api = await VKLib.API("audio", "search", `&q=${url}`);
+                                        const api = await currentAPI.API("audio", "search", `&q=${url}`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
-                                        const tracks = (api.response.items.splice(0, env.get("APIs.limit.search"))).map(VKLib.track);
+                                        const tracks = (api.response.items.splice(0, env.get("APIs.limit.search"))).map(currentAPI.track);
 
                                         return resolve(tracks);
                                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
@@ -78,17 +80,12 @@ class VkAPI extends Constructor.Assign<API.request> {
             ]
         });
     };
-}
 
-export default Object.values({VkAPI});
-
-
-/**
- * @author SNIPPIK
- * @class VKLib
- */
-class VKLib {
-    private static authorization = {
+    /**
+     * @description Данные для создания запросов
+     * @protected
+     */
+    protected static authorization = {
         api: "https://api.vk.com/method",
         token:`?access_token=${env.get("token.vk")}`
     };
@@ -99,7 +96,7 @@ class VKLib {
      * @param type {string} Тип запроса
      * @param options {string} Параметры через &
      */
-    public static API = (method: methodType, type: requestType, options: string): Promise<any | Error> => {
+    protected static API = (method: methodType, type: requestType, options: string): Promise<any | Error> => {
         return new Promise((resolve) => {
             const url = `${this.authorization.api}/${method}.${type}${this.authorization.token}${options}&v=5.131`;
 
@@ -112,13 +109,12 @@ class VKLib {
         });
     };
 
-
     /**
      * @description Из полученных данных подготавливаем трек для Player<Queue>
      * @param track {any} Любой трек из VK
      * @param url - Ссылка на трек
      */
-    public static track = (track: any, url: string = null): Song => {
+    protected static track = (track: any, url: string = null): Song => {
         const image = track?.album?.["thumb"];
 
         return new Song({
@@ -131,18 +127,22 @@ class VKLib {
         });
     };
 
-
     /**
      * @description Из полученных данных подготавливаем данные об авторе для ISong.track
      * @param user {any} Любой автор трека
      */
-    public static author = (user: any): Song.author => {
+    protected static author = (user: any): Song.author => {
         const url = `https://vk.com/audio?performer=1&q=${user.artist.replaceAll(" ", "").toLowerCase()}`;
 
         return { url, title: user.artist }; //, isVerified: user.is_licensed
     };
 }
 
+/**
+ * @export default
+ * @description Делаем классы глобальными
+ */
+export default Object.values({currentAPI});
 
 type requestType = "get" | "getById" | "search" | "getPlaylistById" | "getPlaylist";
 type methodType = "audio" | "execute" | "catalog";

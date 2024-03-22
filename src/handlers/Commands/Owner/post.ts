@@ -1,5 +1,5 @@
 import {ApplicationCommandOptionType, Colors, EmbedData, TextChannel} from "discord.js";
-import {Command, Constructor} from "@handler";
+import {Constructor, handler} from "@handler";
 import {Logger} from "@lib/discord";
 import {env} from "@env";
 
@@ -8,11 +8,11 @@ import {env} from "@env";
  * @description Стандартная команда post
  * @param description - Что будет указано в посте
  */
-class Command_Post extends Constructor.Assign<Command> {
+class Command_Post extends Constructor.Assign<handler.Command> {
     public constructor() {
         super({
             name: "post",
-            description: "Опубликую новость за вас! В спец канал!",
+            description: "Опубликую новость за вас! В специальный канал!",
             options: [
                 {
                     name: "description",
@@ -57,4 +57,8 @@ class Command_Post extends Constructor.Assign<Command> {
     };
 }
 
+/**
+ * @export default
+ * @description Делаем классы глобальными
+ */
 export default Object.values({Command_Post});

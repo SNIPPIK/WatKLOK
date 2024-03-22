@@ -259,18 +259,7 @@ function fetchAPIs(track: Song): Promise<string | Error> {
             youtube.find("search").callback(`${track.author.title} - ${track.title}`).then((videos) => {
                 if (videos instanceof Error || videos.length === 0) return resolve(null);
 
-                const duration = track.duration.seconds
-                //Ищем подходящие треки
-                const GoodTracks = videos.filter((track) => {
-                    const DurationSong: number = track.duration.seconds;
-
-                    //Как надо фильтровать треки
-                    return DurationSong === duration || DurationSong < duration + 7 && DurationSong > duration - 5 || DurationSong < duration + 27 && DurationSong > duration - 27;
-                });
-
-                if (GoodTracks.length === 0) return resolve(null);
-
-                youtube.find("track").callback(GoodTracks?.at(-1)?.url).then((track) => {
+                youtube.find("track").callback(videos?.at(0)?.url).then((track) => {
                     if (track instanceof Error || !track.link) return resolve(null);
                     return resolve(track.link);
                 }).catch((err) => resolve(Error(err)));

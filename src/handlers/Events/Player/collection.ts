@@ -1,5 +1,5 @@
+import {API, Constructor, handler} from "@handler";
 import {Queue} from "@lib/player/queue/Queue";
-import {API, Constructor, Event} from "@handler";
 import {Song} from "@lib/player/queue/Song";
 import {Logger} from "@lib/discord";
 import {db} from "@lib/db";
@@ -10,7 +10,7 @@ import {env} from "@env";
  * @event collection/api
  * @description Выполняется при запросе API
  */
-class onAPI extends Constructor.Assign<Event<"collection/api">> {
+class onAPI extends Constructor.Assign<handler.Event<"collection/api">> {
     public constructor() {
         super({
             name: "collection/api",
@@ -73,7 +73,7 @@ class onAPI extends Constructor.Assign<Event<"collection/api">> {
  * @event collection/error
  * @description Выполнятся при возникновении ошибки в collection
  */
-class onError extends Constructor.Assign<Event<"collection/error">> {
+class onError extends Constructor.Assign<handler.Event<"collection/error">> {
     public constructor() {
         super({
             name: "collection/error",
@@ -89,4 +89,8 @@ class onError extends Constructor.Assign<Event<"collection/error">> {
     };
 }
 
+/**
+ * @export default
+ * @description Делаем классы глобальными
+ */
 export default Object.values({onError, onAPI});

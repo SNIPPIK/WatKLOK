@@ -1,7 +1,6 @@
 import {ApplicationCommandOptionType} from "discord.js";
-import {Command, Constructor} from "@handler";
+import {handler, Constructor, API} from "@handler";
 import {db} from "@lib/db";
-import {API} from "@handler";
 
 /**
  * @class Command_Platform
@@ -9,7 +8,7 @@ import {API} from "@handler";
  * @param choice - Действие с платформой
  * @param platform - Название платформы
  */
-class Command_Platform extends Constructor.Assign<Command> {
+class Command_Platform extends Constructor.Assign<handler.Command> {
     public constructor() {
         super({
             name: "platform",
@@ -98,4 +97,8 @@ class Command_Platform extends Constructor.Assign<Command> {
     };
 }
 
+/**
+ * @export default
+ * @description Делаем классы глобальными
+ */
 export default Object.values({Command_Platform});

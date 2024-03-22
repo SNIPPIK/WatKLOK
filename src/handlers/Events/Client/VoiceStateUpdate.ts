@@ -1,6 +1,6 @@
-import {Constructor, Event} from "@handler";
-import {Voice} from "@lib/voice";
+import {Constructor, handler} from "@handler";
 import {Events} from "discord.js";
+import {Voice} from "@lib/voice";
 import {db} from "@lib/db"
 
 /**
@@ -8,7 +8,7 @@ import {db} from "@lib/db"
  * @description Класс ивента VoiceStateUpdate
  * @class VoiceStateUpdate
  */
-class VoiceStateUpdate extends Constructor.Assign<Event<Events.VoiceStateUpdate>> {
+class VoiceStateUpdate extends Constructor.Assign<handler.Event<Events.VoiceStateUpdate>> {
     public constructor() {
         super({
             name: Events.VoiceStateUpdate,
@@ -43,4 +43,8 @@ class VoiceStateUpdate extends Constructor.Assign<Event<Events.VoiceStateUpdate>
     };
 }
 
+/**
+ * @export default
+ * @description Делаем классы глобальными
+ */
 export default Object.values({VoiceStateUpdate});

@@ -1,5 +1,5 @@
 import {ApplicationCommandOptionType, Colors, EmbedData} from "discord.js";
-import {Command, Constructor} from "@handler";
+import {Constructor, handler} from "@handler";
 import {db} from "@lib/db";
 
 /**
@@ -9,7 +9,7 @@ import {db} from "@lib/db";
  *
  * @param value - Время для пропуска времени
  */
-class Command_Seek extends Constructor.Assign<Command> {
+class Command_Seek extends Constructor.Assign<handler.Command> {
     public constructor() {
         super({
             name: "seek",
@@ -76,7 +76,7 @@ class Command_Seek extends Constructor.Assign<Command> {
  * @param filters - Необходимо выбрать фильтр
  * @param argument - Аргумент для фильтра
  */
-class Command_Filter extends Constructor.Assign<Command> {
+class Command_Filter extends Constructor.Assign<handler.Command> {
     public constructor() {
         super({
             name: "filter",
@@ -211,4 +211,8 @@ class Command_Filter extends Constructor.Assign<Command> {
     };
 }
 
+/**
+ * @export default
+ * @description Делаем классы глобальными
+ */
 export default Object.values({Command_Filter, Command_Seek});

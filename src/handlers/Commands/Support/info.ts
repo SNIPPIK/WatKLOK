@@ -1,4 +1,4 @@
-import {Command, Constructor} from "@handler";
+import {handler, Constructor} from "@handler";
 import {Colors} from "discord.js";
 import {db} from "@lib/db";
 import os from "node:os";
@@ -6,7 +6,12 @@ import os from "node:os";
 const cpu = os.cpus();
 const processor = cpu.length > 0 ? cpu[0]?.model : "Невозможно определить";
 
-export default class extends Constructor.Assign<Command> {
+/**
+ * @class Command_Info
+ * @command info
+ * @description Публичные данные бота
+ */
+class Command_Info extends Constructor.Assign<handler.Command> {
     public constructor() {
         super({
             name: "info",
@@ -27,9 +32,9 @@ export default class extends Constructor.Assign<Command> {
                     `• Каналов    => ${client.channels.cache.size}`,
                     `• Команд     => ${db.commands.size}`,
 
-                    `> Память [${formatBytes(process.memoryUsage().rss / 1.5)}]`,
-                    `   Используется   => [${formatBytes(process.memoryUsage().heapUsed)}]`,
-                    `   Доступно       => [${formatBytes(process.memoryUsage().heapTotal)}]`
+                    `> Память [${(process.memoryUsage().rss / 1.5).bytes()}]`,
+                    `   Используется   => [${(process.memoryUsage().heapUsed).bytes()}]`,
+                    `   Доступно       => [${(process.memoryUsage().heapTotal).bytes()}]`
                 ];
 
                 let Music = [
@@ -79,8 +84,8 @@ export default class extends Constructor.Assign<Command> {
     };
 }
 
-function formatBytes(memory: number) {
-    const sizes = ["Bytes", "", "MB", "GB"];
-    const i = Math.floor(Math.log(memory) / Math.log(1024));
-    return `${(memory / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
-}
+/**
+ * @export default
+ * @description Делаем классы глобальными
+ */
+export default Object.values({Command_Info});

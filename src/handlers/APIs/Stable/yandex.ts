@@ -1,13 +1,16 @@
 import {Song} from "@lib/player/queue/Song";
-import {httpsClient} from "@lib/request";
 import {API, Constructor} from "@handler";
+import {httpsClient} from "@lib/request";
 import crypto from "node:crypto";
 import {env} from "@env";
+
 /**
  * @author SNIPPIK
  * @description Динамически загружаемый класс
+ * @class currentAPI
+ * @API Yandex music
  */
-class YandexAPI extends Constructor.Assign<API.request> {
+class currentAPI extends Constructor.Assign<API.request> {
     public constructor() {
         super({
             name: "YANDEX",
@@ -35,14 +38,14 @@ class YandexAPI extends Constructor.Assign<API.request> {
                                         if (!ID) return reject(Error("[APIs]: Не найден ID трека!"));
 
                                         //Делаем запрос
-                                        const api = await YandexLib.API(`tracks/${ID}`);
-                                        const audio = await YandexLib.getAudio(ID);
+                                        const api = await currentAPI.API(`tracks/${ID}`);
+                                        const audio = await currentAPI.getAudio(ID);
 
                                         //Обрабатываем ошибки
                                         if (api instanceof Error || audio instanceof Error) return reject(api);
                                         else if (!api[0]) return reject(Error("[APIs]: Не удалось получить данные о треке!"));
 
-                                        const track = YandexLib.track(api[0]);
+                                        const track = currentAPI.track(api[0]);
 
                                         if (audio) track.link = audio;
                                         return resolve(track);
@@ -70,15 +73,15 @@ class YandexAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const api = await YandexLib.API(`albums/${ID}/with-tracks`);
+                                        const api = await currentAPI.API(`albums/${ID}/with-tracks`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
                                         else if (!api?.["duplicates"]?.length && !api?.["volumes"]?.length) return reject(Error("[APIs]: Я не нахожу треков в этом альбоме!"));
 
-                                        const AlbumImage = YandexLib.parseImage({image: api?.["ogImage"] ?? api?.["coverUri"]});
+                                        const AlbumImage = currentAPI.parseImage({image: api?.["ogImage"] ?? api?.["coverUri"]});
                                         const tracks: Song.track[] = api["volumes"]?.pop().splice(0, env.get("APIs.limit.playlist"));
-                                        const songs = tracks.map(YandexLib.track);
+                                        const songs = tracks.map(currentAPI.track);
 
                                         return resolve({url, title: api.title, image: AlbumImage, items: songs});
                                     } catch (e) {
@@ -107,15 +110,15 @@ class YandexAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const api = await YandexLib.API(ID.at(0));
+                                        const api = await currentAPI.API(ID.at(0));
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
                                         else if (api?.tracks?.length === 0) return reject(Error("[APIs]: Я не нахожу треков в этом плейлисте!"));
 
-                                        const image = YandexLib.parseImage({image: api?.["ogImage"] ?? api?.["coverUri"]});
+                                        const image = currentAPI.parseImage({image: api?.["ogImage"] ?? api?.["coverUri"]});
                                         const tracks: any[] = api.tracks?.splice(0, env.get("APIs.limit.playlist"));
-                                        const songs = tracks.map(({track}) => YandexLib.track(track));
+                                        const songs = tracks.map(({track}) => currentAPI.track(track));
 
                                         return resolve({
                                             url, title: api.title, image: image, items: songs,
@@ -148,11 +151,11 @@ class YandexAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const api = await YandexLib.API(`artists/${ID.pop()}/tracks`);
+                                        const api = await currentAPI.API(`artists/${ID.pop()}/tracks`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
-                                        const tracks = api.tracks.splice(0, env.get("APIs.limit.author")).map(YandexLib.track);
+                                        const tracks = api.tracks.splice(0, env.get("APIs.limit.author")).map(currentAPI.track);
 
                                         return resolve(tracks);
                                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
@@ -173,13 +176,13 @@ class YandexAPI extends Constructor.Assign<API.request> {
                                 return new Promise<Song[]>(async (resolve, reject) => {
                                     try {
                                         //Создаем запрос
-                                        const api = await YandexLib.API(`search?type=all&text=${url.split(" ").join("%20")}&page=0&nococrrect=false`);
+                                        const api = await currentAPI.API(`search?type=all&text=${url.split(" ").join("%20")}&page=0&nococrrect=false`);
 
                                         //Обрабатываем ошибки
                                         if (api instanceof Error) return reject(api);
                                         else if (!api.tracks) return reject(Error(`[APIs]: На Yandex music нет такого трека!`));
 
-                                        const tracks = api.tracks["results"].splice(0, env.get("APIs.limit.search")).map(YandexLib.track);
+                                        const tracks = api.tracks["results"].splice(0, env.get("APIs.limit.search")).map(currentAPI.track);
                                         return resolve(tracks);
                                     } catch (e) {
                                         return reject(Error(`[APIs]: ${e}`))
@@ -192,15 +195,11 @@ class YandexAPI extends Constructor.Assign<API.request> {
             ]
         });
     };
-}
 
-export default Object.values({YandexAPI});
-
-/**
- * @author SNIPPIK
- * @class YandexLib
- */
-class YandexLib {
+    /**
+     * @description Данные для создания запросов
+     * @protected
+     */
     protected static authorization = {
         token: env.get("token.yandex"),
         api: "https://api.music.yandex.net"
@@ -211,7 +210,7 @@ class YandexLib {
      * @param method {string} Путь
      * @constructor
      */
-    public static API = (method: string): Promise<any> => {
+    protected static API = (method: string): Promise<any> => {
         return new Promise<any | Error>((resolve) => {
             new httpsClient(`${this.authorization.api}/${method}`, {
                 headers: { "Authorization": "OAuth " + this.authorization.token }, method: "GET"
@@ -231,7 +230,7 @@ class YandexLib {
      * @description Получаем исходный файл трека
      * @param ID {string} ID трека
      */
-    public static getAudio = (ID: string): Promise<string | Error> => {
+    protected static getAudio = (ID: string): Promise<string | Error> => {
         return new Promise<string | Error>(async (resolve) => {
             try {
                 const api = await this.API(`tracks/${ID}/download-info`);
@@ -261,7 +260,7 @@ class YandexLib {
      * @param image {string} Ссылка на картинку
      * @param size {number} Размер картинки
      */
-    public static parseImage = ({image, size = 1e3}: { image: string, size?: number }): {url: string, width?: number, height?: number} => {
+    protected static parseImage = ({image, size = 1e3}: { image: string, size?: number }): {url: string, width?: number, height?: number} => {
         if (!image) return { url: "" };
 
         return {
@@ -274,7 +273,7 @@ class YandexLib {
      * @description Из полученных данных подготавливаем трек для Player<Queue>
      * @param track {any} Любой трек с Yandex Music
      */
-    public static track = (track: any): Song => {
+    protected static track = (track: any): Song => {
         const author = track["artists"]?.length ? track["artists"]?.pop() : track["artists"];
         const album = track["albums"]?.length ? track["albums"][0] : track["albums"];
 
@@ -292,3 +291,9 @@ class YandexLib {
         });
     }
 }
+
+/**
+ * @export default
+ * @description Делаем классы глобальными
+ */
+export default Object.values({ currentAPI });
