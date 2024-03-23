@@ -1,6 +1,9 @@
 import {Song} from "@lib/player/queue/Song";
 import {API, Constructor} from "@handler";
 import {httpsClient} from "@lib/request";
+import querystring from "querystring";
+import { URL } from "node:url";
+import {Script} from "vm";
 import {env} from "@env";
 
 /**
@@ -177,224 +180,165 @@ class currentAPI extends Constructor.Assign<API.request> {
         });
     };
 
-    /**
-     * @author SNIPPIK
-     * @description Строчки для расшифровки
-     */
-    protected static regexp = new class {
-        /**
-         * @description Как найти var
-         */
-        public get var() { return `[a-zA-Z_\\$]\\w*`; };
+    protected static decode = new class {
+        private Segment = [
+            // Strings
+            { s: '"', e: '"' }, { s: "'", e: "'" }, { s: '`', e: '`' },
+
+            // RegEx
+            { s: '/', e: '/', prf: /(^|[[{:;,/])\s?$/ || /(^|[[{:;,])\s?$/ }
+        ];
 
         /**
-         * @description Как найти single
+         * @description Сопоставление начальной и конечной фигурной скобки входного JS
+         * @param mixedJson
          */
-        public get single() { return `'[^'\\\\]*(:?\\\\[\\s\\S][^'\\\\]*)*'`; };
+        private cutAfterJS = (mixedJson: string): string => {
+            let open, close; //Define the general open and closing tag
 
-        /**
-         * @description Как найти duo
-         */
-        public get duo() { return `"[^"\\\\]*(:?\\\\[\\s\\S][^"\\\\]*)*"`; };
+            if (mixedJson[0] === '[') { open = '['; close = ']'; }
+            else if (mixedJson[0] === '{') { open = '{'; close = '}'; }
 
-        /**
-         * @description Как найти empty
-         */
-        public get empty() { return `(?:''|"")`; };
+            if (!open) throw Error(`Can't cut unsupported JSON (need to begin with [ or { ) but got: ${mixedJson[0]}`);
 
-        /**
-         * @description Как найти reverse
-         */
-        public get reverse() { return ':function\\(a\\)\\{' + '(?:return )?a\\.reverse\\(\\)' + '\\}'; };
+            // counter - Current open brackets to be closed
+            // isEscaped - States if the current character is treated as escaped or not
+            // isEscapedObject = States if the loop is currently inside an escaped js object
+            let counter = 0, isEscaped = false, isEscapedObject = null;
 
-        public get Regs() {
-            return {
-                reverse: this.regexp(`(?:^|,)(${this.key})${this.reverse}`),
-                slice:   this.regexp(`(?:^|,)(${this.key})${this.slice}`),
-                splice:  this.regexp(`(?:^|,)(${this.key})${this.splice}`),
-                swap:    this.regexp(`(?:^|,)(${this.key})${this.swap}`)
-            };
-        };
-
-        /**
-         * @description Как найти slice
-         */
-        public get slice() { return ':function\\(a,b\\)\\{' + 'return a\\.slice\\(b\\)' + '\\}'; };
-
-        /**
-         * @description Как найти splice
-         */
-        public get splice() { return ':function\\(a,b\\)\\{' + 'a\\.splice\\(0,b\\)' + '\\}'; };
-
-        /**
-         * @description Как найти swap
-         */
-        public get swap() {
-            return ':function\\(a,b\\)\\{' +
-                'var c=a\\[0\\];a\\[0\\]=a\\[b(?:%a\\.length)?\\];a\\[b(?:%a\\.length)?\\]=c(?:;return a)?' +
-                '\\}'
-        };
-
-
-        public get quote() {
-            return `(?:${this.single}|${this.duo})`;
-        };
-
-        public get prop() {
-            return `(?:\\.${this.var}|\\[${this.quote}\\])`;
-        };
-
-        public get key() {
-            return `(?:${this.var}|${this.quote})`
-        };
-
-        public get object() {
-            const key = this.key;
-
-            return this.regexp(`var (${this.var})=\\{((?:(?:${key}${this.reverse}|${key}${this.slice}|${key}${this.splice}|${key}${this.swap}),?\\r?\\n?)+)};`)
-        };
-
-        public get function() {
-            return this.regexp(
-                `${`function(?: ${this.var})?\\(a\\)\\{` + `a=a\\.split\\(${this.empty}\\);\\s*` + `((?:(?:a=)?${this.var}`
-                }${this.prop}\\(a,\\d+\\);)+)` +
-                `return a\\.join\\(${this.empty}\\)` +
-                `\\}`
-            );
-        };
-
-        protected readonly regexp = (pattern: string) => new RegExp(pattern, "m");
-    };
-
-    /**
-     * @author SNIPPIK
-     * @description Расшифровщик ссылок на youtube videos
-     */
-    protected static decode = class {
-        private readonly _local = {
-            format: null as YouTubeFormat,
-            decoder: currentAPI.regexp,
-            html: null as string,
-
-            body: null as string
-        };
-
-        public constructor(options: { html: string; format: YouTubeFormat }) {
-            Object.assign(this._local, options);
-        };
-
-        /**
-         * @description Получаем исходную ссылку на файл
-         * @public
-         */
-        public get extract() {
-            return new Promise<YouTubeFormat>(async (resolve) => {
-                new httpsClient(this._local.html).toString.then((page) => {
-                    if (page instanceof Error) return resolve(null);
-
-                    this._local.body = page;
-                    const url = this.url;
-
-                    if (url) this._local.format.url = url;
-                    return resolve(this._local.format);
-                });
-            });
-        }
-
-        /**
-         * @description Берем данные с youtube html5player
-         * @private
-         */
-        private get parseTokens(): string[] {
-            const funAction = this._local.decoder.function.exec(this._local.body);
-            const objAction = this._local.decoder.object.exec(this._local.body);
-
-            if (!funAction || !objAction) return null;
-
-            const object = objAction.at(1)?.replace(/\$/g, "\\$");
-            const objPage = objAction.at(2)?.replace(/\$/g, "\\$");
-            const funPage = funAction.at(1)?.replace(/\$/g, "\\$");
-
-            let result: RegExpExecArray, tokens: string[] = [], keys: string[] = [];
-            for (const decoder of Object.values(this._local.decoder.Regs)) {
-                result = decoder.exec(objPage);
-                keys.push(this.replacer(result));
-            }
-
-            const parsedKeys = `(${keys.join('|')})`;
-            const tokenizeRegexp = new RegExp(`(?:a=)?${object}(?:\\.${parsedKeys}|\\['${parsedKeys}'\\]|\\["${parsedKeys}"\\])` + `\\(a,(\\d+)\\)`, 'g');
-
-            while ((result = tokenizeRegexp.exec(funPage)) !== null) {
-                (() => {
-                    const key = result[1] || result[2] || result[3];
-                    switch (key) {
-                        case keys[0]: return tokens.push('rv');
-                        case keys[1]: return tokens.push(`sl${result[4]}`);
-                        case keys[2]: return tokens.push(`sp${result[4]}`);
-                        case keys[3]: return tokens.push(`sw${result[4]}`);
+            // Go through all characters from the start
+            for (let i = 0; i < mixedJson.length; i++) {
+                // End of current escaped object
+                if (!isEscaped && isEscapedObject !== null && mixedJson[i] === isEscapedObject.e) { isEscapedObject = null; continue; }
+                // Might be the start of a new escaped object
+                else if (!isEscaped && isEscapedObject === null) {
+                    for (const escaped of this.Segment) {
+                        if (mixedJson[i] !== escaped.s) continue;
+                        // Test startPrefix against last 10 characters
+                        if (!escaped.prf || mixedJson.substring(i - 10, i).match(escaped.prf)) { isEscapedObject = escaped; break; }
                     }
-                })();
+                    // Continue if we found a new escaped object
+                    if (isEscapedObject !== null) continue;
+                }
+
+                // Toggle the isEscaped boolean for every backslash
+                // Reset for every regular character
+                isEscaped = mixedJson[i] === '\\' && !isEscaped;
+
+                if (isEscapedObject !== null) continue;
+
+                if (mixedJson[i] === open) counter++;
+                else if (mixedJson[i] === close) counter--;
+
+                // All brackets have been closed, thus end of JSON is reached
+                if (counter === 0) return mixedJson.substring(0, i + 1);
             }
 
-            return tokens;
-        }
-
-        /**
-         * @description Получаем ссылку на файл
-         * @private
-         */
-        private get url() {
-            const tokens = this.parseTokens;
-            const cipher = this._local.format.signatureCipher || this._local.format.cipher;
-
-            if (cipher) {
-                const params = Object.fromEntries(new URLSearchParams(cipher));
-                Object.assign(this._local.format, params);
-                delete this._local.format.signatureCipher;
-                delete this._local.format.cipher;
-            }
-
-            if (tokens && this._local.format.s && this._local.format.url) {
-                const signature = this.DecodeSignature(tokens, this._local.format.s);
-                const Url = new URL(decodeURIComponent(this._local.format.url));
-                Url.searchParams.set('ratebypass', 'yes');
-
-                if (signature) Url.searchParams.set(this._local.format.sp || 'signature', signature);
-
-                return Url.toString();
-            }
-
-            return null;
+            // We ran through the whole string and ended up with an unclosed bracket
+            throw Error("Can't cut unsupported JSON (no matching closing bracket found)");
         };
 
         /**
-         * @description Проводим некоторые манипуляции с signature
-         * @param tokens {string[]}
-         * @param signature {string}
-         * @private
+         * @description Применяет преобразование параметра расшифровки и n ко всем URL-адресам формата.
+         * @param format - Аудио или видео формат на youtube
+         * @param html5player - Ссылка на плеер
          */
-        private DecodeSignature = (tokens: string[], signature: string): string => {
-            let sig = signature.split(""), position: any;
+        public extractSignature = (format: YouTubeFormat, html5player: string): Promise<YouTubeFormat | Error> => {
+            return new Promise(async (resolve) => {
+                const body = await new httpsClient(html5player).toString;
 
-            for (const token of tokens) {
-                const nameToken = token.slice(2);
+                if (!body || body instanceof Error) return resolve(Error(`TypeError: has not found body!`));
 
-                switch (token.slice(0, 2)) {
-                    case "sw": { position = parseInt(nameToken); sig.swap(position); break; }
-                    case "sl": { position = parseInt(nameToken); sig = sig.slice(position); break; }
-                    case "sp": { position = parseInt(nameToken); sig.splice(0, position); break; }
-                    case "rv": { sig.reverse(); break; }
+                const functions = this.extractFunctions(body);
+                const url = this.setDownloadURL(format, {
+                    decipher: functions.length ? new Script(functions[0]) : null,
+                    nTransform: functions.length > 1 ? new Script(functions[1]) : null
+                });
+
+                if (url) format.url = url;
+
+                return resolve(format);
+            });
+        };
+
+        /**
+         * @description Применить расшифровку и n-преобразование к индивидуальному формату
+         * @param format - Аудио или видео формат на youtube
+         * @param script - Скрипт для выполнения на виртуальной машине
+         */
+        private setDownloadURL = (format: YouTubeFormat, script: {decipher?: Script, nTransform?: Script}): string | void => {
+            const url = format.url || format.signatureCipher || format.cipher, {decipher, nTransform} = script;
+            const extractDecipher = (url: string): string => {
+                const args = querystring.parse(url);
+                if (!args.s || !decipher) return args.url as string;
+
+                const components = new URL(decodeURIComponent(args.url as string));
+                components.searchParams.set(args.sp as string ? args.sp as string : 'signature', decipher.runInNewContext({sig: decodeURIComponent(args.s as string)}));
+                return components.toString();
+            }
+            const extractN = (url: string): string => {
+                const components = new URL(decodeURIComponent(url));
+                const n = components.searchParams.get('n');
+                if (!n || !nTransform) return url;
+                components.searchParams.set('n', nTransform.runInNewContext({ncode: n}));
+                return components.toString();
+            }
+
+            //Удаляем не нужные данные
+            delete format.signatureCipher;
+            delete format.cipher;
+
+            return !format.url ? extractN(extractDecipher(url)) : extractN(url);
+        };
+
+        /**
+         * @description Извлечь функции расшифровки подписи и преобразования n параметров из файла html5player
+         * @param body - Страница плеера
+         */
+        private extractFunctions = (body: string): string[] => {
+            const functions: string[] = [];
+
+            const decipherName = body.split(`a.set("alr","yes");c&&(c=`)[1].split(`(decodeURIC`)[0];
+            let ncodeName = body.split(`&&(b=a.get("n"))&&(b=`)[1].split(`(b)`)[0];
+
+            //extract Decipher
+            if (decipherName && decipherName.length) {
+                const functionStart = `${decipherName}=function(a)`;
+                const ndx = body.indexOf(functionStart);
+
+                if (ndx >= 0) {
+                    let functionBody = `var ${functionStart}${this.cutAfterJS(body.slice(ndx + functionStart.length))}`;
+                    functions.push(`${this.extractManipulations(functionBody, body)};${functionBody};${decipherName}(sig);`);
                 }
             }
-            return sig.join("");
+
+            //extract ncode
+            if (ncodeName.includes('[')) ncodeName = body.split(`${ncodeName.split('[')[0]}=[`)[1].split(`]`)[0];
+            if (ncodeName && ncodeName.length) {
+                const functionStart = `${ncodeName}=function(a)`;
+                const ndx = body.indexOf(functionStart);
+
+                if (ndx >= 0) functions.push(`var ${functionStart}${this.cutAfterJS(body.slice(ndx + functionStart.length))};${ncodeName}(ncode);`);
+            }
+
+            //Проверяем если ли functions
+            if (!functions || !functions.length) return;
+            return functions;
         };
 
         /**
-         * @description Уменьшаем кол-во кода
-         * @param res {RegExpExecArray}
-         * @private
+         * @description Пытаемся вытащить фрагмент для дальнейшей манипуляции
+         * @param caller {string}
+         * @param body {string}
          */
-        private replacer = (res: RegExpExecArray): string => res && res.at(1)?.replace(/\$/g, "\\$").replace(/\$|^'|^"|'$|"$/g, "");
+        private extractManipulations = (caller: string, body: string): string => {
+            const name = caller.split(`a=a.split("");`)[1].split(".")[0];
+            const start = `var ${name}={`;
+            const index = body.indexOf(start);
+
+            if (!name || index < 0) return '';
+            return `var ${name}=${this.cutAfterJS(body.slice(index + start.length - 1))}`;
+        };
     };
 
     /**
@@ -455,7 +399,9 @@ class currentAPI extends Constructor.Assign<API.request> {
     protected static extractStreamingData = (data: any, html5player: string): Promise<YouTubeFormat> => {
         return new Promise(async (resolve) => {
             const format = (data["adaptiveFormats"] as YouTubeFormat[]).find((item) => item.mimeType.match(/opus|audio/) && !item.mimeType.match(/ec-3/));
-            const decoded = await new this.decode({html: html5player, format}).extract;
+            const decoded = await this.decode.extractSignature(format, html5player);
+
+            if (decoded instanceof Error) return resolve(null);
             return resolve(decoded);
         });
     };
@@ -525,6 +471,7 @@ class currentAPI extends Constructor.Assign<API.request> {
  * @description Делаем классы глобальными
  */
 export default Object.values({currentAPI});
+
 
 /**
  * @description Так выглядит youtube video or audio format

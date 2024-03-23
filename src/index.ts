@@ -55,6 +55,7 @@ else {
             }],
         }
     });
+    process.on("unhandledRejection", (err: Error) => console.error(err.stack));
 }
 
 
