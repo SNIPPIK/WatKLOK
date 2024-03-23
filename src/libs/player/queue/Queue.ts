@@ -1,6 +1,6 @@
-import {AudioResource} from "@lib/player/AudioResource";
 import {StageChannel, VoiceChannel} from "discord.js";
 import {AudioPlayer} from "@lib/player/AudioPlayer";
+import {SeekStream} from "@lib/player/audio";
 import {Client} from "@lib/discord";
 import {Voice} from "@lib/voice";
 import {Song} from "./Song";
@@ -38,11 +38,9 @@ abstract class BaseQueue {
                         return;
                     }
 
-                    const options = {path, seek};
-                    Object.assign(options, this.parseFilters);
-
                     this.emit("player/ended", this, seek);
-                    this.read = new AudioResource(options as any);
+                    const {chunkSize, filters} = this.parseFilters;
+                    this.read = new SeekStream({path, seek, chunk: chunkSize, filters });
                 }).catch((err) => {
                     this.emit("player/error", this, `${err}`, "skip");
                 });

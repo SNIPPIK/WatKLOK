@@ -140,21 +140,25 @@ export class Song {
      * @public
      */
     public get url() { return this._track.url; };
+
     /**
      * @description Получаем данные автора трека
      * @public
      */
     public get author() { return this._track.author; };
+
     /**
      * @description Получаем время трека
      * @public
      */
     public get duration() { return this._duration; };
+
     /**
      * @description Получаем картинки автора и трека
      * @public
      */
     public get image() { return this._track.image; };
+
     /**
      * @description Получаем пользователя который включил трек
      * @public
@@ -162,6 +166,11 @@ export class Song {
     public get requester() { return this._track.requester; };
     public set requester(author) {
         const { username, id, avatar } = author;
+
+        //Если нет автора трека, то автором станет сам пользователь
+        if (!this.author) this._track.author = {
+            title: username, url: `https://discordapp.com/users/${id}`
+        };
 
         //Пользователь, который включил трек
         this._track.requester = {

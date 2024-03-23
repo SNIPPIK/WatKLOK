@@ -82,7 +82,7 @@ class onPlaying extends Constructor.Assign<handler.Event<"message/playing">> {
                 }
 
                 //Progress bar
-                const currentTime = queue.player?.stream?.duration?.current ?? 0;
+                const currentTime = queue.player?.stream?.duration ?? 0;
                 const progress = `\`\`${currentTime.duration()}\`\` ${new ProgressBar(currentTime, duration.seconds).bar} \`\`${duration.full}\`\``;
                 embed.fields.push({ name: " ", value: `\n[|](${url})${progress}` });
 

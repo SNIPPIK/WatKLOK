@@ -16,14 +16,16 @@ class onAPI extends Constructor.Assign<handler.Event<"collection/api">> {
             name: "collection/api",
             type: "player",
             execute: (message, voice, argument): void => {
-                const platform = new API.response(argument[0] ?? argument[1]), name = platform.platform;
+                const platform = new API.response(argument[0] as string), name = platform.platform;
                 const event = db.queue.events, collection = db.queue;
 
                 if (platform.block) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}**\n\nРазработчик заблокировал доступ к этой платформе!\nВозможно из-за ошибки или блокировки со стороны сервера!`));
                 else if (platform.auth) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}**\n\nНет данных для авторизации, запрос не может быть выполнен!`));
-                else if (!argument[1].match(platform.filter) && argument[1].startsWith("http")) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}**\n\nЭтот запрос не относится к этой платформе!`));
+                else if (typeof argument[1] === "string") {
+                    if (!argument[1].match(platform.filter) && argument[1].startsWith("http")) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}**\n\nЭтот запрос не относится к этой платформе!`));
+                }
 
-                const api = platform.find(argument[1]);
+                const api = platform.find(typeof argument[1] !== "string" ? argument[1].url : argument[1]);
 
                 if (!api || !api?.name) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}**\n\nУ меня нет поддержки этого запроса!`));
                 else if (!api) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}.${api.name}**\n\nУ меня нет поддержки для выполнения этого запроса!`));
@@ -31,7 +33,7 @@ class onAPI extends Constructor.Assign<handler.Event<"collection/api">> {
                 //Отправляем сообщение о том что запрос производится
                 event.emit("collection/error", message, `⚠️ **Warning** | **${name}.${api.name}**\n\n${env.get("loading.emoji")} Ожидание ответа от сервера...\n${platform.audio ? "Эта платформа не может выдать исходный файл музыки! Поиск трека!" : ""}`, "Yellow");
 
-                api.callback(argument[1]).then((item): void => {
+                api.callback(argument[1] as any).then((item): void => {
                     //Если нет данных или была получена ошибка
                     if (!item || item instanceof Error) {
                         event.emit("collection/error", message, `⚠️ **Warning** | **${name}.${api.name}**\n\n**❯** Данные не были получены!`);
@@ -56,7 +58,7 @@ class onAPI extends Constructor.Assign<handler.Event<"collection/api">> {
                     else if ("items" in item) event.emit("message/push", message, item);
 
                     //Добавляем треки в очередь
-                    for (const track of (item["items"] ?? [item])) {
+                    for (const track of (item["items"] ?? [item]) as Song[]) {
                         track.requester = message.author;
                         queue.songs.push(track);
                     }

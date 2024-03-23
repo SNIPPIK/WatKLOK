@@ -1,5 +1,5 @@
 import {AudioPlayer, AudioPlayerEvents, Filter} from "@lib/player/AudioPlayer";
-import {EmbedData, Routes, StageChannel, VoiceChannel} from "discord.js";
+import {Attachment, EmbedData, Routes, StageChannel, VoiceChannel} from "discord.js";
 import {createWriteStream, existsSync, mkdirSync, rename} from "node:fs";
 import {API, Constructor, handler, Handler} from "@handler";
 import onPlaying from "@handler/Events/Player/message";
@@ -10,6 +10,7 @@ import {Client, Logger} from "@lib/discord";
 import {httpsClient} from "@lib/request";
 import {TimeCycle} from "@lib/timer";
 import {env} from "@env";
+import platform from "@handler/Commands/Owner/platform";
 
 namespace LocalDataBase {
     /**
@@ -328,6 +329,14 @@ namespace LocalDataBase {
          * @public
          */
         public get platforms() { return this._platforms; };
+
+        /**
+         * @description Исключаем некоторые платформы из доступа
+         * @public
+         */
+        public get allow() {
+            return this._platforms.supported.filter((platform) => platform.name !== "DISCORD");
+        };
     }
 
     /**
@@ -448,7 +457,7 @@ export interface CollectionAudioEvents {
     "message/search": (tracks: Song[], platform: string, message: Client.message) => void;
 
     //Добавляем и создаем очередь
-    "collection/api": (message: Client.message, voice: VoiceChannel | StageChannel, argument: string[]) => void;
+    "collection/api": (message: Client.message, voice: VoiceChannel | StageChannel, argument: (string | Attachment)[]) => void;
 
     //Если во время добавления трека или плейлиста произошла ошибка
     "collection/error": (message: Client.message, error: string, color?: "DarkRed" | "Yellow") => void;

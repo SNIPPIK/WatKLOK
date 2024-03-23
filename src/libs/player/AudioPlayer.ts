@@ -1,6 +1,6 @@
 import {VoiceConnection} from "@lib/voice/VoiceConnection";
 import {TypedEmitter} from "tiny-typed-emitter";
-import {AudioResource} from "./AudioResource";
+import {SeekStream} from "./audio";
 import {db} from "@lib/db";
 
 /**
@@ -14,7 +14,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
         status: "player/wait"   as keyof AudioPlayerEvents,
         filters: []             as Filter[],
         voice:  null            as VoiceConnection,
-        stream: null            as AudioResource
+        stream: null            as SeekStream
     };
     /**
      * @description Выдаем базу с фильтрами
@@ -120,10 +120,10 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
 
     /**
      * @description Смена потока
-     * @param stream {AudioResource} Opus конвертор
+     * @param stream - Opus конвертор
      * @private
      */
-    public set stream(stream: AudioResource) {
+    public set stream(stream: SeekStream) {
         //Если есть текущий поток
         if (this.stream && this.stream?.stream) {
             this.stream?.stream?.emit("close");
@@ -173,7 +173,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @description Начинаем чтение стрима
      * @public
      */
-    public set read(stream: AudioResource) {
+    public set read(stream: SeekStream) {
         //Если стрим можно прочитать
         if (stream.readable) {
             this.stream = stream;

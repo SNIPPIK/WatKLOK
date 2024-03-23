@@ -165,7 +165,7 @@ class Command_Filter extends Constructor.Assign<handler.Command> {
 
                 //Получаем данные о фильтре
                 const Filter = db.filters.find((item) => item.names.includes(FilterName));
-                const seek: number = queue.player.stream?.duration?.current ?? 0;
+                const seek: number = queue.player.stream?.duration ?? 0;
 
                 //Если есть фильтр
                 if (Filter) {

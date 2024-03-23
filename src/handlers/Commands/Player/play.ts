@@ -23,13 +23,13 @@ class Command_Play extends Constructor.Assign<handler.Command> {
                     name: "platform",
                     description: "К какой платформе относится запрос?",
                     type: ApplicationCommandOptionType["String"],
-                    choices: (db.platforms.supported.length < 25 ? db.platforms.supported : db.platforms.supported.splice(0, 20)).map((platform) => {
+                    required: true,
+                    choices: db.allow.map((platform) => {
                         return {
                             name: `[${platform.requests.length}] ${platform.url} | ${platform.name}`,
                             value: platform.name
                         }
-                    }),
-                    required: true
+                    })
                 },
                 {
                     name: "request",
@@ -99,7 +99,7 @@ class Command_PlayFile extends Constructor.Assign<handler.Command> {
 
                 //Если пользователь не подключен к голосовым каналам
                 else if (!VoiceChannel) return {
-                    content: `${author}, Необходимо подключится к голосовому каналу!`,
+                    content: `${author}, Необходимо подключиться к голосовому каналу!`,
                     color: "Yellow"
                 };
 
@@ -109,7 +109,7 @@ class Command_PlayFile extends Constructor.Assign<handler.Command> {
                     color: "Yellow"
                 };
 
-                db.queue.events.emit("collection/api", message as any, VoiceChannel, ["DISCORD", attachment.url]);
+                db.queue.events.emit("collection/api", message as any, VoiceChannel, ["DISCORD", attachment]);
             }
         });
     };
