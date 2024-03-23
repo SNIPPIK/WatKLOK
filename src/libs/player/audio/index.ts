@@ -30,10 +30,26 @@ export class SeekStream {
     };
 
     /**
-     * @description Параметр задается через <opus>.once("readable")
-     * @private
+     * @description Можно ли читать поток
+     * @default true - Всегда можно читать поток, если поток еще не был загружен то отправляем пустышки
+     * @return boolean
+     * @public
      */
-    private _readable = false;
+    public get readable() { return true; };
+
+    /**
+     * @description Выдаем фрагмент потока или пустышку
+     * @return Buffer
+     * @public
+     */
+    public get packet(): Buffer {
+        const packet = this.stream.read();
+
+        if (!packet && this._options.seek === 0) return Buffer.from([0xf8, 0xff, 0xfe]);
+
+        this._options.seek++;
+        return packet;
+    };
 
     /**
      * @description Получаем время, время зависит от прослушанных пакетов
@@ -43,25 +59,6 @@ export class SeekStream {
         const duration = ((this._options.seek * this._options.chunk) / 1e3).toFixed(0);
 
         return parseInt(duration);
-    };
-
-    /**
-     * @description Начато ли чтение потока
-     * @return boolean
-     * @public
-     */
-    public get readable() { return this._readable; };
-
-    /**
-     * @description Выдаем фрагмент потока
-     * @return Buffer
-     * @public
-     */
-    public get packet(): Buffer {
-        const packet = this.stream.read();
-
-        if (packet) this._options.seek++;
-        return packet;
     };
 
     /**
@@ -102,8 +99,6 @@ export class SeekStream {
     private set input(options: {input: NodeJS.ReadWriteStream, events: string[]}) {
         for (const event of options.events) options.input.once(event, this.cleanup);
         this.process.stdout.pipe(options.input);
-
-        options.input.once("readable", () => { this._readable = true; });
     };
 
     /**
@@ -137,8 +132,6 @@ export class SeekStream {
                 this._streams.shift();
             }
         });
-
-        this._readable = null;
         for (let item of Object.keys(this._options)) this._options[item] = null;
     };
 }
@@ -198,11 +191,7 @@ export class Process {
      * @private
      */
     public cleanup = () => {
-        if (this._process && !this.process?.killed) {
-            //this.process?.disconnect();
-            this.process?.kill();
-        }
-
+        if (this._process && !this.process?.killed) this.process?.kill();
         this._process = null;
     };
 }

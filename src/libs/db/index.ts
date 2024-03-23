@@ -10,7 +10,6 @@ import {Client, Logger} from "@lib/discord";
 import {httpsClient} from "@lib/request";
 import {TimeCycle} from "@lib/timer";
 import {env} from "@env";
-import platform from "@handler/Commands/Owner/platform";
 
 namespace LocalDataBase {
     /**

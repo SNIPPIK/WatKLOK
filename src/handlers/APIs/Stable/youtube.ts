@@ -37,6 +37,9 @@ class currentAPI extends Constructor.Assign<API.request> {
                                     //Если ID видео не удалось извлечь из ссылки
                                     if (!ID) return reject(Error("[APIs]: Не удалось получить ID трека!"));
 
+
+                                    console.log(`https://www.youtube.com/watch?v=${ID}&has_verified=1`)
+
                                     try {
                                         //Создаем запрос
                                         const result = await currentAPI.API(`https://www.youtube.com/watch?v=${ID}&has_verified=1`);
