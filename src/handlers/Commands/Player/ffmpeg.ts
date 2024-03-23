@@ -88,8 +88,8 @@ class Command_Filter extends Constructor.Assign<handler.Command> {
                     type: ApplicationCommandOptionType["String"],
                     choices: db.filters.length < 25 ? db.filters.map((filter) => {
                         return {
-                            name: `${filter.names[0]} | ${filter.description.length > 75 ? `${filter.description.substring(0, 75)}...` : filter.description}`,
-                            value: filter.names[0]
+                            name: `${filter.name} | ${filter.description.length > 75 ? `${filter.description.substring(0, 75)}...` : filter.description}`,
+                            value: filter.name
                         }
                     }) : []
                 },
@@ -109,7 +109,7 @@ class Command_Filter extends Constructor.Assign<handler.Command> {
 
                 //Если пользователь не подключен к голосовым каналам
                 else if (!member?.voice?.channel || !member?.voice) return {
-                    content: `${author}, Необходимо подключится к голосовому каналу!`,
+                    content: `${author}, Необходимо подключиться к голосовому каналу!`,
                     color: "Yellow"
                 };
 
@@ -145,7 +145,7 @@ class Command_Filter extends Constructor.Assign<handler.Command> {
                     //Преобразуем все фильтры в string
                     const pages = (FilterName === "all" ? db.filters : queue?.player?.filters).ArraySort(5, (filter, index) => {
                         return `┌Номер в списке - [${index + 1}]
-                    ├ **Названия:** ${filter.names ? `(${filter.names})` : `Нет`}
+                    ├ **Название:** ${filter.name ? `(${filter.name})` : `Нет`}
                     ├ **Аргументы:** ${filter.args ? `(${filter.args})` : `Нет`}
                     ├ **Модификатор скорости:** ${filter.speed ? `${filter.speed}` : `Нет`}
                     └ **Описание:** ${filter.description ? `(${filter.description})` : `Нет`}`
@@ -164,15 +164,21 @@ class Command_Filter extends Constructor.Assign<handler.Command> {
 
 
                 //Получаем данные о фильтре
-                const Filter = db.filters.find((item) => item.names.includes(FilterName));
+                const Filter = db.filters.find((item) => item.name === FilterName);
                 const seek: number = queue.player.stream?.duration ?? 0;
 
                 //Если есть фильтр
                 if (Filter) {
-                    delete Filter.description;
+                    const isQueue = !!queue.player.filters.find((filter) => typeof Filter === "number" ? null : Filter.name.includes(filter as any));
+                    const name = Filter.name;
 
-                    const isQueue = !!queue.player.filters.find((filter) => typeof Filter === "number" ? null : Filter.names.includes(filter as any));
-                    const name = Filter.names[0];
+                    for (let i = 0; i < queue.player.filters.length; i++) {
+                        const filter = queue.player.filters[i];
+
+                        if (Filter.unsupported.includes(filter.name)) return { content: `${author.username}, найден не совместимый фильтр! ${filter.name} нельзя использовать вместе с ${Filter.name}`, codeBlock: "css" };
+                    }
+
+                    delete Filter.description;
 
                     //Если фильтр есть в очереди
                     if (isQueue) {

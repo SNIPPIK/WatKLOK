@@ -271,7 +271,10 @@ export interface AudioPlayerEvents {
  */
 export interface Filter {
     //Имена
-    names: string[];
+    name: string;
+
+    //Имена несовместимых фильтров
+    unsupported: string[];
 
     //Описание
     description: string;

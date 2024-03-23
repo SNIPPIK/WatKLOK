@@ -23,9 +23,9 @@
 ## <img alt="Avatar" width="20px" src="https://raw.githubusercontent.com/SNIPPIK/WatKLOK/main/.github/resource/Icons/Note.png" /> Как запустить
 1. Необходима [`Node.js`](https://nodejs.org/ru/)
 2. Качаем проект [`тут`](https://codeload.github.com/SNIPPIK/WatKLOK/zip/refs/heads/main)
-3. Установить [`FFmpeg и FFprobe`](https://github.com/BtbN/FFmpeg-Builds/releases)
+3. Установить [`FFmpeg`](https://github.com/BtbN/FFmpeg-Builds/releases)
    - `Windows` | Скачать [`FFmpeg`](https://ffmpeg.org/) и распаковать в любое место
-     - Указать `ffmpeg.path` и `ffprobe.path` в [`env`](.env)
+     - Указать `ffmpeg.path` в [`env`](.env)
    - `Linux` | (sudo apt install or sudo pacman -S) ffmpeg
 4. [`Настраиваем конфиг`](#Как-настроить-env-файл) .env
 5. Открываем консоль или терминал в директории проекта
@@ -38,12 +38,12 @@
 
     
 ## <img alt="Avatar" width="20px" src="https://raw.githubusercontent.com/SNIPPIK/WatKLOK/main/.github/resource/Icons/Disk.gif" /> Библиотеки для конвертации аудио
-- [`Opus Library`](src/libs/voice/utils/Opus.ts) | Поддерживаемые библиотеки, опциональна!
+- [`Opus Library`](src/Modules/voice/utils/Opus.ts) | Поддерживаемые библиотеки, опциональна!
     - [`opusscript`](https://www.npmjs.com/package/opusscript)
     - [`@discordjs/opus`](https://www.npmjs.com/package/@discordjs/opus)
     - [`mediaplex`](https://www.npmjs.com/package/mediaplex)
     - [`@evan/opus`](https://www.npmjs.com/package/@evan/opus)
-- [`Sodium Library`](src/libs/voice/utils/Sodium.ts) | Поддерживаемые библиотеки, необходима!
+- [`Sodium Library`](src/Modules/voice/utils/Sodium.ts) | Поддерживаемые библиотеки, необходима!
     - [`sodium-native`](https://www.npmjs.com/package/sodium-native)
     - [`sodium`](https://www.npmjs.com/package/sodium)
 
