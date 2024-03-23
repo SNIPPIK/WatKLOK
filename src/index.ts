@@ -102,7 +102,7 @@ const prototypes: { type: any, name: string, value: any}[] = [
             this[0] = this[position];
             this[position] = first;
 
-            return this
+            return this;
         }
     },
 

@@ -37,9 +37,6 @@ class currentAPI extends Constructor.Assign<API.request> {
                                     //Если ID видео не удалось извлечь из ссылки
                                     if (!ID) return reject(Error("[APIs]: Не удалось получить ID трека!"));
 
-
-                                    console.log(`https://www.youtube.com/watch?v=${ID}&has_verified=1`)
-
                                     try {
                                         //Создаем запрос
                                         const result = await currentAPI.API(`https://www.youtube.com/watch?v=${ID}&has_verified=1`);
@@ -193,6 +190,41 @@ class currentAPI extends Constructor.Assign<API.request> {
         ];
 
         /**
+         * @description Применяет преобразование параметра расшифровки и n ко всем URL-адресам формата.
+         * @param format - Аудио или видео формат на youtube
+         * @param html5player - Ссылка на плеер
+         */
+        public extractSignature = (format: YouTubeFormat, html5player: string): Promise<YouTubeFormat | Error> => {
+            return new Promise(async (resolve) => {
+                const body = await new httpsClient(html5player).toString;
+
+                if (!body || body instanceof Error) return resolve(Error(`TypeError: has not found body!`));
+
+                try {
+                    const functions = this.extractFunctions(body);
+                    const url = this.setDownloadURL(format, {
+                        decipher: functions.length ? new Script(functions[0]) : null,
+                        nTransform: functions.length > 1 ? new Script(functions[1]) : null
+                    });
+
+                    if (url) format.url = url;
+
+                    return resolve(format);
+                } catch (err) {
+                    const functions = this.extractFunctions(body);
+                    const url = this.setDownloadURL(format, {
+                        decipher: functions.length ? new Script(functions[0]) : null,
+                        nTransform: functions.length > 1 ? new Script(functions[1]) : null
+                    });
+
+                    if (url) format.url = url;
+
+                    return resolve(format);
+                }
+            });
+        };
+
+        /**
          * @description Сопоставление начальной и конечной фигурной скобки входного JS
          * @param mixedJson
          */
@@ -239,29 +271,6 @@ class currentAPI extends Constructor.Assign<API.request> {
 
             // We ran through the whole string and ended up with an unclosed bracket
             throw Error("Can't cut unsupported JSON (no matching closing bracket found)");
-        };
-
-        /**
-         * @description Применяет преобразование параметра расшифровки и n ко всем URL-адресам формата.
-         * @param format - Аудио или видео формат на youtube
-         * @param html5player - Ссылка на плеер
-         */
-        public extractSignature = (format: YouTubeFormat, html5player: string): Promise<YouTubeFormat | Error> => {
-            return new Promise(async (resolve) => {
-                const body = await new httpsClient(html5player).toString;
-
-                if (!body || body instanceof Error) return resolve(Error(`TypeError: has not found body!`));
-
-                const functions = this.extractFunctions(body);
-                const url = this.setDownloadURL(format, {
-                    decipher: functions.length ? new Script(functions[0]) : null,
-                    nTransform: functions.length > 1 ? new Script(functions[1]) : null
-                });
-
-                if (url) format.url = url;
-
-                return resolve(format);
-            });
         };
 
         /**
@@ -362,7 +371,8 @@ class currentAPI extends Constructor.Assign<API.request> {
                 //Если возникает ошибка при поиске на странице
                 if (data instanceof Error) return resolve(data);
 
-                data["html5"] = `https://www.youtube.com${api.split('"jsUrl":"')[1].split('"')[0]}`;
+                const html5Player = /<script\s+src="([^"]+)"(?:\s+type="text\/javascript")?\s+name="player_ias\/base"\s*>|"jsUrl":"([^"]+)"/.exec(api);
+                data["html5"] = `https://www.youtube.com${html5Player ? html5Player[1] || html5Player[2] : null}`;
                 return resolve(data);
             }).catch((err) => resolve(Error(`[APIs]: ${err}`)));
         });

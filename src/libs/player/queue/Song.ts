@@ -258,7 +258,7 @@ function fetchAPIs(track: Song): Promise<string | Error> {
             api.callback(track.url).then((track: Song | Error) => {
                 if (track instanceof Error) return resolve(track);
                 return resolve(track.link);
-            }).catch((err) => resolve(Error(err)));
+            }).catch((err) => resolve(err));
         }
 
         //Если платформа не может выдать аудио
