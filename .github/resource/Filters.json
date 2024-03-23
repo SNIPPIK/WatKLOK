@@ -1,48 +1,48 @@
 [
   {
-    "names": ["mono"],
+    "name": "mono",
     "unsupported": ["8d", "chorus", "chorus2d", "chorus3d"],
     "description": "Используется только один аудиоканал для воспроизведения",
     "filter": "pan=mono|c0=.5*c0+.5*c1",
     "args": false
   },
   {
-    "names": ["treble"],
+    "name": "treble",
     "unsupported": [],
     "description": "Высокие частоты описывают тона высокой частоты или высокого тона в диапазоне от 6 кГц до 20 кГц",
     "filter": "treble=g=5",
     "args": false
   },
   {
-    "names": ["reverse"],
+    "name": "reverse",
     "unsupported": [],
     "description": "Все будет играть задом на перед",
     "filter": "areverse",
     "args": false
   },
   {
-    "names": ["surround"],
+    "name": "surround",
     "unsupported": [],
     "description": "Метод повышения точности и глубины воспроизведения звука за счет использования нескольких аудиоканалов от динамиков",
     "filter": "surround",
     "args": false
   },
   {
-    "names": ["flanger"],
+    "name": "flanger",
     "unsupported": [],
     "description": "Смешивания двух идентичных сигналов вместе, один сигнал задерживается на небольшой и постепенно меняющийся период",
     "filter": "flanger",
     "args": false
   },
   {
-    "names": ["haas"],
+    "name": "haas",
     "unsupported": [],
     "description": "Бинауральный психоакустический эффект, состоящий из двух частей",
     "filter": "haas",
     "args": false
   },
   {
-    "names": ["nightcore", "night"],
+    "name": "nightcore",
     "unsupported": ["vaporwave", "vw"],
     "description": "Высота звука увеличивается, а исходный материал ускоряется примерно на 35%",
     "filter": "asetrate=48000*1.25,aresample=48000,bass=g=5",
@@ -50,21 +50,21 @@
     "speed": 1.25
   },
   {
-    "names": ["echo"],
+    "name": "echo",
     "unsupported": [],
     "description": "Отражение звука, которое доходит до слушателя с задержкой после прямого звука",
     "filter": "aecho=0.8:0.9:1000:0.3",
     "args": false
   },
   {
-    "names": ["8d"],
+    "name": "8d",
     "unsupported": [],
     "description": "Отражение звука, которое доходит до слушателя с задержкой после прямого звука",
     "filter": "apulsator=hz=0.09",
     "args": false
   },
   {
-    "names": ["speed"],
+    "name": "speed",
     "unsupported": [],
     "description": "Скорость проигрывания музыки",
     "filter": "atempo=",
@@ -72,35 +72,35 @@
     "speed": "arg"
   },
   {
-    "names": ["bass", "bas"],
+    "name": "bass",
     "unsupported": [],
     "description": "Тоны низкой частоты, высоты тона и диапазона от 16 до 256 Гц",
     "filter": "bass=g=",
     "args": [1, 30]
   },
   {
-    "names": ["sub_boost", "sbos", "sab"],
+    "name": "sub_boost",
     "unsupported": [],
     "description": "Глубокие, низкочастотные тона",
     "filter": "asubboost",
     "args": false
   },
   {
-    "names": ["vibro"],
+    "name": "vibro",
     "unsupported": [],
     "description": "Волны звуковых колебаний сохраняются в виде канавки",
     "filter": "vibrato=f=6.5",
     "args": false
   },
   {
-    "names": ["phaser"],
+    "name": "phaser",
     "unsupported": [],
     "description": "Электронный звуковой процессор, используемый для фильтрации сигнала",
     "filter": "aphaser=in_gain=0.4",
     "args": false
   },
   {
-    "names": ["vaporwave", "vw"],
+    "name": "vaporwave",
     "unsupported": ["nightcore", "night"],
     "description": "Противоположность nightcore",
     "filter": "asetrate=48000*0.8,aresample=48000,atempo=1.1",
@@ -108,35 +108,35 @@
     "speed": 1.1
   },
   {
-    "names": ["chorus"],
+    "name": "chorus",
     "unsupported": [],
     "description": "Имитирует хоровое звучание музыкальных инструментов",
     "filter": "chorus=0.7:0.9:55:0.4:0.25:2",
     "args": false
   },
   {
-    "names": ["chorus2d"],
+    "name": "chorus2d",
     "unsupported": [],
     "description": "Имитирует хоровое звучание музыкальных инструментов в 2D",
     "filter": "chorus=0.6:0.9:50|60:0.4|0.32:0.25|0.4:2|1.3",
     "args": false
   },
   {
-    "names": ["chorus3d"],
+    "name": "chorus3d",
     "unsupported": [],
     "description": "Имитирует хоровое звучание музыкальных инструментов в 3D",
     "filter": "chorus=0.5:0.9:50|60|40:0.4|0.32|0.3:0.25|0.4|0.3:2|2.3|1.3",
     "args": false
   },
   {
-    "names": ["softlimiter", "sl"],
+    "name": "softlimiter",
     "unsupported": [],
     "description": "Полностью предотвращает превышение сигналом заданной настройки — предела, который ничто не может превысить",
     "filter": "compand=attacks=0:points=-80/-80|-12.4/-12.4|-6/-8|0/-6.8|20/-2.8",
     "args": false
   },
   {
-    "names": ["expander"],
+    "name": "expander",
     "unsupported": [],
     "description": "Уменьшает динамический диапазон аудиосигнала",
     "filter": "compand=attacks=0:points=-80/-169|-54/-80|-49.5/-64.6|-41.1/-41.1|-25.8/-15|-10.8/-4.5|0/0|20/8.3",
