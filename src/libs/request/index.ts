@@ -91,10 +91,10 @@ abstract class Request {
 
         if (options?.useragent) {
             const OS = [ "(X11; Linux x86_64)", "(Windows NT 10.0; Win64; x64)" ];
-            const version = `(${(120).random(96)}.0.6099.${(250).random(20)}`;
+            const version = `${(123).random(96)}.0.${(6250).random(1280)}.${(250).random(59)}`;
 
             Object.assign(this._options.headers, {
-                "User-Agent": `Mozilla/5.0 ${OS[(OS.length).random()]} AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version} Safari/537.36`,
+                "User-Agent": `Mozilla/5.0 ${OS[(OS.length - 1).random(0)]} AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version} Safari/537.36`,
                 "Sec-Ch-Ua-Full-Version": version,
                 "Sec-Ch-Ua-Bitness": `64`,
                 "Sec-Ch-Ua-Arch": "x86",
