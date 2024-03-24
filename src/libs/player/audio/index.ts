@@ -31,11 +31,17 @@ export class SeekStream {
 
     /**
      * @description Можно ли читать поток
+     * @private
+     */
+    private _readable = false;
+
+    /**
+     * @description Можно ли читать поток
      * @default true - Всегда можно читать поток, если поток еще не был загружен то отправляем пустышки
      * @return boolean
      * @public
      */
-    public get readable() { return true; };
+    public get readable() { return this._readable; };
 
     /**
      * @description Выдаем фрагмент потока или пустышку
@@ -45,9 +51,7 @@ export class SeekStream {
     public get packet(): Buffer {
         const packet = this.stream.read();
 
-        if (!packet && this._options.seek === 0) return Buffer.from([0xf8, 0xff, 0xfe]);
-
-        this._options.seek++;
+        if (packet) this._options.seek++;
         return packet;
     };
 
@@ -83,12 +87,21 @@ export class SeekStream {
     private set ffmpeg(options: {path: string, seek?: number; filters?: string}) {
         const urls = options.path.split(":|");
 
-        this._streams.push(new Process(["-vn", "-loglevel", "panic",
-            ...(urls[0] === "link" ? ["-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5"] : []),
-            "-ss", `${options.seek ?? 0}`, "-i", urls[1],
-            ...(options.filters ? ["-af", options.filters]: []),
-            "-f", `${OpusEncoder.lib.ffmpeg}`, "pipe:1"
-        ]));
+        this._streams.push(
+            new Process(["-vn", "-loglevel", "panic",
+                //Добавляем ссылки или путь до файла
+                ...(urls[0] === "link" ? ["-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5"] : []),
+
+                //Надо ли сделать пропуск
+                "-ss", `${options.seek ?? 0}`, "-i", urls[1],
+
+                //Добавляем фильтры
+                ...(options.filters ? ["-af", options.filters] : []),
+
+                //Добавляем формат аудио
+                "-f", `${OpusEncoder.lib.ffmpeg}`, "pipe:1"
+            ])
+        );
     };
 
     /**
@@ -98,6 +111,8 @@ export class SeekStream {
      */
     private set input(options: {input: NodeJS.ReadWriteStream, events: string[]}) {
         for (const event of options.events) options.input.once(event, this.cleanup);
+        options.input.once("readable", () => { this._readable = true; });
+
         this.process.stdout.pipe(options.input);
     };
 

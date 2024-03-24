@@ -31,7 +31,7 @@ class currentAPI extends Constructor.Assign<API.request> {
                             name: "track",
                             filter: /(watch|embed|youtu\.be)/gi,
                             callback: (url: string) => {
-                                const ID = /[a-zA-Z0-9-_]{11}/.exec(url);
+                                const ID = /[a-zA-Z0-9-_]{11}/.exec(url).pop();
 
                                 return new Promise<Song>(async (resolve, reject) => {
                                     //Если ID видео не удалось извлечь из ссылки
@@ -210,15 +210,7 @@ class currentAPI extends Constructor.Assign<API.request> {
                     if (url) format.url = url;
 
                     return resolve(format);
-                } catch (err) {
-                    const functions = this.extractFunctions(body);
-                    const url = this.setDownloadURL(format, {
-                        decipher: functions.length ? new Script(functions[0]) : null,
-                        nTransform: functions.length > 1 ? new Script(functions[1]) : null
-                    });
-
-                    if (url) format.url = url;
-
+                } catch {
                     return resolve(format);
                 }
             });
@@ -372,7 +364,8 @@ class currentAPI extends Constructor.Assign<API.request> {
                 if (data instanceof Error) return resolve(data);
 
                 const html5Player = /<script\s+src="([^"]+)"(?:\s+type="text\/javascript")?\s+name="player_ias\/base"\s*>|"jsUrl":"([^"]+)"/.exec(api);
-                data["html5"] = `https://www.youtube.com${html5Player ? html5Player[1] || html5Player[2] : null}`;
+                Object.assign(data, { html5: `https://www.youtube.com${html5Player ? html5Player[1] || html5Player[2] : null}`});
+
                 return resolve(data);
             }).catch((err) => resolve(Error(`[APIs]: ${err}`)));
         });
@@ -386,7 +379,7 @@ class currentAPI extends Constructor.Assign<API.request> {
         const startPattern: string = input.match("var ytInitialPlayerResponse = ") ? "var ytInitialPlayerResponse = " : "var ytInitialData = ";
         const startIndex = input.indexOf(startPattern);
         const endIndex = input.indexOf("};", startIndex + startPattern.length);
-
+        
         //Если нет данных
         if (startIndex === -1 && endIndex === -1) return null;
 

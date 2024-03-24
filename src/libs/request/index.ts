@@ -1,11 +1,8 @@
 import {BrotliDecompress, createBrotliDecompress, createDeflate, createGunzip, Deflate, Gunzip} from "node:zlib";
-import {Worker, isMainThread, parentPort, workerData} from "node:worker_threads";
 import {request as httpsRequest, RequestOptions} from "https";
 import {IncomingMessage, request as httpRequest} from "http";
 import {Logger} from "@lib/discord";
-import {env} from "@env";
 
-const worker = env.get("worker.enable");
 /**
  * @author SNIPPIK
  * @description Класс создающий запрос
@@ -116,8 +113,6 @@ export class httpsClient extends Request {
      * @public
      */
     public get toString(): Promise<string | Error> {
-        if (!workerData?.req && worker) return this.runWorker({type: "toString", options: this._options});
-
         return new Promise((resolve) => this.request.then((request) => {
             if (request instanceof Error) return resolve(request);
 
@@ -140,8 +135,6 @@ export class httpsClient extends Request {
      * @public
      */
     public get toJson(): Promise<null | any | Error> {
-        if (!workerData?.req && worker) return this.runWorker({type: "toJson", options: this._options});
-
         return this.toString.then((body) => {
             if (body instanceof Error) return body;
 
@@ -170,8 +163,6 @@ export class httpsClient extends Request {
      * @public
      */
     public get toXML(): Promise<Error | string[]> {
-        if (!workerData?.req && worker) return this.runWorker({type: "toXML", options: this._options});
-
         return this.toString.then((body) => {
             if (body instanceof Error) return Error("Not found XML data!");
 
@@ -180,46 +171,4 @@ export class httpsClient extends Request {
             );
         });
     };
-
-    /**
-     * @description Поднимаем другое ядро для взаимодействия
-     * @param data - Данные для запуска на другом потоке
-     */
-    private runWorker = (data: {type: "toJson" | "toString" | "toXML", options: httpsClient["_options"]}): Promise<string | Error | any> => {
-        return new Promise((resolve,reject) => {
-            const worker = new Worker(__filename, { workerData: {req: data}, execArgv: ["-r", "tsconfig-paths/register"]}), core = worker.threadId;
-            Logger.log("DEBUG", `[Worker/${core} | httpClient/${data.type}] is running!`);
-
-            worker.once("message", (data) => {
-                setImmediate(() => worker.emit("exit"));
-                resolve(data);
-            }).once("error", (err) => {
-                setImmediate(() => worker.emit("exit"));
-                reject(err);
-            }).once("exit", () => {
-                Logger.log("DEBUG", `[Worker/${core}] is exit`);
-            });
-        });
-    };
-}
-
-/**
- * @description Запускаем httpsClient на другом ядре
- */
-if (!isMainThread && workerData?.req) {
-    const data = workerData.req;
-
-    if (data.type === "toJson") {
-        new httpsClient(null, data.options).toJson.then((json) => {
-            parentPort.postMessage(json);
-        }).catch(parentPort.postMessage);
-    } else if (data.type === "toString") {
-        new httpsClient(null, data.options).toString.then((string) => {
-            parentPort.postMessage(string);
-        }).catch(parentPort.postMessage);
-    } else if (data.type === "toXML") {
-        new httpsClient(null, data.options).toXML.then((array) => {
-            parentPort.postMessage(array);
-        }).catch(parentPort.postMessage);
-    }
 }

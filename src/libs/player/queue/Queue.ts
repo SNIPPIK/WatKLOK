@@ -1,7 +1,7 @@
 import {StageChannel, VoiceChannel} from "discord.js";
 import {AudioPlayer} from "@lib/player/AudioPlayer";
 import {SeekStream} from "@lib/player/audio";
-import {Client} from "@lib/discord";
+import {Client, Logger} from "@lib/discord";
 import {Voice} from "@lib/voice";
 import {Song} from "./Song";
 import {db} from "@lib/db";
@@ -13,7 +13,7 @@ import {db} from "@lib/db";
  * @abstract
  */
 abstract class BaseQueue {
-    private readonly _local = {
+    private readonly data = {
         repeat:     "off" as "off" | "song" | "songs",
         shuffle:    false as boolean,
 
@@ -26,13 +26,12 @@ abstract class BaseQueue {
              * @param seek {number} Пропуск времени
              * @public
              */
-            public play = (track: Song, seek: number = 0) => {
-                if (!track || !track.resource) {
-                    this.emit("player/wait", this);
-                    return;
-                }
+            public play = async (track: Song, seek: number = 0): Promise<void> => {
+                if (!track || !track.resource) { this.emit("player/wait", this); return; }
 
-                track.resource.then((path) => {
+                try {
+                    const path = await track.resource;
+
                     if (path instanceof Error) {
                         this.emit("player/error", this, `Failed to getting link audio!\n\n${path.name}\n- ${path.message}`, "skip");
                         return;
@@ -40,10 +39,11 @@ abstract class BaseQueue {
 
                     this.emit("player/ended", this, seek);
                     const {chunkSize, filters} = this.parseFilters;
-                    this.read = new SeekStream({path, seek, chunk: chunkSize, filters });
-                }).catch((err) => {
+                    this.read = new SeekStream({path, seek, chunk: chunkSize, filters});
+                } catch (err) {
                     this.emit("player/error", this, `${err}`, "skip");
-                });
+                    Logger.log("ERROR", err);
+                }
             };
         }
     };
@@ -52,7 +52,7 @@ abstract class BaseQueue {
      * @public
      */
     public get shuffle(): boolean {
-        return this._local.shuffle;
+        return this.data.shuffle;
     };
 
     /**
@@ -61,7 +61,7 @@ abstract class BaseQueue {
      * @public
      */
     public set shuffle(bol) {
-        this._local.shuffle = bol;
+        this.data.shuffle = bol;
     };
 
     /**
@@ -70,7 +70,7 @@ abstract class BaseQueue {
      * @public
      */
     public set repeat(loop: "off" | "song" | "songs") {
-        this._local.repeat = loop;
+        this.data.repeat = loop;
     };
 
     /**
@@ -78,7 +78,7 @@ abstract class BaseQueue {
      * @public
      */
     public get repeat() {
-        return this._local.repeat;
+        return this.data.repeat;
     };
 
     /**
@@ -87,7 +87,7 @@ abstract class BaseQueue {
      * @public
      */
     public get message() {
-        return this._local.message;
+        return this.data.message;
     };
 
     /**
@@ -96,7 +96,7 @@ abstract class BaseQueue {
      * @public
      */
     public get voice(): VoiceChannel | StageChannel {
-        return this._local.voice;
+        return this.data.voice;
     };
 
     /**
@@ -114,7 +114,7 @@ abstract class BaseQueue {
      * @public
      */
     public get player() {
-        return this._local.player;
+        return this.data.player;
     };
 
     /**
@@ -123,7 +123,7 @@ abstract class BaseQueue {
      * @public
      */
     public set message(message: Client.message) {
-        this._local.message = message;
+        this.data.message = message;
     };
 
     /**
@@ -132,7 +132,7 @@ abstract class BaseQueue {
      * @public
      */
     public set voice(voice: VoiceChannel | StageChannel) {
-        this._local.voice = voice;
+        this.data.voice = voice;
         this.player.connection = Voice.join({
             selfDeaf: true,
             selfMute: false,
@@ -156,7 +156,7 @@ abstract class BaseQueue {
         db.queue.cycles.players.remove(this.player);
         this.player.cleanup();
 
-        for (let item of Object.keys(this._local)) this._local[item] = null;
+        for (let item of Object.keys(this.data)) this.data[item] = null;
     };
 }
 

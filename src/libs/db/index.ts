@@ -1,5 +1,5 @@
-import {AudioPlayer, AudioPlayerEvents, Filter} from "@lib/player/AudioPlayer";
 import {Attachment, EmbedData, Routes, StageChannel, VoiceChannel} from "discord.js";
+import {AudioPlayer, AudioPlayerEvents, Filter} from "@lib/player/AudioPlayer";
 import {createWriteStream, existsSync, mkdirSync, rename} from "node:fs";
 import {API, Constructor, handler, Handler} from "@handler";
 import onPlaying from "@handler/Events/Player/message";
@@ -459,7 +459,7 @@ export interface CollectionAudioEvents {
     "collection/api": (message: Client.message, voice: VoiceChannel | StageChannel, argument: (string | Attachment)[]) => void;
 
     //Если во время добавления трека или плейлиста произошла ошибка
-    "collection/error": (message: Client.message, error: string, color?: "DarkRed" | "Yellow") => void;
+    "collection/error": (message: Client.message, error: string, replied?: boolean, color?: "DarkRed" | "Yellow") => void;
 }
 
 /**

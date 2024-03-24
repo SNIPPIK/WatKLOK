@@ -10,7 +10,7 @@ import {db} from "@lib/db";
  * @extends TypedEmitter
  */
 export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
-    private readonly _local = {
+    private readonly data = {
         status: "player/wait"   as keyof AudioPlayerEvents,
         filters: []             as Filter[],
         voice:  null            as VoiceConnection,
@@ -21,7 +21,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @return Filter[]
      * @public
      */
-    public get filters() { return this._local.filters; };
+    public get filters() { return this.data.filters; };
 
     /**
      * @description Получаем фильтры для FFmpeg
@@ -55,21 +55,21 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @return VoiceConnection
      * @public
      */
-    public get connection() { return this._local.voice; };
+    public get connection() { return this.data.voice; };
 
     /**
      * @description Текущий статус плеера
      * @return AudioPlayerStatus
      * @public
      */
-    public get status() { return this._local.status; };
+    public get status() { return this.data.status; };
 
     /**
      * @description Текущий стрим
      * @return AudioResource
      * @public
      */
-    public get stream() { return this._local.stream; };
+    public get stream() { return this.data.stream; };
 
     /**
      * @description Проверяем играет ли плеер
@@ -96,11 +96,11 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @public
      */
     public set connection(connection: VoiceConnection) {
-        if (this._local.voice) {
-            if (this._local.voice.config.channelId === connection.config.channelId) return;
+        if (this.data.voice) {
+            if (this.data.voice.config.channelId === connection.config.channelId) return;
         }
 
-        this._local.voice = connection;
+        this.data.voice = connection;
     };
 
     /**
@@ -110,12 +110,12 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      */
     public set status(status: keyof AudioPlayerEvents) {
         //Если новый статус не является старым
-        if (status !== this._local.status) {
+        if (status !== this.data.status) {
             if (status === "player/pause" || status === "player/wait") this.stream?.stream?.emit("pause");
             this.emit(status, this);
         }
 
-        this._local.status = status;
+        this.data.status = status;
     };
 
     /**
@@ -127,11 +127,11 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
         //Если есть текущий поток
         if (this.stream && this.stream?.stream) {
             this.stream?.stream?.emit("close");
-            this._local.stream = null;
+            this.data.stream = null;
         }
 
         //Подключаем новый поток
-        this._local.stream = stream;
+        this.data.stream = stream;
         this.status = "player/playing";
     };
 
@@ -238,7 +238,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
         //Выключаем плеер если сейчас играет трек
         this.stop();
 
-        for (let str of Object.keys(this._local)) this._local[str] = null;
+        for (let str of Object.keys(this.data)) this.data[str] = null;
     };
 }
 

@@ -31,7 +31,7 @@ class onAPI extends Constructor.Assign<handler.Event<"collection/api">> {
                 else if (!api) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}.${api.name}**\n\nУ меня нет поддержки для выполнения этого запроса!`));
 
                 //Отправляем сообщение о том что запрос производится
-                event.emit("collection/error", message, `⚠️ **Warning** | **${name}.${api.name}**\n\n${env.get("loading.emoji")} Ожидание ответа от сервера...\n${platform.audio ? "Эта платформа не может выдать исходный файл музыки! Поиск трека!" : ""}`, "Yellow");
+                event.emit("collection/error", message, `⚠️ **Warning** | **${name}.${api.name}**\n\n${env.get("loading.emoji")} Ожидание ответа от сервера...\n${platform.audio ? "Эта платформа не может выдать исходный файл музыки! Поиск трека!" : ""}`, true, "Yellow");
 
                 api.callback(argument[1] as any).then((item): void => {
                     //Если нет данных или была получена ошибка
@@ -63,7 +63,7 @@ class onAPI extends Constructor.Assign<handler.Event<"collection/api">> {
                         queue.songs.push(track);
                     }
                 }).catch((err: Error) => { //Отправляем сообщение об ошибке
-                    event.emit("collection/error", message, `⛔️ **Error** | **${name}.${api.name}**\n\n**❯** **${err.message}**`);
+                    event.emit("collection/error", message, `⛔️ **Error** | **${name}.${api.name}**\n\n**❯** **${err.message}**`, false);
                 });
             }
         });
@@ -80,9 +80,9 @@ class onError extends Constructor.Assign<handler.Event<"collection/error">> {
         super({
             name: "collection/error",
             type: "player",
-            execute: (message, error, color = "DarkRed") => {
+            execute: (message, error, replied = true,  color = "DarkRed") => {
                 try {
-                    new Constructor.message({message, time: 7e3, content: error, color});
+                    new Constructor.message({message, time: 7e3, content: error, color, replied});
                 } catch (e) {
                     Logger.log("WARN", `[collection/error] ${e}]`);
                 }
