@@ -1,4 +1,12 @@
-import {ActionRowBuilder, ApplicationCommandOption,ClientEvents,Colors,EmbedData,PermissionResolvable} from "discord.js";
+import {
+    ActionRowBuilder,
+    ApplicationCommandOption,
+    ApplicationCommandOptionType,
+    ClientEvents,
+    Colors,
+    EmbedData,
+    PermissionResolvable
+} from "discord.js";
 import {AudioPlayerEvents} from "@lib/player/AudioPlayer";
 import {CollectionAudioEvents, db} from "@lib/db";
 import {Queue} from "@lib/player/queue/Queue";
@@ -17,7 +25,7 @@ export class Handler<T> {
          * @description Действие при получении данных из файла
          * @default null
          */
-        callback: null as (data: T | {error: true, message: string}, file: string) => void,
+        callback: null as (data: T | {error: true, message: string}, file?: string, dir?: string) => void,
 
         /**
          * @description Путь до загружаемого каталога
@@ -133,6 +141,8 @@ export namespace Constructor {
                 if (promise) promise(value);
                 this.array.set(ID, value);
                 return value;
+            } else {
+                Logger.log("WARN", `Collection has duplicated ${ID}`);
             }
 
             return item;
@@ -303,6 +313,57 @@ export namespace Constructor {
         };
     }
 }
+
+
+/**
+ * @author SNIPPIK
+ * @description Конструкторы сообщений
+ * @namespace MessageConstructors
+ */
+namespace MessageConstructors {
+    /**
+     * @description Конструктор меню
+     */
+    export interface menu {
+        content?: string;
+        embeds?: EmbedData[];
+        pages: string[];
+        page: number;
+        callback: (message: Client.message, pages: string[], page: number) => void;
+    }
+
+    /**
+     * @description Конструктор сообщения, отправка текстового сообщения в embed
+     */
+    export interface simple {
+        color?: "DarkRed" | "Blue" | "Green" | "Default" | "Yellow" | "Grey" | "Navy" | "Gold" | "Orange" | "Purple" | number;
+        codeBlock?: string;
+        content: string;
+    }
+
+    /**
+     * @description Конструктор embeds, отправка своих embeds
+     */
+    export interface embeds {
+        embeds: EmbedData[];
+    }
+
+    /**
+     * @description Дополнительные параметры для отправки
+     */
+    export interface main {
+        promise?: (msg: Client.message) => void;
+        components?: ActionRowBuilder[];
+        replied?: boolean;
+        time?: number;
+    }
+}
+/**
+ * @description Допустимые параметры данных
+ * @type ConstructorMessage
+ */
+type ConstructorMessage = (MessageConstructors.menu | MessageConstructors.embeds | MessageConstructors.simple) & MessageConstructors.main;
+
 
 /**
  * @author SNIPPIK
@@ -496,6 +557,14 @@ export namespace handler {
         description: string;
 
         /**
+         * @description Опции для slashCommand
+         * @default null
+         * @readonly
+         * @public
+         */
+        options?: ApplicationCommandOption[];
+
+        /**
          * @description Команду может использовать только разработчик
          * @default false
          * @readonly
@@ -512,20 +581,17 @@ export namespace handler {
         permissions?: PermissionResolvable[];
 
         /**
-         * @description Опции для slashCommand
-         * @default null
-         * @readonly
-         * @public
-         */
-        options?: ApplicationCommandOption[];
-
-        /**
          * @description Выполнение команды
          * @default null
          * @readonly
          * @public
          */
-        execute: (message: Client.message | Client.interact, args?: string[]) => Promise<ConstructorMessage> | ConstructorMessage | void;
+        execute: (options: {
+            message: Client.message | Client.interact,
+            args?: string[],
+            group?: string,
+            sub?: string
+        }) => Promise<ConstructorMessage> | ConstructorMessage | void;
     }
 
     /**
@@ -559,52 +625,3 @@ export namespace handler {
         execute: T extends keyof CollectionAudioEvents ? CollectionAudioEvents[T] : T extends keyof AudioPlayerEvents ? (queue: Queue.Music, ...args: Parameters<AudioPlayerEvents[T]>) => any : T extends keyof ClientEvents ? (client: Client, ...args: ClientEvents[T]) => void : never;
     }
 }
-
-/**
- * @author SNIPPIK
- * @description Конструкторы сообщений
- * @namespace MessageConstructors
- */
-namespace MessageConstructors {
-    /**
-     * @description Конструктор меню
-     */
-    export interface menu {
-        content?: string;
-        embeds?: EmbedData[];
-        pages: string[];
-        page: number;
-        callback: (message: Client.message, pages: string[], page: number) => void;
-    }
-
-    /**
-     * @description Конструктор сообщения, отправка текстового сообщения в embed
-     */
-    export interface simple {
-        color?: "DarkRed" | "Blue" | "Green" | "Default" | "Yellow" | "Grey" | "Navy" | "Gold" | "Orange" | "Purple" | number;
-        codeBlock?: string;
-        content: string;
-    }
-
-    /**
-     * @description Конструктор embeds, отправка своих embeds
-     */
-    export interface embeds {
-        embeds: EmbedData[];
-    }
-
-    /**
-     * @description Дополнительные параметры для отправки
-     */
-    export interface main {
-        promise?: (msg: Client.message) => void;
-        components?: ActionRowBuilder[];
-        replied?: boolean;
-        time?: number;
-    }
-}
-/**
- * @description Допустимые параметры данных
- * @type ConstructorMessage
- */
-type ConstructorMessage = (MessageConstructors.menu | MessageConstructors.embeds | MessageConstructors.simple) & MessageConstructors.main;

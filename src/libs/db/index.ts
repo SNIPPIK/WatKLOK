@@ -1,4 +1,4 @@
-import {Attachment, EmbedData, Routes, StageChannel, VoiceChannel} from "discord.js";
+import {ApplicationCommandOptionType, Attachment, EmbedData, Routes, StageChannel, VoiceChannel} from "discord.js";
 import {AudioPlayer, AudioPlayerEvents, Filter} from "@lib/player/AudioPlayer";
 import {createWriteStream, existsSync, mkdirSync, rename} from "node:fs";
 import {API, Constructor, handler, Handler} from "@handler";
@@ -424,12 +424,12 @@ namespace LocalDataBase {
          * @public
          */
         public initHandler = async (client: Client): Promise<void> => {
-            Logger.log("LOG", `[Shard ${client.ID}] is initialize database`);
+            Logger.log("LOG", `[Shard ${client.ID}] is initialized database`);
 
             //Проверяем статус получения фильтров
             const filterStatus = await this.loadFilters;
-            if (filterStatus instanceof Error) Logger.log("ERROR", `[Shard ${client.ID}] is initialize filters`);
-            else Logger.log("LOG", `[Shard ${client.ID}] is initialize filters`);
+            if (filterStatus instanceof Error) Logger.log("ERROR", `[Shard ${client.ID}] is initialized filters`);
+            else Logger.log("LOG", `[Shard ${client.ID}] is initialized filters`);
 
             //Загружаем под папки в handlers
             await this.initFs(client); await this.registerCommands(client);

@@ -182,11 +182,7 @@ class onSearch extends Constructor.Assign<handler.Event<"message/search">> {
                 }));
 
                 new Constructor.message({
-                    replied: true, time: 30e3, message, embeds: [{
-                        color: Colors.White, timestamp: new Date(),
-                        author: {name: message.guild.name, iconURL: db.emojis.diskImage},
-                        title: "Вот что мне удалось найти!"
-                    }],
+                    replied: true, time: 30e3, message, content: "Вот что мне удалось найти!",
                     //Список треков под сообщением
                     components: [new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId("menu-builder").setPlaceholder("Найденные треки")
                         .setOptions(...tracks.map((track) => {
@@ -212,14 +208,7 @@ class onSearch extends Constructor.Assign<handler.Event<"message/search">> {
                         collector.once("collect", (interaction: any) => {
                             const id = interaction.values[0];
 
-                            if (id && id !== "stop") {
-                                //Ищем команду и выполняем ее
-                                const command = db.commands.get("play").execute(message, [platform, id]);
-                                if (command) {
-                                    if ((command instanceof Promise)) command.then((d) => new Constructor.message({...d, message}));
-                                    else new Constructor.message({...command, message});
-                                }
-                            }
+                            if (id && id !== "stop") db.queue.events.emit("collection/api", message, message.member.voice.channel, [platform, id])
 
                             interaction?.deferReply();
                             interaction?.deleteReply();

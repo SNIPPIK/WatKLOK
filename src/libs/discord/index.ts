@@ -1,6 +1,5 @@
 import {ActionRow, ActionRowBuilder,  Attachment, BaseInteraction, BaseMessageOptions, Client as DS_Client, EmbedData, GuildMember, IntentsBitField,Message,MessagePayload, Partials, ShardingManager, User, WebhookClient, WebhookMessageCreateOptions } from "discord.js";
 import {threadId} from "node:worker_threads";
-import process from "process";
 import {env} from "@env";
 
 /**
@@ -96,6 +95,8 @@ export namespace Client {
         member: GuildMember; customId: string; commandName: string; author: User;
         deferReply: () => Promise<void>; deleteReply: () => Promise<void>;
         options?: {
+            _group?: string;
+            _subcommand?: string;
             _hoistedOptions: any[];
             getAttachment?: (name: string) => Attachment
         };

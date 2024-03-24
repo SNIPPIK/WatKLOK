@@ -1,8 +1,10 @@
-import {CommandInteractionOption, Events, PermissionsBitField} from "discord.js";
+import {CommandInteractionOption, Events, PermissionsBitField, Routes} from "discord.js";
 import {Constructor, handler} from "@handler";
 import {Client, Logger} from "@lib/discord";
 import {db} from "@lib/db";
 import {env} from "@env";
+
+const owners: string[] = env.get("owner.list").split(",");
 
 /**
  * @author SNIPPIK
@@ -17,6 +19,8 @@ class Interaction extends Constructor.Assign<handler.Event<Events.InteractionCre
             execute: (_, message: any) => {
                 //Игнорируем ботов
                 if ((message.user || message?.member?.user).bot) return;
+
+                //console.log(message);
 
                 //Подменяем данные
                 message.author = message?.member?.user ?? message?.user;
@@ -46,9 +50,10 @@ class Interaction extends Constructor.Assign<handler.Event<Events.InteractionCre
      * @private
      */
     private static _stepCommand = (message: Client.interact) => {
-        const owners: string[] = env.get("owner.list").split(",");
-        const command = db.commands.get(message.commandName);
         const {author, guild} = message;
+        const group = db.commands.filter((command) =>
+            command.name === message.commandName || command.name === message.options._group
+        ).at(-1);
 
         //Если пользователь пытается включить команду вне сервера
         if (!message.guild) return {
@@ -57,24 +62,29 @@ class Interaction extends Constructor.Assign<handler.Event<Events.InteractionCre
         };
 
         //Если пользователь пытается использовать команду разработчика
-        else if (command?.owner && !owners.includes(author.id)) return {
+        else if (group?.owner && !owners.includes(author.id)) return {
             content: `${author}, эта команда предназначена для разработчиков!`,
             color: "DarkRed"
         };
 
-        //Если прав не хватает, то уведомляем пользователя
-        const clientPermissions = this._checkPermission(command.permissions, message.channel.permissionsFor(guild.members.me));
-        if (clientPermissions) return {
-            content: `Внимание ${author.tag}\nУ меня нет прав на: ${clientPermissions}`,
-            color: "DarkRed", codeBlock: "css"
-        };
+        //Проверяем права пользователя
+        if (group?.permissions) {
+            //Если прав не хватает, то уведомляем пользователя
+            const clientPermissions = this._checkPermission(group.permissions, message.channel.permissionsFor(guild.members.me));
+            if (clientPermissions) return {
+                content: `Внимание ${author.tag}\nУ меня нет прав на: ${clientPermissions}`,
+                color: "DarkRed", codeBlock: "css"
+            };
+        }
 
-        //Передаем данные в команду
-        const args = message.options?._hoistedOptions?.map((f: CommandInteractionOption) => `${f.value}`);
-        const runCommand = command.execute(message, args ?? []);
+        if (!group?.execute) return { content: `Внимание ${author.tag}\nУ меня нет этой команды!`, color: "DarkRed", codeBlock: "css" };
 
-        if (runCommand) return runCommand;
-        return null;
+        const options = message.options;
+        return group.execute({
+            message,
+            args: options?._hoistedOptions?.map((f: CommandInteractionOption) => `${f.value}`),
+            group: options._group, sub: options._subcommand
+        });
     };
 
     /**
@@ -125,7 +135,7 @@ class Interaction extends Constructor.Assign<handler.Event<Events.InteractionCre
             }
 
             //Кнопка пропуска
-            case "skip": return db.commands.get("skip").execute(message, ["1"]);
+            case "skip": return db.commands.get("queue").execute({message, args: ["1"], sub: "skip"});
 
             //Кнопка повтора
             case "repeat": {
@@ -146,10 +156,10 @@ class Interaction extends Constructor.Assign<handler.Event<Events.InteractionCre
             //Кнопка паузы
             case "resume_pause": {
                 //Если плеер играет
-                if (queue.player.status === "player/playing") return db.commands.get("pause").execute(message);
+                if (queue.player.status === "player/playing") return db.commands.get("player").execute({message, sub: "pause"});
 
                 //Если плеер стоит на паузе
-                else if (queue.player.status === "player/pause") return db.commands.get("resume").execute(message);
+                else if (queue.player.status === "player/pause") return db.commands.get("player").execute({message, sub: "resume"});
 
                 //Если статус плеера не совпадает ни с чем
                 return { content: `${message.author}, на данном этапе, паузу не возможно поставить!`, color: "Yellow" };
