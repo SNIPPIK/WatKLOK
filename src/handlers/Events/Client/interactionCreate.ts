@@ -1,4 +1,4 @@
-import {CommandInteractionOption, Events, PermissionsBitField, Routes} from "discord.js";
+import {CommandInteractionOption, Events, PermissionsBitField} from "discord.js";
 import {Constructor, handler} from "@handler";
 import {Client, Logger} from "@lib/discord";
 import {db} from "@lib/db";
