@@ -101,13 +101,13 @@ class Group extends Constructor.Assign<handler.Command> {
 
                 //Если пользователь не подключен к голосовым каналам
                 if (!VoiceChannel) return {
-                    content: `${author}, Необходимо подключиться к голосовому каналу!`,
+                    content: `${author} | Необходимо подключиться к голосовому каналу!`,
                     color: "Yellow"
                 };
 
                 //Если есть очередь и пользователь не подключен к тому же голосовому каналу
                 else if (queue && queue.voice && VoiceChannel?.id !== queue.voice.id && guild.members.me.voice.channel) return {
-                    content: `${author}, Музыка уже играет в другом голосовом канале!\nМузыка включена тут <#${queue.voice.id}>`,
+                    content: `${author} | Музыка уже играет в другом голосовом канале!\nМузыка включена тут <#${queue.voice.id}>`,
                     color: "Yellow"
                 };
 
@@ -123,7 +123,7 @@ class Group extends Constructor.Assign<handler.Command> {
 
                     //Если пользователь подсунул фальшивку
                     if (!attachment.contentType.match("audio")) return {
-                        content: `${author}, В этом файле нет звуковой дорожки!`,
+                        content: `${author} | В этом файле нет звуковой дорожки!`,
                         color: "Yellow"
                     };
 
@@ -132,26 +132,26 @@ class Group extends Constructor.Assign<handler.Command> {
                 }
 
                 //Если нет очереди
-                if (!queue) return { content: `${author}, ⚠ | Музыка сейчас не играет.`, color: "Yellow" };
+                if (!queue) return { content: `${author} | Музыка сейчас не играет.`, color: "Yellow" };
 
                 switch (sub) {
                     case "seek": {
                         //Если текущий трек является потоковым
-                        if (queue.songs.song.duration.seconds === 0) return { content: `${author}, А как? Это же стрим!`, color: "Yellow" };
+                        if (queue.songs.song.duration.seconds === 0) return { content: `${author} | А как? Это же стрим!`, color: "Yellow" };
 
                         //Если пользователь не указал время
-                        else if (!args[0]) return { content: `${author}, Укажи время, пример 00:00:00!`, color: "Yellow" };
+                        else if (!args[0]) return { content: `${author} | Укажи время, пример 00:00:00!`, color: "Yellow" };
 
                         const duration = args[0].duration();
 
                         //Если пользователь написал что-то не так
-                        if (isNaN(duration)) return { content: `${author}, Я не могу определить что ты написал, попробуй еще раз!`, color: "Yellow" };
+                        if (isNaN(duration)) return { content: `${author} | Я не могу определить что ты написал, попробуй еще раз!`, color: "Yellow" };
 
                         //Если пользователь указал времени больше чем в треке
-                        else if (duration > queue.songs.song.duration.seconds) return { content: `${author}, Ты указал слишком много времени!`, color: "Yellow" };
+                        else if (duration > queue.songs.song.duration.seconds) return { content: `${author} | Ты указал слишком много времени!`, color: "Yellow" };
 
                         //Если музыку нельзя пропустить из-за плеера
-                        else if (!queue.player.playing) return { content: `${author}, ⚠ Музыка еще не играет!`, color: "Yellow" };
+                        else if (!queue.player.playing) return { content: `${author} | Музыка еще не играет!`, color: "Yellow" };
 
                         //Начинаем проигрывание трека с <пользователем указанного тайм кода>
                         queue.player.play(queue.songs.song, duration);
@@ -168,10 +168,10 @@ class Group extends Constructor.Assign<handler.Command> {
                     }
                     case "pause": {
                         //Если музыка уже приостановлена
-                        if (queue.player.status === "player/pause") return { content: `${author}, ⚠ | Музыка уже приостановлена!`, color: "Yellow" };
+                        if (queue.player.status === "player/pause") return { content: `${author} | Музыка уже приостановлена!`, color: "Yellow" };
 
                         //Если текущий трек является потоковым
-                        else if (queue.songs.song.duration.seconds === 0) return { content: `${author}, ⚠ | Это бесполезно!`, color: "Yellow" };
+                        else if (queue.songs.song.duration.seconds === 0) return { content: `${author} | Это бесполезно!`, color: "Yellow" };
 
                         //Приостанавливаем музыку если она играет
                         queue.player.pause();
@@ -179,10 +179,10 @@ class Group extends Constructor.Assign<handler.Command> {
                     }
                     case "resume": {
                         //Если музыка уже играет
-                        if (queue.player.status === "player/playing") return { content: `${author}, ⚠ | Музыка сейчас играет.`, color: "Yellow" };
+                        if (queue.player.status === "player/playing") return { content: `${author} | Музыка сейчас играет.`, color: "Yellow" };
 
                         //Если текущий трек является потоковым
-                        else if (queue.songs.song.duration.seconds === 0) return { content: `${author}, ⚠ | Это бесполезно!`, color: "Yellow" };
+                        else if (queue.songs.song.duration.seconds === 0) return { content: `${author} | Это бесполезно!`, color: "Yellow" };
 
                         let { title } = queue.songs.song;
 
@@ -192,7 +192,7 @@ class Group extends Constructor.Assign<handler.Command> {
 
                     case "stop": {
                         db.queue.remove(queue.guild.id);
-                        return { content: `${author}, музыкальная очередь удалена!` };
+                        return { content: `${author} | Музыкальная очередь удалена!` };
                     }
                 }
             }

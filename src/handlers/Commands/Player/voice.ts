@@ -48,14 +48,14 @@ class Group extends Constructor.Assign<handler.Command> {
                 const queue = db.queue.get(guild.id);
 
                 //Если нет очереди
-                if (!queue) return { content: `${author}, ⚠ | Музыка сейчас не играет.`, color: "Yellow" };
+                if (!queue) return { content: `${author} | Музыка сейчас не играет.`, color: "Yellow" };
 
                 //Если пользователь не подключен к голосовым каналам
-                else if (!voiceChannel) return { content: `${author}, Необходимо подключиться к голосовому каналу!`, color: "Yellow" };
+                else if (!voiceChannel) return { content: `${author} | Необходимо подключиться к голосовому каналу!`, color: "Yellow" };
 
                 //Если есть очередь и пользователь не подключен к тому же голосовому каналу
                 else if (queue && queue.voice && voiceChannel?.id !== queue.voice.id && guild.members.me.voice.channel) return {
-                    content: `${author}, Музыка уже играет в другом голосовом канале!\nМузыка включена тут <#${queue.voice.id}>`,
+                    content: `${author} | Музыка уже играет в другом голосовом канале!\nМузыка включена тут <#${queue.voice.id}>`,
                     color: "Yellow"
                 };
 
@@ -65,7 +65,7 @@ class Group extends Constructor.Assign<handler.Command> {
 
                         //Если бот не подключен к голосовому каналу
                         if (!voiceConnection) return {
-                            content: `${author}, я не подключен к голосовому каналу!`,
+                            content: `${author} | Я не подключен к голосовому каналу!`,
                             color: "Yellow"
                         };
 
@@ -76,20 +76,20 @@ class Group extends Constructor.Assign<handler.Command> {
                     }
                     case "stage": {
                         //Если текстовые каналы совпадают
-                        if (queue.message.channelId === message.channelId) return { content: `${author}, этот текстовый канал совпадает с тем что в очереди!`, color: "Yellow" }
+                        if (queue.message.channelId === message.channelId) return { content: `${author} | Этот текстовый канал совпадает с тем что в очереди!`, color: "Yellow" }
 
                         //Если голосовой канал не трибуна
-                        else if (voiceChannel.type === ChannelType["GuildVoice"]) return { content: `${author}, этот голосовой канал не является трибуной!`, color: "Yellow" }
+                        else if (voiceChannel.type === ChannelType["GuildVoice"]) return { content: `${author} | Этот голосовой канал не является трибуной!`, color: "Yellow" }
 
                         return new Promise((resolve) => {
                             (args[0] === "join" ? me.voice.setSuppressed : me.voice.setRequestToSpeak)(true)
                                 .then(() => {
-                                    if (args[0] === "join") return resolve({content: `${author}, подключение к трибуне произведено!`, color: "Green"});
-                                    return resolve({content: `${author}, запрос на трибуну отправлен!`, color: "Green"});
+                                    if (args[0] === "join") return resolve({content: `${author} | Подключение к трибуне произведено!`, color: "Green"});
+                                    return resolve({content: `${author} | Запрос на трибуну отправлен!`, color: "Green"});
                                 })
                                 .catch(() => {
-                                    if (args[0] === "join") return resolve({content: `${author}, не удалось подключится к трибуне!`, color: "DarkRed"});
-                                    return resolve({content: `${author}, не удалось отправить запрос!`, color: "Green"});
+                                    if (args[0] === "join") return resolve({content: `${author} | Не удалось подключиться к трибуне!`, color: "Yellow"});
+                                    return resolve({content: `${author} | Не удалось отправить запрос!`, color: "Yellow"});
                                 });
                         });
                     }

@@ -94,14 +94,14 @@ export namespace Constructor {
      * @abstract
      */
     export abstract class Collection<K> {
-        private readonly array =  new Map<string, K>();
+        private readonly data =  new Map<string, K>();
         /**
          * @description Получаем объект из ID
          * @param ID - ID объекта
          * @public
          */
         public get = (ID: string) => {
-            return this.array.get(ID);
+            return this.data.get(ID);
         };
 
         /**
@@ -112,7 +112,7 @@ export namespace Constructor {
         public filter = (fn: (item: K) => boolean) => {
             const items: K[] = [];
 
-            for (let [_, item] of this.array) {
+            for (let [_, item] of this.data) {
                 if (fn(item)) items.push(item);
             }
 
@@ -131,7 +131,7 @@ export namespace Constructor {
 
             if (!item) {
                 if (promise) promise(value);
-                this.array.set(ID, value);
+                this.data.set(ID, value);
                 return value;
             } else {
                 Logger.log("WARN", `Collection has duplicated ${ID}`);
@@ -146,14 +146,14 @@ export namespace Constructor {
          * @public
          */
         public remove = (ID: string) => {
-            const item: any = this.array.get(ID);
+            const item: any = this.data.get(ID);
 
             if (item) {
                 if ("disconnect" in item) item?.disconnect();
                 if ("cleanup" in item) item?.cleanup();
                 if ("destroy" in item) item?.destroy();
 
-                this.array.delete(ID);
+                this.data.delete(ID);
             }
         };
 
@@ -162,7 +162,7 @@ export namespace Constructor {
          * @public
          */
         public get size() {
-            return this.array.size;
+            return this.data.size;
         };
     }
 
@@ -229,10 +229,21 @@ export namespace Constructor {
 
             //Если указано простое сообщение
             if ("content" in options && !("page" in options)) {
+                const color = options.color;
+                let text = "";
+
+                if (options.codeBlock) {
+                    if (color === "DarkRed") text = `⛔️ **Error**\n`;
+                    else if (color === "Yellow") text = `⚠️ **Warning**\n`;
+                } else {
+                    if (color === "DarkRed") text = `⛔️ **Error** | `;
+                    else if (color === "Yellow") text = `⚠️ **Warning** | `;
+                }
+
                 options = {
                     ...options, embeds: [{
                         color: this.color,
-                        description: options.codeBlock ? `\`\`\`${options.codeBlock}\n${options.content}\n\`\`\`` : options.content
+                        description: text + (options.codeBlock ? `\`\`\`${options.codeBlock}\n${options.content}\n\`\`\`` : options.content)
                     }]
                 }
                 delete options["content"];

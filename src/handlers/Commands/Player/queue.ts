@@ -87,12 +87,12 @@ class Group extends Constructor.Assign<handler.Command>{
 
                 if (sub === "history") {
                     //Если история отключена
-                    if (!History.enable) return { content: `${author}, история выключена!`, color: "Yellow" };
+                    if (!History.enable) return { content: `${author} | История прослушиваний выключена!`, color: "Yellow" };
 
                     const file = History.getFile(message.guildId);
 
                     //Если нет файла
-                    if (!file) return { content: `${author}, на этом сервере еще не включали музыку!`, color: "Yellow" };
+                    if (!file) return { content: `${author} | На этом сервере еще не включали музыку!`, color: "Yellow" };
 
                     const jsonFile = JSON.parse(file);
 
@@ -117,20 +117,20 @@ class Group extends Constructor.Assign<handler.Command>{
                 }
 
                 //Если нет очереди
-                if (!queue) return { content: `${author}, ⚠ | Музыка сейчас не играет.`, color: "Yellow" };
+                if (!queue) return { content: `${author} | Музыка сейчас не играет.`, color: "Yellow" };
 
                 //Если пользователь не подключен к голосовым каналам
-                else if (!member?.voice?.channel || !member?.voice) return { content: `${author}, Необходимо подключиться к голосовому каналу!`, color: "Yellow" };
+                else if (!member?.voice?.channel || !member?.voice) return { content: `${author} | Необходимо подключиться к голосовому каналу!`, color: "Yellow" };
 
                 //Если есть очередь и пользователь не подключен к тому же голосовому каналу
                 else if (queue && queue.voice && member?.voice?.channel?.id !== queue.voice.id && guild.members.me.voice.channel) return {
-                    content: `${author}, Музыка уже играет в другом голосовом канале!\nМузыка включена тут <#${queue.voice.id}>`,
+                    content: `${author} | Музыка уже играет в другом голосовом канале!\nМузыка включена тут <#${queue.voice.id}>`,
                     color: "Yellow"
                 };
 
                 //Если пользователю надо показать текущие треки
                 if (sub === "list") {
-                    if (queue.songs.length === 1) return { content: `${author}, ⚠ | Играет всего один трек.`, color: "Yellow" };
+                    if (queue.songs.length === 1) return { content: `${author} | Играет всего один трек.`, color: "Yellow" };
 
                     let num = 0;
                     const pages = queue.songs.slice(1).ArraySort(5, (track) => { num++;
@@ -187,7 +187,7 @@ class Group extends Constructor.Assign<handler.Command>{
                 }
 
                 //Если аргумент не является числом
-                if (isNaN(arg)) return { content: `${author}, аргумент не является числом` };
+                if (isNaN(arg)) return { content: `${author} | Аргумент не является числом` };
 
                 switch (sub) {
                     case "skip": {
@@ -195,10 +195,10 @@ class Group extends Constructor.Assign<handler.Command>{
 
                         try {
                             //Если музыку нельзя пропустить из-за плеера
-                            if (!player.playing) return { content: `${author}, ⚠ Музыка еще не играет!`, color: "Yellow" };
+                            if (!player.playing) return { content: `${author} | Музыка еще не играет!`, color: "Yellow" };
 
                             //Если пользователь укажет больше чем есть в очереди
-                            else if (arg > songs.length && arg < queue.songs.length) return { content: `${author}, В очереди ${songs.length}!`, color: "Yellow" };
+                            else if (arg > songs.length && arg < queue.songs.length) return { content: `${author} | В очереди ${songs.length}!`, color: "Yellow" };
 
                             else if (arg > 1) {
                                 if (queue.repeat === "songs") for (let i = 0; i < arg - 2; i++) songs.push(songs.shift());
@@ -209,15 +209,15 @@ class Group extends Constructor.Assign<handler.Command>{
                             return arg > 1 ? { content: `⏭️ | Skip to song [${arg}] | ${title}`, codeBlock: "css", color: "Green" } : { content: `⏭️ | Skip song | ${title}`, codeBlock: "css", color: "Green" }
                         } catch (err) {
                             Logger.log("ERROR", err);
-                            return { content: `${author}, Ошибка... попробуй еще раз!!!`, color: "DarkRed" };
+                            return { content: `${author} | Ошибка... попробуй еще раз!!!`, color: "DarkRed" };
                         }
                     }
                     case "remove": {
                         //Если аргумент больше кол-ва треков
-                        if (arg > queue.songs.length && arg < queue.songs.length) return { content: `${author}, Я не могу убрать музыку, поскольку всего ${queue.songs.length}!`, color: "Yellow" };
+                        if (arg > queue.songs.length && arg < queue.songs.length) return { content: `${author} | Я не могу убрать музыку, поскольку всего ${queue.songs.length}!`, color: "Yellow" };
 
                         //Если музыку нельзя пропустить из-за плеера
-                        else if (!queue.player.playing) return { content: `${author}, ⚠ Музыка еще не играет!`, color: "Yellow" };
+                        else if (!queue.player.playing) return { content: `${author} | Музыка еще не играет!`, color: "Yellow" };
 
                         let {title} = queue.songs[arg - 1];
 

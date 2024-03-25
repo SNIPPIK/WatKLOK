@@ -19,24 +19,24 @@ class onAPI extends Constructor.Assign<handler.Event<"collection/api">> {
                 const platform = new API.response(argument[0] as string), name = platform.platform;
                 const event = db.queue.events, collection = db.queue;
 
-                if (platform.block) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}**\n\nРазработчик заблокировал доступ к этой платформе!\nВозможно из-за ошибки или блокировки со стороны сервера!`));
-                else if (platform.auth) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}**\n\nНет данных для авторизации, запрос не может быть выполнен!`));
+                if (platform.block) return void (event.emit("collection/error", message, `**${name}**\n\nРазработчик заблокировал доступ к этой платформе!\nВозможно из-за ошибки или блокировки со стороны сервера!`));
+                else if (platform.auth) return void (event.emit("collection/error", message, `**${name}**\n\nНет данных для авторизации, запрос не может быть выполнен!`));
                 else if (typeof argument[1] === "string") {
-                    if (!argument[1].match(platform.filter) && argument[1].startsWith("http")) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}**\n\nЭтот запрос не относится к этой платформе!`));
+                    if (!argument[1].match(platform.filter) && argument[1].startsWith("http")) return void (event.emit("collection/error", message, `**${name}**\n\nЭтот запрос не относится к этой платформе!`));
                 }
 
                 const api = platform.find(typeof argument[1] !== "string" ? argument[1].url : argument[1]);
 
-                if (!api || !api?.name) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}**\n\nУ меня нет поддержки этого запроса!`));
-                else if (!api) return void (event.emit("collection/error", message, `⚠️ **Warning** | **${name}.${api.name}**\n\nУ меня нет поддержки для выполнения этого запроса!`));
+                if (!api || !api?.name) return void (event.emit("collection/error", message, `**${name}**\n\nУ меня нет поддержки этого запроса!`));
+                else if (!api) return void (event.emit("collection/error", message, `**${name}.${api.name}**\n\nУ меня нет поддержки для выполнения этого запроса!`));
 
                 //Отправляем сообщение о том что запрос производится
-                event.emit("collection/error", message, `⚠️ **Warning** | **${name}.${api.name}**\n\n${env.get("loading.emoji")} Ожидание ответа от сервера...\n${platform.audio ? "Эта платформа не может выдать исходный файл музыки! Поиск трека!" : ""}`, false, "Yellow");
+                event.emit("collection/error", message, `**${name}.${api.name}**\n\n${env.get("loading.emoji")} Ожидание ответа от сервера...\n${platform.audio ? "Эта платформа не может выдать исходный файл музыки! Поиск трека!" : ""}`, false, "Yellow");
 
                 api.callback(argument[1] as any).then((item): void => {
                     //Если нет данных или была получена ошибка
                     if (!item || item instanceof Error) {
-                        event.emit("collection/error", message, `⚠️ **Warning** | **${name}.${api.name}**\n\n**❯** Данные не были получены!`);
+                        event.emit("collection/error", message, `**${name}.${api.name}**\n\n**❯** Данные не были получены!`);
                         return;
                     }
                     //Если был указан поиск
@@ -63,7 +63,7 @@ class onAPI extends Constructor.Assign<handler.Event<"collection/api">> {
                         queue.songs.push(track);
                     }
                 }).catch((err: Error) => { //Отправляем сообщение об ошибке
-                    event.emit("collection/error", message, `⛔️ **Error** | **${name}.${api.name}**\n\n**❯** **${err.message}**`, true);
+                    event.emit("collection/error", message, `**${name}.${api.name}**\n\n**❯** **${err.message}**`, true);
                 });
             }
         });

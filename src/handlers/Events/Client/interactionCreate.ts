@@ -72,12 +72,12 @@ class Interaction extends Constructor.Assign<handler.Event<Events.InteractionCre
             //Если прав не хватает, то уведомляем пользователя
             const clientPermissions = this._checkPermission(group.permissions, message.channel.permissionsFor(guild.members.me));
             if (clientPermissions) return {
-                content: `Внимание ${author.tag}\nУ меня нет прав на: ${clientPermissions}`,
+                content: `${author.username}, у меня нет прав на: ${clientPermissions}`,
                 color: "DarkRed", codeBlock: "css"
             };
         }
 
-        if (!group?.execute) return { content: `Внимание ${author.tag}\nУ меня нет этой команды!`, color: "DarkRed", codeBlock: "css" };
+        if (!group?.execute) return { content: `${author.username}, у меня нет этой команды!`, color: "DarkRed", codeBlock: "css" };
 
         const options = message.options;
         return group.execute({
@@ -98,14 +98,14 @@ class Interaction extends Constructor.Assign<handler.Event<Events.InteractionCre
         const queue = db.queue.get(message.guild.id);
 
         //Если нет очереди
-        if (!queue) return { content: `${message.author}, ⚠ | Музыка сейчас не играет`, color: "Yellow" };
+        if (!queue) return { content: `${author} | Музыка сейчас не играет`, color: "Yellow" };
 
         //Если пользователь не подключен к голосовым каналам
-        else if (!member?.voice?.channel || !member?.voice) return { content: `${author}, Необходимо подключится к голосовому каналу!`, color: "Yellow" };
+        else if (!member?.voice?.channel || !member?.voice) return { content: `${author} | Необходимо подключиться к голосовому каналу!`, color: "Yellow" };
 
         //Если есть очередь и пользователь не подключен к тому же голосовому каналу
         else if (queue && queue.voice && member?.voice?.channel?.id !== queue.voice.id && guild.members.me.voice.channel) return {
-            content: `${author}, Музыка уже играет в другом голосовом канале!\nМузыка включена тут <#${queue.voice.id}>`, color: "Yellow"
+            content: `${author} | Музыка уже играет в другом голосовом канале!\nМузыка включена тут <#${queue.voice.id}>`, color: "Yellow"
         };
 
         switch (message.customId) {
@@ -167,7 +167,7 @@ class Interaction extends Constructor.Assign<handler.Event<Events.InteractionCre
         }
 
         //Если пользователь нашел не существующую кнопку
-        return { content: `${message.author}, откуда ты взял эту кнопку!`, color: "DarkRed" }
+        return { content: `${author} | Откуда ты взял эту кнопку!`, color: "DarkRed" }
     };
 
     /**
