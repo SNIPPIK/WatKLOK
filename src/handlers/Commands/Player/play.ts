@@ -111,28 +111,31 @@ class Group extends Constructor.Assign<handler.Command> {
                     color: "Yellow"
                 };
 
+                //Если пользователя пытается включить трек
+                if (sub === "play") {
+                    db.queue.events.emit("collection/api", message as any, VoiceChannel, args);
+                    return;
+                }
+
+                //Если пользователь прикрепил файл
+                else if (sub === "file") {
+                    const attachment = (message as Client.interact).options.getAttachment("file");
+
+                    //Если пользователь подсунул фальшивку
+                    if (!attachment.contentType.match("audio")) return {
+                        content: `${author}, В этом файле нет звуковой дорожки!`,
+                        color: "Yellow"
+                    };
+
+                    db.queue.events.emit("collection/api", message as any, VoiceChannel, ["DISCORD", attachment]);
+                    return;
+                }
+
+                //Если нет очереди
+                if (!queue) return { content: `${author}, ⚠ | Музыка сейчас не играет.`, color: "Yellow" };
+
                 switch (sub) {
-                    case "play": {
-                        db.queue.events.emit("collection/api", message as any, VoiceChannel, args);
-                        return;
-                    }
-                    case "file": {
-                        const attachment = (message as Client.interact).options.getAttachment("file");
-
-                        //Если пользователь подсунул фальшивку
-                        if (!attachment.contentType.match("audio")) return {
-                            content: `${author}, В этом файле нет звуковой дорожки!`,
-                            color: "Yellow"
-                        };
-
-                        db.queue.events.emit("collection/api", message as any, VoiceChannel, ["DISCORD", attachment]);
-                        return;
-                    }
-
                     case "seek": {
-                        //Если нет очереди
-                        if (!queue) return { content: `${author}, ⚠ | Музыка сейчас не играет.`, color: "Yellow" };
-
                         //Если текущий трек является потоковым
                         if (queue.songs.song.duration.seconds === 0) return { content: `${author}, А как? Это же стрим!`, color: "Yellow" };
 
@@ -157,8 +160,6 @@ class Group extends Constructor.Assign<handler.Command> {
                         return { content: `⏭️ | Seeking to [${args[0]}] song\n> ${queue.songs.song.title}`, codeBlock: "css", color: "Green" };
                     }
                     case "replay": {
-                        //Если нет очереди
-                        if (!queue) return { content: `${author}, ⚠ | Музыка сейчас не играет.`, color: "Yellow" };
                         let { title } = queue.songs.song;
 
                         queue.player.play(queue.songs.song);
@@ -166,9 +167,6 @@ class Group extends Constructor.Assign<handler.Command> {
                         return { content: `🔂 | Replay | ${title}`, color: "Green", codeBlock: "css" };
                     }
                     case "pause": {
-                        //Если нет очереди
-                        if (!queue) return { content: `${author}, ⚠ | Музыка сейчас не играет.`, color: "Yellow" };
-
                         //Если музыка уже приостановлена
                         if (queue.player.status === "player/pause") return { content: `${author}, ⚠ | Музыка уже приостановлена!`, color: "Yellow" };
 
@@ -180,9 +178,6 @@ class Group extends Constructor.Assign<handler.Command> {
                         return { content: `⏸ | Pause song | ${queue.songs.song.title}`, codeBlock: "css", color: "Green" };
                     }
                     case "resume": {
-                        //Если нет очереди
-                        if (!queue) return { content: `${author}, ⚠ | Музыка сейчас не играет.`, color: "Yellow" };
-
                         //Если музыка уже играет
                         if (queue.player.status === "player/playing") return { content: `${author}, ⚠ | Музыка сейчас играет.`, color: "Yellow" };
 
@@ -196,9 +191,6 @@ class Group extends Constructor.Assign<handler.Command> {
                     }
 
                     case "stop": {
-                        //Если нет очереди
-                        if (!queue) return { content: `${author}, ⚠ | Музыка сейчас не играет.`, color: "Yellow" };
-
                         db.queue.remove(queue.guild.id);
                         return { content: `${author}, музыкальная очередь удалена!` };
                     }

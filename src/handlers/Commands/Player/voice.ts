@@ -12,11 +12,6 @@ class Group extends Constructor.Assign<handler.Command> {
 
             options: [
                 {
-                    name: "join",
-                    description: "Подключение к вашему голосовому каналу!",
-                    type: ApplicationCommandOptionType.Subcommand
-                },
-                {
                     name: "leave",
                     description: "Отключение от голосового канала!",
                     type: ApplicationCommandOptionType.Subcommand
@@ -52,21 +47,19 @@ class Group extends Constructor.Assign<handler.Command> {
                 const me = message.guild.members?.me;
                 const queue = db.queue.get(guild.id);
 
+                //Если нет очереди
+                if (!queue) return { content: `${author}, ⚠ | Музыка сейчас не играет.`, color: "Yellow" };
+
+                //Если пользователь не подключен к голосовым каналам
+                else if (!voiceChannel) return { content: `${author}, Необходимо подключиться к голосовому каналу!`, color: "Yellow" };
+
+                //Если есть очередь и пользователь не подключен к тому же голосовому каналу
+                else if (queue && queue.voice && voiceChannel?.id !== queue.voice.id && guild.members.me.voice.channel) return {
+                    content: `${author}, Музыка уже играет в другом голосовом канале!\nМузыка включена тут <#${queue.voice.id}>`,
+                    color: "Yellow"
+                };
+
                 switch (sub) {
-                    case "join": {
-                        //Если пользователь не подключен к голосовым каналам
-                        if (!member?.voice?.channel || !member?.voice) return { content: `${author}, Необходимо подключится к голосовому каналу!`, color: "Yellow" };
-
-                        //Если пользователь пытается подключить бота к тому же каналу
-                        else if (voiceChannel.id === guild.members.me.voice.id || queue && voiceChannel.id === queue.voice.id && guild.members.me.voice.channel) return { content: `${author}, Я уже в этом канале <#${voiceChannel.id}>.`, color: "Yellow" };
-
-                        //Если нет очереди
-                        else if (!queue) return { content: `${author}, Я подключусь сам когда надо! В данный момент музыка не играет!`, color: "Yellow" };
-
-                        queue.message = message as any;
-                        queue.voice = voiceChannel;
-                        return { content: `${author}, Переподключение к ${queue.voice}`, color: "Yellow" };
-                    }
                     case "leave": {
                         const voiceConnection = Voice.get(guild.id);
 
@@ -76,32 +69,14 @@ class Group extends Constructor.Assign<handler.Command> {
                             color: "Yellow"
                         };
 
-                        //Если есть очередь и пользователь не подключен к тому же голосовому каналу
-                        else if (queue && queue.voice && member?.voice?.channel?.id !== queue.voice.id) return {
-                            content: `${author}, Музыка уже играет в другом голосовом канале!\nМузыка включена тут <#${queue.voice.id}>`,
-                            color: "Yellow"
-                        };
-
                         voiceConnection.disconnect();
                         if (queue) return {content: `${author}, отключение от голосового канала! Очередь будет удалена!`};
 
                         return {content: `${author}, отключение от голосового канала!`};
                     }
                     case "stage": {
-                        //Если нет очереди
-                        if (!queue) return { content: `${author}, ⚠ | Музыка сейчас не играет.`, color: "Yellow" };
-
-                        //Если пользователь не подключен к голосовым каналам
-                        else if (!voiceChannel) return { content: `${author}, Необходимо подключиться к голосовому каналу!`, color: "Yellow" };
-
-                        //Если есть очередь и пользователь не подключен к тому же голосовому каналу
-                        else if (queue && queue.voice && voiceChannel?.id !== queue.voice.id && guild.members.me.voice.channel) return {
-                            content: `${author}, Музыка уже играет в другом голосовом канале!\nМузыка включена тут <#${queue.voice.id}>`,
-                            color: "Yellow"
-                        };
-
                         //Если текстовые каналы совпадают
-                        else if (queue.message.channelId === message.channelId) return { content: `${author}, этот текстовый канал совпадает с тем что в очереди!`, color: "Yellow" }
+                        if (queue.message.channelId === message.channelId) return { content: `${author}, этот текстовый канал совпадает с тем что в очереди!`, color: "Yellow" }
 
                         //Если голосовой канал не трибуна
                         else if (voiceChannel.type === ChannelType["GuildVoice"]) return { content: `${author}, этот голосовой канал не является трибуной!`, color: "Yellow" }

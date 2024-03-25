@@ -18,7 +18,7 @@ export const env = new class {
         if (!env) throw new Error(`[ENV]: Not found ${name} in .env`);
 
         return env === "true" ? true : env === "false" ? false : env;
-    }
+    };
 
     /**
      * @description Проверяем есть ли данные

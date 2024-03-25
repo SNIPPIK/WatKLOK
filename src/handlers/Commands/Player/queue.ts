@@ -128,10 +128,69 @@ class Group extends Constructor.Assign<handler.Command>{
                     color: "Yellow"
                 };
 
+                //Если пользователю надо показать текущие треки
+                if (sub === "list") {
+                    if (queue.songs.length === 1) return { content: `${author}, ⚠ | Играет всего один трек.`, color: "Yellow" };
+
+                    let num = 0;
+                    const pages = queue.songs.slice(1).ArraySort(5, (track) => { num++;
+                        return `\`${num}\` - \`\`[${track.duration.full}]\`\` [${track.requester.username}](${track.author.url}) - [${track.title}](${track.url})`;
+                    }, "\n");
+                    const embed: EmbedData = {
+                        title: `Queue - ${message.guild.name}`,
+                        color: Colors.Green,
+                        fields: [
+                            {
+                                name: `**Играет:**`,
+                                value: `\`\`\`${queue.songs.song.title}\`\`\``
+                            }
+                        ],
+                        footer: {
+                            text: `${queue.songs.song.requester.username} | Лист 1 из ${pages.length} | Songs: ${queue.songs.length}/${queue.songs.time()}`,
+                            iconURL: queue.songs.song.requester.avatar
+                        }
+                    };
+
+                    if (pages.length > 0) embed.fields.push({ name: "**Следующее:**", value: pages[0] });
+
+                    return {
+                        embeds: [embed], pages, page: 1,
+                        callback: (msg, pages: string[], page: number) => {
+                            embed.fields[1] = { name: "**Следующее:**", value: pages[page - 1] };
+                            const updateEmbed = { ...embed, footer: { ...embed.footer, text: `${message.author.username} | Лист ${page} из ${pages.length} | Songs: ${queue.songs.length}` } };
+
+                            return msg.edit({ embeds: [updateEmbed] });
+                        }
+                    };
+                }
+
+                //Если пользователь меняет тип повтора
+                else if (sub === "repeat") {
+                    const argument = args?.pop()?.toLowerCase();
+
+                    switch (argument) {
+                        case "song": {
+                            queue.repeat = "song";
+                            return { content: `🔂 | Повтор  | ${queue.songs[0].title}`, codeBlock: "css"};
+                        }
+                        case "songs": {
+                            queue.repeat = "songs";
+                            return { content: `🔁 | Повтор всей музыки`, codeBlock: "css"};
+                        }
+                        case "off": {
+                            queue.repeat = "off";
+                            return { content: `❌ | Повтор выключен`, codeBlock: "css"};
+                        }
+                    }
+
+                    return;
+                }
+
+                //Если аргумент не является числом
+                if (isNaN(arg)) return { content: `${author}, аргумент не является числом` };
+
                 switch (sub) {
                     case "skip": {
-                        if (isNaN(arg)) return { content: `${author}, аргумент не является числом` };
-
                         let {player, songs} = queue, {title} = songs[arg - 1];
 
                         try {
@@ -154,10 +213,8 @@ class Group extends Constructor.Assign<handler.Command>{
                         }
                     }
                     case "remove": {
-                        if (isNaN(arg)) return { content: `${author}, аргумент не является числом` };
-
                         //Если аргумент больше кол-ва треков
-                        else if (arg > queue.songs.length && arg < queue.songs.length) return { content: `${author}, Я не могу убрать музыку, поскольку всего ${queue.songs.length}!`, color: "Yellow" };
+                        if (arg > queue.songs.length && arg < queue.songs.length) return { content: `${author}, Я не могу убрать музыку, поскольку всего ${queue.songs.length}!`, color: "Yellow" };
 
                         //Если музыку нельзя пропустить из-за плеера
                         else if (!queue.player.playing) return { content: `${author}, ⚠ Музыка еще не играет!`, color: "Yellow" };
@@ -173,58 +230,6 @@ class Group extends Constructor.Assign<handler.Command>{
 
                         //Сообщаем какой трек был убран
                         return { content: `⏭️ | Remove song | ${title}`, codeBlock: "css", color: "Green" };
-                    }
-                    case "list": {
-                        if (queue.songs.length === 1) return { content: `${author}, ⚠ | Играет всего один трек.`, color: "Yellow" };
-
-                        let num = 0;
-                        const pages = queue.songs.slice(1).ArraySort(5, (track) => { num++;
-                            return `\`${num}\` - \`\`[${track.duration.full}]\`\` [${track.requester.username}](${track.author.url}) - [${track.title}](${track.url})`;
-                        }, "\n");
-                        const embed: EmbedData = {
-                            title: `Queue - ${message.guild.name}`,
-                            color: Colors.Green,
-                            fields: [
-                                {
-                                    name: `**Играет:**`,
-                                    value: `\`\`\`${queue.songs.song.title}\`\`\``
-                                }
-                            ],
-                            footer: {
-                                text: `${queue.songs.song.requester.username} | Лист 1 из ${pages.length} | Songs: ${queue.songs.length}/${queue.songs.time()}`,
-                                iconURL: queue.songs.song.requester.avatar
-                            }
-                        };
-
-                        if (pages.length > 0) embed.fields.push({ name: "**Следующее:**", value: pages[0] });
-
-                        return {
-                            embeds: [embed], pages, page: 1,
-                            callback: (msg, pages: string[], page: number) => {
-                                embed.fields[1] = { name: "**Следующее:**", value: pages[page - 1] };
-                                const updateEmbed = { ...embed, footer: { ...embed.footer, text: `${message.author.username} | Лист ${page} из ${pages.length} | Songs: ${queue.songs.length}` } };
-
-                                return msg.edit({ embeds: [updateEmbed] });
-                            }
-                        };
-                    }
-                    case "repeat": {
-                        const argument = args?.pop()?.toLowerCase();
-
-                        switch (argument) {
-                            case "song": {
-                                queue.repeat = "song";
-                                return { content: `🔂 | Повтор  | ${queue.songs[0].title}`, codeBlock: "css"};
-                            }
-                            case "songs": {
-                                queue.repeat = "songs";
-                                return { content: `🔁 | Повтор всей музыки`, codeBlock: "css"};
-                            }
-                            case "off": {
-                                queue.repeat = "off";
-                                return { content: `❌ | Повтор выключен`, codeBlock: "css"};
-                            }
-                        }
                     }
                 }
             }

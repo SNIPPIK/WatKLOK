@@ -1,12 +1,4 @@
-import {
-    ActionRowBuilder,
-    ApplicationCommandOption,
-    ApplicationCommandOptionType,
-    ClientEvents,
-    Colors,
-    EmbedData,
-    PermissionResolvable
-} from "discord.js";
+import { ActionRowBuilder, ApplicationCommandOption, ClientEvents, Colors, EmbedData, PermissionResolvable } from "discord.js";
 import {AudioPlayerEvents} from "@lib/player/AudioPlayer";
 import {CollectionAudioEvents, db} from "@lib/db";
 import {Queue} from "@lib/player/queue/Queue";
@@ -98,7 +90,7 @@ export class Handler<T> {
 export namespace Constructor {
     /**
      * @author SNIPPIK
-     * @description Мульти коллекция
+     * @description Коллекция
      * @abstract
      */
     export abstract class Collection<K> {
@@ -176,7 +168,7 @@ export namespace Constructor {
 
     /**
      * @author SNIPPIK
-     * @description Мульти-загрузчик классов
+     * @description Загрузчик классов
      * @class Assign
      * @abstract
      */

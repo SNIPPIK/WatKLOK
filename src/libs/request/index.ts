@@ -11,7 +11,7 @@ import {Logger} from "@lib/discord";
  * @private
  */
 abstract class Request {
-    protected readonly _options: {
+    protected readonly data: {
         method?: "POST" | "GET" | "HEAD";
 
         //Headers запроса
@@ -28,7 +28,7 @@ abstract class Request {
      * @private
      */
     private get protocol() {
-        const protocol = this._options.protocol?.split(":")[0];
+        const protocol = this.data.protocol?.split(":")[0];
 
         if (protocol === "http") return httpRequest;
         else return httpsRequest;
@@ -40,12 +40,12 @@ abstract class Request {
      */
     public get request(): Promise<IncomingMessage | Error> {
         return new Promise(async (resolve) => {
-            Logger.log("DEBUG", `httpsClient: [${this._options.method}:|${this._options.hostname}${this._options.path}]`);
+            Logger.log("DEBUG", `httpsClient: [${this.data.method}:|${this.data.hostname}${this.data.path}]`);
 
-            const request = this.protocol(this._options, (res: IncomingMessage) => {
+            const request = this.protocol(this.data, (res: IncomingMessage) => {
                 //Автоматическое перенаправление
                 if ((res.statusCode >= 300 && res.statusCode < 400) && res.headers?.location) {
-                    this._options.path = res.headers.location;
+                    this.data.path = res.headers.location;
                     return resolve(this.request);
                 }
 
@@ -54,14 +54,14 @@ abstract class Request {
 
             //Если запрос получил ошибку
             request.once("error", resolve);
-            request.once("timeout", () => resolve(Error(`[APIs]: Connection Timeout Exceeded ${this._options?.hostname}:${this._options?.port ?? 443}`)));
+            request.once("timeout", () => resolve(Error(`[APIs]: Connection Timeout Exceeded ${this.data?.hostname}:${this.data?.port ?? 443}`)));
             request.once("close", () => {
                 request.removeAllListeners();
                 request.destroy();
             });
 
             //Если запрос POST, отправляем ответ на сервер
-            if (this._options.method === "POST" && this._options.body) request.write(this._options.body);
+            if (this.data.method === "POST" && this.data.body) request.write(this.data.body);
 
             request.end();
         });
@@ -73,24 +73,24 @@ abstract class Request {
      * @param options - Опции
      * @public
      */
-    public constructor(url: string, options?: httpsClient["_options"]) {
+    public constructor(url: string, options?: httpsClient["data"]) {
         if (url) {
             const {hostname, pathname, search, port, protocol} = new URL(url);
 
             //Создаем стандартные настройки
-            Object.assign(this._options, {
+            Object.assign(this.data, {
                 headers: options?.headers ?? {},
                 method: options?.method ?? "GET",
                 port, hostname, body: options?.body ?? null,
                 path: pathname + search, protocol
             });
-        } else Object.assign(this._options, options);
+        } else Object.assign(this.data, options);
 
         if (options?.useragent) {
             const OS = [ "(X11; Linux x86_64)", "(Windows NT 10.0; Win64; x64)" ];
             const version = `${(123).random(96)}.0.${(6250).random(1280)}.${(250).random(59)}`;
 
-            Object.assign(this._options.headers, {
+            Object.assign(this.data.headers, {
                 "User-Agent": `Mozilla/5.0 ${OS[(OS.length - 1).random(0)]} AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version} Safari/537.36`,
                 "Sec-Ch-Ua-Full-Version": version,
                 "Sec-Ch-Ua-Bitness": `64`,
@@ -141,7 +141,7 @@ export class httpsClient extends Request {
             try {
                 return JSON.parse(body);
             } catch {
-                return Error(`Invalid json response body at ${this._options.hostname}`);
+                return Error(`Invalid json response body at ${this.data.hostname}`);
             }
         });
     };
