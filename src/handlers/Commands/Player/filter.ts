@@ -150,6 +150,8 @@ class Group extends Constructor.Assign<handler.Command> {
                     }
 
                     case "add": {
+                        if (index !== -1) return { content: `Filter: ${name} уже включен!`, color: "Yellow", codeBlock: "css" };
+                        
                         //Делаем проверку на совместимость
                         for (let i = 0; i < queue.player.filters.length; i++) {
                             const filter = queue.player.filters[i];
