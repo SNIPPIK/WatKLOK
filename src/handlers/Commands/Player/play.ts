@@ -1,9 +1,9 @@
 import {ApplicationCommandOptionType} from "discord.js";
-import {Constructor, handler} from "@handler";
+import {Constructor, Handler} from "@handler";
 import {Client} from "@lib/discord";
 import {db} from "@lib/db";
 
-class Group extends Constructor.Assign<handler.Command> {
+class Group extends Constructor.Assign<Handler.Command> {
     public constructor() {
         super({
             name: "player",

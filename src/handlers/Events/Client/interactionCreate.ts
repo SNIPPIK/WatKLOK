@@ -1,5 +1,5 @@
 import {CommandInteractionOption, Events, PermissionsBitField} from "discord.js";
-import {Constructor, handler} from "@handler";
+import {Constructor, Handler} from "@handler";
 import {Client, Logger} from "@lib/discord";
 import {db} from "@lib/db";
 import {env} from "@env";
@@ -11,7 +11,7 @@ const owners: string[] = env.get("owner.list").split(",");
  * @description Класс для взаимодействия бота с slash commands, buttons
  * @class InteractionCreate
  */
-class Interaction extends Constructor.Assign<handler.Event<Events.InteractionCreate>> {
+class Interaction extends Constructor.Assign<Handler.Event<Events.InteractionCreate>> {
     public constructor() {
         super({
             name: Events.InteractionCreate,
@@ -33,10 +33,10 @@ class Interaction extends Constructor.Assign<handler.Event<Events.InteractionCre
                     //Если есть данные, то отправляем их в тестовый канал
                     if (item) {
                         if (item instanceof Promise) {
-                            item.then(data => new Constructor.message({...data, message})).catch((err) => Logger.log("ERROR", err));
+                            item.then(data => new Constructor.message<any>({...data, message})).catch((err) => Logger.log("ERROR", err));
                             return;
                         }
-                        new Constructor.message({...item as any, message});
+                        new Constructor.message<any>({...item as any, message});
                     }
                 }
             }
@@ -177,7 +177,7 @@ class Interaction extends Constructor.Assign<handler.Event<Events.InteractionCre
      * @readonly
      * @private
      */
-    private static _checkPermission = (permissions: handler.Command["permissions"], Fields: Readonly<PermissionsBitField>) => {
+    private static _checkPermission = (permissions: Handler.Command["permissions"], Fields: Readonly<PermissionsBitField>) => {
         const fail: any[] = [];
 
         if (permissions && permissions?.length > 0) {

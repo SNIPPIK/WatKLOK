@@ -1,4 +1,4 @@
-import {handler, Constructor} from "@handler";
+import {Handler, Constructor} from "@handler";
 import {Colors} from "discord.js";
 import {db} from "@lib/db";
 import os from "node:os";
@@ -11,7 +11,7 @@ const processor = cpu.length > 0 ? cpu[0]?.model : "Невозможно опр�
  * @command info
  * @description Публичные данные бота
  */
-class Command_Info extends Constructor.Assign<handler.Command> {
+class Command_Info extends Constructor.Assign<Handler.Command> {
     public constructor() {
         super({
             name: "info",

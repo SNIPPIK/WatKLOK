@@ -1,6 +1,5 @@
 import {StageChannel, VoiceChannel} from "discord.js";
 import {AudioPlayer} from "@lib/player/AudioPlayer";
-import {SeekStream} from "@lib/player/audio";
 import {Client, Logger} from "@lib/discord";
 import {Voice} from "@lib/voice";
 import {Song} from "./Song";
@@ -22,14 +21,19 @@ abstract class BaseQueue {
         player:     new class extends AudioPlayer {
             /**
              * @description Функция отвечает за циклическое проигрывание
-             * @param track {Song} Трек который будет включен
-             * @param seek {number} Пропуск времени
+             * @param track - Трек который будет включен
+             * @param seek - Пропуск времени
              * @public
              */
-            public play = async (track: Song, seek: number = 0): Promise<void> => {
-                if (!track || !track.resource) { this.emit("player/wait", this); return; }
+            public play = (track: Song, seek: number = 0): void => {
+                new Promise<void>(async () => {
+                    if (!track || !track.resource)
 
-                try {
+                    if (!track || !track.resource) {
+                        this.emit("player/wait", this);
+                        return;
+                    }
+
                     const path = await track.resource;
 
                     if (path instanceof Error) {
@@ -38,12 +42,12 @@ abstract class BaseQueue {
                     }
 
                     this.emit("player/ended", this, seek);
-                    const {chunkSize, filters} = this.parseFilters;
-                    this.read = new SeekStream({path, seek, chunk: chunkSize, filters});
-                } catch (err) {
+                    this.read = {path, seek};
+                    return;
+                }).catch((err) => {
                     this.emit("player/error", this, `${err}`, "skip");
                     Logger.log("ERROR", err);
-                }
+                })
             };
         }
     };
@@ -66,7 +70,7 @@ abstract class BaseQueue {
 
     /**
      * @description Сохраняем тип повтора
-     * @param loop {"off" | "song" | "songs"} Тип повтора
+     * @param loop - Тип повтора
      * @public
      */
     public set repeat(loop: "off" | "song" | "songs") {

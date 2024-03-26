@@ -84,6 +84,104 @@ export class Handler<T> {
 
 /**
  * @author SNIPPIK
+ * @description Интерфейсы для загрузки
+ * @namespace Handler
+ */
+export namespace Handler {
+    /**
+     * @author SNIPPIK
+     * @description Интерфейс для событий
+     * @interface Event
+     */
+    export interface Event<T extends keyof ClientEvents | keyof CollectionAudioEvents | keyof AudioPlayerEvents> {
+        /**
+         * @description Название ивента
+         * @default null
+         * @readonly
+         * @public
+         */
+        name: T extends keyof CollectionAudioEvents ? keyof CollectionAudioEvents : T extends keyof AudioPlayerEvents ? keyof AudioPlayerEvents : keyof ClientEvents;
+
+        /**
+         * @description Тип ивента
+         * @default null
+         * @readonly
+         * @public
+         */
+        type: T extends keyof CollectionAudioEvents | keyof AudioPlayerEvents ? "player" : "client";
+
+        /**
+         * @description Функция, которая будет запущена при вызове ивента
+         * @default null
+         * @readonly
+         * @public
+         */
+        execute: T extends keyof CollectionAudioEvents ? CollectionAudioEvents[T] : T extends keyof AudioPlayerEvents ? (queue: Queue.Music, ...args: Parameters<AudioPlayerEvents[T]>) => any : T extends keyof ClientEvents ? (client: Client, ...args: ClientEvents[T]) => void : never;
+    }
+
+    /**
+     * @author SNIPPIK
+     * @description Интерфейс для команд
+     * @interface Command
+     */
+    export interface Command {
+        /**
+         * @description Имя команды
+         * @default null
+         * @readonly
+         * @public
+         */
+        name: string;
+
+        /**
+         * @description Описание команды
+         * @default "Нет описания"
+         * @readonly
+         * @public
+         */
+        description: string;
+
+        /**
+         * @description Опции для slashCommand
+         * @default null
+         * @readonly
+         * @public
+         */
+        options?: ApplicationCommandOption[];
+
+        /**
+         * @description Команду может использовать только разработчик
+         * @default false
+         * @readonly
+         * @public
+         */
+        owner?: boolean;
+
+        /**
+         * @description Права бота
+         * @default null
+         * @readonly
+         * @public
+         */
+        permissions?: PermissionResolvable[];
+
+        /**
+         * @description Выполнение команды
+         * @default null
+         * @readonly
+         * @public
+         */
+        execute: (options: {
+            message: Client.message | Client.interact,
+            args?: string[],
+            group?: string,
+            sub?: string
+        }) => void;
+    }
+}
+
+/**
+ * @author SNIPPIK
  * @description Вспомогательные классы
  * @namespace Constructor
  */
@@ -182,50 +280,100 @@ export namespace Constructor {
             Object.assign(this, options);
         };
     }
+}
+
+/**
+ * @author SNIPPIK
+ * @description Управление отправкой сообщений
+ * @namespace Constructor
+ * @dublicate
+ */
+export namespace Constructor {
+    /**
+     * @author SNIPPIK
+     * @description Параметры для класса message
+     */
+    export type messageOptions<T> =
+        (T extends "menu" ? messageTypes.menu :
+            T extends "simple" ? messageTypes.simple :
+                T extends "embeds" ? messageTypes.embeds : never) & messageTypes.main;
+
+    /**
+     * @author SNIPPIK
+     * @description Типы данные для взаимодействия с классом message
+     */
+    export namespace messageTypes {
+        /**
+         * @description Конструктор меню
+         */
+        export interface menu {
+            content?: string;
+            embeds?: EmbedData[];
+            pages: string[];
+            page: number;
+            callback: (message: Client.message, pages: string[], page: number) => void;
+        }
+
+        /**
+         * @description Конструктор сообщения, отправка текстового сообщения в embed
+         */
+        export interface simple {
+            color?: "DarkRed" | "Blue" | "Green" | "Default" | "Yellow" | "Grey" | "Navy" | "Gold" | "Orange" | "Purple" | number;
+            codeBlock?: string;
+            content: string;
+        }
+
+        /**
+         * @description Конструктор embeds, отправка своих embeds
+         */
+        export interface embeds {
+            embeds: EmbedData[];
+        }
+
+        /**
+         * @description Дополнительные параметры для отправки
+         */
+        export interface main {
+            promise?: (msg: Client.message) => void;
+            components?: ActionRowBuilder[];
+            replied?: boolean;
+            time?: number;
+        }
+    }
 
     /**
      * @author SNIPPIK
      * @description Создает сообщения для отправки на Discord
      * @class message
      */
-    export class message {
-        private readonly _options: ConstructorMessage & {message?: Client.message | Client.interact; fetchReply?: boolean} = {time: 15e3, embeds: null, fetchReply: true};
-        public constructor(options: message["_options"]) {
-            Object.assign(this._options, options);
-            const {time, promise} = options;
+    export class message<T> {
+        //@ts-ignore
+        private readonly data: messageOptions<T> & {message: Client.message | Client.interact; fetchReply?: boolean} = {time: 15e3, fetchReply: true};
+        /**
+         * @description Получаем данные заданные при создании класса
+         * @return messageOptions
+         * @public
+         */
+        public get options() { return this.data; };
 
-            //Отправляем сообщение
-            this.channel.then((msg) => {
-                //Удаляем сообщение через время если это возможно
-                if (time !== 0) message.delete = {message: msg, time};
-
-                //Если получить возврат не удалось, то ничего не делаем
-                if (!msg) return;
-
-                //Если надо выполнить действия после
-                if (promise) promise(msg);
-
-                //Если меню, то не надо удалять
-                if ("page" in options) this._createMenu(msg);
-            }).catch((err) => Logger.log("ERROR", err));
-        };
         /**
          * @description Получаем цвет, если он есть в параметрах конвертируем в число
          * @private
          */
         private get color() {
-            const options = this._options;
+            const options = this.options;
 
-            if ("color" in options) return typeof options.color === "number" ? options.color : Colors[options.color] ?? 258044;
-            return 258044;
+            if (!("color" in options)) return 258044;
+            else if (typeof options.color === "number") return options.color;
+            return Colors[options.color] ?? 258044;
         };
 
         /**
-         * @description Получаем данные для отправки сообщения
-         * @return object
+         * @description Редактируем параметры заданные при создании класса
+         * @protected
          */
-        protected get messageOptions() {
-            let options = this._options;
+        protected get modificationOptions() {
+            let options = this.options;
 
             //Если указано простое сообщение
             if ("content" in options && !("page" in options)) {
@@ -257,14 +405,14 @@ export namespace Constructor {
          * @return Promise<Client.message>
          */
         protected get channel(): Promise<Client.message> {
-            const {message, replied} = this._options;
+            const {message, replied} = this.options;
 
             if ("replied" in message && !(message as any).replied && !replied) {
-                if (message.isRepliable()) return message.reply(this.messageOptions);
-                return message.followUp(this.messageOptions);
+                if (message.isRepliable()) return message.reply(this.modificationOptions);
+                return message.followUp(this.modificationOptions);
             }
 
-            return message.channel.send(this.messageOptions) as Promise<Client.message>;
+            return message.channel.send(this.modificationOptions) as Promise<Client.message>;
         };
 
         /**
@@ -285,19 +433,43 @@ export namespace Constructor {
         };
 
         /**
+         * @description Создаем класс с заданными параметрами
+         * @param options
+         */
+        public constructor(options: message<T>["options"]) {
+            Object.assign(this.data, options);
+            const {time, promise} = options;
+
+            //Отправляем сообщение
+            this.channel.then((msg) => {
+                //Удаляем сообщение через время если это возможно
+                if (time !== 0) message.delete = {message: msg, time};
+
+                //Если получить возврат не удалось, то ничего не делаем
+                if (!msg) return;
+
+                //Если надо выполнить действия после
+                if (promise) promise(msg);
+
+                //Если меню, то не надо удалять
+                if ("page" in options) this.createMenuTable(msg);
+            }).catch((err) => Logger.log("ERROR", err));
+        };
+
+        /**
          * @description Создаем меню с объектами
          * @param msg - Сообщение пользователя
          * @return void
          */
-        private _createMenu = (msg: Client.message) => {
-            let {page, pages, callback} = this._options as MessageConstructors.menu;
+        private createMenuTable = (msg: Client.message) => {
+            let {page, pages, callback} = this.options as messageTypes.menu;
 
             for (const [key, emoji] of Object.entries({back: "⬅️", cancel: "🗑", next: "➡️"})) {
                 msg.react(emoji).then(() => msg.createReactionCollector({
                     time: 60e3,
                     filter: (reaction, user) => reaction.emoji.name === emoji && user.id !== msg.client.user.id
                 }).on("collect", ({users}): void => {
-                    users.remove(this._options.message.author).catch(() => null);
+                    users.remove(this.options.message.author).catch(() => null);
 
                     //Удаляем сообщение
                     if (key === "cancel") message.delete = {time: 2e3, message: msg};
@@ -316,57 +488,6 @@ export namespace Constructor {
         };
     }
 }
-
-
-/**
- * @author SNIPPIK
- * @description Конструкторы сообщений
- * @namespace MessageConstructors
- */
-namespace MessageConstructors {
-    /**
-     * @description Конструктор меню
-     */
-    export interface menu {
-        content?: string;
-        embeds?: EmbedData[];
-        pages: string[];
-        page: number;
-        callback: (message: Client.message, pages: string[], page: number) => void;
-    }
-
-    /**
-     * @description Конструктор сообщения, отправка текстового сообщения в embed
-     */
-    export interface simple {
-        color?: "DarkRed" | "Blue" | "Green" | "Default" | "Yellow" | "Grey" | "Navy" | "Gold" | "Orange" | "Purple" | number;
-        codeBlock?: string;
-        content: string;
-    }
-
-    /**
-     * @description Конструктор embeds, отправка своих embeds
-     */
-    export interface embeds {
-        embeds: EmbedData[];
-    }
-
-    /**
-     * @description Дополнительные параметры для отправки
-     */
-    export interface main {
-        promise?: (msg: Client.message) => void;
-        components?: ActionRowBuilder[];
-        replied?: boolean;
-        time?: number;
-    }
-}
-/**
- * @description Допустимые параметры данных
- * @type ConstructorMessage
- */
-type ConstructorMessage = (MessageConstructors.menu | MessageConstructors.embeds | MessageConstructors.simple) & MessageConstructors.main;
-
 
 /**
  * @author SNIPPIK
@@ -534,97 +655,4 @@ export namespace API {
      * @type
      */
     export type callback<T> = Promise<(T extends "track" ? Song : T extends "playlist" | "album" ? Song.playlist : T extends "search" | "artist" ? Song[] : never) | Error>
-}
-
-export namespace handler {
-    /**
-     * @author SNIPPIK
-     * @description Интерфейс для команд
-     * @interface Command
-     */
-    export interface Command {
-        /**
-         * @description Имя команды
-         * @default null
-         * @readonly
-         * @public
-         */
-        name: string;
-
-        /**
-         * @description Описание команды
-         * @default "Нет описания"
-         * @readonly
-         * @public
-         */
-        description: string;
-
-        /**
-         * @description Опции для slashCommand
-         * @default null
-         * @readonly
-         * @public
-         */
-        options?: ApplicationCommandOption[];
-
-        /**
-         * @description Команду может использовать только разработчик
-         * @default false
-         * @readonly
-         * @public
-         */
-        owner?: boolean;
-
-        /**
-         * @description Права бота
-         * @default null
-         * @readonly
-         * @public
-         */
-        permissions?: PermissionResolvable[];
-
-        /**
-         * @description Выполнение команды
-         * @default null
-         * @readonly
-         * @public
-         */
-        execute: (options: {
-            message: Client.message | Client.interact,
-            args?: string[],
-            group?: string,
-            sub?: string
-        }) => Promise<ConstructorMessage> | ConstructorMessage | void;
-    }
-
-    /**
-     * @author SNIPPIK
-     * @description Интерфейс для событий
-     * @interface Event
-     */
-    export interface Event<T extends keyof ClientEvents | keyof CollectionAudioEvents | keyof AudioPlayerEvents> {
-        /**
-         * @description Название ивента
-         * @default null
-         * @readonly
-         * @public
-         */
-        name: T extends keyof CollectionAudioEvents ? keyof CollectionAudioEvents : T extends keyof AudioPlayerEvents ? keyof AudioPlayerEvents : keyof ClientEvents;
-
-        /**
-         * @description Тип ивента
-         * @default null
-         * @readonly
-         * @public
-         */
-        type: T extends keyof CollectionAudioEvents | keyof AudioPlayerEvents ? "player" : "client";
-
-        /**
-         * @description Функция, которая будет запущена при вызове ивента
-         * @default null
-         * @readonly
-         * @public
-         */
-        execute: T extends keyof CollectionAudioEvents ? CollectionAudioEvents[T] : T extends keyof AudioPlayerEvents ? (queue: Queue.Music, ...args: Parameters<AudioPlayerEvents[T]>) => any : T extends keyof ClientEvents ? (client: Client, ...args: ClientEvents[T]) => void : never;
-    }
 }

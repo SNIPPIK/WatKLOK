@@ -1,8 +1,8 @@
-import {ApplicationCommandOptionType, Attachment, EmbedData, Routes, StageChannel, VoiceChannel} from "discord.js";
+import {Attachment, EmbedData, Routes, StageChannel, VoiceChannel} from "discord.js";
 import {AudioPlayer, AudioPlayerEvents, Filter} from "@lib/player/AudioPlayer";
 import {createWriteStream, existsSync, mkdirSync, rename} from "node:fs";
-import {API, Constructor, handler, Handler} from "@handler";
 import onPlaying from "@handler/Events/Player/message";
+import {API, Constructor, Handler} from "@handler";
 import {TypedEmitter} from "tiny-typed-emitter";
 import {Queue} from "@lib/player/queue/Queue";
 import {Song} from "@lib/player/queue/Song";
@@ -18,7 +18,7 @@ namespace LocalDataBase {
      * @abstract
      */
     abstract class Commands {
-        protected readonly _commands = new class extends Constructor.Collection<handler.Command> {
+        protected readonly _commands = new class extends Constructor.Collection<Handler.Command> {
             /**
              * @description Команды для разработчика
              * @return Command[]
@@ -125,7 +125,7 @@ namespace LocalDataBase {
                                     else if (!queue.player.playing || !queue.player.stream.duration || !message.editable) return;
 
                                     setImmediate(() => {
-                                        const newEmbed = (new onPlaying[0]() as handler.Event<"message/playing">).execute(queue, true) as EmbedData;
+                                        const newEmbed = (new onPlaying[0]() as Handler.Event<"message/playing">).execute(queue, true) as EmbedData;
 
                                         //Обновляем сообщение
                                         message.edit({
@@ -397,8 +397,8 @@ namespace LocalDataBase {
 
                     this.platforms.supported.push(item);
                 },
-                (item: handler.Command) => this.commands.set(item.name, item),
-                (item: handler.Event<any>) => {
+                (item: Handler.Command) => this.commands.set(item.name, item),
+                (item: Handler.Event<any>) => {
                     if (item.type === "client") client.on(item.name as any, (...args: any[]) => item.execute(client, ...args)); // @ts-ignore
                     else this.queue.events.on(item.name as any, (...args: any[]) => item.execute(...args));
                 }

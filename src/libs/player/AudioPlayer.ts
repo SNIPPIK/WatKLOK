@@ -28,7 +28,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @return object
      */
     public get parseFilters() {
-        const realFilters = [`volume=${db.AudioOptions.volume / 100}`]; let chunkSize = 0;
+        const realFilters = [`volume=${db.AudioOptions.volume / 100}`]; let chunk = 0;
 
         //Проверяем фильтры
         for (const filter of this.filters) {
@@ -39,15 +39,15 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
 
             //Если у фильтра есть модификатор скорости
             if (filter?.speed) {
-                if (typeof filter.speed === "number") chunkSize += Number(filter.speed);
-                else chunkSize += Number(this.filters.slice(this.filters.indexOf(filter) + 1));
+                if (typeof filter.speed === "number") chunk += Number(filter.speed);
+                else chunk += Number(this.filters.slice(this.filters.indexOf(filter) + 1));
             }
         }
 
         //Надо ли плавное включения треков
         realFilters.push(`afade=t=in:st=0:d=${db.AudioOptions.fade}`);
 
-        return { filters: realFilters.join(","), chunkSize }
+        return { filters: realFilters.join(","), chunk }
     };
 
     /**
@@ -92,7 +92,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
 
     /**
      * @description Взаимодействие с голосовым подключением
-     * @param connection {VoiceConnection} Голосовое подключение
+     * @param connection - Голосовое подключение
      * @public
      */
     public set connection(connection: VoiceConnection) {
@@ -105,7 +105,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
 
     /**
      * @description Смена статуса плеера, если не знаешь что делаешь, то лучше не трогай!
-     * @param status {keyof AudioPlayerEvents} Статус плеера
+     * @param status - Статус плеера
      * @private
      */
     public set status(status: keyof AudioPlayerEvents) {
@@ -173,7 +173,9 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @description Начинаем чтение стрима
      * @public
      */
-    public set read(stream: SeekStream) {
+    public set read(options: {path: string, seek: number}) {
+        const stream = new SeekStream(Object.assign(options, this.parseFilters));
+
         //Если стрим можно прочитать
         if (stream.readable) {
             this.stream = stream;

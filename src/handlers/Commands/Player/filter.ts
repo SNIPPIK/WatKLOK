@@ -1,8 +1,8 @@
 import {ApplicationCommandOptionType, Colors, EmbedData} from "discord.js";
-import {Constructor, handler} from "@handler";
+import {Constructor, Handler} from "@handler";
 import {db} from "@lib/db";
 
-class Group extends Constructor.Assign<handler.Command> {
+class Group extends Constructor.Assign<Handler.Command> {
     public constructor() {
         super({
             name: "filter",
@@ -151,7 +151,7 @@ class Group extends Constructor.Assign<handler.Command> {
 
                     case "add": {
                         if (index !== -1) return { content: `Filter: ${name} уже включен!`, color: "Yellow", codeBlock: "css" };
-                        
+
                         //Делаем проверку на совместимость
                         for (let i = 0; i < queue.player.filters.length; i++) {
                             const filter = queue.player.filters[i];

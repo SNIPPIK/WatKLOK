@@ -1,10 +1,10 @@
 import {ApplicationCommandOptionType, Colors, EmbedData, TextChannel} from "discord.js";
-import {API, Constructor, handler} from "@handler";
+import {API, Constructor, Handler} from "@handler";
 import {Logger} from "@lib/discord";
 import {db} from "@lib/db";
 import {env} from "@env";
 
-class Group extends Constructor.Assign<handler.Command> {
+class Group extends Constructor.Assign<Handler.Command> {
     public constructor() {
         super({
             name: "owner",

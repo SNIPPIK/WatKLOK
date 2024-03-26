@@ -1,10 +1,10 @@
 import {ApplicationCommandOptionType, Colors, EmbedData} from "discord.js";
 import {History} from "@lib/player/utils/History";
-import {Constructor, handler} from "@handler";
+import {Constructor, Handler} from "@handler";
 import {Logger} from "@lib/discord";
 import {db} from "@lib/db";
 
-class Group extends Constructor.Assign<handler.Command>{
+class Group extends Constructor.Assign<Handler.Command>{
     public constructor() {
         super({
             name: "queue",

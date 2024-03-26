@@ -59,7 +59,7 @@ if (!process["argv"].includes("--ShardManager")) LoadModule();
 
 
 /**
- * @description Выдаваемы методы для работы watklok/voice
+ * @description Выдаваемы методы для работы voice
  */
 interface Methods {
     close?(opusPacket: Buffer, nonce: Buffer, secretKey: Uint8Array): Buffer;

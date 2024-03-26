@@ -1,4 +1,4 @@
-import {Constructor, handler} from "@handler";
+import {Constructor, Handler} from "@handler";
 import {Events} from "discord.js";
 import {Voice} from "@lib/voice";
 import {db} from "@lib/db"
@@ -8,7 +8,7 @@ import {db} from "@lib/db"
  * @description Класс ивента VoiceStateUpdate
  * @class VoiceStateUpdate
  */
-class VoiceStateUpdate extends Constructor.Assign<handler.Event<Events.VoiceStateUpdate>> {
+class VoiceStateUpdate extends Constructor.Assign<Handler.Event<Events.VoiceStateUpdate>> {
     public constructor() {
         super({
             name: Events.VoiceStateUpdate,

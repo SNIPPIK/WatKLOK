@@ -1,5 +1,5 @@
 import {ActionRowBuilder, Colors, StringSelectMenuBuilder} from "discord.js";
-import {Constructor, handler} from "@handler";
+import {Constructor, Handler} from "@handler";
 import {Queue} from "@lib/player/queue/Queue";
 import {Song} from "@lib/player/queue/Song";
 import {Client} from "@lib/discord";
@@ -10,7 +10,7 @@ import {db} from "@lib/db";
  * @event message/error
  * @description Сообщение об ошибке
  */
-class onError extends Constructor.Assign<handler.Event<"message/error">> {
+class onError extends Constructor.Assign<Handler.Event<"message/error">> {
     public constructor() {
         super({
             name: "message/error",
@@ -18,7 +18,7 @@ class onError extends Constructor.Assign<handler.Event<"message/error">> {
             execute: (queue, error) => {
                 const {color, author, image, title, requester} = queue.songs.last;
 
-                new Constructor.message({ message: queue.message, replied: true, time: 10e3,
+                new Constructor.message<"embeds">({ message: queue.message, replied: true, time: 10e3,
                     embeds: [
                         {
                             color, thumbnail: image, timestamp: new Date(),
@@ -50,7 +50,7 @@ class onError extends Constructor.Assign<handler.Event<"message/error">> {
  * @event message/playing
  * @description Сообщение о том что сейчас играет
  */
-class onPlaying extends Constructor.Assign<handler.Event<"message/playing">> {
+class onPlaying extends Constructor.Assign<Handler.Event<"message/playing">> {
     public constructor() {
         super({
             name: "message/playing",
@@ -89,7 +89,7 @@ class onPlaying extends Constructor.Assign<handler.Event<"message/playing">> {
                 if (isReturn) return embed;
 
                 //Создаем и отправляем сообщение
-                new Constructor.message({
+                new Constructor.message<"embeds">({
                     message: queue.message, embeds: [embed], time: 0, replied: true,
                     components: [queue.components as any],
                     promise: (msg: Client.message) =>  {
@@ -106,7 +106,7 @@ class onPlaying extends Constructor.Assign<handler.Event<"message/playing">> {
  * @event message/push
  * @description Сообщение о добавленном треке или плейлисте
  */
-class onPush extends Constructor.Assign<handler.Event<"message/push">> {
+class onPush extends Constructor.Assign<Handler.Event<"message/push">> {
     public constructor() {
         super({
             name: "message/push",
@@ -159,7 +159,7 @@ class onPush extends Constructor.Assign<handler.Event<"message/push">> {
                 }
 
                 //Создаем и отправляем сообщение
-                new Constructor.message(options);
+                new Constructor.message<"embeds">(options);
             }
         });
     }
@@ -170,18 +170,18 @@ class onPush extends Constructor.Assign<handler.Event<"message/push">> {
  * @event message/search
  * @description Сообщение с выбором трека
  */
-class onSearch extends Constructor.Assign<handler.Event<"message/search">> {
+class onSearch extends Constructor.Assign<Handler.Event<"message/search">> {
     public constructor() {
         super({
             name: "message/search",
             type: "player",
             execute: (tracks, platform, message) => {
-                if (tracks?.length < 1 || !tracks) return void (new Constructor.message({
+                if (tracks?.length < 1 || !tracks) return void (new Constructor.message<"simple">({
                     content: `${message.author} | Я не смог найти музыку с таким названием. Попробуй другое название!`,
                     color: "DarkRed", message, replied: true
                 }));
 
-                new Constructor.message({
+                new Constructor.message<"simple">({
                     replied: true, time: 30e3, message, content: "Вот что мне удалось найти!",
                     //Список треков под сообщением
                     components: [new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId("menu-builder").setPlaceholder("Найденные треки")

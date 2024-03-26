@@ -1,5 +1,5 @@
 import {History} from "@lib/player/utils/History";
-import {Constructor, handler} from "@handler";
+import {Constructor, Handler} from "@handler";
 import {db} from "@lib/db";
 import {env} from "@env";
 const timeout = parseInt(env.get("player.timeout"));
@@ -9,7 +9,7 @@ const timeout = parseInt(env.get("player.timeout"));
  * @event player/ended
  * @description Завершение проигрывания трека
  */
-class onEnd extends Constructor.Assign<handler.Event<"player/ended">> {
+class onEnd extends Constructor.Assign<Handler.Event<"player/ended">> {
     public constructor() {
         super({
             name: "player/ended",
@@ -29,7 +29,7 @@ class onEnd extends Constructor.Assign<handler.Event<"player/ended">> {
  * @event player/wait
  * @description Плеер ожидает действий
  */
-class onWait extends Constructor.Assign<handler.Event<"player/wait">> {
+class onWait extends Constructor.Assign<Handler.Event<"player/wait">> {
     public constructor() {
         super({
             name: "player/wait",
@@ -61,7 +61,7 @@ class onWait extends Constructor.Assign<handler.Event<"player/wait">> {
  * @event player/error
  * @description Плеер словил ошибку
  */
-class onError extends Constructor.Assign<handler.Event<"player/error">> {
+class onError extends Constructor.Assign<Handler.Event<"player/error">> {
     public constructor() {
         super({
             name: "player/error",

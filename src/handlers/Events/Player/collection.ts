@@ -1,4 +1,4 @@
-import {API, Constructor, handler} from "@handler";
+import {API, Constructor, Handler} from "@handler";
 import {Queue} from "@lib/player/queue/Queue";
 import {Song} from "@lib/player/queue/Song";
 import {Logger} from "@lib/discord";
@@ -10,7 +10,7 @@ import {env} from "@env";
  * @event collection/api
  * @description Выполняется при запросе API
  */
-class onAPI extends Constructor.Assign<handler.Event<"collection/api">> {
+class onAPI extends Constructor.Assign<Handler.Event<"collection/api">> {
     public constructor() {
         super({
             name: "collection/api",
@@ -75,14 +75,14 @@ class onAPI extends Constructor.Assign<handler.Event<"collection/api">> {
  * @event collection/error
  * @description Выполнятся при возникновении ошибки в collection
  */
-class onError extends Constructor.Assign<handler.Event<"collection/error">> {
+class onError extends Constructor.Assign<Handler.Event<"collection/error">> {
     public constructor() {
         super({
             name: "collection/error",
             type: "player",
             execute: (message, error, replied = false,  color = "DarkRed") => {
                 try {
-                    new Constructor.message({message, time: 7e3, content: error, color, replied});
+                    new Constructor.message<"simple">({message, time: 7e3, content: error, color, replied});
                 } catch (e) {
                     Logger.log("WARN", `[collection/error] ${e}]`);
                 }
