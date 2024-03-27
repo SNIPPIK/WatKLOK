@@ -8,7 +8,7 @@ import {env} from "@env";
  * @class History
  */
 export class History {
-    private readonly _local = {
+    private readonly data = {
         track: null     as Song,
         guildID: null   as string
     };
@@ -20,7 +20,7 @@ export class History {
     private get path() {
         const path = env.get("cached.dir");
 
-        return `${path}/Guilds/[${this._local.guildID}].json`;
+        return `${path}/Guilds/[${this.data.guildID}].json`;
     };
 
     /**
@@ -29,9 +29,7 @@ export class History {
      * @public
      * @static
      */
-    public static get enable() {
-        return env.get("history");
-    };
+    public static get enable() { return env.get("history"); };
 
     /**
      * @description Загружаем файл
@@ -51,7 +49,7 @@ export class History {
      * @param GuildID {string} ID сервера
      */
     public constructor(track: Song, GuildID: string) {
-        this._local.guildID = GuildID; this._local.track = track;
+        this.data.guildID = GuildID; this.data.track = track;
 
         //Если нет файла
         if (!existsSync(this.path)) this.saveToFile(this.path, { tracks: [] });
@@ -78,7 +76,7 @@ export class History {
      * @private
      */
     private pushTrack = (tracks: Array<miniTrack>) => {
-        const track = tracks.find((track) => track.url === this._local.track.url);
+        const track = tracks.find((track) => track.url === this.data.track.url);
 
         if (track) {
             const index = tracks.indexOf(track);
@@ -87,14 +85,14 @@ export class History {
         }
 
         tracks.push({
-            title: this._local.track.title,
-            url: this._local.track.url,
+            title: this.data.track.title,
+            url: this.data.track.url,
             author: {
-                title: this._local.track.author.title,
-                url: this._local.track.author.url
+                title: this.data.track.author.title,
+                url: this.data.track.author.url
             },
 
-            platform: this._local.track.platform,
+            platform: this.data.track.platform,
             total: 1
         });
     };
@@ -142,17 +140,6 @@ export class History {
         }, 2e3);
     }
 }
-
-
-/**
- *  _____           _                    __
- * |_   _|         | |                  / _|
- *   | |    _ __   | |_    ___   _ __  | |_    __ _   ___    ___   ___
- *   | |   | '_ \  | __|  / _ \ | '__| |  _|  / _` | / __|  / _ \ / __|
- *  _| |_  | | | | | |_  |  __/ | |    | |   | (_| | \__ \ |  __/ \__ \
- * |_____| |_| |_|  \__|  \___| |_|    |_|    \__,_| |___/  \___| |___/
- */
-
 
 /**
  * @author SNIPPIK

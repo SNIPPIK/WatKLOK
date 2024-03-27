@@ -1,14 +1,13 @@
 import {BrotliDecompress, createBrotliDecompress, createDeflate, createGunzip, Deflate, Gunzip} from "node:zlib";
 import {request as httpsRequest, RequestOptions} from "https";
 import {IncomingMessage, request as httpRequest} from "http";
-import {Logger} from "@lib/discord";
+import {Logger} from "@env";
 
 /**
  * @author SNIPPIK
  * @description Класс создающий запрос
  * @class Request
  * @abstract
- * @private
  */
 abstract class Request {
     protected readonly data: {
@@ -39,7 +38,7 @@ abstract class Request {
      * @public
      */
     public get request(): Promise<IncomingMessage | Error> {
-        return new Promise(async (resolve) => {
+        return new Promise((resolve) => {
             Logger.log("DEBUG", `httpsClient: [${this.data.method}:|${this.data.hostname}${this.data.path}]`);
 
             const request = this.protocol(this.data, (res: IncomingMessage) => {

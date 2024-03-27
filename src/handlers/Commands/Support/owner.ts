@@ -1,8 +1,7 @@
 import {ApplicationCommandOptionType, Colors, EmbedData, TextChannel} from "discord.js";
 import {API, Constructor, Handler} from "@handler";
-import {Logger} from "@lib/discord";
+import {env, Logger} from "@env";
 import {db} from "@lib/db";
-import {env} from "@env";
 
 class Group extends Constructor.Assign<Handler.Command> {
     public constructor() {

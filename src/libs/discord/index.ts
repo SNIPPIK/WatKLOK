@@ -1,6 +1,5 @@
 import {ActionRow, ActionRowBuilder,  Attachment, BaseInteraction, BaseMessageOptions, Client as DS_Client, EmbedData, GuildMember, IntentsBitField,Message,MessagePayload, Partials, ShardingManager, User, WebhookClient, WebhookMessageCreateOptions } from "discord.js";
-import {threadId} from "node:worker_threads";
-import {env} from "@env";
+import {env, Logger} from "@env";
 
 /**
  * @author SNIPPIK
@@ -125,56 +124,5 @@ export namespace Client {
     type SendMessageOptions = string | MessagePayload | BaseMessageOptions | {
         embeds?: EmbedData[],
         components?: ActionRow<any> | ActionRowBuilder<any>
-    };
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-const debug = env.get("debug");
-/**
- * @author SNIPPIK
- * @description Простенький logger
- * @public
- */
-export const Logger = new class {
-    private readonly status = {
-        "DEBUG": "\x1b[34mi\x1b[0m",
-        "WARN": "\x1b[33mi\x1b[0m",
-        "ERROR": "\x1b[31mi\x1b[0m",
-        "LOG": "\x1b[32mi\x1b[0m"
-    };
-    private readonly colors = {
-        "DEBUG": "\x1b[90m",
-        "WARN": "\x1b[33m",
-        "ERROR": "\x1b[31m",
-        "LOG": ""
-    };
-
-    /**
-     * @description Отправляем лог с временем
-     * @param status {string} Статус лога
-     * @param text {string} Текст лога
-     */
-    public log = (status: "DEBUG" | "WARN" | "ERROR" | "LOG", text: string): void => {
-        if (status === "DEBUG" && !debug || !(typeof text?.replace === 'function')) return;
-
-        text = text.replace(/\[/g, "\x1b[100m \x1b[30m").replace(/]/g, " \x1b[0m");
-
-        const extStatus = this.status[status];
-        const time = `\x1b[90m${new Date().toLocaleTimeString()}\x1b[0m`;
-        const spaces = 130 - (extStatus.length + text.length) - (time.length);
-        const extText = spaces < 0 ? `${text}\x1b[0m` : `${text}\x1b[0m${" ".repeat(spaces) + time}`;
-
-        console.log(`\x1b[35m${threadId} |\x1b[0m ${extStatus} `  + `${this.colors[status]}${extText}`);
     };
 }

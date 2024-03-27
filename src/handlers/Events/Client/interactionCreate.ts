@@ -1,10 +1,8 @@
 import {CommandInteractionOption, Events, PermissionsBitField} from "discord.js";
 import {Constructor, Handler} from "@handler";
-import {Client, Logger} from "@lib/discord";
+import {Client} from "@lib/discord";
+import {Logger} from "@env";
 import {db} from "@lib/db";
-import {env} from "@env";
-
-const owners: string[] = env.get("owner.list").split(",");
 
 /**
  * @author SNIPPIK
@@ -51,9 +49,7 @@ class Interaction extends Constructor.Assign<Handler.Event<Events.InteractionCre
      */
     private static _stepCommand = (message: Client.interact) => {
         const {author, guild} = message;
-        const group = db.commands.filter((command) =>
-            command.name === message.commandName || command.name === message.options._group
-        ).at(-1);
+        const group = db.commands.get([message.commandName, message.options._group]);
 
         //Если пользователь пытается включить команду вне сервера
         if (!message.guild) return {
@@ -62,7 +58,7 @@ class Interaction extends Constructor.Assign<Handler.Event<Events.InteractionCre
         };
 
         //Если пользователь пытается использовать команду разработчика
-        else if (group?.owner && !owners.includes(author.id)) return {
+        else if (group?.owner && !db.owners.includes(author.id)) return {
             content: `${author}, эта команда предназначена для разработчиков!`,
             color: "DarkRed"
         };

@@ -1,9 +1,8 @@
 import {API, Constructor, Handler} from "@handler";
 import {Queue} from "@lib/player/queue/Queue";
 import {Song} from "@lib/player/queue/Song";
-import {Logger} from "@lib/discord";
+import {env, Logger} from "@env";
 import {db} from "@lib/db";
-import {env} from "@env";
 
 /**
  * @class onAPI
