@@ -45,7 +45,7 @@ class Group extends Constructor.Assign<Handler.Command> {
                 const { author, member, guild } = message;
                 const voiceChannel: VoiceChannel | StageChannel = member.voice.channel;
                 const me = message.guild.members?.me;
-                const queue = db.queue.get(guild.id);
+                const queue = db.audio.queue.get(guild.id);
 
                 //Если нет очереди
                 if (!queue) return { content: `${author} | Музыка сейчас не играет.`, color: "Yellow" };

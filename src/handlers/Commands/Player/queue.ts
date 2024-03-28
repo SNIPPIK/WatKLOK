@@ -82,7 +82,7 @@ class Group extends Constructor.Assign<Handler.Command>{
 
             execute: ({message, args, sub}) => {
                 const { author, member, guild } = message;
-                const queue = db.queue.get(guild.id);
+                const queue = db.audio.queue.get(guild.id);
                 const arg = args.length > 0 ? parseInt(args.pop()) : 1;
 
                 if (sub === "history") {

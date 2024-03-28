@@ -30,13 +30,13 @@ class VoiceStateUpdate extends Constructor.Assign<Handler.Event<Events.VoiceStat
                 /**
                  * @description Если есть очередь и нет слушателей то удаляем очередь
                  */
-                const queue = db.queue.get(newState.guild.id);
+                const queue = db.audio.queue.get(newState.guild.id);
 
                 if (queue) {
                     const usersSize = (newState.channel?.members ?? oldState.channel?.members)?.filter((member) => !member.user.bot && member.voice?.channel?.id === ChannelID)?.size;
                     const isBotVoice = !!(newState.channel?.members ?? oldState.channel?.members)?.find((member) => member.user.id === client.user.id);
 
-                    if (usersSize < 1 && !isBotVoice) db.queue.remove(queue.guild.id);
+                    if (usersSize < 1 && !isBotVoice) db.audio.queue.remove(queue.guild.id);
                 }
             }
         });

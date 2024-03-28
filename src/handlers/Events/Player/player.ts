@@ -16,7 +16,7 @@ class onEnd extends Constructor.Assign<Handler.Event<"player/ended">> {
             type: "player",
             execute: (queue, _, seek) => {
                 if (seek !== 0) return;
-                db.queue.events.emit("message/playing", queue);
+                db.audio.queue.events.emit("message/playing", queue);
 
                 if (History.enable && queue.songs.song.platform !== "DISCORD") new History(queue.songs.song, queue.guild.id);
             }
@@ -47,7 +47,7 @@ class onWait extends Constructor.Assign<Handler.Event<"player/wait">> {
                     }
                 }
 
-                if (!queue?.songs?.song) return db.queue.remove(queue.guild.id);
+                if (!queue?.songs?.song) return db.audio.queue.remove(queue.guild.id);
 
                 //Включаем трек через время
                 setTimeout(() => queue.player.play(queue.songs.song), timeout);
@@ -68,10 +68,10 @@ class onError extends Constructor.Assign<Handler.Event<"player/error">> {
             type: "player",
             execute: (queue, _, err, crash) => {
                 //Выводим сообщение об ошибке
-                db.queue.events.emit("message/error", queue, err);
+                db.audio.queue.events.emit("message/error", queue, err);
 
                 //Если возникает критическая ошибка
-                if (crash === "crash") return db.queue.remove(queue.guild.id);
+                if (crash === "crash") return db.audio.queue.remove(queue.guild.id);
                 else if (crash === "skip") {
                     queue.songs.shift();
 

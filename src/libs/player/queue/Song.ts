@@ -203,14 +203,14 @@ export class Song {
      */
     public get resource(): Promise<string | Error> {
         const platform = this.platform;
-        const isDownload = db.queue.cycles.downloader && platform !== "DISCORD";
+        const isDownload = db.audio.cycles.downloader && platform !== "DISCORD";
 
         //Создаем обещание
         return new Promise(async (resolve) => {
             try {
                 //Если трек уже кеширован, то сразу выдаем его
                 if (isDownload) {
-                    const info = db.queue.cycles.downloader.status(this);
+                    const info = db.audio.cycles.downloader.status(this);
                     if (info.status === "final") return resolve(`file:|${info.path}`);
                 }
 
@@ -232,7 +232,7 @@ export class Song {
 
                 //Если не удается найти ссылку через n попыток
                 if (!this.link) return resolve(Error(`[SONG]: Fail update link resource`));
-                else if (isDownload && this.link) void (db.queue.cycles.downloader.set(this));
+                else if (isDownload && this.link) void (db.audio.cycles.downloader.set(this));
                 return resolve(`link:|${this.link}`);
             } catch (err) {
                 return Error(`[SONG]: ${err}`);
@@ -249,7 +249,7 @@ export class Song {
 function fetchAPIs(track: Song): Promise<string | Error> {
     return new Promise((resolve) => {
         //Если платформа может самостоятельно выдать аудио
-        if (!db.platforms.audio.includes(track.platform)) {
+        if (!db.api.platforms.audio.includes(track.platform)) {
             const api = new API.response(track.platform).find("track");
 
             //Если нет такого запроса

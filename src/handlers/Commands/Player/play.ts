@@ -21,7 +21,7 @@ class Group extends Constructor.Assign<Handler.Command> {
                             description: "К какой платформе относится запрос?",
                             type: ApplicationCommandOptionType["String"],
                             required: true,
-                            choices: db.allow.map((platform) => {
+                            choices: db.api.allow.map((platform) => {
                                 return {
                                     name: `[${platform.requests.length}] ${platform.url} | ${platform.name}`,
                                     value: platform.name
@@ -96,7 +96,7 @@ class Group extends Constructor.Assign<Handler.Command> {
 
             execute: ({message, args, sub}) => {
                 const {author, member, guild} = message;
-                const queue = db.queue.get(guild.id);
+                const queue = db.audio.queue.get(guild.id);
                 const VoiceChannel = member?.voice?.channel;
 
                 //Если пользователь не подключен к голосовым каналам
@@ -113,7 +113,7 @@ class Group extends Constructor.Assign<Handler.Command> {
 
                 //Если пользователя пытается включить трек
                 if (sub === "play") {
-                    db.queue.events.emit("collection/api", message as any, VoiceChannel, args);
+                    db.audio.queue.events.emit("collection/api", message as any, VoiceChannel, args);
                     return;
                 }
 
@@ -127,7 +127,7 @@ class Group extends Constructor.Assign<Handler.Command> {
                         color: "Yellow"
                     };
 
-                    db.queue.events.emit("collection/api", message as any, VoiceChannel, ["DISCORD", attachment]);
+                    db.audio.queue.events.emit("collection/api", message as any, VoiceChannel, ["DISCORD", attachment]);
                     return;
                 }
 
@@ -191,7 +191,7 @@ class Group extends Constructor.Assign<Handler.Command> {
                     }
 
                     case "stop": {
-                        db.queue.remove(queue.guild.id);
+                        db.audio.queue.remove(queue.guild.id);
                         return { content: `${author} | Музыкальная очередь удалена!` };
                     }
                 }

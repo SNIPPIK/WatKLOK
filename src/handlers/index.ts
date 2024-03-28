@@ -641,21 +641,21 @@ export namespace API {
          * @return boolean
          * @public
          */
-        public get block() { return db.platforms.block.includes(this.platform); };
+        public get block() { return db.api.platforms.block.includes(this.platform); };
 
         /**
          * @description Выдаем bool, есть ли доступ к платформе
          * @return boolean
          * @public
          */
-        public get auth() { return db.platforms.authorization.includes(this.platform); };
+        public get auth() { return db.api.platforms.authorization.includes(this.platform); };
 
         /**
          * @description Выдаем bool, есть ли доступ к файлам аудио
          * @return boolean
          * @public
          */
-        public get audio() { return db.platforms.audio.includes(this.platform); };
+        public get audio() { return db.api.platforms.audio.includes(this.platform); };
 
         /**
          * @description Выдаем int, цвет платформы
@@ -697,7 +697,7 @@ export namespace API {
          * @public
          */
         public constructor(argument: API.platform | string) {
-            const temp = db.platforms.supported;
+            const temp = db.api.platforms.supported;
 
             //Если была указана ссылка
             if (argument.startsWith("http")) {

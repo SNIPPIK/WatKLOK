@@ -17,7 +17,7 @@ class Command_Info extends Constructor.Assign<Handler.Command> {
             name: "info",
             description: "Здесь показана моя информация!",
             execute: ({message}) => {
-                const { client, guild } = message, queue = db.queue.get(guild.id);
+                const { client, guild } = message, queue = db.audio.queue.get(guild.id);
                 const Latency = (Date.now() - message.createdTimestamp < 0 ? Math.random() * 78 : Date.now() - message.createdTimestamp).toFixed(0);
                 const WS = (client.ws.ping < 0 ? Math.random() * 78 : client.ws.ping).toFixed(0);
 
@@ -39,7 +39,7 @@ class Command_Info extends Constructor.Assign<Handler.Command> {
                 let Music = [
                     `• Битрейт аудио    => Auto`,
                     `• Макс очередь     => Infinite`,
-                    `• Очереди          => ${db.queue.size}`,
+                    `• Очереди          => ${db.audio.queue.size}`,
                 ];
 
                 if (queue) {

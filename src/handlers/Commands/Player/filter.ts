@@ -18,7 +18,7 @@ class Group extends Constructor.Assign<Handler.Command> {
                             name: "filters",
                             description: "Необходимо выбрать фильтр! Все доступные фильтры - all",
                             type: ApplicationCommandOptionType["String"],
-                            choices: db.filters.length < 25 ? db.filters.map((filter) => {
+                            choices: db.audio.filters.length < 25 ? db.audio.filters.map((filter) => {
                                 return {
                                     name: `${filter.name} | ${filter.description.length > 75 ? `${filter.description.substring(0, 75)}...` : filter.description}`,
                                     value: filter.name
@@ -41,7 +41,7 @@ class Group extends Constructor.Assign<Handler.Command> {
                             name: "filters",
                             description: "Необходимо выбрать фильтр! Все доступные фильтры - all",
                             type: ApplicationCommandOptionType["String"],
-                            choices: db.filters.length < 25 ? db.filters.map((filter) => {
+                            choices: db.audio.filters.length < 25 ? db.audio.filters.map((filter) => {
                                 return {
                                     name: `${filter.name} | ${filter.description.length > 75 ? `${filter.description.substring(0, 75)}...` : filter.description}`,
                                     value: filter.name
@@ -77,7 +77,7 @@ class Group extends Constructor.Assign<Handler.Command> {
 
             execute: ({message, args, sub}) => {
                 const { author, member, guild } = message;
-                const queue = db.queue.get(guild.id);
+                const queue = db.audio.queue.get(guild.id);
 
                 //Если нет очереди
                 if (!queue) return { content: `${author} | Музыка сейчас не играет`, color: "Yellow" };
@@ -109,13 +109,13 @@ class Group extends Constructor.Assign<Handler.Command> {
                 const seek: number = queue.player.stream?.duration ?? 0;
                 const name = args[args?.length - 2 ?? args?.length - 1] ?? args[0];
                 const arg = args.length > 1 ? Number(args[args?.length - 1]) : null;
-                const Filter = db.filters.find((item) => item.name === name);
+                const Filter = db.audio.filters.find((item) => item.name === name);
                 const index = queue.player.filters.indexOf(Filter);
 
                 switch (sub) {
                     case "current":
                     case "total": {
-                        let array = db.filters;
+                        let array = db.audio.filters;
                         if (sub === "current") {
                             if (queue?.player.filters.length === 0) return { content: `${author.username}, включенных аудио фильтров нет!`, codeBlock: "css" };
                             array = queue?.player?.filters;

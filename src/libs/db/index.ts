@@ -12,87 +12,124 @@ import {env, Logger} from "@env";
 
 /**
  * @author SNIPPIK
- * @description Коллекция команд
- * @abstract
+ * @description Список поддерживаемых баз данных
+ * @namespace SupportDataBase
  */
-abstract class db_Commands {
-    protected readonly _commands = new class<T extends Handler.Command> extends Array<T> {
-        /**
-         * @description Ищем в array подходящий тип
-         * @param names - Имя или имена для поиска
-         */
-        public get = (names: string | string[]): T => {
-            for (const cmd of this) {
-                if (names instanceof Array) {
-                    for (const name of names) {
-                        if (cmd.name === name || cmd.name === name) return cmd;
-                    }
-                } else if (cmd.name === names) return cmd;
-            }
+namespace SupportDataBase {
+    /**
+     * @author SNIPPIK
+     * @description Коллекция команд
+     * @abstract
+     */
+    export class Commands {
+        protected readonly _commands = new class<T extends Handler.Command> extends Array<T> {
+            /**
+             * @description Ищем в array подходящий тип
+             * @param names - Имя или имена для поиска
+             */
+            public get = (names: string | string[]): T => {
+                for (const cmd of this) {
+                    if (names instanceof Array) {
+                        for (const name of names) {
+                            if (cmd.name === name || cmd.name === name) return cmd;
+                        }
+                    } else if (cmd.name === names) return cmd;
+                }
 
-            return null;
+                return null;
+            };
+
+            /**
+             * @description Команды для разработчика
+             * @return Command[]
+             * @public
+             */
+            public get owner() { return this.filter((command) => command.owner); };
+
+            /**
+             * @description Команды доступные для всех
+             * @return Command[]
+             * @public
+             */
+            public get public() { return this.filter((command) => !command.owner); };
         };
-
         /**
-         * @description Команды для разработчика
-         * @return Command[]
+         * @description Выдаем класс с командами
          * @public
          */
-        public get owner() { return this.filter((command) => command.owner); };
+        public get commands() { return this._commands; };
 
         /**
-         * @description Команды доступные для всех
-         * @return Command[]
+         * @description Загружаем команды для бота в Discord
+         * @param client {Client} Класс клиента
+         * @return Promise<true>
          * @public
          */
-        public get public() { return this.filter((command) => !command.owner); };
-    };
-    /**
-     * @description Выдаем класс с командами
-     * @public
-     */
-    public get commands() { return this._commands; };
+        public registerCommands = (client: Client): Promise<boolean> => {
+            return new Promise<true>(async (resolve) => {
+                //Загружаем все команды
+                const PublicData: any = await client.rest.put(Routes.applicationCommands(client.user.id), {body: this.commands.public});
+                const OwnerData: any = await client.rest.put(Routes["applicationGuildCommands"](client.user.id, env.get("owner.server")), {body: this.commands.owner});
+
+                Logger.log("DEBUG", `[Shard ${client.ID}] [SlashCommands] ${PublicData.length}/${OwnerData.length}`);
+                return resolve(true);
+            });
+        };
+    }
 
     /**
-     * @description Загружаем команды для бота в Discord
-     * @param client {Client} Класс клиента
-     * @return Promise<true>
-     * @public
+     * @author SNIPPIK
+     * @description Коллекция для взаимодействия с Audio
+     * @abstract
      */
-    public registerCommands = (client: Client): Promise<boolean> => {
-        return new Promise<true>(async (resolve) => {
-            //Загружаем все команды
-            const PublicData: any = await client.rest.put(Routes.applicationCommands(client.user.id), {body: this.commands.public});
-            const OwnerData: any = await client.rest.put(Routes["applicationGuildCommands"](client.user.id, env.get("owner.server")), {body: this.commands.owner});
+    export class Audio {
+        private readonly audioCollection = new class extends Constructor.Collection<Queue.Music> {
+            private readonly _local = {
+                emitter: new class extends TypedEmitter<CollectionAudioEvents & AudioPlayerEvents> {
+                    private _playerEvents: (keyof AudioPlayerEvents)[] = null;
 
-            Logger.log("DEBUG", `[Shard ${client.ID}] [SlashCommands] ${PublicData.length}/${OwnerData.length}`);
-            return resolve(true);
-        });
-    };
-}
+                    /**
+                     * @description Ивенты плеера
+                     * @return (keyof AudioPlayerEvents)[]
+                     */
+                    public get player() {
+                        if (this._playerEvents) return this._playerEvents;
 
-/**
- * @author SNIPPIK
- * @description Коллекция для взаимодействия с Audio
- * @abstract
- */
-abstract class db_Audio extends db_Commands {
-    protected readonly _array = new class extends Constructor.Collection<Queue.Music> {
-        private readonly _local = {
-            emitter: new class extends TypedEmitter<CollectionAudioEvents & AudioPlayerEvents> {
-                private _playerEvents: (keyof AudioPlayerEvents)[] = null;
+                        this._playerEvents = this.eventNames().filter((item: keyof AudioPlayerEvents) => item.match(/player\//)) as (keyof AudioPlayerEvents)[];
+                        return this._playerEvents;
+                    };
+                },
+            };
 
-                /**
-                 * @description Ивенты плеера
-                 * @return (keyof AudioPlayerEvents)[]
-                 */
-                public get player() {
-                    if (this._playerEvents) return this._playerEvents;
+            /**
+             * @description Добавляем очередь в список
+             * @param queue - Очередь сервера
+             *
+             * @remarks
+             * Добавлять при создании очереди! В function set
+             * @public
+             */
+            public runQueue = (queue: Queue.Music) => {
+                db.audio.cycles.players.set(queue.player);
 
-                    this._playerEvents = this.eventNames().filter((item: keyof AudioPlayerEvents) => item.match(/player\//)) as (keyof AudioPlayerEvents)[];
-                    return this._playerEvents;
-                };
-            },
+                //Загружаем ивенты плеера
+                for (const event of this.events.player) {
+                    queue.player.on(event as keyof AudioPlayerEvents, (...args: any[]) => {
+                        this.events.emit(event as any, queue, ...args);
+                    });
+                }
+            };
+
+            /**
+             * @description Получаем ивенты для плеера
+             * @return CollectionAudioEvents
+             * @public
+             */
+            public get events() { return this._local.emitter; };
+        }
+        private readonly data = {
+            options: { volume:  parseInt(env.get("audio.volume")), fade: parseInt(env.get("audio.fade")) },
+            filters: [] as  Filter[],
             cycles: new class {
                 /**
                  * @author SNIPPIK
@@ -133,7 +170,7 @@ abstract class db_Audio extends db_Commands {
                             filter: (message) => !!message.edit,
                             execute: (message) => {
                                 const {guild} = message;
-                                const queue = db.queue.get(guild.id);
+                                const queue = db.audio.queue.get(guild.id);
 
                                 if (!queue || !queue.songs.size) return this.remove(message);
                                 else if (!queue.player.playing || !queue.player.stream.duration || !message.editable) return;
@@ -247,130 +284,105 @@ abstract class db_Audio extends db_Commands {
                 public get downloader() { return this._downloader; };
             }
         };
-
-        /**
-         * @description Добавляем очередь в список
-         * @param queue - Очередь сервера
-         *
-         * @remarks
-         * Добавлять при создании очереди! В function set
-         * @public
-         */
-        public runQueue = (queue: Queue.Music) => {
-            this.cycles.players.set(queue.player);
-
-            //Загружаем ивенты плеера
-            for (const event of this.events.player) {
-                queue.player.on(event as keyof AudioPlayerEvents, (...args: any[]) => {
-                    this.events.emit(event as any, queue, ...args);
-                });
-            }
-        };
-
         /**
          * @description Получаем циклы процесса
          * @return CollectionCycles
          * @public
          */
-        public get cycles() { return this._local.cycles; };
+        public get cycles() { return this.data.cycles; };
 
         /**
-         * @description Получаем ивенты для плеера
-         * @return CollectionAudioEvents
+         * @description Выдаем данные для запуска AudioResource
          * @public
          */
-        public get events() { return this._local.emitter; };
+        public get options() { return this.data.options; };
+
+        /**
+         * @description Получаем CollectionQueue
+         * @return CollectionQueue
+         * @public
+         */
+        public get queue() { return this.audioCollection; };
+
+        /**
+         * @description Получаем фильтры полученные из базы данных github
+         * @return Filter[]
+         * @public
+         */
+        public get filters() { return this.data.filters; };
+
+        /**
+         * @description Получаем фильтры из базы данных WatKLOK
+         * @return Promise<Error | true>
+         * @public
+         */
+        public get loadFilters(): Promise<Error | true> {
+            return new Promise<Error | true>(async (resolve, reject) => {
+                const raw = await new httpsClient(env.get("filters.url"), {useragent: true}).toJson;
+
+                if (raw instanceof Error) return reject(raw);
+                this.filters.push(...raw as any[]);
+
+                return resolve(true);
+            });
+        };
     }
-    protected readonly _filters: Filter[] = [];
-    private readonly _audio = {
-        volume:  parseInt(env.get("audio.volume")),
-        fade:    parseInt(env.get("audio.fade"))
-    };
-    /**
-     * @description Выдаем данные для запуска AudioResource
-     * @public
-     */
-    public get AudioOptions() { return this._audio; };
 
     /**
-     * @description Получаем CollectionQueue
-     * @return CollectionQueue
-     * @public
+     * @author SNIPPIK
+     * @description Коллекция для взаимодействия с APIs
+     * @abstract
      */
-    public get queue() { return this._array; };
+    export class APIs {
+        protected readonly _platforms = {
+            supported: [] as API.request[],
+            authorization: [] as API.platform[],
+            audio: [] as API.platform[],
+            block: [] as API.platform[]
+        };
+        protected readonly _limits = {
+            search: parseInt(env.get("APIs.limit.search")),
+            author: parseInt(env.get("APIs.limit.author")),
+            playlist: parseInt(env.get("APIs.limit.playlist")),
+        };
 
-    /**
-     * @description Получаем фильтры полученные из базы данных github
-     * @return Filter[]
-     * @public
-     */
-    public get filters() { return this._filters; };
+        /**
+         * @description Получаем лимиты по запросам
+         * @return object
+         * @public
+         */
+        public get limits() { return this._limits; };
 
-    /**
-     * @description Получаем фильтры из базы данных WatKLOK
-     * @return Promise<Error | true>
-     * @public
-     */
-    public get loadFilters(): Promise<Error | true> {
-        return new Promise<Error | true>(async (resolve, reject) => {
-            const raw = await new httpsClient(env.get("filters.url"), {useragent: true}).toJson;
+        /**
+         * @description Получаем все данные об платформе
+         * @return object
+         * @public
+         */
+        public get platforms() { return this._platforms; };
 
-            if (raw instanceof Error) return reject(raw);
-            this._filters.push(...raw as any[]);
-
-            return resolve(true);
-        });
-    };
+        /**
+         * @description Исключаем некоторые платформы из доступа
+         * @public
+         */
+        public get allow() {
+            return this._platforms.supported.filter((platform) => platform.name !== "DISCORD");
+        };
+    }
 }
 
 /**
  * @author SNIPPIK
- * @description Коллекция для взаимодействия с APIs
- * @abstract
- */
-abstract class db_APIs extends db_Audio {
-    protected readonly _platforms = {
-        supported: [] as API.request[],
-        authorization: [] as API.platform[],
-        audio: [] as API.platform[],
-        block: [] as API.platform[]
-    };
-    protected readonly _limits = {
-        search: parseInt(env.get("APIs.limit.search")),
-        author: parseInt(env.get("APIs.limit.author")),
-        playlist: parseInt(env.get("APIs.limit.playlist")),
-    };
-
-    /**
-     * @description Получаем лимиты по запросам
-     * @return object
-     * @public
-     */
-    public get limits() { return this._limits; };
-
-    /**
-     * @description Получаем все данные об платформе
-     * @return object
-     * @public
-     */
-    public get platforms() { return this._platforms; };
-
-    /**
-     * @description Исключаем некоторые платформы из доступа
-     * @public
-     */
-    public get allow() {
-        return this._platforms.supported.filter((platform) => platform.name !== "DISCORD");
-    };
-}
-
-/**
- * @author SNIPPIK
- * @class QuickDB
+ * @class DataBase
  * @description База данных бота
  * @public
  */
-class db_Main extends db_APIs {
+export const db = new class DataBase extends SupportDataBase.Commands {
+    private readonly data = {
+        audio: new SupportDataBase.Audio(),
+        apis: new SupportDataBase.APIs(),
+
+        owners: env.get("owner.list").split(",") as string[]
+    };
     protected readonly _emojis = {
         button: {
             resume: env.get("button.resume"),
@@ -398,12 +410,22 @@ class db_Main extends db_APIs {
         noImage: env.get("image.not"),
         diskImage: env.get("image.currentPlay")
     };
-    protected readonly _owners: string[] = env.get("owner.list").split(",");
+    /**
+     * @description База для управления музыкой
+     * @public
+     */
+    public get audio() { return this.data.audio };
+
+    /**
+     * @description База для управления APIs
+     */
+    public get api() { return this.data.apis };
+
     /**
      * @description ID пользователей которые являются разработчиками
      * @public
      */
-    public get owners() { return this._owners; };
+    public get owners() { return this.data.owners; };
 
     /**
      * @description Выдаем все необходимые смайлики
@@ -422,17 +444,17 @@ class db_Main extends db_APIs {
         const callbacks = [
             (item: API.request) => {
                 //Если нет данных, то откидываем платформу
-                if (!item.auth) this.platforms.authorization.push(item.name);
+                if (!item.auth) this.api.platforms.authorization.push(item.name);
 
                 //Поддерживает ли платформа получение аудио
-                if (!item.audio) this.platforms.audio.push(item.name);
+                if (!item.audio) this.api.platforms.audio.push(item.name);
 
-                this.platforms.supported.push(item);
+                this.api.platforms.supported.push(item);
             },
             (item: Handler.Command) => this.commands.push(item),
             (item: Handler.Event<any>) => {
                 if (item.type === "client") client.on(item.name as any, (...args: any[]) => item.execute(client, ...args)); // @ts-ignore
-                else this.queue.events.on(item.name as any, (...args: any[]) => item.execute(...args));
+                else this.audio.queue.events.on(item.name as any, (...args: any[]) => item.execute(...args));
             }
         ];
 
@@ -459,7 +481,7 @@ class db_Main extends db_APIs {
         Logger.log("LOG", `[Shard ${client.ID}] is initialized database`);
 
         //Проверяем статус получения фильтров
-        const filterStatus = await this.loadFilters;
+        const filterStatus = await this.audio.loadFilters;
         if (filterStatus instanceof Error) Logger.log("ERROR", `[Shard ${client.ID}] is initialized filters`);
         else Logger.log("LOG", `[Shard ${client.ID}] is initialized filters`);
 
@@ -467,11 +489,6 @@ class db_Main extends db_APIs {
         await this.initFs(client); await this.registerCommands(client);
     };
 }
-
-/**
- * @description Загружаем базу данных
- */
-export const db: db_Main = new db_Main();
 
 /**
  * @author SNIPPIK

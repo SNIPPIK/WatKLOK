@@ -158,7 +158,7 @@ abstract class BaseQueue {
      * @public
      */
     public cleanup = () => {
-        db.queue.cycles.players.remove(this.player);
+        db.audio.cycles.players.remove(this.player);
         this.player.cleanup();
 
         for (let item of Object.keys(this.data)) this.data[item] = null;

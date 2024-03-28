@@ -91,7 +91,7 @@ class Interaction extends Constructor.Assign<Handler.Event<Events.InteractionCre
      */
     private static _stepButton = (message: Client.interact) => {
         const { author, member, guild } = message;
-        const queue = db.queue.get(message.guild.id);
+        const queue = db.audio.queue.get(message.guild.id);
 
         //Если нет очереди
         if (!queue) return { content: `${author} | Музыка сейчас не играет`, color: "Yellow" };

@@ -28,7 +28,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @return object
      */
     public get parseFilters() {
-        const realFilters = [`volume=${db.AudioOptions.volume / 100}`]; let chunk = 0;
+        const realFilters = [`volume=${db.audio.options.volume / 100}`]; let chunk = 0;
 
         //Проверяем фильтры
         for (const filter of this.filters) {
@@ -45,7 +45,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
         }
 
         //Надо ли плавное включения треков
-        realFilters.push(`afade=t=in:st=0:d=${db.AudioOptions.fade}`);
+        realFilters.push(`afade=t=in:st=0:d=${db.audio.options.fade}`);
 
         return { filters: realFilters.join(","), chunk }
     };

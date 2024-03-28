@@ -14,9 +14,9 @@ class onAPI extends Constructor.Assign<Handler.Event<"collection/api">> {
         super({
             name: "collection/api",
             type: "player",
-            execute: async (message, voice, argument) => {
+            execute: (message, voice, argument) => {
                 const platform = new API.response(argument[0] as string), name = platform.platform;
-                const event = db.queue.events, collection = db.queue;
+                const event = db.audio.queue.events, collection = db.audio.queue;
 
                 if (platform.block) return void (event.emit("collection/error", message, `**${name}**\n\nРазработчик заблокировал доступ к этой платформе!\nВозможно из-за ошибки или блокировки со стороны сервера!`));
                 else if (platform.auth) return void (event.emit("collection/error", message, `**${name}**\n\nНет данных для авторизации, запрос не может быть выполнен!`));
@@ -35,9 +35,9 @@ class onAPI extends Constructor.Assign<Handler.Event<"collection/api">> {
                 let options: {audio?: boolean, limit?: number} = null;
 
                 //Определяем какие параметры передавать запросам
-                if (api.name === "artist") options = {limit: db.limits.author};
-                else if (api.name === "search") options = {limit: db.limits.search};
-                else if (api.name === "album" || api.name === "playlist") options = {limit: db.limits.playlist};
+                if (api.name === "artist") options = {limit: db.api.limits.author};
+                else if (api.name === "search") options = {limit: db.api.limits.search};
+                else if (api.name === "album" || api.name === "playlist") options = {limit: db.api.limits.playlist};
                 else if (api.name === "track") options = {audio: true};
 
                 new Promise<0>(async (resolve) => {

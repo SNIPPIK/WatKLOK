@@ -65,7 +65,7 @@ class Group extends Constructor.Assign<Handler.Command> {
                             description: "Укажи платформу",
                             required: true,
                             type: ApplicationCommandOptionType["String"],
-                            choices: (db.platforms.supported.length < 25 ? db.platforms.supported : db.platforms.supported.splice(0, 20)).map((platform) => {
+                            choices: (db.api.platforms.supported.length < 25 ? db.api.platforms.supported : db.api.platforms.supported.splice(0, 20)).map((platform) => {
                                 return {
                                     name: `[${platform.requests.length}] ${platform.url} | ${platform.name}`,
                                     value: platform.name
@@ -127,29 +127,29 @@ class Group extends Constructor.Assign<Handler.Command> {
                     case "platform": {
                         if (args[0] === "block") {
                             //Если платформа уже заблокирована
-                            if (db.platforms.block.includes(args[1] as API.platform)) return {
+                            if (db.api.platforms.block.includes(args[1] as API.platform)) return {
                                 content: `${message.author} | Платформа уже заблокирована!`, color: "Yellow"
                             };
 
-                            db.platforms.block.push(args[1] as API.platform);
+                            db.api.platforms.block.push(args[1] as API.platform);
                             return  {
                                 content: `${message.author} | Платформа заблокирована!`, color: "Green"
                             };
                         }
                         else if (args[0] === "unblock") {
                             //Если платформа не заблокирована
-                            if (!db.platforms.block.includes(args[1] as API.platform)) return {
+                            if (!db.api.platforms.block.includes(args[1] as API.platform)) return {
                                 content: `${message.author} | Платформа не заблокирована!`, color: "Yellow"
                             };
 
-                            const index = db.platforms.block.indexOf(args[1] as API.platform);
-                            db.platforms.block.splice(index - 1, 1);
+                            const index = db.api.platforms.block.indexOf(args[1] as API.platform);
+                            db.api.platforms.block.splice(index - 1, 1);
                             return  {
                                 content: `${message.author} | Платформа разблокирована!`, color: "Green"
                             };
                         }
                         else if (args[0] === "status") {
-                            const platform = db.platforms.supported.find((platform) => platform.name === args[0]);
+                            const platform = db.api.platforms.supported.find((platform) => platform.name === args[0]);
                             const fields = [
                                 `isAuth:  ${platform.auth}`,
                                 `isAudio: ${platform.audio}`,

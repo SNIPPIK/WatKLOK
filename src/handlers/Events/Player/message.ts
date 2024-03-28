@@ -93,7 +93,7 @@ class onPlaying extends Constructor.Assign<Handler.Event<"message/playing">> {
                     message: queue.message, embeds: [embed], time: 0, replied: true,
                     components: [queue.components as any],
                     promise: (msg: Client.message) =>  {
-                        if (!db.queue.cycles.messages.array.includes(msg)) db.queue.cycles.messages.set(msg);
+                        if (!db.audio.cycles.messages.array.includes(msg)) db.audio.cycles.messages.set(msg);
                     }
                 });
             }
@@ -208,7 +208,7 @@ class onSearch extends Constructor.Assign<Handler.Event<"message/search">> {
                         collector.once("collect", (interaction: any) => {
                             const id = interaction.values[0];
 
-                            if (id && id !== "stop") db.queue.events.emit("collection/api", message, message.member.voice.channel, [platform, id])
+                            if (id && id !== "stop") db.audio.queue.events.emit("collection/api", message, message.member.voice.channel, [platform, id])
 
                             interaction?.deferReply();
                             interaction?.deleteReply();
