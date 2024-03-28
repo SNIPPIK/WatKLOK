@@ -9,6 +9,20 @@ import {env} from "@env";
  * @API VK
  */
 class currentAPI extends Constructor.Assign<API.request> {
+    /**
+     * @description Данные для создания запросов
+     * @protected
+     */
+    protected static authorization = {
+        api: "https://api.vk.com/method",
+        token:`?access_token=${env.get("token.vk")}`
+    };
+
+    /**
+     * @description Создаем экземпляр запросов
+     * @constructor currentAPI
+     * @public
+     */
     public constructor() {
         super({
             name: "VK",
@@ -60,7 +74,7 @@ class currentAPI extends Constructor.Assign<API.request> {
                     public constructor() {
                         super({
                             name: "search",
-                            callback: (url) => {
+                            callback: (url, {limit}) => {
                                 return new Promise<Song[]>(async (resolve, reject) => {
                                     try {
                                         //Создаем запрос
@@ -68,7 +82,7 @@ class currentAPI extends Constructor.Assign<API.request> {
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
-                                        const tracks = (api.response.items.splice(0, env.get("APIs.limit.search"))).map(currentAPI.track);
+                                        const tracks = (api.response.items.splice(0, limit)).map(currentAPI.track);
 
                                         return resolve(tracks);
                                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
@@ -79,15 +93,6 @@ class currentAPI extends Constructor.Assign<API.request> {
                 }
             ]
         });
-    };
-
-    /**
-     * @description Данные для создания запросов
-     * @protected
-     */
-    protected static authorization = {
-        api: "https://api.vk.com/method",
-        token:`?access_token=${env.get("token.vk")}`
     };
 
     /**

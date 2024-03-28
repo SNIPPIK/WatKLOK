@@ -316,7 +316,7 @@ abstract class db_Audio extends db_Commands {
             const raw = await new httpsClient(env.get("filters.url"), {useragent: true}).toJson;
 
             if (raw instanceof Error) return reject(raw);
-            this._filters.push(...raw);
+            this._filters.push(...raw as any[]);
 
             return resolve(true);
         });
@@ -335,6 +335,18 @@ abstract class db_APIs extends db_Audio {
         audio: [] as API.platform[],
         block: [] as API.platform[]
     };
+    protected readonly _limits = {
+        search: parseInt(env.get("APIs.limit.search")),
+        author: parseInt(env.get("APIs.limit.author")),
+        playlist: parseInt(env.get("APIs.limit.playlist")),
+    };
+
+    /**
+     * @description Получаем лимиты по запросам
+     * @return object
+     * @public
+     */
+    public get limits() { return this._limits; };
 
     /**
      * @description Получаем все данные об платформе

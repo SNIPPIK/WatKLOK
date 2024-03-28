@@ -133,7 +133,7 @@ export class httpsClient extends Request {
      * @description Получаем со страницы JSON (Работает только тогда когда все страница JSON)
      * @public
      */
-    public get toJson(): Promise<null | any | Error> {
+    public get toJson(): Promise<null | {[key:string]: any} | Error> {
         return this.toString.then((body) => {
             if (body instanceof Error) return body;
 

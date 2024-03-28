@@ -4,182 +4,13 @@ import {httpsClient} from "@lib/request";
 import querystring from "querystring";
 import { URL } from "node:url";
 import {Script} from "vm";
-import {env} from "@env";
 
 /**
  * @author SNIPPIK
  * @description Динамически загружаемый класс
+ * @class currentAPI
  */
 class currentAPI extends Constructor.Assign<API.request> {
-    public constructor() {
-        super({
-            name: "YOUTUBE",
-            audio: true,
-            auth: true,
-
-            color: 16711680,
-            filter: /^(https?:\/\/)?(www\.)?(m\.)?(music\.)?( )?(youtube\.com|youtu\.?be)\/.+$/gi,
-            url: "youtube.com",
-
-            requests: [
-                /**
-                 * @description Запрос данных о треке
-                 */
-                new class extends API.item<"track"> {
-                    public constructor() {
-                        super({
-                            name: "track",
-                            filter: /(watch|embed|youtu\.be)/gi,
-                            callback: (url: string) => {
-                                const ID = /[a-zA-Z0-9-_]{11}/.exec(url).pop();
-
-                                return new Promise<Song>(async (resolve, reject) => {
-                                    //Если ID видео не удалось извлечь из ссылки
-                                    if (!ID) return reject(Error("[APIs]: Не удалось получить ID трека!"));
-
-                                    try {
-                                        //Создаем запрос
-                                        const result = await currentAPI.API(`https://www.youtube.com/watch?v=${ID}&has_verified=1`);
-
-                                        //Если возникла ошибка при получении данных
-                                        if (result instanceof Error) return reject(result);
-
-                                        const format = await currentAPI.extractStreamingData(result["streamingData"], result["html5"]);
-
-                                        result["videoDetails"]["format"] = {url: format.url};
-                                        const track = currentAPI.track(result["videoDetails"]);
-
-                                        return resolve(track);
-                                    } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
-                                });
-                            }
-                        });
-                    };
-                },
-
-                /**
-                 * @description Запрос данных об плейлисте
-                 */
-                new class extends API.item<"playlist"> {
-                    public constructor() {
-                        super({
-                            name: "playlist",
-                            filter: /playlist\?list=[a-zA-Z0-9-_]+/gi,
-                            callback: (url: string) => {
-                                const ID = url.match(this.filter);
-                                let author = null;
-
-                                return new Promise<Song.playlist>(async (resolve, reject) => {
-                                    //Если ID плейлиста не удалось извлечь из ссылки
-                                    if (!ID) return reject(Error("[APIs]: Не удалось получить ID плейлиста!"));
-
-                                    try {
-                                        //Создаем запрос
-                                        const details = await currentAPI.API(`https://www.youtube.com/${ID.pop()}`);
-
-                                        if (details instanceof Error) return reject(details);
-
-                                        const sidebar: any[] = details["sidebar"]["playlistSidebarRenderer"]["items"];
-                                        const microformat: any = details["microformat"]["microformatDataRenderer"];
-                                        const items: Song[] = details["contents"]["twoColumnBrowseResultsRenderer"]["tabs"][0]["tabRenderer"]
-                                            .content["sectionListRenderer"]["contents"][0]["itemSectionRenderer"]["contents"][0]["playlistVideoListRenderer"]["contents"]
-                                            .splice(0, env.get("APIs.limit.playlist")).map(({playlistVideoRenderer}) => currentAPI.track(playlistVideoRenderer));
-
-                                        //Если нет автора плейлиста, то это альбом автора
-                                        if (sidebar.length > 1) {
-                                            const authorData = details["sidebar"]["playlistSidebarRenderer"].items[1]["playlistSidebarSecondaryInfoRenderer"]["videoOwner"]["videoOwnerRenderer"];
-                                            author = await currentAPI.getChannel({ id: authorData["navigationEndpoint"]["browseEndpoint"]["browseId"], name: authorData.title["runs"][0].text });
-                                        } else author = items.at(-1).author;
-
-                                        return resolve({
-                                            url, title: microformat.title, items, author,
-                                            image: microformat.thumbnail["thumbnails"].pop()
-                                        });
-                                    } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
-                                });
-                            }
-                        });
-                    };
-                },
-
-                /**
-                 * @description Запрос данных треков артиста
-                 */
-                new class extends API.item<"artist"> {
-                    public constructor() {
-                        super({
-                            name: "artist",
-                            filter: /\/(channel)?(@)/gi,
-                            callback: (url: string) => {
-                                return new Promise<Song[]>(async (resolve, reject) => {
-                                    try {
-                                        let ID: string;
-
-                                        if (url.match(/@/)) ID = `@${url.split("@")[1].split("/")[0]}`;
-                                        else ID = `channel/${url.split("channel/")[1]}`;
-
-                                        //Создаем запрос
-                                        const details = await currentAPI.API(`https://www.youtube.com/${ID}/videos`);
-
-                                        if (details instanceof Error) return reject(details);
-
-                                        const author = details["microformat"]["microformatDataRenderer"];
-                                        const tabs: any[] = details?.["contents"]?.["twoColumnBrowseResultsRenderer"]?.["tabs"];
-                                        const contents = (tabs[1] ?? tabs[2])["tabRenderer"]?.content?.["richGridRenderer"]?.["contents"]
-                                            ?.filter((video: any) => video?.["richItemRenderer"]?.content?.["videoRenderer"])?.splice(0, env.get("APIs.limit.author"));
-
-                                        //Модифицируем видео
-                                        const videos = contents.map(({richItemRenderer}: any) => {
-                                            const video = richItemRenderer?.content?.["videoRenderer"];
-
-                                            return {
-                                                url: `https://youtu.be/${video["videoId"]}`, title: video.title["runs"][0].text, duration: { full: video["lengthText"]["simpleText"] },
-                                                author: { url: `https://www.youtube.com${ID}`, title: author.title }
-                                            }
-                                        });
-
-                                        return resolve(videos);
-                                    } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
-                                });
-                            }
-                        })
-                    };
-                },
-
-                /**
-                 * @description Запрос данных по поиску
-                 */
-                new class extends API.item<"search"> {
-                    public constructor() {
-                        super({
-                            name: "search",
-                            callback: (url: string) => {
-                                return new Promise<Song[]>(async (resolve, reject) => {
-                                    try {
-                                        //Создаем запрос
-                                        const details = await currentAPI.API(`https://www.youtube.com/results?search_query=${url.split(" ").join("+")}`);
-
-                                        //Если при получении данных возникла ошибка
-                                        if (details instanceof Error) return reject(details);
-
-                                        let vanilla_videos = details["contents"]?.["twoColumnSearchResultsRenderer"]?.["primaryContents"]?.["sectionListRenderer"]?.["contents"][0]?.["itemSectionRenderer"]?.["contents"];
-
-                                        if (vanilla_videos?.length === 0 || !vanilla_videos) return reject(Error(`[APIs]: Не удалось найти: ${url}`));
-
-                                        let filtered_ = vanilla_videos?.filter((video: any) => video && video?.["videoRenderer"] && video?.["videoRenderer"]?.["videoId"])?.splice(0, env.get("APIs.limit.search"));
-                                        let videos = filtered_.map(({ videoRenderer }: any) => currentAPI.track(videoRenderer));
-
-                                        return resolve(videos);
-                                    } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
-                                });
-                            }
-                        })
-                    };
-                },
-            ]
-        });
-    };
-
     protected static decode = new class {
         private Segment = [
             // Strings
@@ -343,6 +174,182 @@ class currentAPI extends Constructor.Assign<API.request> {
             if (!name || index < 0) return '';
             return `var ${name}=${this.cutAfterJS(body.slice(index + start.length - 1))}`;
         };
+    };
+
+    /**
+     * @description Создаем экземпляр запросов
+     * @constructor currentAPI
+     * @public
+     */
+    public constructor() {
+        super({
+            name: "YOUTUBE",
+            audio: true,
+            auth: true,
+
+            color: 16711680,
+            filter: /^(https?:\/\/)?(www\.)?(m\.)?(music\.)?( )?(youtube\.com|youtu\.?be)\/.+$/gi,
+            url: "youtube.com",
+
+            requests: [
+                /**
+                 * @description Запрос данных о треке
+                 */
+                new class extends API.item<"track"> {
+                    public constructor() {
+                        super({
+                            name: "track",
+                            filter: /(watch|embed|youtu\.be)/gi,
+                            callback: (url: string, {audio}) => {
+                                const ID = /[a-zA-Z0-9-_]{11}/.exec(url).pop();
+
+                                return new Promise<Song>(async (resolve, reject) => {
+                                    //Если ID видео не удалось извлечь из ссылки
+                                    if (!ID) return reject(Error("[APIs]: Не удалось получить ID трека!"));
+
+                                    try {
+                                        //Создаем запрос
+                                        const result = await currentAPI.API(`https://www.youtube.com/watch?v=${ID}&has_verified=1`);
+
+                                        //Если возникла ошибка при получении данных
+                                        if (result instanceof Error) return reject(result);
+
+                                        //Если надо получить аудио
+                                        if (audio) {
+                                            const format = await currentAPI.extractStreamingData(result["streamingData"], result["html5"]);
+                                            result["videoDetails"]["format"] = {url: format.url};
+                                        }
+
+                                        const track = currentAPI.track(result["videoDetails"]);
+                                        return resolve(track);
+                                    } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
+                                });
+                            }
+                        });
+                    };
+                },
+
+                /**
+                 * @description Запрос данных об плейлисте
+                 */
+                new class extends API.item<"playlist"> {
+                    public constructor() {
+                        super({
+                            name: "playlist",
+                            filter: /playlist\?list=[a-zA-Z0-9-_]+/gi,
+                            callback: (url: string, {limit}) => {
+                                const ID = url.match(this.filter);
+                                let author = null;
+
+                                return new Promise<Song.playlist>(async (resolve, reject) => {
+                                    //Если ID плейлиста не удалось извлечь из ссылки
+                                    if (!ID) return reject(Error("[APIs]: Не удалось получить ID плейлиста!"));
+
+                                    try {
+                                        //Создаем запрос
+                                        const details = await currentAPI.API(`https://www.youtube.com/${ID.pop()}`);
+
+                                        if (details instanceof Error) return reject(details);
+
+                                        const sidebar: any[] = details["sidebar"]["playlistSidebarRenderer"]["items"];
+                                        const microformat: any = details["microformat"]["microformatDataRenderer"];
+                                        const items: Song[] = details["contents"]["twoColumnBrowseResultsRenderer"]["tabs"][0]["tabRenderer"]
+                                            .content["sectionListRenderer"]["contents"][0]["itemSectionRenderer"]["contents"][0]["playlistVideoListRenderer"]["contents"]
+                                            .splice(0, limit).map(({playlistVideoRenderer}) => currentAPI.track(playlistVideoRenderer));
+
+                                        //Если нет автора плейлиста, то это альбом автора
+                                        if (sidebar.length > 1) {
+                                            const authorData = details["sidebar"]["playlistSidebarRenderer"].items[1]["playlistSidebarSecondaryInfoRenderer"]["videoOwner"]["videoOwnerRenderer"];
+                                            author = await currentAPI.getChannel({ id: authorData["navigationEndpoint"]["browseEndpoint"]["browseId"], name: authorData.title["runs"][0].text });
+                                        } else author = items.at(-1).author;
+
+                                        return resolve({
+                                            url, title: microformat.title, items, author,
+                                            image: microformat.thumbnail["thumbnails"].pop()
+                                        });
+                                    } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
+                                });
+                            }
+                        });
+                    };
+                },
+
+                /**
+                 * @description Запрос данных треков артиста
+                 */
+                new class extends API.item<"artist"> {
+                    public constructor() {
+                        super({
+                            name: "artist",
+                            filter: /\/(channel)?(@)/gi,
+                            callback: (url: string, {limit}) => {
+                                return new Promise<Song[]>(async (resolve, reject) => {
+                                    try {
+                                        let ID: string;
+
+                                        if (url.match(/@/)) ID = `@${url.split("@")[1].split("/")[0]}`;
+                                        else ID = `channel/${url.split("channel/")[1]}`;
+
+                                        //Создаем запрос
+                                        const details = await currentAPI.API(`https://www.youtube.com/${ID}/videos`);
+
+                                        if (details instanceof Error) return reject(details);
+
+                                        const author = details["microformat"]["microformatDataRenderer"];
+                                        const tabs: any[] = details?.["contents"]?.["twoColumnBrowseResultsRenderer"]?.["tabs"];
+                                        const contents = (tabs[1] ?? tabs[2])["tabRenderer"]?.content?.["richGridRenderer"]?.["contents"]
+                                            ?.filter((video: any) => video?.["richItemRenderer"]?.content?.["videoRenderer"])?.splice(0, limit);
+
+                                        //Модифицируем видео
+                                        const videos = contents.map(({richItemRenderer}: any) => {
+                                            const video = richItemRenderer?.content?.["videoRenderer"];
+
+                                            return {
+                                                url: `https://youtu.be/${video["videoId"]}`, title: video.title["runs"][0].text, duration: { full: video["lengthText"]["simpleText"] },
+                                                author: { url: `https://www.youtube.com${ID}`, title: author.title }
+                                            }
+                                        });
+
+                                        return resolve(videos);
+                                    } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
+                                });
+                            }
+                        })
+                    };
+                },
+
+                /**
+                 * @description Запрос данных по поиску
+                 */
+                new class extends API.item<"search"> {
+                    public constructor() {
+                        super({
+                            name: "search",
+                            callback: (url: string, {limit}) => {
+                                return new Promise<Song[]>(async (resolve, reject) => {
+                                    try {
+                                        //Создаем запрос
+                                        const details = await currentAPI.API(`https://www.youtube.com/results?search_query=${url.split(" ").join("+")}`);
+
+                                        //Если при получении данных возникла ошибка
+                                        if (details instanceof Error) return reject(details);
+
+                                        let vanilla_videos = details["contents"]?.["twoColumnSearchResultsRenderer"]?.["primaryContents"]?.["sectionListRenderer"]?.["contents"][0]?.["itemSectionRenderer"]?.["contents"];
+
+                                        if (vanilla_videos?.length === 0 || !vanilla_videos) return reject(Error(`[APIs]: Не удалось найти: ${url}`));
+
+                                        let filtered_ = vanilla_videos?.filter((video: any) => video && video?.["videoRenderer"] && video?.["videoRenderer"]?.["videoId"])?.splice(0, limit);
+                                        let videos = filtered_.map(({ videoRenderer }: any) => currentAPI.track(videoRenderer));
+
+                                        return resolve(videos);
+                                    } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
+                                });
+                            }
+                        })
+                    };
+                }
+            ]
+        });
     };
 
     /**

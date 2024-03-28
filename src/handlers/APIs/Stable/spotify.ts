@@ -9,6 +9,25 @@ import {env} from "@env";
  * @API Spotify
  */
 class currentAPI extends Constructor.Assign<API.request> {
+    /**
+     * @description Данные для создания запросов
+     * @protected
+     */
+    protected static authorization = {
+        link: "https://open.spotify.com",
+        api: "https://api.spotify.com/v1",
+        account: "https://accounts.spotify.com/api",
+        aut: Buffer.from(env.get("token.spotify")).toString("base64"),
+
+        token: "",
+        time:0
+    };
+
+    /**
+     * @description Создаем экземпляр запросов
+     * @constructor currentAPI
+     * @public
+     */
     public constructor() {
         super({
             name: "SPOTIFY",
@@ -59,7 +78,7 @@ class currentAPI extends Constructor.Assign<API.request> {
                         super({
                             name: "album",
                             filter: /album\/[0-9z]+/i,
-                            callback: (url: string) => {
+                            callback: (url, {limit}) => {
                                 const ID = /album\/[a-zA-Z0-9]+/.exec(url)?.pop()?.split("album\/")?.pop();
 
                                 return new Promise<Song.playlist>(async (resolve, reject) => {
@@ -68,7 +87,7 @@ class currentAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const api: Error | any = await currentAPI.API(`albums/${ID}?offset=0&limit=${env.get("APIs.limit.playlist")}`);
+                                        const api: Error | any = await currentAPI.API(`albums/${ID}?offset=0&limit=${limit}`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
@@ -91,7 +110,7 @@ class currentAPI extends Constructor.Assign<API.request> {
                         super({
                             name: "playlist",
                             filter: /playlist\/[0-9z]+/i,
-                            callback: (url: string) => {
+                            callback: (url, {limit}) => {
                                 const ID = /playlist\/[a-zA-Z0-9]+/.exec(url)?.pop()?.split("playlist\/")?.pop();
 
                                 return new Promise<Song.playlist>(async (resolve, reject) => {
@@ -100,7 +119,7 @@ class currentAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const api: Error | any = await currentAPI.API(`playlists/${ID}?offset=0&limit=${env.get("APIs.limit.playlist")}`);
+                                        const api: Error | any = await currentAPI.API(`playlists/${ID}?offset=0&limit=${limit}`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
@@ -124,7 +143,7 @@ class currentAPI extends Constructor.Assign<API.request> {
                         super({
                             name: "artist",
                             filter: /artist\/[0-9z]+/i,
-                            callback: (url: string) => {
+                            callback: (url, {limit}) => {
                                 const ID = /artist\/[a-zA-Z0-9]+/.exec(url)?.pop()?.split("artist\/")?.pop();
 
                                 return new Promise<Song[]>(async (resolve, reject) => {
@@ -133,7 +152,7 @@ class currentAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const api = await currentAPI.API(`artists/${ID}/top-tracks?market=ES&limit=${env.get("APIs.limit.author")}`);
+                                        const api = await currentAPI.API(`artists/${ID}/top-tracks?market=ES&limit=${limit}`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
@@ -153,11 +172,11 @@ class currentAPI extends Constructor.Assign<API.request> {
                     public constructor() {
                         super({
                             name: "search",
-                            callback: (url: string) => {
+                            callback: (url, {limit}) => {
                                 return new Promise<Song[]>(async (resolve, reject) => {
                                     try {
                                         //Создаем запрос
-                                        const api: Error | any = await currentAPI.API(`search?q=${url}&type=track&limit=${env.get("APIs.limit.search")}`);
+                                        const api: Error | any = await currentAPI.API(`search?q=${url}&type=track&limit=${limit}`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
@@ -171,20 +190,6 @@ class currentAPI extends Constructor.Assign<API.request> {
                 }
             ]
         });
-    };
-
-    /**
-     * @description Данные для создания запросов
-     * @protected
-     */
-    protected static authorization = {
-        link: "https://open.spotify.com",
-        api: "https://api.spotify.com/v1",
-        account: "https://accounts.spotify.com/api",
-        aut: Buffer.from(env.get("token.spotify")).toString("base64"),
-
-        token: "",
-        time:0
     };
 
     /**
@@ -222,6 +227,7 @@ class currentAPI extends Constructor.Assign<API.request> {
                     }
                 }).toJson.then((api) => {
                     if (!api) return resolve(Error("[APIs]: Не удалось получить данные!"));
+                    else if (api instanceof Error) resolve(api);
                     else if (api.error) return resolve(Error(`[APIs]: ${api.error.message}`));
 
                     return resolve(api);

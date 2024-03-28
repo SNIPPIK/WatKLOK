@@ -601,34 +601,14 @@ export namespace Constructor {
 export namespace API {
     /**
      * @author SNIPPIK
-     * @description Создаем класс для запроса на сервер
-     * @interface request
-     * @abstract
-     */
-    export interface request {
-        name: API.platform;
-        url: string;
-        audio: boolean;
-        auth: boolean;
-        filter: RegExp;
-        color: number;
-        requests: item<API.callbacks>[];
-    }
-    /**
-     * @author SNIPPIK
      * @description Создаем класс для итогового запроса
      * @class item
      * @abstract
      */
     export abstract class item<T extends API.callbacks> {
-        public readonly callback?: (url: string) => API.callback<T>;
-        public readonly filter?: RegExp;
         public readonly name: T;
-
-        /**
-         * @description Сохраняем базу данных
-         * @param options
-         */
+        public readonly filter?: RegExp;
+        public readonly callback?: (url: string, options: T extends "track" ? {audio?: boolean} : {limit?: number}) => API.callback<T>;
         protected constructor(options: item<T>) {
             Object.assign(this, options);
         };
@@ -743,6 +723,22 @@ export namespace API {
     }
 
     /**
+     * @author SNIPPIK
+     * @description Создаем класс для запроса на сервер
+     * @interface request
+     * @abstract
+     */
+    export interface request {
+        name: API.platform;
+        url: string;
+        audio: boolean;
+        auth: boolean;
+        filter: RegExp;
+        color: number;
+        requests: item<API.callbacks>[];
+    }
+
+    /**
      * @description Доступные платформы
      * @type
      */
@@ -756,7 +752,7 @@ export namespace API {
 
     /**
      * @description Функция запроса
-     * @type
+     * @type callback<callbacks>
      */
     export type callback<T> = Promise<(T extends "track" ? Song : T extends "playlist" | "album" ? Song.playlist : T extends "search" | "artist" ? Song[] : never) | Error>
 }

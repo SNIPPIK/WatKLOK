@@ -6,7 +6,12 @@ import {Attachment} from "discord.js";
  * @author SNIPPIK
  * @description Динамически загружаемый класс
  */
-export default class extends Constructor.Assign<API.request> {
+class currentAPI extends Constructor.Assign<API.request> {
+    /**
+     * @description Создаем экземпляр запросов
+     * @constructor currentAPI
+     * @public
+     */
     public constructor() {
         super({
             name: "DISCORD",
@@ -48,3 +53,9 @@ export default class extends Constructor.Assign<API.request> {
         });
     };
 }
+
+/**
+ * @export default
+ * @description Делаем классы глобальными
+ */
+export default Object.values({currentAPI});

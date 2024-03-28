@@ -11,6 +11,20 @@ import {env} from "@env";
  * @API Yandex music
  */
 class currentAPI extends Constructor.Assign<API.request> {
+    /**
+     * @description Данные для создания запросов
+     * @protected
+     */
+    protected static authorization = {
+        token: env.get("token.yandex"),
+        api: "https://api.music.yandex.net"
+    };
+
+    /**
+     * @description Создаем экземпляр запросов
+     * @constructor currentAPI
+     * @public
+     */
     public constructor() {
         super({
             name: "YANDEX",
@@ -30,7 +44,7 @@ class currentAPI extends Constructor.Assign<API.request> {
                         super({
                             name: "track",
                             filter: /(album)\/[0-9]+\/(track)\/[0-9]+/gi,
-                            callback: (url) => {
+                            callback: (url, {audio}) => {
                                 const ID = /track\/[0-9]+/gi.exec(url)?.pop()?.split("track")?.pop();
 
                                 return new Promise<Song>(async (resolve, reject) => {
@@ -39,15 +53,21 @@ class currentAPI extends Constructor.Assign<API.request> {
 
                                         //Делаем запрос
                                         const api = await currentAPI.API(`tracks/${ID}`);
-                                        const audio = await currentAPI.getAudio(ID);
 
                                         //Обрабатываем ошибки
-                                        if (api instanceof Error || audio instanceof Error) return reject(api);
+                                        if (api instanceof Error) return reject(api);
                                         else if (!api[0]) return reject(Error("[APIs]: Не удалось получить данные о треке!"));
 
                                         const track = currentAPI.track(api[0]);
 
-                                        if (audio) track.link = audio;
+                                        //Надо ли получать аудио
+                                        if (audio) {
+                                            const link = await currentAPI.getAudio(ID);
+
+                                            if (link instanceof Error) return reject(api);
+                                            track.link = link;
+                                        }
+
                                         return resolve(track);
                                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
                                 });
@@ -64,7 +84,7 @@ class currentAPI extends Constructor.Assign<API.request> {
                         super({
                             name: "album",
                             filter: /(album)\/[0-9]+/,
-                            callback: (url): any => {
+                            callback: (url, {limit}) => {
                                 const ID = /[0-9]+/.exec(url).pop();
 
                                 return new Promise<Song.playlist>(async (resolve, reject) => {
@@ -80,7 +100,7 @@ class currentAPI extends Constructor.Assign<API.request> {
                                         else if (!api?.["duplicates"]?.length && !api?.["volumes"]?.length) return reject(Error("[APIs]: Я не нахожу треков в этом альбоме!"));
 
                                         const AlbumImage = currentAPI.parseImage({image: api?.["ogImage"] ?? api?.["coverUri"]});
-                                        const tracks: Song.track[] = api["volumes"]?.pop().splice(0, env.get("APIs.limit.playlist"));
+                                        const tracks: Song.track[] = api["volumes"]?.pop().splice(0, limit);
                                         const songs = tracks.map(currentAPI.track);
 
                                         return resolve({url, title: api.title, image: AlbumImage, items: songs});
@@ -101,7 +121,7 @@ class currentAPI extends Constructor.Assign<API.request> {
                         super({
                             name: "playlist",
                             filter: /(users\/[a-zA-Z0-9]+).*(playlists\/[0-9]+)/,
-                            callback: (url) => {
+                            callback: (url, {limit}) => {
                                 const ID = /(users\/[a-zA-Z0-9]+).*(playlists\/[0-9]+)/.exec(url);
 
                                 return new Promise<Song.playlist>(async (resolve, reject) => {
@@ -117,7 +137,7 @@ class currentAPI extends Constructor.Assign<API.request> {
                                         else if (api?.tracks?.length === 0) return reject(Error("[APIs]: Я не нахожу треков в этом плейлисте!"));
 
                                         const image = currentAPI.parseImage({image: api?.["ogImage"] ?? api?.["coverUri"]});
-                                        const tracks: any[] = api.tracks?.splice(0, env.get("APIs.limit.playlist"));
+                                        const tracks: any[] = api.tracks?.splice(0, limit);
                                         const songs = tracks.map(({track}) => currentAPI.track(track));
 
                                         return resolve({
@@ -142,7 +162,7 @@ class currentAPI extends Constructor.Assign<API.request> {
                         super({
                             name: "artist",
                             filter: /(artist)\/[0-9]+/,
-                            callback: (url) => {
+                            callback: (url, {limit}) => {
                                 const ID = /[0-9]+/.exec(url);
 
                                 return new Promise<Song[]>(async (resolve, reject) => {
@@ -155,7 +175,7 @@ class currentAPI extends Constructor.Assign<API.request> {
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
-                                        const tracks = api.tracks.splice(0, env.get("APIs.limit.author")).map(currentAPI.track);
+                                        const tracks = api.tracks.splice(0, limit).map(currentAPI.track);
 
                                         return resolve(tracks);
                                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
@@ -172,7 +192,7 @@ class currentAPI extends Constructor.Assign<API.request> {
                     public constructor() {
                         super({
                             name: "search",
-                            callback: (url ) => {
+                            callback: (url , {limit}) => {
                                 return new Promise<Song[]>(async (resolve, reject) => {
                                     try {
                                         //Создаем запрос
@@ -182,7 +202,7 @@ class currentAPI extends Constructor.Assign<API.request> {
                                         if (api instanceof Error) return reject(api);
                                         else if (!api.tracks) return reject(Error(`[APIs]: На Yandex music нет такого трека!`));
 
-                                        const tracks = api.tracks["results"].splice(0, env.get("APIs.limit.search")).map(currentAPI.track);
+                                        const tracks = api.tracks["results"].splice(0, limit).map(currentAPI.track);
                                         return resolve(tracks);
                                     } catch (e) {
                                         return reject(Error(`[APIs]: ${e}`))
@@ -194,15 +214,6 @@ class currentAPI extends Constructor.Assign<API.request> {
                 }
             ]
         });
-    };
-
-    /**
-     * @description Данные для создания запросов
-     * @protected
-     */
-    protected static authorization = {
-        token: env.get("token.yandex"),
-        api: "https://api.music.yandex.net"
     };
 
     /**

@@ -255,7 +255,7 @@ function fetchAPIs(track: Song): Promise<string | Error> {
             //Если нет такого запроса
             if (!api) return resolve(Error(`[Song/${track.platform}]: not found callback for track`));
 
-            api.callback(track.url).then((track: Song | Error) => {
+            api.callback(track.url, {audio: true}).then((track: Song | Error) => {
                 if (track instanceof Error) return resolve(track);
                 return resolve(track.link);
             }).catch((err) => resolve(err));
@@ -265,10 +265,10 @@ function fetchAPIs(track: Song): Promise<string | Error> {
         else {
             const youtube = new API.response("YOUTUBE");
 
-            youtube.find("search").callback(`${track.author.title} - ${track.title}`).then((videos) => {
+            youtube.find("search").callback(`${track.author.title} - ${track.title}`, {limit: 10}).then((videos) => {
                 if (videos instanceof Error || videos.length === 0) return resolve(null);
 
-                youtube.find("track").callback(videos?.at(0)?.url).then((track) => {
+                youtube.find("track").callback(videos?.at(0)?.url, {audio: true}).then((track) => {
                     if (track instanceof Error || !track.link) return resolve(null);
                     return resolve(track.link);
                 }).catch((err) => resolve(Error(err)));
