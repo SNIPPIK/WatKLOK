@@ -1,5 +1,3 @@
-// noinspection Annotator
-
 import {Transform, TransformOptions} from "node:stream";
 import process from "node:process";
 
@@ -38,7 +36,6 @@ const loadModule = ( modules: typeof OpusLibs = OpusLibs ) => {
 };
 if (!process["argv"].includes("--ShardManager")) loadModule();
 
-// noinspection Annotator
 /**
  * @author SNIPPIK
  * @description Создаем кодировщик в opus

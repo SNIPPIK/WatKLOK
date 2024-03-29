@@ -27,16 +27,12 @@ abstract class BaseQueue {
              * @public
              */
             public play = (track: Song, seek: number = 0): void => {
-                new Promise<void>(async () => {
-                    if (!track || !track.resource)
+                if (!track || !track.resource) {
+                    this.emit("player/wait", this);
+                    return;
+                }
 
-                    if (!track || !track.resource) {
-                        this.emit("player/wait", this);
-                        return;
-                    }
-
-                    const path = await track.resource;
-
+                track.resource.then((path) => {
                     if (path instanceof Error) {
                         this.emit("player/error", this, `Failed to getting link audio!\n\n${path.name}\n- ${path.message}`, "skip");
                         return;
@@ -44,11 +40,10 @@ abstract class BaseQueue {
 
                     this.emit("player/ended", this, seek);
                     this.read = {path, seek};
-                    return;
                 }).catch((err) => {
                     this.emit("player/error", this, `${err}`, "skip");
                     Logger.log("ERROR", err);
-                })
+                });
             };
         }
     };

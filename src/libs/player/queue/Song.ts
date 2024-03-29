@@ -207,36 +207,32 @@ export class Song {
 
         //Создаем обещание
         return new Promise(async (resolve) => {
-            try {
-                //Если трек уже кеширован, то сразу выдаем его
-                if (isDownload) {
-                    const info = db.audio.cycles.downloader.status(this);
-                    if (info.status === "final") return resolve(`file:|${info.path}`);
-                }
-
-                //Проверяем ссылку на работоспособность, если 3 раза будет неудача ссылка будет удалена
-                for (let r = 0; r < 3; r++) {
-                    if (!this.link) {
-                        const link = await fetchAPIs(this);
-
-                        if (link instanceof Error) return resolve(link);
-                        else this.link = link;
-                    }
-
-                    //Проверяем ссылку работает ли она
-                    if (this.link) {
-                        if (await new httpsClient(this.link, {method: "HEAD"}).status) break;
-                        else this.link = null;
-                    }
-                }
-
-                //Если не удается найти ссылку через n попыток
-                if (!this.link) return resolve(Error(`[SONG]: Fail update link resource`));
-                else if (isDownload && this.link) void (db.audio.cycles.downloader.set(this));
-                return resolve(`link:|${this.link}`);
-            } catch (err) {
-                return Error(`[SONG]: ${err}`);
+            //Если трек уже кеширован, то сразу выдаем его
+            if (isDownload) {
+                const info = db.audio.cycles.downloader.status(this);
+                if (info.status === "final") return resolve(`file:|${info.path}`);
             }
+
+            //Проверяем ссылку на работоспособность, если 3 раза будет неудача ссылка будет удалена
+            for (let r = 0; r < 3; r++) {
+                if (!this.link) {
+                    const link = await fetchAPIs(this);
+
+                    if (link instanceof Error) return resolve(link);
+                    else this.link = link;
+                }
+
+                //Проверяем ссылку работает ли она
+                if (this.link) {
+                    if (await new httpsClient(this.link, {method: "HEAD"}).status) break;
+                    else this.link = null;
+                }
+            }
+
+            //Если не удается найти ссылку через n попыток
+            if (!this.link) return resolve(Error(`[SONG]: Fail update link resource`));
+            else if (isDownload && this.link) void (db.audio.cycles.downloader.set(this));
+            return resolve(`link:|${this.link}`);
         });
     };
 }
