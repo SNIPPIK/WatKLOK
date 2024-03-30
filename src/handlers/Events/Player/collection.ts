@@ -32,7 +32,7 @@ class onAPI extends Constructor.Assign<Handler.Event<"collection/api">> {
                 //Отправляем сообщение о том что запрос производится
                 event.emit("collection/error", message, `**${name}.${api.name}**\n\n${env.get("loading.emoji")} Ожидание ответа от сервера...\n${platform.audio ? "Эта платформа не может выдать исходный файл музыки! Поиск трека!" : ""}`, false, "Yellow");
 
-                let options: {audio?: boolean, limit?: number} = null;
+                let options: { audio?: boolean, limit?: number } = null;
 
                 //Определяем какие параметры передавать запросам
                 if (api.name === "artist") options = {limit: db.api.limits.author};
@@ -40,19 +40,17 @@ class onAPI extends Constructor.Assign<Handler.Event<"collection/api">> {
                 else if (api.name === "album" || api.name === "playlist") options = {limit: db.api.limits.playlist};
                 else if (api.name === "track") options = {audio: true};
 
-                new Promise<0>(async (resolve) => {
-                    const item = await api.callback(argument[1] as string, options);
-
+                api.callback(argument[1] as string, options).then((item) => {
                     //Если нет данных или была получена ошибка
                     if (item instanceof Error) {
                         event.emit("collection/error", message, `**${name}.${api.name}**\n\n**❯** Данные не были получены!`);
-                        return resolve(0);
+                        return;
                     }
 
                     //Если был указан поиск
                     else if (item instanceof Array) {
                         event.emit("message/search", item, platform.platform, message);
-                        return resolve(0);
+                        return;
                     }
 
                     let queue = collection.get(message.guild.id);
@@ -72,8 +70,6 @@ class onAPI extends Constructor.Assign<Handler.Event<"collection/api">> {
                         track.requester = message.author;
                         queue.songs.push(track);
                     }
-
-                    return resolve(0);
                 }).catch((err: Error) => { //Отправляем сообщение об ошибке
                     event.emit("collection/error", message, `**${name}.${api.name}**\n\n**❯** **${err.message}**`, true);
                 });

@@ -96,8 +96,8 @@ class Group extends Constructor.Assign<Handler.Command> {
 
             execute: ({message, args, sub}) => {
                 const {author, member, guild} = message;
-                const queue = db.audio.queue.get(guild.id);
                 const VoiceChannel = member?.voice?.channel;
+                const queue = db.audio.queue.get(guild.id);
 
                 //Если пользователь не подключен к голосовым каналам
                 if (!VoiceChannel) return {
