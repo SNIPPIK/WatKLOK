@@ -119,7 +119,7 @@ class Group extends Constructor.Assign<Handler.Command> {
 
                 //Если пользователь прикрепил файл
                 else if (sub === "file") {
-                    const attachment = (message as Client.interact).options.getAttachment("file");
+                    const attachment = (message as Client.interact).options.getAttachment("input");
 
                     //Если пользователь подсунул фальшивку
                     if (!attachment.contentType.match("audio")) return {
