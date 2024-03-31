@@ -22,17 +22,17 @@
 
 ## <img alt="Avatar" width="20px" src="https://raw.githubusercontent.com/SNIPPIK/WatKLOK/nightly/.github/resource/Icons/Note.png" /> Как запустить
 1. Необходима [`Node.js`](https://nodejs.org/ru/)
-2. Качаем проект [`тут`](https://codeload.github.com/SNIPPIK/WatKLOK/zip/refs/heads/main)
+2. Качаем проект [`тут`](https://codeload.github.com/SNIPPIK/WatKLOK/zip/refs/heads/nightly)
 3. Установить [`FFmpeg`](https://github.com/BtbN/FFmpeg-Builds/releases)
    - `Windows` | Скачать [`FFmpeg`](https://ffmpeg.org/) и распаковать в любое место
      - Указать `ffmpeg.path` в [`env`](.env)
    - `Linux` | (sudo apt install or sudo pacman -S) ffmpeg
 4. [`Настраиваем конфиг`](#Как-настроить-env-файл) .env
 5. Открываем консоль или терминал в директории проекта
-   - Устанавливаем все зависимости `npm i`
-   - Выполняем сборку `npm i -g typescript`
-   - Настраиваем конфиг .env в директории `node_build`
-   - Запускаем бота
+   1. Устанавливаем все зависимости `npm i`
+   2. Выполняем сборку `npm i -g typescript`
+   3. Настраиваем конфиг .env в директории `node_build`
+   4. Запускаем бота
      - Менеджер осколков -> `npm run shard`
      - Без менеджера -> `npm run client`
 
