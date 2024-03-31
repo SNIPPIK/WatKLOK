@@ -20,35 +20,34 @@
 <img align="center" alt="Bot Permissions" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/nightly/.github/resource/Bot Permissions.png?raw=true" />
 
 
-## <img alt="Avatar" width="20px" src="https://raw.githubusercontent.com/SNIPPIK/WatKLOK/nightly/.github/resource/Icons/Note.png" /> Как запустить
-1. Необходима [`Node.js`](https://nodejs.org/ru/)
-2. Качаем проект [`тут`](https://codeload.github.com/SNIPPIK/WatKLOK/zip/refs/heads/nightly)
-3. Установить [`FFmpeg`](https://ffmpeg.org/s)
-   - `Windows` | Скачать [`FFmpeg`](https://github.com/BtbN/FFmpeg-Builds/releases) и распаковать в любое место
-     - Указать `ffmpeg.path` в [`env`](.env)
+# <img alt="Avatar" width="20px" src="https://raw.githubusercontent.com/SNIPPIK/WatKLOK/nightly/.github/resource/Icons/Note.png" /> Гайд по запуску и настройке
+Перед начало убедись что у вас установлена [`Node.js`](https://nodejs.org/ru/), [`FFmpeg`](https://ffmpeg.org)
+
+#### 1. Если не установлен [`FFmpeg`](https://ffmpeg.org)
+   - `Windows` | Скачать [`FFmpeg`](https://github.com/BtbN/FFmpeg-Builds/releases)
+     - Установить в `C:\Windows` или в любое место, но это нужно будет указать в `.env`!
    - `Linux` | (sudo apt install or sudo pacman -S) ffmpeg
-4. Открываем консоль или терминал в директории проекта
-   1. Устанавливаем все зависимости `npm i`
-   2. Выполняем сборку `npm i -g typescript`, затем `npm run build`
-   3. [`Настраиваем`](#Как-настроить-env-файл) .env файл в директории `node_build`
-5. Запускаем бота
-   - Менеджер осколков -> `npm run shard`
-   - Без менеджера -> `npm run client`
+
+#### 2. Собираем проект
+ 1. Устанавливаем все зависимости `npm i` 
+ 2. Устанавливаем typescript `npm i -g typescript`
+ 3. Конвертируем typescript в javascript `npm run build`
+
+#### 3. Настраиваем [`env`](.env) файл
+ 1. Копируем .env в `node_build`
+ 2. Необходимо заполнить параметры `token` (необходим только `token.discord`)
+
+#### 4. Запускаем бота
+ - Менеджер осколков -> `npm run shard`
+ - Без менеджера -> `npm run client`
 
     
-## <img alt="Avatar" width="20px" src="https://raw.githubusercontent.com/SNIPPIK/WatKLOK/nightly/.github/resource/Icons/Disk.gif" /> Библиотеки для конвертации аудио
+# <img alt="Avatar" width="20px" src="https://raw.githubusercontent.com/SNIPPIK/WatKLOK/nightly/.github/resource/Icons/Disk.gif" /> Библиотеки для конвертации аудио
 - [`Opus Library`](src/Modules/voice/utils/Opus.ts) | Поддерживаемые библиотеки, опциональна!
     - [`opusscript`](https://www.npmjs.com/package/opusscript)
     - [`@discordjs/opus`](https://www.npmjs.com/package/@discordjs/opus)
     - [`mediaplex`](https://www.npmjs.com/package/mediaplex)
     - [`@evan/opus`](https://www.npmjs.com/package/@evan/opus)
 - [`Sodium Library`](src/Modules/voice/utils/Sodium.ts) | Поддерживаемые библиотеки, необходима!
-    - [`sodium-native`](https://www.npmjs.com/package/sodium-native)
+    - [`sodium-native`](https://www.npmjs.com/package/sodium-native) | Установлена по умолчанию
     - [`sodium`](https://www.npmjs.com/package/sodium)
-
-
-
-## Как настроить [`env`](.env) файл
-1. Необходимо заполнить параметры `token` (необходим только `token.discord`)
-2. Заполнить параметры `progress`, `button`, `loading`
-3. Остальные параметры по желанию
