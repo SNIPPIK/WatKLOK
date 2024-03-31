@@ -29,7 +29,7 @@
    - `Linux` | (sudo apt install or sudo pacman -S) ffmpeg
 4. Открываем консоль или терминал в директории проекта
    1. Устанавливаем все зависимости `npm i`
-   2. Выполняем сборку `npm i -g typescript`
+   2. Выполняем сборку `npm i -g typescript`, затем `npm run build`
    3. [`Настраиваем`](#Как-настроить-env-файл) .env файл в директории `node_build`
 5. Запускаем бота
    - Менеджер осколков -> `npm run shard`
