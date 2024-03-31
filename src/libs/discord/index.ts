@@ -7,7 +7,7 @@ import {env, Logger} from "@env";
  * @public
  */
 export class Client extends DS_Client {
-    private readonly webhook = new WebhookClient({id: "1218644515569532958", token: "H7aN-FhmQsp92Way-r-HrsKKEaYJXRd0hLOOhHLS1xncw8h2lkMMcruTSVueG8WN8S0M"});
+    private readonly webhook = env.get("webhook.id") && env.get("webhook.token") ? new WebhookClient({id: env.get("webhook.id"), token: env.get("webhook.token")}) : null;
     /**
      * @description Получаем ID осколка
      * @return number
@@ -21,7 +21,7 @@ export class Client extends DS_Client {
      * @public
      */
     public set sendWebhook(options: WebhookMessageCreateOptions) {
-        this.webhook.send(options).catch(() => {});
+        if (this.webhook) this.webhook.send(options).catch(() => {});
     };
 
     /**

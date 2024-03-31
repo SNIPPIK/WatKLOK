@@ -10,6 +10,8 @@ import {httpsClient} from "@lib/request";
 import {Client} from "@lib/discord";
 import {env, Logger} from "@env";
 
+const git = `${env.get("git")}/${env.get("branch")}/`;
+
 /**
  * @author SNIPPIK
  * @description Список поддерживаемых баз данных
@@ -318,9 +320,9 @@ namespace SupportDataBase {
          */
         public get loadFilters(): Promise<Error | true> {
             return new Promise<Error | true>(async (resolve, reject) => {
-                const raw = await new httpsClient(env.get("filters.url"), {useragent: true}).toJson;
+                const raw = await new httpsClient(git + env.get("filters.url"), {useragent: true}).toJson;
 
-                if (raw instanceof Error) return reject(raw);
+                if (raw instanceof Error) return reject(Error("[Git]: Fail to getting data a github from filters.json"));
                 this.filters.push(...raw as any[]);
 
                 return resolve(true);
@@ -381,7 +383,7 @@ export const db = new class DataBase extends SupportDataBase.Commands {
         audio: new SupportDataBase.Audio(),
         apis: new SupportDataBase.APIs(),
 
-        owners: env.get("owner.list").split(",") as string[]
+        owners: env.get("owner.list").match(/,/) ? env.get("owner.list").split(",") : [env.get("owner.list")] as string[],
     };
     protected readonly _emojis = {
         button: {
@@ -407,8 +409,8 @@ export const db = new class DataBase extends SupportDataBase.Commands {
             },
             bottom: env.get("progress.bottom")
         },
-        noImage: env.get("image.not"),
-        diskImage: env.get("image.currentPlay")
+        noImage: git + env.get("image.not"),
+        diskImage: git + env.get("image.currentPlay")
     };
     /**
      * @description База для управления музыкой

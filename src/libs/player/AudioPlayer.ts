@@ -27,7 +27,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @description Получаем фильтры для FFmpeg
      * @return object
      */
-    public get parseFilters() {
+    public get filtersString() {
         const realFilters = [`volume=${db.audio.options.volume / 100}`]; let chunk = 0;
 
         //Проверяем фильтры
@@ -174,7 +174,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @public
      */
     public set read(options: {path: string, seek: number}) {
-        const stream = new SeekStream(Object.assign(options, this.parseFilters));
+        const stream = new SeekStream(Object.assign(options, this.filtersString));
 
         //Если стрим можно прочитать
         if (stream.readable) {
@@ -183,7 +183,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
         }
 
         const timeout = setTimeout(() => {
-            this.emit("player/error", this, "Timeout stream!", "skip");
+            this.emit("player/error", this, "Timeout the stream has been exceeded!", "skip");
         }, 25e3);
 
         stream.stream

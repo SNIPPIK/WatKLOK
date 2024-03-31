@@ -224,8 +224,10 @@ export class Song {
 
                 //Проверяем ссылку работает ли она
                 if (this.link) {
-                    if (await new httpsClient(this.link, {method: "HEAD"}).status) break;
-                    else this.link = null;
+                    try {
+                        if (await new httpsClient(this.link, {method: "HEAD"}).status) break;
+                        else this.link = null;
+                    } catch {}
                 }
             }
 
