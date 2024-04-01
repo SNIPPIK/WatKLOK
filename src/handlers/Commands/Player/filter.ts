@@ -170,7 +170,7 @@ class Group extends Constructor.Assign<Handler.Command> {
                         }
 
                         //Если надо добавить аргумент
-                        else if (arg && Filter.args) Filter.user_arg = arg;
+                        if (arg && Filter.args) Filter.user_arg = arg;
 
                         queue.player.filters.push(Filter);
                         queue.player.play(queue.songs.song, seek);
