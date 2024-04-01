@@ -19,6 +19,9 @@
     "shard": "cd node_build && node -r tsconfig-paths/register src/index.js --ShardManager",
     "build": "tsc -p tsconfig.json"
   },
+    "engines": {
+    "node": ">=19.0.0"
+  },
   "author": {
     "name": "SNIPPIK",
     "url": "github.com/SNIPPIK"
