@@ -7,7 +7,6 @@ class Group extends Constructor.Assign<Handler.Command> {
         super({
             name: "filter",
             description: "Управление фильтрами",
-
             options: [
                 {
                     name: "add",

@@ -9,7 +9,6 @@ class Group extends Constructor.Assign<Handler.Command> {
             name: "voice",
             description: "Взаимодействие с голосовыми подключениями",
             permissions: ["Speak", "Connect"],
-
             options: [
                 {
                     name: "leave",

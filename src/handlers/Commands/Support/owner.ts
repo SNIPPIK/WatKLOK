@@ -149,7 +149,7 @@ class Group extends Constructor.Assign<Handler.Command> {
                             };
                         }
                         else if (args[0] === "status") {
-                            const platform = db.api.platforms.supported.find((platform) => platform.name === args[0]);
+                            const platform = db.api.platforms.supported.find((platform) => platform.name === args[1]);
                             const fields = [
                                 `isAuth:  ${platform.auth}`,
                                 `isAudio: ${platform.audio}`,
