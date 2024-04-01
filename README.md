@@ -20,12 +20,13 @@
 <img align="center" alt="Bot Permissions" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/nightly/.github/resource/Bot Permissions.png?raw=true" />
 
 
-# <img alt="Avatar" width="20px" src="https://raw.githubusercontent.com/SNIPPIK/WatKLOK/nightly/.github/resource/Icons/Note.png" /> Гайд по запуску и настройке
+## <img alt="Avatar" width="20px" src="https://raw.githubusercontent.com/SNIPPIK/WatKLOK/nightly/.github/resource/Icons/Note.png" /> Гайд по запуску и настройке
 Перед начало убедись что у вас установлена [`Node.js`](https://nodejs.org/ru/), [`FFmpeg`](https://ffmpeg.org)
 
-#### 1. Если не установлен [`FFmpeg`](https://ffmpeg.org)
+#### 1. Если не установлен [`FFmpeg`](https://github.com/BtbN/FFmpeg-Builds/releases)
    - `Windows` | Скачать [`FFmpeg`](https://github.com/BtbN/FFmpeg-Builds/releases)
-     - Установить в `C:\Windows` или в любое место, но это нужно будет указать в `.env`!
+     - Закинуть файл `ffmpeg.exe` в `C:\Windows` или `node_build/<env>.cached.dir`
+     - В любое место, но это нужно будет указать в `<env>.ffmpeg.path`
    - `Linux` | (sudo apt install or sudo pacman -S) ffmpeg
 
 #### 2. Собираем проект
