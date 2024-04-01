@@ -5,6 +5,7 @@
 
 # [`WatKLOK`](https://github.com/SNIPPIK/WatKLOK) 
 - Автор: [`SNIPPIK`](https://github.com/SNIPPIK)
+- Discord server: [`тут`](https://discord.gg/qMf2Sv3)
 - Доступные платформы: [`тут`](src/handlers/APIs)
 - Демонстрация: [`тут`](https://www.youtube.com/watch?v=G7vgPmnt9_8)
 - Поддерживаться только /команды
