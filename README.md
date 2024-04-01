@@ -44,11 +44,11 @@
 
     
 # <img alt="Avatar" width="20px" src="https://raw.githubusercontent.com/SNIPPIK/WatKLOK/nightly/.github/resource/Icons/Disk.gif" /> Библиотеки для конвертации аудио
-- [`Opus Library`](src/Modules/voice/utils/Opus.ts) | Поддерживаемые библиотеки, опциональна!
+- [`Opus Library`](src/libs/voice/utils/Opus.ts) | Поддерживаемые библиотеки, опциональна!
     - [`opusscript`](https://www.npmjs.com/package/opusscript)
     - [`@discordjs/opus`](https://www.npmjs.com/package/@discordjs/opus)
     - [`mediaplex`](https://www.npmjs.com/package/mediaplex)
     - [`@evan/opus`](https://www.npmjs.com/package/@evan/opus)
-- [`Sodium Library`](src/Modules/voice/utils/Sodium.ts) | Поддерживаемые библиотеки, необходима!
+- [`Sodium Library`](src/libs/voice/utils/Sodium.ts) | Поддерживаемые библиотеки, необходима!
     - [`sodium-native`](https://www.npmjs.com/package/sodium-native) | Установлена по умолчанию
     - [`sodium`](https://www.npmjs.com/package/sodium)
