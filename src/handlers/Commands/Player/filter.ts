@@ -159,11 +159,11 @@ class Group extends Constructor.Assign<Handler.Command> {
                         }
 
                         if (Filter.args) {
-                            const isOkArgs = arg >= (Filter.args as number[])[0] && arg <= (Filter.args as number[])[1];
+                            const isOkArgs = arg && arg >= Filter.args[0] && arg <= Filter.args[1];
 
                             //Если аргументы не подходят
                             if (!isOkArgs) return {
-                                content: `Filter: ${name} не изменен из-за несоответствия аргументов!`,
+                                content: `Filter: ${name} не изменен из-за несоответствия аргументов!\nMin: ${Filter.args[0]} | Max: ${Filter.args[1]}`,
                                 color: "Yellow",
                                 codeBlock: "css"
                             };
