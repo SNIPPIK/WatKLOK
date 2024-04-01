@@ -29,7 +29,7 @@ class Command_Info extends Constructor.Assign<Handler.Command> {
                     `• Дубликат [${client.ID}]`,
                     `• Серверов   => ${client.guilds.cache.size}`,
                     `• Каналов    => ${client.channels.cache.size}`,
-                    `• Команд     => ${db.commands.length}`,
+                    `• Команд     => ${db.commands.length}/${db.commands.subCommands}`,
 
                     `> Память [${(process.memoryUsage().rss / 1.5).bytes()}]`,
                     `   Используется   => [${(process.memoryUsage().heapUsed).bytes()}]`,

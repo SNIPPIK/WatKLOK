@@ -25,6 +25,8 @@ namespace SupportDataBase {
      */
     export class Commands {
         protected readonly _commands = new class<T extends Handler.Command> extends Array<T> {
+            public subCommands = 0;
+
             /**
              * @description Ищем в array подходящий тип
              * @param names - Имя или имена для поиска
@@ -453,7 +455,17 @@ export const db = new class DataBase extends SupportDataBase.Commands {
 
                 this.api.platforms.supported.push(item);
             },
-            (item: Handler.Command) => this.commands.push(item),
+            (item: Handler.Command) => {
+                if (item.options) {
+                    for (const option of item.options) {
+                        if ("options" in option) this._commands.subCommands += option.options.length;
+                    }
+
+                    this._commands.subCommands += item.options.length;
+                }
+
+                this.commands.push(item)
+            },
             (item: Handler.Event<any>) => {
                 if (item.type === "client") client.on(item.name as any, (...args: any[]) => item.execute(client, ...args)); // @ts-ignore
                 else this.audio.queue.events.on(item.name as any, (...args: any[]) => item.execute(...args));
