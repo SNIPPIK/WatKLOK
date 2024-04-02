@@ -1,6 +1,7 @@
 import {Constructor, Handler} from "@handler";
 import {Events} from "discord.js";
 import {Voice} from "@lib/voice";
+import {Logger} from "@env";
 import {db} from "@lib/db"
 
 /**
@@ -13,32 +14,29 @@ class VoiceStateUpdate extends Constructor.Assign<Handler.Event<Events.VoiceStat
         super({
             name: Events.VoiceStateUpdate,
             type: "client",
-            execute: (client, oldState, newState) => {
-                const Guild = oldState.guild;
-                const voice = Voice.get(Guild.id);
-                const ChannelID = oldState?.channel?.id || newState?.channel?.id;
+            execute: (client, oldState, newState) => setImmediate(() => {
+                const Guild = oldState.guild, ChannelID = oldState?.channel?.id || newState?.channel?.id;
+                const me = (newState.channel?.members ?? oldState.channel?.members).get(client.user.id);
+                const isChannel = me?.voice && (oldState.channelId ?? newState.channelId) === me.voice.channelId;
 
-                /**
-                 * @description Если есть голосовое подключение и нет слушателей то отключаемся
-                 */
-                if (Guild && voice) {
-                    const usersSize = (newState.channel?.members ?? oldState.channel?.members)?.filter((member) => !member.user.bot && member.voice?.channel?.id === ChannelID)?.size;
+                //Если нет сервера или канала, то ничего не делаем
+                if (!Guild || !ChannelID || !isChannel) return;
 
-                    if (voice && usersSize < 1 && voice.config.channelId === oldState?.channelId) Voice.remove(Guild.id);
+                //Фильтруем пользователей
+                let size = 0;
+                for (const [_, member] of (newState.channel?.members ?? oldState.channel?.members)) {
+                    if (member.user.bot) continue;
+                    size++;
                 }
 
-                /**
-                 * @description Если есть очередь и нет слушателей то удаляем очередь
-                 */
                 const queue = db.audio.queue.get(newState.guild.id);
-
-                if (queue) {
-                    const usersSize = (newState.channel?.members ?? oldState.channel?.members)?.filter((member) => !member.user.bot && member.voice?.channel?.id === ChannelID)?.size;
-                    const isBotVoice = !!(newState.channel?.members ?? oldState.channel?.members)?.find((member) => member.user.id === client.user.id);
-
-                    if (usersSize < 1 && !isBotVoice) db.audio.queue.remove(queue.guild.id);
+                
+                //Если нет пользователей
+                if (size < 1) {
+                    if (queue) db.audio.queue.remove(queue.guild.id);
+                    Voice.remove(Guild.id);
                 }
-            }
+            })
         });
     };
 }
