@@ -1,9 +1,12 @@
 import {Client, ShardManager} from "@lib/discord";
+import {spawnSync} from "node:child_process";
 import {Colors} from "discord.js";
+import * as path from "node:path";
 import {env, Logger} from "@env";
 import {db} from "@lib/db";
 
 /**
+ * @author SNIPPIK
  * @description Загружаем данные в зависимости от выбора
  */
 if (process["argv"].includes("--ShardManager")) new ShardManager(__filename);
@@ -13,11 +16,11 @@ else {
     /**
      * @description Подключаемся к api.discord
      */
-    client.login(env.get("token.discord")).then(async () => {
+    client.login(env.get("token.discord")).then(() => {
         //Запускаем загрузку модулей после инициализации бота
-        client.once("ready", async () => {
+        client.once("ready", () => {
             Logger.log("LOG", `[Shard ${client.ID}] is connected to websocket`);
-            await db.initHandler(client);
+            db.initialize = client;
         });
     });
 
@@ -56,3 +59,21 @@ else {
     });
     process.on("unhandledRejection", (err: Error) => console.error(err.stack));
 }
+
+/**
+ * @author SNIPPIK
+ * @description Делаем проверку на наличие FFmpeg/avconv
+ */
+(() => {
+    const names = [`${env.get("cached.dir")}/FFmpeg/ffmpeg`, env.get("cached.dir"), env.get("ffmpeg.path")].map((file) => path.resolve(file).replace(/\\/g,'/'));
+
+    for (const name of ["ffmpeg", "avconv", ...names]) {
+        try {
+            const result = spawnSync(name, ['-h'], {windowsHide: true});
+            if (result.error) continue;
+            return env.set("ffmpeg.path", name);
+        } catch {}
+    }
+
+    throw Error("FFmpeg/avconv not found!");
+})();

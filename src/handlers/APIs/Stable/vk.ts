@@ -8,7 +8,7 @@ import {env} from "@env";
  * @description Динамически загружаемый класс
  * @API VK
  */
-class currentAPI extends Constructor.Assign<API.request> {
+class cAPI extends Constructor.Assign<API.request> {
     /**
      * @description Данные для создания запросов
      * @protected
@@ -20,7 +20,7 @@ class currentAPI extends Constructor.Assign<API.request> {
 
     /**
      * @description Создаем экземпляр запросов
-     * @constructor currentAPI
+     * @constructor cAPI
      * @public
      */
     public constructor() {
@@ -51,12 +51,12 @@ class currentAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const api = await currentAPI.API("audio", "getById", `&audios=${ID.pop()}`);
+                                        const api = await cAPI.API("audio", "getById", `&audios=${ID.pop()}`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
 
-                                        const track = currentAPI.track(api.response.pop(), url);
+                                        const track = cAPI.track(api.response.pop(), url);
                                         return resolve(track);
                                     } catch (e) {
                                         return reject(Error(`[APIs]: ${e}`))
@@ -78,11 +78,11 @@ class currentAPI extends Constructor.Assign<API.request> {
                                 return new Promise<Song[]>(async (resolve, reject) => {
                                     try {
                                         //Создаем запрос
-                                        const api = await currentAPI.API("audio", "search", `&q=${url}`);
+                                        const api = await cAPI.API("audio", "search", `&q=${url}`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
-                                        const tracks = (api.response.items.splice(0, limit)).map(currentAPI.track);
+                                        const tracks = (api.response.items.splice(0, limit)).map(cAPI.track);
 
                                         return resolve(tracks);
                                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
@@ -147,7 +147,7 @@ class currentAPI extends Constructor.Assign<API.request> {
  * @export default
  * @description Делаем классы глобальными
  */
-export default Object.values({currentAPI});
+export default Object.values({cAPI});
 
 type requestType = "get" | "getById" | "search" | "getPlaylistById" | "getPlaylist";
 type methodType = "audio" | "execute" | "catalog";

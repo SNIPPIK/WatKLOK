@@ -1,7 +1,6 @@
 import {Constructor, Handler} from "@handler";
 import {Events} from "discord.js";
 import {Voice} from "@lib/voice";
-import {Logger} from "@env";
 import {db} from "@lib/db"
 
 /**
@@ -30,10 +29,22 @@ class VoiceStateUpdate extends Constructor.Assign<Handler.Event<Events.VoiceStat
                 }
 
                 const queue = db.audio.queue.get(newState.guild.id);
-                
+
                 //Если нет пользователей
                 if (size < 1) {
-                    if (queue) db.audio.queue.remove(queue.guild.id);
+                    if (queue) {
+                        //Если включен режим радио
+                        if (queue.radio) {
+                            if (size === 0) queue.player.pause();
+                            else queue.player.resume();
+                            return;
+                        }
+
+                        //Удаляем очередь
+                        db.audio.queue.remove(queue.guild.id);
+                    }
+
+                    //Удаляем голосовое подключение
                     Voice.remove(Guild.id);
                 }
             })

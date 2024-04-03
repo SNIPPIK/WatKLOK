@@ -1,27 +1,6 @@
-import {ChildProcessWithoutNullStreams, spawn, spawnSync} from "child_process";
+import {ChildProcessWithoutNullStreams, spawn} from "child_process";
 import {OpusEncoder} from "@lib/voice/utils/Opus";
-import * as path from "node:path";
 import {env} from "@env";
-
-/**
- * @author SNIPPIK
- * @description Делаем проверку на наличие FFmpeg/avconv
- */
-const checkFFmpeg = () => {
-    const names = [`${env.get("cached.dir")}/FFmpeg/ffmpeg`, env.get("cached.dir"), env.get("ffmpeg.path")].map((file) => path.resolve(file).replace(/\\/g,'/'));
-
-    for (const name of ["ffmpeg", "avconv", ...names]) {
-        try {
-            const result = spawnSync(name, ['-h'], {windowsHide: true});
-            if (result.error) throw result.error;
-            env.set("ffmpeg.path", name);
-            return;
-        } catch {}
-    }
-
-    throw Error("FFmpeg/avconv not found!");
-};
-checkFFmpeg();
 
 /**
  * @author SNIPPIK
@@ -169,7 +148,9 @@ export class SeekStream {
                 this._streams.shift();
             }
         });
+
         for (let item of Object.keys(this._options)) this._options[item] = null;
+        this._readable = null;
     };
 }
 
@@ -219,7 +200,7 @@ export class Process {
      * @param name {string} Имя процесса
      */
     public constructor(args: string[], name: string = env.get("ffmpeg.path")) {
-        this._process = spawn(name, args, {windowsHide: true, shell: false});
+        this._process = spawn(name, args, {shell: false});
         ["end", "close", "error"].forEach((event) => this.process.once(event, this.cleanup));
     };
 

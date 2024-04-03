@@ -123,6 +123,11 @@ class Group extends Constructor.Assign<Handler.Command> {
                     }
 
                     case "stop": {
+                        if (queue.radio) {
+                            //@ts-ignore
+                            if (!member.permissions.has("MANAGE_SERVER") && env.get("player.radio.admin")) return { content: `${author} | В данные момент включен режим радио для отключения необходимо иметь право \`MANAGE_SERVER\`!`, color: "Yellow" };
+                        }
+
                         db.audio.queue.remove(queue.guild.id);
                         return { content: `${author} | Музыкальная очередь удалена!` };
                     }

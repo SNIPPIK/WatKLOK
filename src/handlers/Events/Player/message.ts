@@ -230,42 +230,32 @@ class onSearch extends Constructor.Assign<Handler.Event<"message/search">> {
  * @class ProgressBar
  */
 class ProgressBar {
-    private readonly _local = {
-        current: 0,
-        max:     0,
-        size:    12
-    };
+    private readonly current: number = 0;
+    private readonly size: number = 12;
+    private readonly total: number = 0;
+    public constructor(duration: number, total: number) {
+        if (duration > total) this.current = total;
+        else this.current = duration;
 
-    public constructor(currentDur: number, max: number) {
-        if (currentDur > max) this._local.current = max;
-        else this._local.current = currentDur;
-
-        this._local.max = max;
+        this.total = total;
     };
 
     /**
      * @description Высчитываем прогресс бар
+     * @public
      */
     public get bar(): string {
-        const {progress} = db.emojis;
-        const size =  this._local.size, current =  this._local.current, max =  this._local.max;
-        const progressZ = Math.round(size * (isNaN(current) ? 0 : current / max));
-        let bar: string = "";
-
-        //Начало показа дорожки
-        if (current > 0) bar += `${progress.upped.left}`;
-        else bar += `${progress.empty.left}`;
+        const emoji = db.emojis.progress;
+        const size =  this.size, current =  this.current, total =  this.total;
+        const number = Math.round(size * (isNaN(current) ? 0 : current / total));
+        let txt = current > 0 ? `${emoji.upped.left}` : `${emoji.empty.left}`;
 
         //Середина дорожки + точка
-        if (current === 0) bar += `${progress.upped.center.repeat(progressZ)}${progress.empty.center.repeat((size + 1) - progressZ)}`;
-        else if (current >= max) bar += `${progress.upped.center.repeat(size)}`;
-        else bar += `${progress.upped.center.repeat(progressZ)}${progress.bottom}${progress.empty.center.repeat(size - progressZ)}`;
+        if (current === 0) txt += `${emoji.upped.center.repeat(number)}${emoji.empty.center.repeat((size + 1) - number)}`;
+        else if (current >= total) txt += `${emoji.upped.center.repeat(size)}`;
+        else txt += `${emoji.upped.center.repeat(number)}${emoji.bottom}${emoji.empty.center.repeat(size - number)}`;
 
-        //Конец дорожки
-        if (current >= max) bar += `${progress.upped.right}`;
-        else bar += `${progress.empty.center}`;
-
-        return bar;
+        return txt + (current >= total ? `${emoji.upped.right}` : `${emoji.empty.right}`);
     };
 }
 

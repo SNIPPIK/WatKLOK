@@ -8,7 +8,7 @@ import {env} from "@env";
  * @description Динамически загружаемый класс
  * @API Spotify
  */
-class currentAPI extends Constructor.Assign<API.request> {
+class cAPI extends Constructor.Assign<API.request> {
     /**
      * @description Данные для создания запросов
      * @protected
@@ -25,7 +25,7 @@ class currentAPI extends Constructor.Assign<API.request> {
 
     /**
      * @description Создаем экземпляр запросов
-     * @constructor currentAPI
+     * @constructor cAPI
      * @public
      */
     public constructor() {
@@ -56,11 +56,11 @@ class currentAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const api = await currentAPI.API(`tracks/${ID}`);
+                                        const api = await cAPI.API(`tracks/${ID}`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
-                                        const track = currentAPI.track(api)
+                                        const track = cAPI.track(api)
 
                                         return resolve(track);
                                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
@@ -87,12 +87,12 @@ class currentAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const api: Error | any = await currentAPI.API(`albums/${ID}?offset=0&limit=${limit}`);
+                                        const api: Error | any = await cAPI.API(`albums/${ID}?offset=0&limit=${limit}`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
 
-                                        const tracks = api.tracks.items.map(currentAPI.track)
+                                        const tracks = api.tracks.items.map(cAPI.track)
 
                                         return resolve({ url, title: api.name, image: api.images[0], items: tracks, author: api?.["artists"][0] });
                                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
@@ -119,11 +119,11 @@ class currentAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const api: Error | any = await currentAPI.API(`playlists/${ID}?offset=0&limit=${limit}`);
+                                        const api: Error | any = await cAPI.API(`playlists/${ID}?offset=0&limit=${limit}`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
-                                        const tracks = api.tracks.items.map(({ track }) => currentAPI.track(track));
+                                        const tracks = api.tracks.items.map(({ track }) => cAPI.track(track));
 
                                         return resolve({ url, title: api.name, image: api.images[0], items: tracks });
                                     } catch (e) {
@@ -152,12 +152,12 @@ class currentAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const api = await currentAPI.API(`artists/${ID}/top-tracks?market=ES&limit=${limit}`);
+                                        const api = await cAPI.API(`artists/${ID}/top-tracks?market=ES&limit=${limit}`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
 
-                                        return resolve((api.tracks?.items ?? api.tracks).map(currentAPI.track));
+                                        return resolve((api.tracks?.items ?? api.tracks).map(cAPI.track));
                                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
                                 });
                             }
@@ -176,12 +176,12 @@ class currentAPI extends Constructor.Assign<API.request> {
                                 return new Promise<Song[]>(async (resolve, reject) => {
                                     try {
                                         //Создаем запрос
-                                        const api: Error | any = await currentAPI.API(`search?q=${url}&type=track&limit=${limit}`);
+                                        const api: Error | any = await cAPI.API(`search?q=${url}&type=track&limit=${limit}`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
 
-                                        return resolve(api.tracks.items.map(currentAPI.track));
+                                        return resolve(api.tracks.items.map(cAPI.track));
                                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
                                 });
                             }
@@ -258,4 +258,4 @@ class currentAPI extends Constructor.Assign<API.request> {
  * @export default
  * @description Делаем классы глобальными
  */
-export default Object.values({currentAPI});
+export default Object.values({cAPI});

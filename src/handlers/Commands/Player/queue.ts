@@ -77,13 +77,34 @@ class Group extends Constructor.Assign<Handler.Command>{
                     name: "list",
                     description: "Список треков!",
                     type: ApplicationCommandOptionType.Subcommand
+                },
+                {
+                    name: "radio",
+                    description: "Управление режимом 24/7",
+                    type: ApplicationCommandOptionType.Subcommand,
+                    options: [
+                        {
+                            name: "type",
+                            description: "Что необходимо сделать с режимом 24/7!",
+                            type: ApplicationCommandOptionType["String"],
+                            choices: [
+                                {
+                                    name: "enable",
+                                    value: "on",
+                                },
+                                {
+                                    name: "disable",
+                                    value: "off",
+                                }
+                            ]
+                        }
+                    ]
                 }
             ],
 
             execute: ({message, args, sub}) => {
                 const { author, member, guild } = message;
                 const queue = db.audio.queue.get(guild.id);
-                const arg = args.length > 0 ? parseInt(args.pop()) : 1;
 
                 if (sub === "history") {
                     //Если история отключена
@@ -185,6 +206,26 @@ class Group extends Constructor.Assign<Handler.Command>{
 
                     return;
                 }
+
+                //Управление режимом 24/7
+                else if (sub === "radio") {
+                    //@ts-ignore
+                    if (!member.permissions.has("MANAGE_SERVER") && env.get("player.radio.admin")) return { content: `${author} | Эта команда доступна только для права \`MANAGE_SERVER\`!`, color: "Yellow" };
+
+                    if (args[0] === "on") {
+                        if (queue.radio) return { content: `${author} | Уже включен режим радио!`, color: "Yellow" };
+
+                        queue.radio = true;
+                        return { content: `${author} | Включен режим радио!`, color: "Green" };
+                    } else {
+                        if (!queue.radio) return { content: `${author} | Уже выключен режим радио!`, color: "Yellow" };
+
+                        queue.radio = false;
+                        return { content: `${author} | Выключен режим радио!`, color: "Green" };
+                    }
+                }
+
+                const arg = args.length > 0 ? parseInt(args.pop()) : 1;
 
                 //Если аргумент не является числом
                 if (isNaN(arg)) return { content: `${author} | Аргумент не является числом` };

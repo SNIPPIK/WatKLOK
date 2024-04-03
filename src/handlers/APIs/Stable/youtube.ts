@@ -8,9 +8,9 @@ import {Script} from "vm";
 /**
  * @author SNIPPIK
  * @description Динамически загружаемый класс
- * @class currentAPI
+ * @class cAPI
  */
-class currentAPI extends Constructor.Assign<API.request> {
+class cAPI extends Constructor.Assign<API.request> {
     protected static decode = new class {
         private Segment = [
             // Strings
@@ -178,7 +178,7 @@ class currentAPI extends Constructor.Assign<API.request> {
 
     /**
      * @description Создаем экземпляр запросов
-     * @constructor currentAPI
+     * @constructor cAPI
      * @public
      */
     public constructor() {
@@ -209,18 +209,18 @@ class currentAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const result = await currentAPI.API(`https://www.youtube.com/watch?v=${ID}&has_verified=1`);
+                                        const result = await cAPI.API(`https://www.youtube.com/watch?v=${ID}&has_verified=1`);
 
                                         //Если возникла ошибка при получении данных
                                         if (result instanceof Error) return reject(result);
 
                                         //Если надо получить аудио
                                         if (audio) {
-                                            const format = await currentAPI.extractStreamingData(result["streamingData"], result["html5"]);
+                                            const format = await cAPI.extractStreamingData(result["streamingData"], result["html5"]);
                                             result["videoDetails"]["format"] = {url: format.url};
                                         }
 
-                                        const track = currentAPI.track(result["videoDetails"]);
+                                        const track = cAPI.track(result["videoDetails"]);
                                         return resolve(track);
                                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
                                 });
@@ -247,7 +247,7 @@ class currentAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const details = await currentAPI.API(`https://www.youtube.com/${ID.pop()}`);
+                                        const details = await cAPI.API(`https://www.youtube.com/${ID.pop()}`);
 
                                         if (details instanceof Error) return reject(details);
 
@@ -255,12 +255,12 @@ class currentAPI extends Constructor.Assign<API.request> {
                                         const microformat: any = details["microformat"]["microformatDataRenderer"];
                                         const items: Song[] = details["contents"]["twoColumnBrowseResultsRenderer"]["tabs"][0]["tabRenderer"]
                                             .content["sectionListRenderer"]["contents"][0]["itemSectionRenderer"]["contents"][0]["playlistVideoListRenderer"]["contents"]
-                                            .splice(0, limit).map(({playlistVideoRenderer}) => currentAPI.track(playlistVideoRenderer));
+                                            .splice(0, limit).map(({playlistVideoRenderer}) => cAPI.track(playlistVideoRenderer));
 
                                         //Если нет автора плейлиста, то это альбом автора
                                         if (sidebar.length > 1) {
                                             const authorData = details["sidebar"]["playlistSidebarRenderer"].items[1]["playlistSidebarSecondaryInfoRenderer"]["videoOwner"]["videoOwnerRenderer"];
-                                            author = await currentAPI.getChannel({ id: authorData["navigationEndpoint"]["browseEndpoint"]["browseId"], name: authorData.title["runs"][0].text });
+                                            author = await cAPI.getChannel({ id: authorData["navigationEndpoint"]["browseEndpoint"]["browseId"], name: authorData.title["runs"][0].text });
                                         } else author = items.at(-1).author;
 
                                         return resolve({
@@ -291,7 +291,7 @@ class currentAPI extends Constructor.Assign<API.request> {
                                         else ID = `channel/${url.split("channel/")[1]}`;
 
                                         //Создаем запрос
-                                        const details = await currentAPI.API(`https://www.youtube.com/${ID}/videos`);
+                                        const details = await cAPI.API(`https://www.youtube.com/${ID}/videos`);
 
                                         if (details instanceof Error) return reject(details);
 
@@ -329,7 +329,7 @@ class currentAPI extends Constructor.Assign<API.request> {
                                 return new Promise<Song[]>(async (resolve, reject) => {
                                     try {
                                         //Создаем запрос
-                                        const details = await currentAPI.API(`https://www.youtube.com/results?search_query=${url.split(" ").join("+")}`);
+                                        const details = await cAPI.API(`https://www.youtube.com/results?search_query=${url.split(" ").join("+")}`);
 
                                         //Если при получении данных возникла ошибка
                                         if (details instanceof Error) return reject(details);
@@ -339,7 +339,7 @@ class currentAPI extends Constructor.Assign<API.request> {
                                         if (vanilla_videos?.length === 0 || !vanilla_videos) return reject(Error(`[APIs]: Не удалось найти: ${url}`));
 
                                         let filtered_ = vanilla_videos?.filter((video: any) => video && video?.["videoRenderer"] && video?.["videoRenderer"]?.["videoId"])?.splice(0, limit);
-                                        let videos = filtered_.map(({ videoRenderer }: any) => currentAPI.track(videoRenderer));
+                                        let videos = filtered_.map(({ videoRenderer }: any) => cAPI.track(videoRenderer));
 
                                         return resolve(videos);
                                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
@@ -483,7 +483,7 @@ class currentAPI extends Constructor.Assign<API.request> {
  * @export default
  * @description Делаем классы глобальными
  */
-export default Object.values({currentAPI});
+export default Object.values({cAPI});
 
 
 /**

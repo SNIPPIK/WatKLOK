@@ -87,53 +87,51 @@ namespace SupportDataBase {
      * @abstract
      */
     export class Audio {
-        private readonly audioCollection = new class extends Constructor.Collection<Queue.Music> {
-            private readonly _local = {
-                emitter: new class extends TypedEmitter<CollectionAudioEvents & AudioPlayerEvents> {
-                    private _playerEvents: (keyof AudioPlayerEvents)[] = null;
-
-                    /**
-                     * @description Ивенты плеера
-                     * @return (keyof AudioPlayerEvents)[]
-                     */
-                    public get player() {
-                        if (this._playerEvents) return this._playerEvents;
-
-                        this._playerEvents = this.eventNames().filter((item: keyof AudioPlayerEvents) => item.match(/player\//)) as (keyof AudioPlayerEvents)[];
-                        return this._playerEvents;
-                    };
-                },
-            };
-
-            /**
-             * @description Добавляем очередь в список
-             * @param queue - Очередь сервера
-             *
-             * @remarks
-             * Добавлять при создании очереди! В function set
-             * @public
-             */
-            public runQueue = (queue: Queue.Music) => {
-                db.audio.cycles.players.set(queue.player);
-
-                //Загружаем ивенты плеера
-                for (const event of this.events.player) {
-                    queue.player.on(event as keyof AudioPlayerEvents, (...args: any[]) => {
-                        this.events.emit(event as any, queue, ...args);
-                    });
-                }
-            };
-
-            /**
-             * @description Получаем ивенты для плеера
-             * @return CollectionAudioEvents
-             * @public
-             */
-            public get events() { return this._local.emitter; };
-        }
         private readonly data = {
-            options: { volume:  parseInt(env.get("audio.volume")), fade: parseInt(env.get("audio.fade")) },
-            filters: [] as  Filter[],
+            queue: new class extends Constructor.Collection<Queue.Music> {
+                private readonly _local = {
+                    emitter: new class extends TypedEmitter<CollectionAudioEvents & AudioPlayerEvents> {
+                        private _playerEvents: (keyof AudioPlayerEvents)[] = null;
+
+                        /**
+                         * @description Ивенты плеера
+                         * @return (keyof AudioPlayerEvents)[]
+                         */
+                        public get player() {
+                            if (this._playerEvents) return this._playerEvents;
+
+                            this._playerEvents = this.eventNames().filter((item: keyof AudioPlayerEvents) => item.match(/player\//)) as (keyof AudioPlayerEvents)[];
+                            return this._playerEvents;
+                        };
+                    },
+                };
+
+                /**
+                 * @description Добавляем очередь в список
+                 * @param queue - Очередь сервера
+                 *
+                 * @remarks
+                 * Добавлять при создании очереди! В function set
+                 * @public
+                 */
+                public runQueue = (queue: Queue.Music) => {
+                    db.audio.cycles.players.set(queue.player);
+
+                    //Загружаем ивенты плеера
+                    for (const event of this.events.player) {
+                        queue.player.on(event as keyof AudioPlayerEvents, (...args: any[]) => {
+                            this.events.emit(event as any, queue, ...args);
+                        });
+                    }
+                };
+
+                /**
+                 * @description Получаем ивенты для плеера
+                 * @return CollectionAudioEvents
+                 * @public
+                 */
+                public get events() { return this._local.emitter; };
+            },
             cycles: new class {
                 /**
                  * @author SNIPPIK
@@ -286,7 +284,10 @@ namespace SupportDataBase {
                     };
                 } : null;
                 public get downloader() { return this._downloader; };
-            }
+            },
+
+            options: { volume:  parseInt(env.get("audio.volume")), fade: parseInt(env.get("audio.fade")) },
+            filters: [] as  Filter[]
         };
         /**
          * @description Получаем циклы процесса
@@ -306,7 +307,7 @@ namespace SupportDataBase {
          * @return CollectionQueue
          * @public
          */
-        public get queue() { return this.audioCollection; };
+        public get queue() { return this.data.queue; };
 
         /**
          * @description Получаем фильтры полученные из базы данных github
@@ -386,33 +387,33 @@ export const db = new class DataBase extends SupportDataBase.Commands {
         apis: new SupportDataBase.APIs(),
 
         owners: env.get("owner.list").match(/,/) ? env.get("owner.list").split(",") : [env.get("owner.list")] as string[],
-    };
-    protected readonly _emojis = {
-        button: {
-            resume: env.get("button.resume"),
-            pause: env.get("button.pause"),
-            loop: env.get("button.loop"),
-            loop_one: env.get("button.loop_one"),
-            pref: env.get("button.pref"),
-            next: env.get("button.next"),
-            shuffle: env.get("button.shuffle")
-        },
+        emojis: {
+            button: {
+                resume: env.get("button.resume"),
+                pause: env.get("button.pause"),
+                loop: env.get("button.loop"),
+                loop_one: env.get("button.loop_one"),
+                pref: env.get("button.pref"),
+                next: env.get("button.next"),
+                shuffle: env.get("button.shuffle")
+            },
 
-        progress: {
-            empty: {
-                left: env.get("progress.empty.left"),
-                center: env.get("progress.empty.center"),
-                right: env.get("progress.empty.right")
+            progress: {
+                empty: {
+                    left: env.get("progress.empty.left"),
+                    center: env.get("progress.empty.center"),
+                    right: env.get("progress.empty.right")
+                },
+                upped: {
+                    left: env.get("progress.not_empty.left"),
+                    center: env.get("progress.not_empty.center"),
+                    right: env.get("progress.not_empty.right")
+                },
+                bottom: env.get("progress.bottom")
             },
-            upped: {
-                left: env.get("progress.not_empty.left"),
-                center: env.get("progress.not_empty.center"),
-                right: env.get("progress.not_empty.right")
-            },
-            bottom: env.get("progress.bottom")
+            noImage: git + env.get("image.not"),
+            diskImage: git + env.get("image.currentPlay")
         },
-        noImage: git + env.get("image.not"),
-        diskImage: git + env.get("image.currentPlay")
     };
     /**
      * @description База для управления музыкой
@@ -435,15 +436,14 @@ export const db = new class DataBase extends SupportDataBase.Commands {
      * @description Выдаем все необходимые смайлики
      * @public
      */
-    public get emojis() { return this._emojis; };
+    public get emojis() { return this.data.emojis; };
 
     /**
-     * @description Загружаем Imports
+     * @description Запускаем index
      * @param client {Client} Класс клиента
-     * @return Promise<true>
      * @public
      */
-    private initFs = async (client: Client): Promise<void> => {
+    public set initialize(client: Client) {
         const dirs = ["handlers/APIs", "handlers/Commands", "handlers/Events"];
         const callbacks = [
             (item: API.request) => {
@@ -472,35 +472,29 @@ export const db = new class DataBase extends SupportDataBase.Commands {
             }
         ];
 
-        //Постепенно загружаем директории с данными
-        for (let n = 0; n < dirs.length; n++) {
-            const path = dirs[n];
-
-            try {
-                new Handler<any>({ path, callback: callbacks[n] });
-                Logger.log("LOG", `[Shard ${client.ID}] have been uploaded, ${path}`);
-            } catch (err) {
-                Logger.log("ERROR", err);
-            }
-        }
-    };
-
-    /**
-     * @description Запускаем index
-     * @param client {Client} Класс клиента
-     * @return Promise<true>
-     * @public
-     */
-    public initHandler = async (client: Client): Promise<void> => {
         Logger.log("LOG", `[Shard ${client.ID}] is initialized database`);
 
-        //Проверяем статус получения фильтров
-        const filterStatus = await this.audio.loadFilters;
-        if (filterStatus instanceof Error) Logger.log("ERROR", `[Shard ${client.ID}] is initialized filters`);
-        else Logger.log("LOG", `[Shard ${client.ID}] is initialized filters`);
+        (async () => {
+            //Проверяем статус получения фильтров
+            const filterStatus = await this.audio.loadFilters;
+            if (filterStatus instanceof Error) Logger.log("ERROR", `[Shard ${client.ID}] is initialized filters`);
+            else Logger.log("LOG", `[Shard ${client.ID}] is initialized filters`);
 
-        //Загружаем под папки в handlers
-        await this.initFs(client); await this.registerCommands(client);
+            //Постепенно загружаем директории с данными
+            for (let n = 0; n < dirs.length; n++) {
+                const path = dirs[n];
+
+                try {
+                    new Handler<any>({ path, callback: callbacks[n] });
+                    Logger.log("LOG", `[Shard ${client.ID}] have been uploaded, ${path}`);
+                } catch (err) {
+                    Logger.log("ERROR", err);
+                }
+            }
+
+            //Отправляем данные о командах на сервера discord
+            await this.registerCommands(client);
+        })();
     };
 }
 

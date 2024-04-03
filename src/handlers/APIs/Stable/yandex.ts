@@ -7,10 +7,10 @@ import {env} from "@env";
 /**
  * @author SNIPPIK
  * @description Динамически загружаемый класс
- * @class currentAPI
+ * @class cAPI
  * @API Yandex music
  */
-class currentAPI extends Constructor.Assign<API.request> {
+class cAPI extends Constructor.Assign<API.request> {
     /**
      * @description Данные для создания запросов
      * @protected
@@ -22,7 +22,7 @@ class currentAPI extends Constructor.Assign<API.request> {
 
     /**
      * @description Создаем экземпляр запросов
-     * @constructor currentAPI
+     * @constructor cAPI
      * @public
      */
     public constructor() {
@@ -52,17 +52,17 @@ class currentAPI extends Constructor.Assign<API.request> {
                                         if (!ID) return reject(Error("[APIs]: Не найден ID трека!"));
 
                                         //Делаем запрос
-                                        const api = await currentAPI.API(`tracks/${ID}`);
+                                        const api = await cAPI.API(`tracks/${ID}`);
 
                                         //Обрабатываем ошибки
                                         if (api instanceof Error) return reject(api);
                                         else if (!api[0]) return reject(Error("[APIs]: Не удалось получить данные о треке!"));
 
-                                        const track = currentAPI.track(api[0]);
+                                        const track = cAPI.track(api[0]);
 
                                         //Надо ли получать аудио
                                         if (audio) {
-                                            const link = await currentAPI.getAudio(ID);
+                                            const link = await cAPI.getAudio(ID);
 
                                             if (link instanceof Error) return reject(api);
                                             track.link = link;
@@ -93,15 +93,15 @@ class currentAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const api = await currentAPI.API(`albums/${ID}/with-tracks`);
+                                        const api = await cAPI.API(`albums/${ID}/with-tracks`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
                                         else if (!api?.["duplicates"]?.length && !api?.["volumes"]?.length) return reject(Error("[APIs]: Я не нахожу треков в этом альбоме!"));
 
-                                        const AlbumImage = currentAPI.parseImage({image: api?.["ogImage"] ?? api?.["coverUri"]});
+                                        const AlbumImage = cAPI.parseImage({image: api?.["ogImage"] ?? api?.["coverUri"]});
                                         const tracks: Song.track[] = api["volumes"]?.pop().splice(0, limit);
-                                        const songs = tracks.map(currentAPI.track);
+                                        const songs = tracks.map(cAPI.track);
 
                                         return resolve({url, title: api.title, image: AlbumImage, items: songs});
                                     } catch (e) {
@@ -130,15 +130,15 @@ class currentAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const api = await currentAPI.API(ID.at(0));
+                                        const api = await cAPI.API(ID.at(0));
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
                                         else if (api?.tracks?.length === 0) return reject(Error("[APIs]: Я не нахожу треков в этом плейлисте!"));
 
-                                        const image = currentAPI.parseImage({image: api?.["ogImage"] ?? api?.["coverUri"]});
+                                        const image = cAPI.parseImage({image: api?.["ogImage"] ?? api?.["coverUri"]});
                                         const tracks: any[] = api.tracks?.splice(0, limit);
-                                        const songs = tracks.map(({track}) => currentAPI.track(track));
+                                        const songs = tracks.map(({track}) => cAPI.track(track));
 
                                         return resolve({
                                             url, title: api.title, image: image, items: songs,
@@ -171,11 +171,11 @@ class currentAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const api = await currentAPI.API(`artists/${ID.pop()}/tracks`);
+                                        const api = await cAPI.API(`artists/${ID.pop()}/tracks`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
-                                        const tracks = api.tracks.splice(0, limit).map(currentAPI.track);
+                                        const tracks = api.tracks.splice(0, limit).map(cAPI.track);
 
                                         return resolve(tracks);
                                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
@@ -196,13 +196,13 @@ class currentAPI extends Constructor.Assign<API.request> {
                                 return new Promise<Song[]>(async (resolve, reject) => {
                                     try {
                                         //Создаем запрос
-                                        const api = await currentAPI.API(`search?type=all&text=${url.split(" ").join("%20")}&page=0&nococrrect=false`);
+                                        const api = await cAPI.API(`search?type=all&text=${url.split(" ").join("%20")}&page=0&nococrrect=false`);
 
                                         //Обрабатываем ошибки
                                         if (api instanceof Error) return reject(api);
                                         else if (!api.tracks) return reject(Error(`[APIs]: На Yandex music нет такого трека!`));
 
-                                        const tracks = api.tracks["results"].splice(0, limit).map(currentAPI.track);
+                                        const tracks = api.tracks["results"].splice(0, limit).map(cAPI.track);
                                         return resolve(tracks);
                                     } catch (e) {
                                         return reject(Error(`[APIs]: ${e}`))
@@ -307,4 +307,4 @@ class currentAPI extends Constructor.Assign<API.request> {
  * @export default
  * @description Делаем классы глобальными
  */
-export default Object.values({ currentAPI });
+export default Object.values({ cAPI });

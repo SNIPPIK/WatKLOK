@@ -37,7 +37,7 @@ class onWait extends Constructor.Assign<Handler.Event<"player/wait">> {
             execute: (queue) => {
                 //Проверяем надо ли удалить из очереди трек
                 const removedSong = queue.repeat === "off" || queue.repeat === "songs" ? queue.songs.shift() : null;
-                if (removedSong && queue.repeat === "songs") queue.songs.push(removedSong);
+                if (removedSong && queue.repeat === "songs" || queue.radio) queue.songs.push(removedSong);
 
                 //Проверяем надо ли перетасовывать очередь
                 if (queue.shuffle && queue.repeat === "off") {
