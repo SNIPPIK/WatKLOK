@@ -28,26 +28,19 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @return object
      */
     public get filtersString() {
-        const realFilters = [`volume=${db.audio.options.volume / 100}`]; let chunk = 0;
+        const realFilters: string[] = [`volume=${db.audio.options.volume / 100}`];
+        let chunk = 0;
 
-        //Проверяем фильтры
         for (const filter of this.filters) {
+            const filterString = filter.args ? `${filter.filter}${filter.user_arg ?? ""}` : filter.filter;
+            realFilters.push(filterString);
 
-            //Если фильтр не требует аргумента
-            if (!filter.args) realFilters.push(filter.filter);
-            else realFilters.push(filter.filter + filter.user_arg ?? "");
-
-            //Если у фильтра есть модификатор скорости
-            if (filter?.speed) {
-                if (typeof filter.speed === "number") chunk += Number(filter.speed);
-                else chunk += Number(this.filters.slice(this.filters.indexOf(filter) + 1));
-            }
+            if (filter.speed) chunk += typeof filter.speed === "number" ? Number(filter.speed) : Number(this.filters.slice(this.filters.indexOf(filter) + 1));
         }
 
-        //Надо ли плавное включения треков
         realFilters.push(`afade=t=in:st=0:d=${db.audio.options.fade}`);
 
-        return { filters: realFilters.join(","), chunk }
+        return { filters: realFilters.join(","), chunk };
     };
 
     /**
@@ -142,25 +135,15 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
     public set sendPacket(packet: Buffer) {
         try {
             if (packet) this.connection.playOpusPacket(packet)
-        } catch (err: any) {
+        } catch (err) {
             //Подключаемся к голосовому каналу заново
-            if ((`${err}`).match(/getaddrinfo/)) {
+            if (`${err}`.includes("getaddrinfo")) {
                 this.status = "player/pause";
                 this.emit("player/error", this, `Attempt to reconnect to the voice channel!`);
 
-                for (let r = 0; r === 2; r++) {
+                for (let r = 0; r < 2; r++) {
                     if (this.connection.state.status === "ready") break;
-
                     this.connection.rejoin();
-                }
-
-                //Если попытка подключится удалась
-                if (this.connection.state.status === "ready") {
-                    this.status = "player/playing";
-                    return;
-                } else {
-                    this.emit("player/error", this, `The reconnection attempt failed!`, "crash");
-                    return;
                 }
             }
 
@@ -187,19 +170,16 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
         }, 25e3);
 
         stream.stream
-
             //Включаем поток когда можно будет начать читать
             .once("readable", () => {
                 this.stream = stream;
                 clearTimeout(timeout);
             })
-
             //Если происходит ошибка, то продолжаем читать этот же поток
             .once("error", () => {
                 this.emit("player/error", this, "Fail read stream", "skip");
                 clearTimeout(timeout);
             });
-
     };
 
 

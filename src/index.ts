@@ -1,7 +1,6 @@
 import {Client, ShardManager} from "@lib/discord";
-import {spawnSync} from "node:child_process";
+import process from "node:process";
 import {Colors} from "discord.js";
-import * as path from "node:path";
 import {env, Logger} from "@env";
 import {db} from "@lib/db";
 
@@ -37,15 +36,9 @@ else {
      * @description Ловим попытки сломать процесс
      */
     process.on("uncaughtException", (err: Error) => {
-        if (err?.message?.match(/APIs/)) Logger.log("WARN", `[CODE: <90404>]: [${err.name}/${err.message}]\n${err.stack}`);
-        else if (err.name?.match(/acknowledged./)) Logger.log("WARN", `[CODE: <50490>]: [${err.name}/${err.message}]\nЗапущено несколько ботов!\nЗакройте их через диспетчер!`);
-
-        //Если не прописана ошибка
-        else Logger.log("ERROR", `\n┌ Name:    ${err.name}\n├ Message: ${err.message}\n└ Stack:   ${err.stack}`);
-
+        //Отправляем данные об ошибке и отправляем через систему webhook
         client.sendWebhook = {
-            username: client.user.username,
-            avatarURL: client.user.avatarURL(),
+            username: client.user.username, avatarURL: client.user.avatarURL(),
             embeds: [{
                 title: "uncaughtException",
                 description: `\`\`\`${err.name} - ${err.message}\`\`\``,
@@ -56,24 +49,19 @@ else {
                 color: Colors.DarkRed,
             }],
         }
+
+        //Если получена критическая ошибка, из-за которой будет нарушено выполнение кода
+        if (err.message?.match(/WCritical/)) {
+            Logger.log("ERROR", `[CODE: <14>]: Hooked critical error!`);
+            process.exit(14);
+            return;
+        }
+
+        //Если вдруг запущено несколько ботов
+        else if (err.name?.match(/acknowledged./)) return Logger.log("WARN", `[CODE: <50490>]: Several bots are running!`);
+
+        //Выводим ошибку
+        Logger.log("ERROR", `\n┌ Name:    ${err.name}\n├ Message: ${err.message}\n└ Stack:   ${err.stack}`);
     });
     process.on("unhandledRejection", (err: Error) => console.error(err.stack));
 }
-
-/**
- * @author SNIPPIK
- * @description Делаем проверку на наличие FFmpeg/avconv
- */
-(() => {
-    const names = [`${env.get("cached.dir")}/FFmpeg/ffmpeg`, env.get("cached.dir"), env.get("ffmpeg.path")].map((file) => path.resolve(file).replace(/\\/g,'/'));
-
-    for (const name of ["ffmpeg", "avconv", ...names]) {
-        try {
-            const result = spawnSync(name, ['-h'], {windowsHide: true});
-            if (result.error) continue;
-            return env.set("ffmpeg.path", name);
-        } catch {}
-    }
-
-    throw Error("FFmpeg/avconv not found!");
-})();

@@ -278,14 +278,19 @@ export namespace Constructor {
             array: [] as T[],
             time: 0
         };
+
         public readonly _config: TimeCycleConfig<T> = {
             name: "timeCycle",
             execute: null,
             filter: null,
             duration: 10e3,
-            custom: {push: null}
+            custom: { push: null }
         };
-        protected constructor(options: TimeCycleConfig<T>) { Object.assign(this._config, options); };
+
+        protected constructor(options: TimeCycleConfig<T>) {
+            Object.assign(this._config, options);
+        };
+
         /**
          * @description Выдаем коллекцию
          * @public
@@ -319,11 +324,10 @@ export namespace Constructor {
          * @public
          */
         public remove = (item: T) => {
-            if (this.data.array?.length === 0) return;
             const index = this.data.array.indexOf(item);
 
-            if (index != -1) {
-                if (this._config.custom?.remove) this._config.custom?.remove(item);
+            if (index !== -1) {
+                if (this._config.custom?.remove) this._config.custom.remove(item);
                 this.data.array.splice(index, 1);
             }
         };
@@ -356,7 +360,7 @@ export namespace Constructor {
             //Выполняем функцию через ~this._time ms
             setTimeout(this._stepCycle, this.data.time - Date.now());
         };
-    }
+    };
 
     /**
      * @author SNIPPIK
@@ -605,10 +609,10 @@ export namespace API {
      * @class item
      * @abstract
      */
-    export abstract class item<T extends API.callbacks> {
+    export abstract class item<T extends callbacks> {
         public readonly name: T;
         public readonly filter?: RegExp;
-        public readonly callback?: (url: string, options: T extends "track" ? {audio?: boolean} : {limit?: number}) => API.callback<T>;
+        public readonly callback?: (url: string, options: T extends "track" ? {audio?: boolean} : {limit?: number}) => callback<T>;
         protected constructor(options: item<T>) {
             Object.assign(this, options);
         };
@@ -729,13 +733,13 @@ export namespace API {
      * @abstract
      */
     export interface request {
-        name: API.platform;
+        name: platform;
         url: string;
         audio: boolean;
         auth: boolean;
         filter: RegExp;
         color: number;
-        requests: item<API.callbacks>[];
+        requests: item<callbacks>[];
     }
 
     /**
@@ -748,11 +752,11 @@ export namespace API {
      * @description Доступные запросы
      * @type
      */
-    export type callbacks = "track" | "playlist" | "search" | "album" | "artist";
+    export type callbacks = "track" | "playlist" | "search" | "album" | "author";
 
     /**
      * @description Функция запроса
      * @type callback<callbacks>
      */
-    export type callback<T> = Promise<(T extends "track" ? Song : T extends "playlist" | "album" ? Song.playlist : T extends "search" | "artist" ? Song[] : never) | Error>
+    export type callback<T> = Promise<(T extends "track" ? Song : T extends "playlist" | "album" ? Song.playlist : T extends "search" | "author" ? Song[] : never) | Error>
 }

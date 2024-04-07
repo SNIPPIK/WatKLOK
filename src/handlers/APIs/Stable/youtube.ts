@@ -12,14 +12,6 @@ import {Script} from "vm";
  */
 class cAPI extends Constructor.Assign<API.request> {
     protected static decode = new class {
-        private Segment = [
-            // Strings
-            { s: '"', e: '"' }, { s: "'", e: "'" }, { s: '`', e: '`' },
-
-            // RegEx
-            { s: '/', e: '/', prf: /(^|[[{:;,/])\s?$/ || /(^|[[{:;,])\s?$/ }
-        ];
-
         /**
          * @description Применяет преобразование параметра расшифровки и n ко всем URL-адресам формата.
          * @param format - Аудио или видео формат на youtube
@@ -52,47 +44,28 @@ class cAPI extends Constructor.Assign<API.request> {
          * @param mixedJson
          */
         private cutAfterJS = (mixedJson: string): string => {
-            let open, close; //Define the general open and closing tag
-
-            if (mixedJson[0] === '[') { open = '['; close = ']'; }
-            else if (mixedJson[0] === '{') { open = '{'; close = '}'; }
-
-            if (!open) throw Error(`Can't cut unsupported JSON (need to begin with [ or { ) but got: ${mixedJson[0]}`);
-
-            // counter - Current open brackets to be closed
-            // isEscaped - States if the current character is treated as escaped or not
-            // isEscapedObject = States if the loop is currently inside an escaped js object
+            const open = mixedJson[0] === '[' ? '[' : '{', close = mixedJson[0] === '[' ? '[' : '}';
             let counter = 0, isEscaped = false, isEscapedObject = null;
 
-            // Go through all characters from the start
             for (let i = 0; i < mixedJson.length; i++) {
-                // End of current escaped object
                 if (!isEscaped && isEscapedObject !== null && mixedJson[i] === isEscapedObject.e) { isEscapedObject = null; continue; }
-                // Might be the start of a new escaped object
                 else if (!isEscaped && isEscapedObject === null) {
-                    for (const escaped of this.Segment) {
+                    for (const escaped of [ { s: '"', e: '"' }, { s: "'", e: "'" }, { s: '`', e: '`' }, { s: '/', e: '/', prf: /(^|[[{:;,/])\s?$/ || /(^|[[{:;,])\s?$/ }]) {
                         if (mixedJson[i] !== escaped.s) continue;
-                        // Test startPrefix against last 10 characters
-                        if (!escaped.prf || mixedJson.substring(i - 10, i).match(escaped.prf)) { isEscapedObject = escaped; break; }
+                        else if (!escaped.prf || mixedJson.substring(i - 10, i).match(escaped.prf)) { isEscapedObject = escaped; break; }
                     }
-                    // Continue if we found a new escaped object
+
                     if (isEscapedObject !== null) continue;
                 }
 
-                // Toggle the isEscaped boolean for every backslash
-                // Reset for every regular character
                 isEscaped = mixedJson[i] === '\\' && !isEscaped;
 
                 if (isEscapedObject !== null) continue;
-
-                if (mixedJson[i] === open) counter++;
+                else if (mixedJson[i] === open) counter++;
                 else if (mixedJson[i] === close) counter--;
-
-                // All brackets have been closed, thus end of JSON is reached
-                if (counter === 0) return mixedJson.substring(0, i + 1);
+                else if (counter === 0) return mixedJson.substring(0, i + 1);
             }
 
-            // We ran through the whole string and ended up with an unclosed bracket
             throw Error("Can't cut unsupported JSON (no matching closing bracket found)");
         };
 
@@ -277,10 +250,10 @@ class cAPI extends Constructor.Assign<API.request> {
                 /**
                  * @description Запрос данных треков артиста
                  */
-                new class extends API.item<"artist"> {
+                new class extends API.item<"author"> {
                     public constructor() {
                         super({
-                            name: "artist",
+                            name: "author",
                             filter: /\/(channel)?(@)/gi,
                             callback: (url: string, {limit}) => {
                                 return new Promise<Song[]>(async (resolve, reject) => {

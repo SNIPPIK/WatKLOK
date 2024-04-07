@@ -20,9 +20,7 @@ class onAPI extends Constructor.Assign<Handler.Event<"collection/api">> {
 
                 if (platform.block) return void (event.emit("collection/error", message, `**${name}**\n\nРазработчик заблокировал доступ к этой платформе!\nВозможно из-за ошибки или блокировки со стороны сервера!`));
                 else if (platform.auth) return void (event.emit("collection/error", message, `**${name}**\n\nНет данных для авторизации, запрос не может быть выполнен!`));
-                else if (typeof argument[1] === "string") {
-                    if (!argument[1].match(platform.filter) && argument[1].startsWith("http")) return void (event.emit("collection/error", message, `**${name}**\n\nЭтот запрос не относится к этой платформе!`));
-                }
+                else if (typeof argument[1] === "string" && !argument[1].match(platform.filter) && argument[1].startsWith("http")) return void (event.emit("collection/error", message, `**${name}**\n\nЭтот запрос не относится к этой платформе!`));
 
                 const api = platform.find(typeof argument[1] !== "string" ? argument[1].url : argument[1]);
 
@@ -32,13 +30,12 @@ class onAPI extends Constructor.Assign<Handler.Event<"collection/api">> {
                 //Отправляем сообщение о том что запрос производится
                 event.emit("collection/error", message, `**${name}.${api.name}**\n\n${env.get("loading.emoji")} Ожидание ответа от сервера...\n${platform.audio ? "Эта платформа не может выдать исходный файл музыки! Поиск трека!" : ""}`, false, "Yellow");
 
-                let options: { audio?: boolean, limit?: number } = null;
+                let options: { audio?: boolean, limit?: number };
 
                 //Определяем какие параметры передавать запросам
-                if (api.name === "artist") options = {limit: db.api.limits.author};
-                else if (api.name === "search") options = {limit: db.api.limits.search};
-                else if (api.name === "album" || api.name === "playlist") options = {limit: db.api.limits.playlist};
+                if (api.name === "album") options = {limit: db.api.limits.playlist};
                 else if (api.name === "track") options = {audio: true};
+                else options = {limit: db.api.limits[api.name]};
 
                 api.callback(argument[1] as string, options).then((item) => {
                     //Если нет данных или была получена ошибка

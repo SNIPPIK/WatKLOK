@@ -1,10 +1,10 @@
 import {Attachment, EmbedData, Routes, StageChannel, VoiceChannel} from "discord.js";
 import {AudioPlayer, AudioPlayerEvents, Filter} from "@lib/player/AudioPlayer";
-import {createWriteStream, existsSync, mkdirSync, rename} from "node:fs";
 import onPlaying from "@handler/Events/Player/message";
 import {API, Constructor, Handler} from "@handler";
 import {TypedEmitter} from "tiny-typed-emitter";
 import {Queue} from "@lib/player/queue/Queue";
+import {Cache} from "@lib/player/utils/Cache";
 import {Song} from "@lib/player/queue/Song";
 import {httpsClient} from "@lib/request";
 import {Client} from "@lib/discord";
@@ -210,79 +210,7 @@ namespace SupportDataBase {
                  * @description Здесь происходит управление кешированием треков
                  * @private
                  */
-                private readonly _downloader = env.get("cache") ? new class extends Constructor.Cycle<Song> {
-                    public constructor() {
-                        super({
-                            name: "Downloader",
-                            duration: 20e3,
-                            filter: (item) => {
-                                const names = this.status(item);
-
-                                if (item.duration.seconds >= 800 && item.duration.full !== "Live" || names.status === "final") {
-                                    this.remove(item);
-                                    return false;
-                                }
-
-                                //Проверяем путь на наличие директорий
-                                if (!existsSync(names.path)) {
-                                    let dirs = names.path.split("/");
-
-                                    if (!names.path.endsWith("/")) dirs.splice(dirs.length - 1);
-                                    mkdirSync(dirs.join("/"), {recursive: true});
-                                }
-                                return true;
-                            },
-                            execute: (track) => {
-                                return new Promise<boolean>((resolve) => {
-                                    setImmediate(() => this.remove(track));
-
-                                    new httpsClient(track.link).request.then((req) => {
-                                        if (req instanceof Error) return resolve(false);
-
-                                        if (req.pipe) {
-                                            const status = this.status(track);
-                                            const file = createWriteStream(status.path);
-
-                                            file.once("ready", () => req.pipe(file));
-                                            file.once("error", console.warn);
-                                            file.once("finish", () => {
-                                                const refreshName = this.status(track).path.split(".raw")[0];
-                                                rename(status.path, `${refreshName}.opus`, () => null);
-
-                                                if (!req.destroyed) req.destroy();
-                                                if (!file.destroyed) file.destroy();
-                                                Logger.log("DEBUG", `[Cycle]: [Download]: in ${refreshName}.opus`);
-
-                                                return resolve(true);
-                                            });
-                                        }
-
-                                        return resolve(false);
-                                    });
-                                });
-                            }
-                        });
-                    };
-                    /**
-                     * @description Получаем статус скачивания и путь до файла
-                     * @param track {Song}
-                     */
-                    public status = (track: Song): {status: "not" | "final" | "download", path: string} => {
-                        try {
-                            const dirname = __dirname.split("\\src")[0].replaceAll("\\", "/");
-                            const author = track.author.title.replace(/[|,'";*/\\{}!?.:<>]/gi, "");
-                            const song = track.title.replace(/[|,'";*/\\{}!?.:<>]/gi, "");
-                            const fullPath = `${dirname}/${env.get("cached.dir")}/Audio/[${author}]/[${song}]`;
-
-
-                            if (existsSync(`${fullPath}.opus`)) return {status: "final", path: `${fullPath}.opus`};
-                            else if (existsSync(`${fullPath}.raw`)) return {status: "download", path: `${fullPath}.raw`};
-                            return {status: "not", path: `${fullPath}.raw`};
-                        } catch {
-                            return { status: "not", path: null };
-                        }
-                    };
-                } : null;
+                private readonly _downloader = env.get("cache") ? new Cache.Audio() : null;
                 public get downloader() { return this._downloader; };
             },
 

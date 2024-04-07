@@ -53,3 +53,5 @@
 - [`Sodium Library`](src/libs/voice/utils/Sodium.ts) | Поддерживаемые библиотеки, необходима!
     - [`sodium-native`](https://www.npmjs.com/package/sodium-native) | Установлена по умолчанию
     - [`sodium`](https://www.npmjs.com/package/sodium)
+    - [`libsodium-wrappers`](https://www.npmjs.com/package/libsodium-wrappers)
+    - [`tweetnacl`](https://www.npmjs.com/package/tweetnacl)

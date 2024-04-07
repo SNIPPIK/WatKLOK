@@ -29,8 +29,8 @@ abstract class Request {
     private get protocol() {
         const protocol = this.data.protocol?.split(":")[0];
 
-        if (protocol === "http") return httpRequest;
-        else return httpsRequest;
+        Logger.log("DEBUG", `${protocol}Client: [${this.data.method}:|${this.data.hostname}${this.data.path}]`);
+        return protocol === "http" ? httpRequest : httpsRequest;
     };
 
     /**
@@ -39,10 +39,7 @@ abstract class Request {
      */
     public get request(): Promise<IncomingMessage | Error> {
         return new Promise((resolve) => {
-            Logger.log("DEBUG", `httpsClient: [${this.data.method}:|${this.data.hostname}${this.data.path}]`);
-
-            const request = this.protocol(this.data, (res: IncomingMessage) => {
-                //Автоматическое перенаправление
+            const request = this.protocol(this.data, (res) => {
                 if ((res.statusCode >= 300 && res.statusCode < 400) && res.headers?.location) {
                     this.data.path = res.headers.location;
                     return resolve(this.request);
@@ -51,16 +48,15 @@ abstract class Request {
                 return resolve(res);
             });
 
-            //Если запрос получил ошибку
+            //Если запрос POST, отправляем ответ на сервер
+            if (this.data.method === "POST" && this.data.body) request.write(this.data.body);
+
             request.once("error", resolve);
             request.once("timeout", () => resolve(Error(`[APIs]: Connection Timeout Exceeded ${this.data?.hostname}:${this.data?.port ?? 443}`)));
             request.once("close", () => {
                 request.removeAllListeners();
                 request.destroy();
             });
-
-            //Если запрос POST, отправляем ответ на сервер
-            if (this.data.method === "POST" && this.data.body) request.write(this.data.body);
 
             request.end();
         });

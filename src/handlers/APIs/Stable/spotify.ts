@@ -1,6 +1,6 @@
 import {Song} from "@lib/player/queue/Song";
-import {httpsClient} from "@lib/request";
 import {API, Constructor} from "@handler";
+import {httpsClient} from "@lib/request";
 import {env} from "@env";
 
 /**
@@ -138,10 +138,10 @@ class cAPI extends Constructor.Assign<API.request> {
                 /**
                  * @description Запрос данных треков артиста
                  */
-                new class extends API.item<"artist"> {
+                new class extends API.item<"author"> {
                     public constructor() {
                         super({
-                            name: "artist",
+                            name: "author",
                             filter: /artist\/[0-9z]+/i,
                             callback: (url, {limit}) => {
                                 const ID = /artist\/[a-zA-Z0-9]+/.exec(url)?.pop()?.split("artist\/")?.pop();

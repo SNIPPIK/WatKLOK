@@ -115,12 +115,11 @@ const prototypes: { type: any, name: string, value: any}[] = [
         type: Array.prototype, name: "ArraySort",
         value: function (number = 5, callback, joined = "\"\\n\\n\"") {
             const pages: string[] = [];
-            const lists: any[] = Array(Math.ceil(this.length / number)).fill(this[0]).map((_, i) => this.slice(i * number, i * number + number));
+            let page: string = '';
 
-            for (const list of lists) {
-                const text = list.map((value, index) => callback(value, index)).join(joined);
-
-                if (text !== undefined) pages.push(text);
+            for (let i = 0; i < this.length; i += number) {
+                page = this.slice(i, i + number).map((value, index) => callback(value, index)).join(joined);
+                if (page !== '') pages.push(page);
             }
 
             return pages;
@@ -129,23 +128,14 @@ const prototypes: { type: any, name: string, value: any}[] = [
     {
         type: Array.prototype, name: "time",
         value: function () {
-            let time: number = 0;
-
-            //Если есть треки в списке
-            if (this.length > 0) {
-                for (let item of this) time += item.duration.seconds;
-            }
-
-            return time.duration();
+            return this.reduce((total, item) => total + (item.duration.seconds || 0), 0).duration();
         }
     },
     {
         type: Array.prototype,
         name: "swap",
         value: function(position: number) {
-            const first = this[0];
-            this[0] = this[position];
-            this[position] = first;
+            [this[0], this[position]] = [this[position], this[0]];
 
             return this;
         }
@@ -155,14 +145,8 @@ const prototypes: { type: any, name: string, value: any}[] = [
     {
         type: String.prototype, name: "duration",
         value: function () {
-            const time = this?.split(":").map((value: string) => parseInt(value)) ?? [parseInt(this)];
-
-            switch (time.length) {
-                case 4: return (time[0] * ((60 * 60) * 24)) + (time[1] * ((60 * 60) * 24)) + (time[2] * 60) + time[3];
-                case 3: return (time[0] * ((60 * 60) * 24)) + (time[1] * 60) + time[2];
-                case 2: return (time[0] * 60) + time[1];
-                default: return time[0];
-            }
+            const time = this?.split(":").map(Number) ?? [parseInt(this)];
+            return time.length === 1 ? time[0] : time.reduce((acc, val) => acc * 60 + val);
         }
     },
 
@@ -170,10 +154,10 @@ const prototypes: { type: any, name: string, value: any}[] = [
     {
         type: Number.prototype, name: "duration",
         value: function () {
-            const days =    (this / ((60 * 60) * 24) % 24).toSplit() as number;
-            const hours =   (this / (60 * 60) % 24).toSplit()        as number;
-            const minutes = ((this / 60) % 60).toSplit()             as number;
-            const seconds = (this % 60).toSplit()                    as number;
+            const days = Math.floor(this / (60 * 60 * 24)).toSplit() as number;
+            const hours = Math.floor((this % (60 * 60 * 24)) / (60 * 60)).toSplit() as number;
+            const minutes = Math.floor((this % (60 * 60)) / 60).toSplit() as number;
+            const seconds = Math.floor(this % 60).toSplit() as number;
 
             return (days > 0 ? `${days}:` : "") + (hours > 0 || days > 0 ? `${hours}:` : "") + (minutes > 0 ? `${minutes}:` : "00:") + (seconds > 0 ? `${seconds}` : "00");
         }
@@ -188,8 +172,7 @@ const prototypes: { type: any, name: string, value: any}[] = [
     {
         type: Number.prototype, name: "random",
         value: function (min = 0) {
-            const fixed = (Math.random() * (this - min) + min).toFixed(0);
-            return parseInt(fixed);
+            return Math.floor(Math.random() * (this - min) + min);
         }
     },
     {

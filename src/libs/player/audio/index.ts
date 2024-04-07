@@ -1,5 +1,6 @@
-import {ChildProcessWithoutNullStreams, spawn} from "child_process";
+import {ChildProcessWithoutNullStreams, spawn, spawnSync} from "child_process";
 import {OpusEncoder} from "@lib/voice/utils/Opus";
+import * as path from "node:path";
 import {env} from "@env";
 
 /**
@@ -51,8 +52,8 @@ export class SeekStream {
      */
     public get packet(): Buffer {
         const packet = this.stream.read();
-
         if (packet) this._options.seek++;
+
         return packet;
     };
 
@@ -62,7 +63,6 @@ export class SeekStream {
      */
     public get duration() {
         const duration = ((this._options.seek * this._options.chunk) / 1e3).toFixed(0);
-
         return parseInt(duration);
     };
 
@@ -86,20 +86,13 @@ export class SeekStream {
      * @private
      */
     private set ffmpeg(options: {path: string, seek?: number; filters?: string}) {
-        const urls = options.path.split(":|");
+        const [type, file] = options.path.split(":|");
 
         this._streams.push(
             new Process(["-vn",  "-loglevel", "panic",
-                //Добавляем ссылки или путь до файла
-                ...(urls[0] === "link" ? ["-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5"] : []),
-
-                //Надо ли сделать пропуск
-                "-ss", `${options.seek ?? 0}`, "-i", urls[1],
-
-                //Добавляем фильтры
+                ...(type === "link" ? ["-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5"] : []),
+                "-ss", `${options.seek ?? 0}`, "-i", file,
                 ...(options.filters ? ["-af", options.filters] : []),
-
-                //Добавляем формат аудио
                 "-f", `${OpusEncoder.lib.ffmpeg}`, "pipe:1"
             ])
         );
@@ -145,11 +138,11 @@ export class SeekStream {
                     stream?.removeAllListeners();
                 }
 
-                this._streams.shift();
+                this._streams.length = 0;
             }
         });
 
-        for (let item of Object.keys(this._options)) this._options[item] = null;
+        Object.keys(this._options).forEach(key => this._options[key] = null);
         this._readable = null;
     };
 }
@@ -181,20 +174,6 @@ export class Process {
     public get stdout() { return this?.process?.stdout; };
 
     /**
-     * @description Зарезервирован для чтения команд пользователя или входных данных
-     * @return internal.Writable
-     * @public
-     */
-    public get stdin() { return this?.process?.stdin; };
-
-    /**
-     * @description Зарезервирован для вывода диагностических и отладочных сообщений в текстовом виде
-     * @return internal.Readable
-     * @public
-     */
-    public get stderr() { return this?.process?.stderr; };
-
-    /**
      * @description Задаем параметры и запускаем процесс
      * @param args {string[]} Аргументы для запуска
      * @param name {string} Имя процесса
@@ -213,3 +192,22 @@ export class Process {
         this._process = null;
     };
 }
+
+
+/**
+ * @author SNIPPIK
+ * @description Делаем проверку на наличие FFmpeg/avconv
+ */
+(() => {
+    const names = [`${env.get("cached.dir")}/FFmpeg/ffmpeg`, env.get("cached.dir"), env.get("ffmpeg.path")].map((file) => path.resolve(file).replace(/\\/g,'/'));
+
+    for (const name of ["ffmpeg", "avconv", ...names]) {
+        try {
+            const result = spawnSync(name, ['-h'], {windowsHide: true});
+            if (result.error) continue;
+            return env.set("ffmpeg.path", name);
+        } catch {}
+    }
+
+    throw Error("[WCritical]: FFmpeg/avconv not found!");
+})();

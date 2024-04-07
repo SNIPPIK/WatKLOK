@@ -157,10 +157,10 @@ class cAPI extends Constructor.Assign<API.request> {
                 /**
                  * @description Запрос данных треков артиста
                  */
-                new class extends API.item<"artist"> {
+                new class extends API.item<"author"> {
                     public constructor() {
                         super({
-                            name: "artist",
+                            name: "author",
                             filter: /(artist)\/[0-9]+/,
                             callback: (url, {limit}) => {
                                 const ID = /[0-9]+/.exec(url);

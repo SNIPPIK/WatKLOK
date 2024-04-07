@@ -14,38 +14,29 @@ class VoiceStateUpdate extends Constructor.Assign<Handler.Event<Events.VoiceStat
             name: Events.VoiceStateUpdate,
             type: "client",
             execute: (client, oldState, newState) => setImmediate(() => {
-                const Guild = oldState.guild, ChannelID = oldState?.channel?.id || newState?.channel?.id;
-                const me = (newState.channel?.members ?? oldState.channel?.members).get(client.user.id);
-                const isChannel = me?.voice && (oldState.channelId ?? newState.channelId) === me.voice.channelId;
+                const guild = oldState.guild || newState.guild;
+                const channelID = oldState?.channel?.id || newState?.channel?.id;
+                const me = (newState.channel?.members || oldState.channel?.members).get(client.user.id);
+                const isChannel = me?.voice && (oldState.channelId || newState.channelId) === me.voice.channelId;
 
-                //Если нет сервера или канала, то ничего не делаем
-                if (!Guild || !ChannelID || !isChannel) return;
+                if (!guild || !channelID || !isChannel) return;
 
-                //Фильтруем пользователей
-                let size = 0;
-                for (const [_, member] of (newState.channel?.members ?? oldState.channel?.members)) {
-                    if (member.user.bot) continue;
-                    size++;
-                }
-
+                const nonBotMembers = (newState.channel?.members || oldState.channel?.members).filter(member => !member.user.bot).size;
                 const queue = db.audio.queue.get(newState.guild.id);
 
-                //Если нет пользователей
-                if (size < 1) {
+                if (nonBotMembers < 1) {
                     if (queue) {
-                        //Если включен режим радио
                         if (queue.radio) {
-                            if (size === 0) queue.player.pause();
+                            if (queue.songs?.song?.duration?.seconds !== 0) return;
+                            else if (nonBotMembers === 0) queue.player.pause();
                             else queue.player.resume();
                             return;
                         }
 
-                        //Удаляем очередь
                         db.audio.queue.remove(queue.guild.id);
                     }
 
-                    //Удаляем голосовое подключение
-                    Voice.remove(Guild.id);
+                    Voice.remove(guild.id);
                 }
             })
         });
