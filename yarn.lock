@@ -95,10 +95,10 @@
   resolved "https://registry.yarnpkg.com/@sapphire/snowflake/-/snowflake-3.5.3.tgz#0c102aa2ec5b34f806e9bc8625fc6a5e1d0a0c6a"
   integrity sha512-jjmJywLAFoWeBi1W7994zZyiNWPIiqRRNAmSERxyg93xRGzNYvGjlZ0gR6x0F4gPRi2+0O6S71kOZYyr3cxaIQ==
 
-"@types/node@*", "@types/node@^20.12.2":
-  version "20.12.2"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-20.12.2.tgz#9facdd11102f38b21b4ebedd9d7999663343d72e"
-  integrity sha512-zQ0NYO87hyN6Xrclcqp7f8ZbXNbRfoGWNcMvHTPQp9UUrwI0mI7XBz+cu7/W6/VClYo2g63B0cjull/srU7LgQ==
+"@types/node@*", "@types/node@^20.12.5":
+  version "20.12.5"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-20.12.5.tgz#74c4f31ab17955d0b5808cdc8fd2839526ad00b3"
+  integrity sha512-BD+BjQ9LS/D8ST9p5uqBxghlN+S42iuNxjsUGjeZobe/ciXzk2qb1B6IXc6AnRLS+yFJRpN2IPEHMzwspfDJNw==
   dependencies:
     undici-types "~5.26.4"
 
