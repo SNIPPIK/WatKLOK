@@ -8,17 +8,19 @@ import {WebSocket, Event, CloseEvent} from "ws";
  * @class VoiceWebSocket
  */
 export class VoiceWebSocket extends TypedEmitter<WebSocketEvents> {
-    private _ws: WebSocket;
+    private readonly _ws: WebSocket;
     private readonly life = {
         interval: null as NodeJS.Timeout,
         ack: 0, send: 0, misses: 0
     };
     /**
-     * @description Создает новый голосовой веб-сокет.
-     * @param address - Адрес, к которому нужно подключиться
-     * @private
+     * @description Получаем голосовой веб-сокет
+     * @public
      */
-    private set createWS(address: string) {
+    public get ws() { return this._ws; };
+
+    public constructor(address: string) {
+        super();
         const ws = new WebSocket(address);
 
         ws.onopen = (err) => this.emit("open", err);
@@ -41,17 +43,6 @@ export class VoiceWebSocket extends TypedEmitter<WebSocketEvents> {
             }
         };
         this._ws = ws;
-    };
-
-    /**
-     * @description Получаем голосовой веб-сокет
-     * @public
-     */
-    public get ws() { return this._ws; };
-
-    public constructor(address: string) {
-        super();
-        this.createWS = address;
     };
 
     /**

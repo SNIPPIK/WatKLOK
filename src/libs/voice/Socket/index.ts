@@ -56,15 +56,15 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
     public set speaking(speaking: boolean) {
         const state = this.state;
 
-        if (state.code !== VoiceSocketStatusCode.ready || state.connection.data.speaking === speaking) return;
+        if (state.code !== VoiceSocketStatusCode.ready || state.connectionData.speaking === speaking) return;
 
-        state.connection.data.speaking = speaking;
+        state.connectionData.speaking = speaking;
         state.ws.sendPacket({
             op: VoiceOpcodes.Speaking,
             d: {
                 speaking: speaking ? 1 : 0,
                 delay: 0,
-                ssrc: state.connection.data.ssrc,
+                ssrc: state.connectionData.ssrc,
             },
         });
     };
@@ -95,7 +95,7 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
         const state = this.state;
         if (state.code !== VoiceSocketStatusCode.ready) return;
 
-        const { sequence, timestamp, ssrc } = state.connection.data;
+        const { sequence, timestamp, ssrc } = state.connectionData;
         const packetBuffer = Buffer.alloc(12); packetBuffer[0] = 0x80; packetBuffer[1] = 0x78;
 
         packetBuffer.writeUIntBE(sequence, 2, 2);
@@ -103,7 +103,7 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
         packetBuffer.writeUIntBE(ssrc, 8, 4);
         packetBuffer.copy(Buffer.alloc(24), 0, 0, 12);
 
-        state.preparedPacket = Buffer.concat([packetBuffer, ...this.encryptOpusPacket(opusPacket, state.connection.data)]);
+        state.preparedPacket = Buffer.concat([packetBuffer, ...this.encryptOpusPacket(opusPacket, state.connectionData)]);
         return state.preparedPacket;
     };
 
@@ -131,7 +131,7 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
         this._state = {
             code: VoiceSocketStatusCode.upWS,
             ws: this.createWebSocket(options.endpoint),
-            connection: {options}
+            connectionOptions: options
         };
     };
 
@@ -144,13 +144,13 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
 
         if (state.code !== VoiceSocketStatusCode.ready) return;
 
-        const { connection } = state;
-        connection.data.packetsPlayed++;
-        connection.data.sequence++;
-        connection.data.timestamp += TIMESTAMP_INC;
+        const { connectionData } = state;
+        connectionData.packetsPlayed++;
+        connectionData.sequence++;
+        connectionData.timestamp += TIMESTAMP_INC;
 
-        if (connection.data.sequence >= 2 ** 16) connection.data.sequence = 0;
-        else if (connection.data.timestamp >= 2 ** 32) connection.data.timestamp = 0;
+        if (connectionData.sequence >= 2 ** 16) connectionData.sequence = 0;
+        else if (connectionData.timestamp >= 2 ** 32) connectionData.timestamp = 0;
 
         this.speaking = true;
         state.udp.send = audioPacket;
@@ -195,10 +195,10 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
             state.ws.sendPacket({
                 op: isResume ? VoiceOpcodes.Resume : VoiceOpcodes.Identify,
                 d: {
-                    server_id: state.connection.options.serverId,
-                    session_id: state.connection.options.sessionId,
-                    user_id: state.connection.options.userId,
-                    token: state.connection.options.token,
+                    server_id: state.connectionOptions.serverId,
+                    session_id: state.connectionOptions.sessionId,
+                    user_id: isWs ? state.connectionOptions.userId : null,
+                    token: state.connectionOptions.token,
                 }
             });
 
@@ -217,7 +217,7 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
 
         if (code === 4_015 || code < 4_000) {
             if (state.code === VoiceSocketStatusCode.ready) this.state = { ...state,
-                ws: this.createWebSocket(state.connection?.options?.endpoint),
+                ws: this.createWebSocket(state.connectionOptions?.endpoint),
                 code: VoiceSocketStatusCode.resume
             };
         }
@@ -238,7 +238,7 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
      */
     private onUdpClose() {
         if (this.state.code === VoiceSocketStatusCode.ready) this.state = { ...this.state,
-            ws: this.createWebSocket(this.state.connection.options.endpoint),
+            ws: this.createWebSocket(this.state.connectionOptions.endpoint),
             code: VoiceSocketStatusCode.resume
         };
     };
@@ -278,7 +278,7 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
                         this.state = {...this.state, code: VoiceSocketStatusCode.protocol};
                     }).catch((error: Error) => this.emit('error', error));
 
-                    this.state = {...this.state, udp, code: VoiceSocketStatusCode.upUDP, connection: {data: {ssrc}}} as any;
+                    this.state = {...state, udp, code: VoiceSocketStatusCode.upUDP, connectionData: {ssrc}};
                 }
                 return;
             }
@@ -286,18 +286,16 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
                 if (state.code === VoiceSocketStatusCode.protocol) {
                     const { mode: encryptionMode, secret_key: secretKey } = packet.d;
                     this.state = { ...state, code: VoiceSocketStatusCode.ready,
-                        connection: {
-                            data: {
-                                ...state.connection.data,
-                                encryptionMode,
-                                secretKey: new Uint8Array(secretKey),
-                                sequence: randomNBit(16),
-                                timestamp: randomNBit(32),
-                                nonce: 0,
-                                nonceBuffer: Buffer.alloc(24),
-                                speaking: false,
-                                packetsPlayed: 0,
-                            }, options: null
+                        connectionData: {
+                            ...state.connectionData,
+                            encryptionMode,
+                            secretKey: new Uint8Array(secretKey),
+                            sequence: randomNBit(16),
+                            timestamp: randomNBit(32),
+                            nonce: 0,
+                            nonceBuffer: Buffer.alloc(24),
+                            speaking: false,
+                            packetsPlayed: 0,
                         }
                     };
                 }
@@ -306,7 +304,7 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
             case VoiceOpcodes.Resumed: {
                 if (state.code === VoiceSocketStatusCode.resume) {
                     this.state = { ...state, code: VoiceSocketStatusCode.ready };
-                    this.state.connection.data.speaking = false;
+                    this.state.connectionData.speaking = false;
                 }
             }
         }
@@ -351,9 +349,7 @@ export enum VoiceSocketStatusCode {
 interface WebSocketState {
     code: VoiceSocketStatusCode.upWS;
     ws: VoiceWebSocket;
-    connection: {
-        options: ConnectionOptions
-    };
+    connectionOptions: ConnectionOptions;
 }
 
 /**
@@ -363,9 +359,7 @@ interface WebSocketState {
 interface IdentifyState {
     code: VoiceSocketStatusCode.identify;
     ws: VoiceWebSocket;
-    connection: {
-        options: ConnectionOptions
-    };
+    connectionOptions: ConnectionOptions;
 }
 
 /**
@@ -376,10 +370,8 @@ interface UDPSocketState {
     code: VoiceSocketStatusCode.upUDP;
     ws: VoiceWebSocket;
     udp: VoiceUDPSocket;
-    connection: {
-        data: Pick<ConnectionData, 'ssrc'>;
-        options: ConnectionOptions
-    };
+    connectionData: Pick<ConnectionData, 'ssrc'>;
+    connectionOptions: ConnectionOptions;
 }
 
 /**
@@ -390,10 +382,8 @@ interface ProtocolState {
     code: VoiceSocketStatusCode.protocol;
     ws: VoiceWebSocket;
     udp: VoiceUDPSocket;
-    connection: {
-        data: Pick<ConnectionData, 'ssrc'>;
-        options: ConnectionOptions
-    };
+    connectionData: Pick<ConnectionData, 'ssrc'>;
+    connectionOptions: ConnectionOptions;
 }
 
 /**
@@ -405,10 +395,8 @@ interface ReadyState {
     preparedPacket?: Buffer | undefined;
     ws: VoiceWebSocket;
     udp: VoiceUDPSocket;
-    connection: {
-        data: ConnectionData;
-        options: ConnectionOptions
-    };
+    connectionData: ConnectionData;
+    connectionOptions: ConnectionOptions;
 }
 
 /**
@@ -420,10 +408,8 @@ interface ResumeState {
     preparedPacket?: Buffer | undefined;
     ws: VoiceWebSocket;
     udp: VoiceUDPSocket;
-    connection: {
-        data: ConnectionData;
-        options: ConnectionOptions
-    };
+    connectionData: ConnectionData;
+    connectionOptions: ConnectionOptions;
 }
 
 /**

@@ -75,12 +75,6 @@ export class VoiceUDPSocket extends TypedEmitter<UDPSocketEvents> {
      */
     public performIPDiscovery(ssrc: number): Promise<SocketConfig> {
         return new Promise((resolve, reject) => {
-            const discoveryBuffer = Buffer.alloc(74);
-            discoveryBuffer.writeUInt16BE(1, 0);
-            discoveryBuffer.writeUInt16BE(70, 2);
-            discoveryBuffer.writeUInt32BE(ssrc, 4);
-            this.send = discoveryBuffer;
-
             this.data.socket
                 .on("close", () => {
                     return reject(new Error("Cannot perform IP discovery - socket closed\n - Check your firewall!"));
@@ -100,6 +94,12 @@ export class VoiceUDPSocket extends TypedEmitter<UDPSocketEvents> {
                         return resolve(null);
                     }
                 });
+
+            const discoveryBuffer = Buffer.alloc(74);
+            discoveryBuffer.writeUInt16BE(1, 0);
+            discoveryBuffer.writeUInt16BE(70, 2);
+            discoveryBuffer.writeUInt32BE(ssrc, 4);
+            this.send = discoveryBuffer;
         });
     };
 
