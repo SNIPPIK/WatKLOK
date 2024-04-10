@@ -7,7 +7,7 @@
 - Автор: [`SNIPPIK`](https://github.com/SNIPPIK)
 - Discord server: [`тут`](https://discord.gg/qMf2Sv3)
 - Доступные платформы: [`тут`](src/handlers/APIs)
-- Демонстрация: [`тут`](https://www.youtube.com/watch?v=G7vgPmnt9_8)
+- Демонстрация: [`тут`](https://youtu.be/ljOOAQcvirQ)
 - Поддерживаться только /команды
 - Все сообщения удаляются через время
 - Умеет кешировать треки и сохранять историю прослушиваний
