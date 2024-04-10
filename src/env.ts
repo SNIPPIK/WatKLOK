@@ -71,6 +71,7 @@ export const env = new class {
  * @public
  */
 export const Logger = new class {
+    private readonly size = parseInt(env.get("console.size")) ?? 130;
     private readonly debug = process["argv"].includes("--dbg");
     private readonly status = {
         "DEBUG": "\x1b[34mi\x1b[0m",
@@ -97,7 +98,7 @@ export const Logger = new class {
 
         const extStatus = this.status[status];
         const time = `\x1b[90m${new Date().toLocaleTimeString()}\x1b[0m`;
-        const spaces = 130 - (extStatus.length + text.length) - (time.length);
+        const spaces = this.size - (extStatus.length + text.length) - (time.length);
         const extText = spaces < 0 ? `${text}\x1b[0m` : `${text}\x1b[0m${" ".repeat(spaces) + time}`;
 
         console.log(`\x1b[35m${threadId} |\x1b[0m ${extStatus} `  + `${this.colors[status]}${extText}`);

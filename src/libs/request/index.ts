@@ -30,7 +30,7 @@ abstract class Request {
         const protocol = this.data.protocol?.split(":")[0];
 
         Logger.log("DEBUG", `${protocol}Client: [${this.data.method}:|${this.data.hostname}${this.data.path}]`);
-        return protocol === "http" ? httpRequest : httpsRequest;
+        return protocol === "https" ? httpsRequest : httpRequest;
     };
 
     /**
@@ -108,21 +108,27 @@ export class httpsClient extends Request {
      * @public
      */
     public get toString(): Promise<string | Error> {
-        return new Promise((resolve) => this.request.then((request) => {
-            if (request instanceof Error) return resolve(request);
+        return new Promise(async (resolve) => {
+            try {
+                const request = await this.request;
+                if (request instanceof Error) return resolve(request);
 
-            const encoding = request.headers["content-encoding"];
-            let decoder:  BrotliDecompress | IncomingMessage | Gunzip | Deflate, data: string[] = [];
+                const encoding = request.headers["content-encoding"];
+                let decoder: BrotliDecompress | Gunzip | Deflate | IncomingMessage = request;
 
-            if (encoding === "br") decoder = request.pipe(createBrotliDecompress());
-            else if (encoding === "gzip") decoder = request.pipe(createGunzip());
-            else if (encoding === "deflate") decoder = request.pipe(createDeflate());
+                if (encoding === "br") decoder = request.pipe(createBrotliDecompress());
+                else if (encoding === "gzip") decoder = request.pipe(createGunzip());
+                else if (encoding === "deflate") decoder = request.pipe(createDeflate());
 
-            (decoder ?? request).setEncoding("utf-8").on("data", (c) => data.push(c)).once("end", () => {
-                setImmediate(() => {data = null});
-                return resolve(data.join(""));
-            });
-        }));
+                let data = "";
+                decoder.setEncoding("utf-8").on("data", (c) => data += c).once("end", () => {
+                    setImmediate(() => { data = null });
+                    return resolve(data);
+                });
+            } catch (error) {
+                return resolve(error);
+            }
+        });
     };
 
     /**
@@ -147,9 +153,7 @@ export class httpsClient extends Request {
      */
     public get status(): Promise<boolean> | false {
         return this.request.then((resource: IncomingMessage) => {
-            if (resource instanceof Error) return false; //Если есть ошибка
-            if (resource.statusCode >= 200 && resource.statusCode < 400) return true; //Если возможно скачивать ресурс
-            return false; //Если прошлые варианты не подходят, то эта ссылка не рабочая
+            return resource?.statusCode && resource.statusCode >= 200 && resource.statusCode < 400;
         });
     };
 
@@ -158,12 +162,14 @@ export class httpsClient extends Request {
      * @public
      */
     public get toXML(): Promise<Error | string[]> {
-        return this.toString.then((body) => {
-            if (body instanceof Error) return Error("Not found XML data!");
+        return new Promise(async (resolve) => {
+            const body = await this.toString;
 
-            return body.split(/<[a-zA-Z]+>(.*?)<\/[a-zA-Z]+>/g).filter((text) =>
-                text !== "" && !text.match(/xml version/g) && !text.match(/<\//)
-            );
-        });
+            if (body instanceof Error) return resolve(Error("Not found XML data!"));
+
+            const items = body.match(/<[^<>]+>([^<>]+)<\/[^<>]+>/g);
+            const filtered = items.map((tag) => tag.replace(/<\/?[^<>]+>/g, ""));
+            return resolve(filtered.filter((text) => text.trim() !== ""));
+        })
     };
 }

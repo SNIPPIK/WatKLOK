@@ -1,5 +1,5 @@
-import {VoiceConnection} from "@lib/voice/VoiceConnection";
 import {TypedEmitter} from "tiny-typed-emitter";
+import {VoiceConnection} from "@lib/voice";
 import {SeekStream} from "./audio";
 import {db} from "@lib/db";
 
