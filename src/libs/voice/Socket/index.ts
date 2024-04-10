@@ -217,7 +217,7 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
 
         if (code === 4_015 || code < 4_000) {
             if (state.code === VoiceSocketStatusCode.ready) this.state = { ...state,
-                ws: this.createWebSocket(state.connection.options.endpoint),
+                ws: this.createWebSocket(state.connection?.options?.endpoint),
                 code: VoiceSocketStatusCode.resume
             };
         }
