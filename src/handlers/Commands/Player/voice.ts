@@ -16,6 +16,11 @@ class Group extends Constructor.Assign<Handler.Command> {
                     type: ApplicationCommandOptionType.Subcommand
                 },
                 {
+                    name: "re-configure",
+                    description: "Переподключение к голосовому каналу!",
+                    type: ApplicationCommandOptionType.Subcommand
+                },
+                {
                     name: "stage",
                     description: "Запрос на транслирование музыки в трибуну!",
                     type: ApplicationCommandOptionType.Subcommand,
@@ -59,6 +64,17 @@ class Group extends Constructor.Assign<Handler.Command> {
                 };
 
                 switch (sub) {
+                    case "re-configure": {
+                        const voiceConnection = Voice.get(guild.id);
+
+                        //Если бот не подключен к голосовому каналу
+                        if (!voiceConnection) return { content: `${author} | Я не подключен к голосовому каналу!`, color: "Yellow" };
+
+                        //Перенастройка подключения
+                        voiceConnection.configureSocket();
+
+                        return {content: `${author} | Перенастройка подключения!`};
+                    }
                     case "leave": {
                         const voiceConnection = Voice.get(guild.id);
 

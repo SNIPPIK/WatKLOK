@@ -177,7 +177,7 @@ export namespace Handler {
             args?: string[],
             group?: string,
             sub?: string
-        }) => void;
+        }) => Constructor.messageOptions<any> | Promise<Constructor.messageOptions<any>>;
     }
 }
 
@@ -360,7 +360,7 @@ export namespace Constructor {
             //Выполняем функцию через ~this._time ms
             setTimeout(this._stepCycle, this.data.time - Date.now());
         };
-    };
+    }
 
     /**
      * @author SNIPPIK

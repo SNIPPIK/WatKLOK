@@ -207,6 +207,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      */
     public stop = (): void => {
         if (this.status === "player/wait") return;
+        this.connection.speak = false;
         this.status = "player/wait";
     };
 

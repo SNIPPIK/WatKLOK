@@ -35,16 +35,16 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
         const newUDP = Reflect.get(newState, 'udp')     as VoiceUDPSocket;
 
         if (oldWs && oldWs !== newWs) {
-            oldWs.off('error', this.onChildError).off('open', this.onWsOpen).off('packet', this.onWsPacket).off('close', this.onWsClose)
+            oldWs.off("error", this.onError).off("open", this.onWsOpen).off("packet", this.onWsPacket).off("close", this.onWsClose)
             oldWs.destroy();
         }
 
         if (oldUDP && oldUDP !== newUDP) {
-            oldUDP.off('error', this.onChildError).off('close', this.onUdpClose);
+            oldUDP.off("error", this.onError).off("close", this.onUdpClose);
             oldUDP.destroy();
         }
 
-        this.emit('stateChange', this._state, newState);
+        this.emit("stateChange", this._state, newState);
         this._state = newState;
     };
 
@@ -73,11 +73,11 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
      * @description Отправляет аудио пакет, ранее подготовленный с помощью prepare Audio Packet(opus Packet). Аудио пакет израсходован и не может быть отправлен повторно.
      * @public
      */
-    public get prepareAudio() {
+    public get preparedPacket() {
         const state = this.state;
 
         if ("preparedPacket" in state && state?.preparedPacket !== undefined) {
-            this.playAudioPacket(state.preparedPacket);
+            this.playAudioPacket = state.preparedPacket;
             state.preparedPacket = undefined;
             return true;
         }
@@ -86,12 +86,49 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
     };
 
     /**
+     * @description Воспроизводит аудио пакет, обновляя временные метаданные, используемые для воспроизведения.
+     * @param audioPacket - Аудио пакет для воспроизведения
+     */
+    private set playAudioPacket(audioPacket: Buffer) {
+        const state = this.state;
+
+        if (state.code !== VoiceSocketStatusCode.ready) return;
+
+        const { connectionData } = state;
+        connectionData.packetsPlayed++;
+        connectionData.sequence++;
+        connectionData.timestamp += TIMESTAMP_INC;
+
+        if (connectionData.sequence >= 2 ** 16) connectionData.sequence = 0;
+        else if (connectionData.timestamp >= 2 ** 32) connectionData.timestamp = 0;
+
+        this.speaking = true;
+        state.udp.sendPacket = audioPacket;
+    };
+
+    public constructor(options: ConnectionOptions) {
+        super();
+
+        this.onWsOpen = this.onWsOpen.bind(this);
+        this.onError = this.onError.bind(this);
+        this.onWsPacket = this.onWsPacket.bind(this);
+        this.onWsClose = this.onWsClose.bind(this);
+        this.onUdpClose = this.onUdpClose.bind(this);
+
+        this._state = {
+            code: VoiceSocketStatusCode.upWS,
+            ws: this.createWebSocket(options.endpoint),
+            connectionOptions: options
+        };
+    };
+
+    /**
      * @description Создает новый аудио пакет из пакета Opus. Для этого требуется зашифровать пакет,
      * а затем добавить заголовок, содержащий метаданные.
      *
      * @param opusPacket - Пакет Opus для приготовления
      */
-    public prepareAudioPacket(opusPacket: Buffer) {
+    public preparedAudioPacket = (opusPacket: Buffer) => {
         const state = this.state;
         if (state.code !== VoiceSocketStatusCode.ready) return;
 
@@ -108,61 +145,12 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
     };
 
     /**
-     * @description Создает новый веб-сокет для голосового шлюза Discord.
-     * @param endpoint - Конечная точка, к которой нужно подключиться
-     */
-    private createWebSocket(endpoint: string) {
-        return new VoiceWebSocket(`wss://${endpoint}?v=4`)
-            .on('error', this.onChildError)
-            .once('open', this.onWsOpen)
-            .on('packet', this.onWsPacket)
-            .once('close', this.onWsClose);
-    };
-
-    public constructor(options: ConnectionOptions) {
-        super();
-
-        this.onWsOpen = this.onWsOpen.bind(this);
-        this.onChildError = this.onChildError.bind(this);
-        this.onWsPacket = this.onWsPacket.bind(this);
-        this.onWsClose = this.onWsClose.bind(this);
-        this.onUdpClose = this.onUdpClose.bind(this);
-
-        this._state = {
-            code: VoiceSocketStatusCode.upWS,
-            ws: this.createWebSocket(options.endpoint),
-            connectionOptions: options
-        };
-    };
-
-    /**
-     * @description Воспроизводит аудио пакет, обновляя временные метаданные, используемые для воспроизведения.
-     * @param audioPacket - Аудио пакет для воспроизведения
-     */
-    private playAudioPacket(audioPacket: Buffer) {
-        const state = this.state;
-
-        if (state.code !== VoiceSocketStatusCode.ready) return;
-
-        const { connectionData } = state;
-        connectionData.packetsPlayed++;
-        connectionData.sequence++;
-        connectionData.timestamp += TIMESTAMP_INC;
-
-        if (connectionData.sequence >= 2 ** 16) connectionData.sequence = 0;
-        else if (connectionData.timestamp >= 2 ** 32) connectionData.timestamp = 0;
-
-        this.speaking = true;
-        state.udp.send = audioPacket;
-    };
-
-    /**
      * @description Шифрует пакет Opus, используя формат, согласованный экземпляром и Discord.
      *
      * @param opusPacket - Пакет Opus для шифрования
      * @param connectionData - Текущие данные подключения экземпляра
      */
-    private encryptOpusPacket(opusPacket: Buffer, connectionData: ConnectionData) {
+    private encryptOpusPacket = (opusPacket: Buffer, connectionData: ConnectionData)=>  {
         const { secretKey, encryptionMode } = connectionData;
 
         switch (encryptionMode) {
@@ -182,17 +170,34 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
         }
     };
 
+
+    /**
+     * @WS Workspace
+     */
+
+    /**
+     * @description Создает новый веб-сокет для голосового шлюза Discord.
+     * @param endpoint - Конечная точка, к которой нужно подключиться
+     */
+    private createWebSocket = (endpoint: string) => {
+        return new VoiceWebSocket(`wss://${endpoint}?v=4`)
+            .on("error", this.onError)
+            .once("open", this.onWsOpen)
+            .on("packet", this.onWsPacket)
+            .once("close", this.onWsClose);
+    };
+
     /**
      * @description Вызывается при открытии WebSocket. В зависимости от состояния, в котором находится экземпляр,
      * он либо идентифицируется с новым сеансом, либо попытается возобновить существующий сеанс.
      */
-    private onWsOpen() {
+    private onWsOpen = () => {
         const state = this.state;
         const isResume = state.code === VoiceSocketStatusCode.resume;
         const isWs = state.code === VoiceSocketStatusCode.upWS;
 
         if (isResume || isWs) {
-            state.ws.sendPacket({
+            state.ws.sendPacket ({
                 op: isResume ? VoiceOpcodes.Resume : VoiceOpcodes.Identify,
                 d: {
                     server_id: state.connectionOptions.serverId,
@@ -212,7 +217,7 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
      * с кодом закрытия, позволяя пользователю решить, хочет ли он повторно подключиться.
      * @param code - Код закрытия
      */
-    private onWsClose({ code }: {code: number}) {
+    private readonly onWsClose = ({ code }: {code: number}) => {
         const state = this.state;
 
         if (code === 4_015 || code < 4_000) {
@@ -223,7 +228,7 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
         }
         else if (state.code !== VoiceSocketStatusCode.close) {
             this.destroy();
-            this.emit('close', code);
+            this.emit("close", code);
         }
     };
 
@@ -231,12 +236,12 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
      * @description Распространяет ошибки из дочернего голосового веб-сокета и голосового UDP-сокета.
      * @param error - Ошибка, которая была выдана дочерним элементом
      */
-    private onChildError(error: Error) { this.emit("error", error); }
+    private readonly onError = (error: Error) => { this.emit("error", error); }
 
     /**
      * @description Вызывается, когда UDP-сокет сам закрылся, если он перестал получать ответы от Discord.
      */
-    private onUdpClose() {
+    private readonly onUdpClose = () => {
         if (this.state.code === VoiceSocketStatusCode.ready) this.state = { ...this.state,
             ws: this.createWebSocket(this.state.connectionOptions.endpoint),
             code: VoiceSocketStatusCode.resume
@@ -247,7 +252,7 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
      * @description Вызывается при получении пакета на WebSocket соединения.
      * @param packet - Полученный пакет
      */
-    private onWsPacket(packet: {d: any, op: VoiceOpcodes}) {
+    private onWsPacket = (packet: {d: any, op: VoiceOpcodes}) => {
         const state = this.state;
 
         switch (packet.op) {
@@ -260,9 +265,9 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
                     const {ip, port, ssrc, modes} = packet.d;
 
                     const udp = new VoiceUDPSocket({ip, port});
-                    udp.on('error', this.onChildError);
+                    udp.on('error', this.onError);
                     udp.once('close', this.onUdpClose);
-                    udp.performIPDiscovery(ssrc).then((localConfig) => {
+                    udp.IPDiscovery(ssrc).then((localConfig) => {
                         if (this.state.code !== VoiceSocketStatusCode.upUDP) return;
                         state.ws.sendPacket({
                             op: VoiceOpcodes.SelectProtocol,
@@ -314,7 +319,7 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
      * @description Уничтожает сетевой экземпляр, переводя его в закрытое состояние.
      * @public
      */
-    public destroy() { this.state = { code: VoiceSocketStatusCode.close }; }
+    public destroy() { this.state = {code: VoiceSocketStatusCode.close}; };
 }
 
 /**

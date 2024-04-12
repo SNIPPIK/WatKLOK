@@ -23,14 +23,12 @@ export class VoiceWebSocket extends TypedEmitter<WebSocketEvents> {
         super();
         const ws = new WebSocket(address);
 
-        ws.onopen = (err) => this.emit("open", err);
-        ws.onerror = (err) => this.emit("error", err instanceof Error ? err : err.error);
-        ws.onclose = (err) => this.emit("close", err);
-        ws.onmessage = (event) => {
-            if (typeof event.data !== 'string') return;
+        //Подключаем событие message и обрабатываем его
+        ws.on("message", (event) => {
+            const data = event.toString();
 
             try {
-                const packet = JSON.parse(event.data);
+                const packet = JSON.parse(data);
 
                 if (packet.op === VoiceOpcodes.HeartbeatAck) {
                     this.life.ack = Date.now();
@@ -41,7 +39,10 @@ export class VoiceWebSocket extends TypedEmitter<WebSocketEvents> {
             } catch (error) {
                 this.emit("error", error as Error);
             }
-        };
+        });
+
+        //Подключаем события WebSocket
+        for (let event of ["open", "error", "close"]) ws.on(event, (err) => this.emit(event as any, err));
         this._ws = ws;
     };
 
@@ -54,19 +55,6 @@ export class VoiceWebSocket extends TypedEmitter<WebSocketEvents> {
         this.life.misses++;
 
         this.sendPacket({ op: VoiceOpcodes.Heartbeat, d: this.life.send });
-    };
-
-    /**
-     * @description Уничтожает голосовой веб-сокет. Интервал очищается, и соединение закрывается
-     * @public
-     */
-    public destroy = (code: number = 1e3): void => {
-        try {
-            this.setHeartbeatInterval(-1);
-            this.ws.close(code);
-        } catch (error) {
-            this.emit('error', error as Error);
-        }
     };
 
     /**
@@ -94,6 +82,19 @@ export class VoiceWebSocket extends TypedEmitter<WebSocketEvents> {
             if (this.life.send !== 0 && this.life.misses >= 3) this.destroy(0);
             this.sendHeartbeat();
         }, ms);
+    };
+
+    /**
+     * @description Уничтожает голосовой веб-сокет. Интервал очищается, и соединение закрывается
+     * @public
+     */
+    public destroy = (code: number = 1e3): void => {
+        try {
+            this.setHeartbeatInterval(-1);
+            this.ws.close(code);
+        } catch (error) {
+            this.emit('error', error as Error);
+        }
     };
 }
 

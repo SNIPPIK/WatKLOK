@@ -90,9 +90,9 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents & VoiceC
         if (oldNetworking !== newNetworking) {
             if (oldNetworking) {
                 oldNetworking.on('error', () => {});
-                oldNetworking.off('error', this.onNetworkingError);
-                oldNetworking.off('close', this.onNetworkingClose);
-                oldNetworking.off('stateChange', this.onNetworkingStateChange);
+                oldNetworking.off('error', this.onSocketError);
+                oldNetworking.off('close', this.onSocketClose);
+                oldNetworking.off('stateChange', this.onSocketStateChange);
                 oldNetworking.destroy();
             }
         }
@@ -122,9 +122,9 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents & VoiceC
     public constructor(config: VoiceConfig, options: CreateVoiceConnectionOptions) {
         super();
 
-        this.onNetworkingClose = this.onNetworkingClose.bind(this);
-        this.onNetworkingStateChange = this.onNetworkingStateChange.bind(this);
-        this.onNetworkingError = this.onNetworkingError.bind(this);
+        this.onSocketClose = this.onSocketClose.bind(this);
+        this.onSocketStateChange = this.onSocketStateChange.bind(this);
+        this.onSocketError = this.onSocketError.bind(this);
 
         const adapter = options.adapterCreator({
             onVoiceServerUpdate: (data) => this.addServerPacket(data),
@@ -160,7 +160,7 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents & VoiceC
                 sessionId: state.session_id,
                 userId: state.user_id,
             }
-        ).once('close', this.onNetworkingClose).on('stateChange', this.onNetworkingStateChange).on('error', this.onNetworkingError);
+        ).once('close', this.onSocketClose).on('stateChange', this.onSocketStateChange).on('error', this.onSocketError);
 
         this.state = { ...this.state, networking,
             status: VoiceConnectionStatus.Connecting
@@ -175,8 +175,8 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents & VoiceC
     public playOpusPacket(buffer: Buffer) {
         const state = this.state;
         if (state.status !== VoiceConnectionStatus.Ready) return;
-        state.networking.prepareAudioPacket(buffer);
-        return state.networking.prepareAudio;
+        state.networking.preparedAudioPacket(buffer);
+        return state.networking.preparedPacket;
     };
 
     /**
@@ -241,7 +241,7 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents & VoiceC
      * @param code - Код закрытия
      * @private
      */
-    private onNetworkingClose(code: number) {
+    private onSocketClose(code: number) {
         if (this.state.status === VoiceConnectionStatus.Destroyed) return;
 
         //Если подключение к сети завершится, попробуйте снова подключиться к голосовому каналу.
@@ -269,7 +269,7 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents & VoiceC
      * @param newState - Новое состояние
      * @private
      */
-    private onNetworkingStateChange(oldState: VoiceSocketState, newState: VoiceSocketState) {
+    private onSocketStateChange(oldState: VoiceSocketState, newState: VoiceSocketState) {
         if (oldState.code === newState.code || this.state.status !== VoiceConnectionStatus.Connecting && this.state.status !== VoiceConnectionStatus.Ready) return;
 
         if (newState.code === VoiceSocketStatusCode.ready) this.state = { ...this.state, status: VoiceConnectionStatus.Ready };
@@ -281,7 +281,7 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents & VoiceC
      * @param error - Распространяемая ошибка
      * @private
      */
-    private onNetworkingError(error: Error) { this.emit('error', error); }
+    private onSocketError(error: Error) { this.emit('error', error); }
 
     /**
      * @description Регистрирует пакет `VOICE_SERVER_UPDATE` для голосового соединения. Это приведет к повторному подключению с использованием
