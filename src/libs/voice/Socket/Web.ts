@@ -8,27 +8,21 @@ import {WebSocket, Event, CloseEvent} from "ws";
  * @class VoiceWebSocket
  */
 export class VoiceWebSocket extends TypedEmitter<WebSocketEvents> {
-    private readonly _ws: WebSocket;
+    private readonly ws: WebSocket;
     private readonly life = {
         interval: null as NodeJS.Timeout,
         ack: 0, send: 0, misses: 0
     };
-    /**
-     * @description Получаем голосовой веб-сокет
-     * @public
-     */
-    public get ws() { return this._ws; };
 
     public constructor(address: string) {
         super();
         const ws = new WebSocket(address);
 
-        //Подключаем событие message и обрабатываем его
-        ws.on("message", (event) => {
-            const data = event.toString();
+        ws.onmessage = (event) => {
+            if (typeof event.data !== 'string') return;
 
             try {
-                const packet = JSON.parse(data);
+                const packet = JSON.parse(event.data);
 
                 if (packet.op === VoiceOpcodes.HeartbeatAck) {
                     this.life.ack = Date.now();
@@ -39,11 +33,11 @@ export class VoiceWebSocket extends TypedEmitter<WebSocketEvents> {
             } catch (error) {
                 this.emit("error", error as Error);
             }
-        });
+        };
 
-        //Подключаем события WebSocket
-        for (let event of ["open", "error", "close"]) ws.on(event, (err) => this.emit(event as any, err));
-        this._ws = ws;
+        //Подключаем события
+        for (let event of ["open", "close", "error"]) ws[`on${event}`] = (err: any) => this.emit(event as any, err);
+        this.ws = ws;
     };
 
     /**

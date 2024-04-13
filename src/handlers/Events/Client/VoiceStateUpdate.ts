@@ -19,12 +19,12 @@ class VoiceStateUpdate extends Constructor.Assign<Handler.Event<Events.VoiceStat
                 const me = (newState.channel?.members || oldState.channel?.members).get(client.user.id);
                 const isChannel = me?.voice && (oldState.channelId || newState.channelId) === me.voice.channelId;
 
-                if (!guild || !channelID || !isChannel) return;
+                if (!guild || !channelID) return;
 
                 const nonBotMembers = (newState.channel?.members || oldState.channel?.members).filter(member => !member.user.bot).size;
                 const queue = db.audio.queue.get(newState.guild.id);
 
-                if (nonBotMembers < 1) {
+                if (nonBotMembers < 1 || !isChannel) {
                     if (queue) {
                         if (queue.radio) {
                             if (queue.songs?.song?.duration?.seconds !== 0) return;
@@ -36,7 +36,7 @@ class VoiceStateUpdate extends Constructor.Assign<Handler.Event<Events.VoiceStat
                         db.audio.queue.remove(queue.guild.id);
                     }
 
-                    Voice.remove(guild.id);
+                    if (isChannel) Voice.remove(guild.id);
                 }
             })
         });

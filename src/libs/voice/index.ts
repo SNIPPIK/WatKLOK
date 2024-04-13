@@ -50,12 +50,11 @@ export const Voice = new class Voice extends Constructor.Collection<VoiceConnect
     };
 }
 
-
 /**
  * @class VoiceConnection
  * @description Подключение к голосовому серверу Гильдии может использоваться для воспроизведения аудио в голосовых каналах.
  */
-export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents & VoiceConnectionEventsSignals> {
+export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents> {
     private readonly _local = {
         state: null as VoiceConnectionState,
 
@@ -332,43 +331,16 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents & VoiceC
  * @description Ивенты для VoiceConnection
  */
 interface VoiceConnectionEvents {
-    "error": (error: Error) => this;
-    "debug": (message: string) => this;
-    "stateChange": (oldState: VoiceConnectionState, newState: VoiceConnectionState) => this;
-}
-/**
- * @class VoiceConnection
- * @description Ивенты для VoiceConnection
- */
-interface VoiceConnectionEventsSignals {
     "connecting": (oldState: VoiceConnectionState, newState: VoiceConnectionState & { status: Event }) => this;
     "destroyed": (oldState: VoiceConnectionState, newState: VoiceConnectionState & { status: Event }) => this;
     "disconnected": (oldState: VoiceConnectionState, newState: VoiceConnectionState & { status: Event }) => this;
     "ready": (oldState: VoiceConnectionState, newState: VoiceConnectionState & { status: Event }) => this;
     "signalling": (oldState: VoiceConnectionState, newState: VoiceConnectionState & { status: Event }) => this;
-}
 
-/**
- * @class VoiceConnection
- * @description Ивенты для VoiceConnection
- */
-interface VoiceConnectionEvents {
     "error": (error: Error) => this;
     "debug": (message: string) => this;
     "stateChange": (oldState: VoiceConnectionState, newState: VoiceConnectionState) => this;
 }
-/**
- * @class VoiceConnection
- * @description Ивенты для VoiceConnection
- */
-interface VoiceConnectionEventsSignals {
-    "connecting": (oldState: VoiceConnectionState, newState: VoiceConnectionState & { status: Event }) => this;
-    "destroyed": (oldState: VoiceConnectionState, newState: VoiceConnectionState & { status: Event }) => this;
-    "disconnected": (oldState: VoiceConnectionState, newState: VoiceConnectionState & { status: Event }) => this;
-    "ready": (oldState: VoiceConnectionState, newState: VoiceConnectionState & { status: Event }) => this;
-    "signalling": (oldState: VoiceConnectionState, newState: VoiceConnectionState & { status: Event }) => this;
-}
-
 
 /**
  * @description Различные коды состояния, которые может содержать голосовое соединение в любой момент времени.
@@ -437,8 +409,7 @@ enum VoiceConnectionDisconnectReason {
 /**
  * @description Различные состояния, в которых может находиться голосовое соединение.
  */
-type VoiceConnectionState = | VoiceStateConnecting | VoiceStateDestroyed | VoiceConnectionDisconnectedState | VoiceStateReady | VoiceConnectionSignallingState;
-
+type VoiceConnectionState = | VoiceStateConnecting | VoiceStateDestroyed | VoiceConnectionDisconnectedOtherState | VoiceConnectionDisconnectedWebSocketState | VoiceStateReady | VoiceConnectionSignallingState;
 
 /**
  * @description Состояние, в котором будет находиться голосовое соединение, когда оно не подключено к голосовому серверу Discord и не
@@ -465,12 +436,6 @@ interface VoiceConnectionDisconnectedWebSocketState extends VoiceConnectionDisco
     closeCode: number;
     reason: VoiceConnectionDisconnectReason.WebSocketClose;
 }
-
-/**
- * @description Состояния, в которых может находиться голосовое соединение, когда оно не подключено к голосовому серверу Discord и не
- * пытается подключиться. Вы можете вручную попытаться подключиться, используя голосовое соединение#переподключение.
- */
-type VoiceConnectionDisconnectedState = | VoiceConnectionDisconnectedOtherState | VoiceConnectionDisconnectedWebSocketState;
 
 /**
  * @description The state that a VoiceConnection will be in when it is establishing a connection to a Discord

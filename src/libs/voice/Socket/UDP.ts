@@ -69,9 +69,7 @@ export class VoiceUDPSocket extends TypedEmitter<UDPSocketEvents> {
      * @description Закрывает сокет, экземпляр не сможет быть повторно использован.
      */
     public destroy() {
-        try {
-            if (this.socket) this.socket?.close();
-        } catch {}
+        if (this.socket) this.socket?.close();
     };
 }
 

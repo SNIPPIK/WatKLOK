@@ -139,7 +139,7 @@ class cAPI extends Constructor.Assign<API.request> {
     protected static author = (user: any): Song.author => {
         const url = `https://vk.com/audio?performer=1&q=${user.artist.replaceAll(" ", "").toLowerCase()}`;
 
-        return { url, title: user.artist }; //, isVerified: user.is_licensed
+        return { url, title: user.artist };
     };
 }
 
