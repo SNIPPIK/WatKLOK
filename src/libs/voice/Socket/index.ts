@@ -108,7 +108,6 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
 
     public constructor(options: ConnectionOptions) {
         super();
-
         this.onWsOpen = this.onWsOpen.bind(this);
         this.onError = this.onError.bind(this);
         this.onWsPacket = this.onWsPacket.bind(this);
@@ -147,33 +146,26 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
     /**
      * @description Шифрует пакет Opus, используя формат, согласованный экземпляром и Discord.
      *
-     * @param opusPacket - Пакет Opus для шифрования
+     * @param packet - Пакет Opus для шифрования
      * @param connectionData - Текущие данные подключения экземпляра
      */
-    private encryptOpusPacket = (opusPacket: Buffer, connectionData: ConnectionData)=>  {
+    private encryptOpusPacket = (packet: Buffer, connectionData: ConnectionData)=>  {
         const { secretKey, encryptionMode } = connectionData;
 
         switch (encryptionMode) {
             case "xsalsa20_poly1305_suffix": {
                 const random = sodium.random(24, connectionData.nonceBuffer);
-                return [sodium.close(opusPacket, random, secretKey), random];
+                return [sodium.close(packet, random, secretKey), random];
             }
-
             case "xsalsa20_poly1305_lite": {
                 connectionData.nonce++;
                 if (connectionData.nonce > MAX_NONCE_SIZE) connectionData.nonce = 0;
                 connectionData.nonceBuffer.writeUInt32BE(connectionData.nonce, 0);
-                return [ sodium.close(opusPacket, connectionData.nonceBuffer, secretKey), connectionData.nonceBuffer.subarray(0, 4) ];
+                return [ sodium.close(packet, connectionData.nonceBuffer, secretKey), connectionData.nonceBuffer.subarray(0, 4) ];
             }
-
-            default: return [sodium.close(opusPacket, Buffer.alloc(24), secretKey)];
+            default: return [sodium.close(packet, Buffer.alloc(24), secretKey)];
         }
     };
-
-
-    /**
-     * @WS Workspace
-     */
 
     /**
      * @description Создает новый веб-сокет для голосового шлюза Discord.
@@ -256,10 +248,13 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
         const state = this.state;
 
         switch (packet.op) {
+            //Время ожидания между отправкой сердечных сокращений в миллисекундах
             case VoiceOpcodes.Hello: {
-                if (state.code !== VoiceSocketStatusCode.close) state.ws.setHeartbeatInterval(packet.d.heartbeat_interval);
+                if (state.code !== VoiceSocketStatusCode.close) state.ws.HeartbeatInterval = packet.d.heartbeat_interval;
                 return;
             }
+
+            //Завершите обмен данными с websocket
             case VoiceOpcodes.Ready: {
                 if (state.code === VoiceSocketStatusCode.identify) {
                     const {ip, port, ssrc, modes} = packet.d;
@@ -287,6 +282,8 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
                 }
                 return;
             }
+
+            //Опишите сеанс
             case VoiceOpcodes.SessionDescription: {
                 if (state.code === VoiceSocketStatusCode.protocol) {
                     const { mode: encryptionMode, secret_key: secretKey } = packet.d;
@@ -306,6 +303,8 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
                 }
                 return;
             }
+
+            //Подтвердите успешное возобновление сеанса
             case VoiceOpcodes.Resumed: {
                 if (state.code === VoiceSocketStatusCode.resume) {
                     this.state = { ...state, code: VoiceSocketStatusCode.ready };

@@ -108,26 +108,24 @@ export class httpsClient extends Request {
      * @public
      */
     public get toString(): Promise<string | Error> {
-        return new Promise(async (resolve) => {
-            try {
-                const request = await this.request;
-                if (request instanceof Error) return resolve(request);
+        return new Promise((resolve) => {
+           this.request.then((res) => {
+                if (res instanceof Error) return resolve(res);
 
-                const encoding = request.headers["content-encoding"];
-                let decoder: BrotliDecompress | Gunzip | Deflate | IncomingMessage = request;
+                const encoding = res.headers["content-encoding"];
+                let decoder: BrotliDecompress | Gunzip | Deflate | IncomingMessage = res, data = "";
 
-                if (encoding === "br") decoder = request.pipe(createBrotliDecompress());
-                else if (encoding === "gzip") decoder = request.pipe(createGunzip());
-                else if (encoding === "deflate") decoder = request.pipe(createDeflate());
+                if (encoding === "br") decoder = res.pipe(createBrotliDecompress());
+                else if (encoding === "gzip") decoder = res.pipe(createGunzip());
+                else if (encoding === "deflate") decoder = res.pipe(createDeflate());
 
-                let data = "";
                 decoder.setEncoding("utf-8").on("data", (c) => data += c).once("end", () => {
                     setImmediate(() => { data = null });
                     return resolve(data);
                 });
-            } catch (error) {
-                return resolve(error);
-            }
+            }).catch((err) => {
+                return resolve(err);
+            });
         });
     };
 

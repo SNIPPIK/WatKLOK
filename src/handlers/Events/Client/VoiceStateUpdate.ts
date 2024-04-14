@@ -14,21 +14,25 @@ class VoiceStateUpdate extends Constructor.Assign<Handler.Event<Events.VoiceStat
             name: Events.VoiceStateUpdate,
             type: "client",
             execute: (client, oldState, newState) => setImmediate(() => {
+                const channel = oldState?.channel || newState?.channel;
+                const me = channel.members.get(client.user.id);
                 const guild = oldState.guild || newState.guild;
-                const channelID = oldState?.channel?.id || newState?.channel?.id;
-                const me = (newState.channel?.members || oldState.channel?.members).get(client.user.id);
-                const isChannel = me?.voice && (oldState.channelId || newState.channelId) === me.voice.channelId;
 
-                if (!guild || !channelID) return;
+                //Если нет сервера или канала
+                if (!guild || !channel) return;
 
-                const nonBotMembers = (newState.channel?.members || oldState.channel?.members).filter(member => !member.user.bot).size;
-                const queue = db.audio.queue.get(newState.guild.id);
+                const members = channel.members.filter(member => !member.user.bot).size;
+                const meVoice = me?.voice && channel?.id === me.voice.channelId;
 
-                if (nonBotMembers < 1 || !isChannel) {
+                //Если кол-во пользователей менее 1 или нет бота в голосовом канале сервера
+                if (members < 1 || !meVoice) {
+                    const queue = db.audio.queue.get(newState.guild.id);
+
                     if (queue) {
+                        //Если включен режим радио
                         if (queue.radio) {
                             if (queue.songs?.song?.duration?.seconds !== 0) return;
-                            else if (nonBotMembers === 0) queue.player.pause();
+                            else if (members === 0) queue.player.pause();
                             else queue.player.resume();
                             return;
                         }
@@ -36,7 +40,8 @@ class VoiceStateUpdate extends Constructor.Assign<Handler.Event<Events.VoiceStat
                         db.audio.queue.remove(queue.guild.id);
                     }
 
-                    if (isChannel) Voice.remove(guild.id);
+                    //Если бот находится в голосовом канале
+                    if (meVoice) Voice.remove(guild.id);
                 }
             })
         });
