@@ -2,6 +2,7 @@ import {createWriteStream, existsSync, mkdirSync, rename} from "node:fs";
 import {Song} from "@lib/player/queue/Song";
 import {httpsClient} from "@lib/request";
 import {Constructor} from "@handler";
+import * as path from "node:path";
 import {env, Logger} from "@env";
 
 /**
@@ -72,7 +73,7 @@ export namespace Cache {
             const author = track.author.title.replace(/[|,'";*/\\{}!?.:<>]/gi, "");
 
             try {
-                const dir = `${__dirname.split("\\src")[0].replaceAll("\\", "/")}/${env.get("cached.dir")}/Audio/[${author}]/[${title}]`;
+                const dir = `${path.resolve(`${env.get("cached.dir")}/Audio/[${author}]/[${title}]`)}`;
                 const isOpus = existsSync(`${dir}.opus`), isRaw = existsSync(`${dir}.raw`);
 
                 return { status: isOpus ? "final" : isRaw ? "download" : "not", path: dir + (isOpus ? `.opus` : `.raw`) }
