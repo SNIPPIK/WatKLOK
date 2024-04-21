@@ -1,6 +1,6 @@
 {
   "name": "watklok",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Постоянно развивающийся музыкальный бот!",
   "license": "MIT",
   "dependencies": {
@@ -19,11 +19,11 @@
     "shard": "cd node_build && node -r tsconfig-paths/register src/index.js --ShardManager",
     "build": "tsc -p tsconfig.json"
   },
-    "engines": {
-    "node": ">=19.0.0"
+  "engines": {
+    "node": ">=20.0.0"
   },
   "author": {
     "name": "SNIPPIK",
-    "url": "github.com/SNIPPIK"
+    "url": "https://github.com/SNIPPIK"
   }
 }
