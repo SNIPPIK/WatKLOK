@@ -23,13 +23,15 @@ export namespace Cache {
                 filter: (item) => {
                     const names = this.status(item);
 
+                    //Если уже скачено или не подходит для скачивания то, пропускаем
                     if (names.status === "final" || item.duration.seconds === 0 && item.duration.seconds >= 800) {
                         this.remove(item);
                         return false;
+
+                    //Если нет директории автора то, создаем ее    
                     } else if (!existsSync(names.path)) {
                         let dirs = names.path.split("/");
 
-                        //Если нет директории, то создаем
                         if (!names.path.endsWith("/")) dirs.splice(dirs.length - 1);
                         mkdirSync(dirs.join("/"), {recursive: true});
                     }
@@ -40,7 +42,7 @@ export namespace Cache {
 
                     new httpsClient(track.link).request.then((req) => {
                         if (req instanceof Error) return resolve(false);
-                        else if (req.pipe) {
+                        else if ("pipe" in req) {
                             const status = this.status(track);
                             const file = createWriteStream(status.path);
 

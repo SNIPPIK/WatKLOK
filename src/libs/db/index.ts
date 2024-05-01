@@ -372,7 +372,7 @@ export const db = new class DataBase extends SupportDataBase.Commands {
      * @public
      */
     public set initialize(client: Client) {
-        const dirs = ["handlers/APIs", "handlers/Commands", "handlers/Events"];
+        const dirs = ["handlers/APIs", "handlers/Commands", "handlers/Events", "handlers/Plugins"];
         const callbacks = [
             (item: API.request) => {
                 //Если нет данных, то откидываем платформу
@@ -397,6 +397,13 @@ export const db = new class DataBase extends SupportDataBase.Commands {
             (item: Handler.Event<any>) => {
                 if (item.type === "client") client.on(item.name as any, (...args: any[]) => item.execute(client, ...args)); // @ts-ignore
                 else this.audio.queue.events.on(item.name as any, (...args: any[]) => item.execute(...args));
+            },
+            (item: Handler.Plugin) => {
+                try {
+                    item.start({client});
+                } catch (err) {
+                    throw new Error(`[Plugin]: ${err}`);
+                }
             }
         ];
 

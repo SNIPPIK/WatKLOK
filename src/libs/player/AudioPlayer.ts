@@ -250,7 +250,7 @@ export interface AudioPlayerEvents {
 /**
  * @author SNIPPIK
  * @description Как выглядит фильтр
- * @interface
+ * @interface Filter
  */
 export interface Filter {
     //Имена

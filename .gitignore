@@ -1,5 +1,6 @@
 .github
+.idea
 node_modules
-/db/
+node_build
 LICENSE
 SECURITY.md

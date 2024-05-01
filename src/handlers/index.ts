@@ -179,6 +179,19 @@ export namespace Handler {
             sub?: string
         }) => Constructor.messageOptions<any> | Promise<Constructor.messageOptions<any>>;
     }
+
+    /**
+     * @author SNIPPIK
+     * @description Интерфейс для плагинов
+     * @interface Plugin
+     */
+    export interface Plugin {
+        /**
+         * @description Запуск плагина
+         * @public
+         */
+        start: (options: {client: Client}) => void;
+    }
 }
 
 /**

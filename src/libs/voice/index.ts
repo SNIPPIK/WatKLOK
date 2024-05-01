@@ -331,11 +331,11 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents> {
  * @description Ивенты для VoiceConnection
  */
 interface VoiceConnectionEvents {
-    "connecting": (oldState: VoiceConnectionState, newState: VoiceConnectionState & { status: Event }) => this;
-    "destroyed": (oldState: VoiceConnectionState, newState: VoiceConnectionState & { status: Event }) => this;
-    "disconnected": (oldState: VoiceConnectionState, newState: VoiceConnectionState & { status: Event }) => this;
-    "ready": (oldState: VoiceConnectionState, newState: VoiceConnectionState & { status: Event }) => this;
-    "signalling": (oldState: VoiceConnectionState, newState: VoiceConnectionState & { status: Event }) => this;
+    "connecting": (oldState: VoiceConnectionState, newState: VoiceConnectionState & { status: Event }) => this | void;
+    "destroyed": (oldState: VoiceConnectionState, newState: VoiceConnectionState & { status: Event }) => this | void;
+    "disconnected": (oldState: VoiceConnectionState, newState: VoiceConnectionState & { status: Event }) => this | void;
+    "ready": (oldState: VoiceConnectionState, newState: VoiceConnectionState & { status: Event }) => this | void;
+    "signalling": (oldState: VoiceConnectionState, newState: VoiceConnectionState & { status: Event }) => this | void;
 
     "error": (error: Error) => this;
     "debug": (message: string) => this;
