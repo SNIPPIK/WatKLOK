@@ -42,9 +42,9 @@ export class OpusEncoder extends Transform {
     private readonly _encode = {
         encoder: null,
 
-        OGG_HEADER: Buffer.from([...'OggS'].map(charCode)),
-        OPUS_HEAD: Buffer.from([...'OpusHead'].map(charCode)),
-        OPUS_TAGS: Buffer.from([...'OpusTags'].map(charCode))
+        OGG_HEADER: Buffer.from([..."OggS"].map(charCode)),
+        OPUS_HEAD: Buffer.from([..."OpusHead"].map(charCode)),
+        OPUS_TAGS: Buffer.from([..."OpusTags"].map(charCode))
     };
     private readonly _temp = {
         remaining: null as Buffer,
@@ -122,13 +122,13 @@ export class OpusEncoder extends Transform {
             const header = segment.subarray(0, 8);
 
             if (this._temp.buffer) {
-                if (header.equals(this._encode.OPUS_TAGS)) this.emit('tags', segment);
+                if (header.equals(this._encode.OPUS_TAGS)) this.emit("tags", segment);
                 else if (this._temp.bitstream === bitstream) this.push(segment);
             } else if (header.equals(this._encode.OPUS_HEAD)) {
-                this.emit('head', segment);
+                this.emit("head", segment);
                 this._temp.buffer = segment;
                 this._temp.bitstream = bitstream;
-            } else this.emit('unknownSegment', segment);
+            } else this.emit("unknownSegment", segment);
 
             start += size;
         }
@@ -182,7 +182,7 @@ export class OpusEncoder extends Transform {
      * @public
      */
     _destroy() {
-        if (typeof this._encode.encoder?.delete === 'function') this._encode.encoder!.delete!();
+        if (typeof this._encode.encoder?.delete === "function") this._encode.encoder!.delete!();
 
         for (let name of Object.keys(this._temp)) this._temp[name] = null;
         for (let name of Object.keys(this._encode)) this._encode[name] = null;

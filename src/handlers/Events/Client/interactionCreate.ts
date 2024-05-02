@@ -18,8 +18,6 @@ class Interaction extends Constructor.Assign<Handler.Event<Events.InteractionCre
                 //Игнорируем ботов
                 if ((message.user || message?.member?.user).bot) return;
 
-                //console.log(message);
-
                 //Подменяем данные
                 message.author = message?.member?.user ?? message?.user;
 

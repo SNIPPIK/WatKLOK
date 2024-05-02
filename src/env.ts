@@ -1,5 +1,5 @@
 import {readFileSync, writeFileSync} from "node:fs";
-import {DotenvPopulateInput, config} from "dotenv";
+import {config, DotenvPopulateInput} from "dotenv";
 import {threadId} from "node:worker_threads";
 import process from "node:process";
 import os from "node:os";
@@ -114,12 +114,12 @@ const prototypes: { type: any, name: string, value: any}[] = [
     //Array
     {
         type: Array.prototype, name: "ArraySort",
-        value: function (number = 5, callback, joined = "\"\\n\\n\"") {
+        value: function (number = 5, callback: (value: number, index: number) => void, joined = "\"\\n\\n\"") {
             const pages: string[] = [];
             let page: string = '';
 
             for (let i = 0; i < this.length; i += number) {
-                page = this.slice(i, i + number).map((value, index) => callback(value, index)).join(joined);
+                page = this.slice(i, i + number).map((value: number, index: number) => callback(value, index)).join(joined);
                 if (page !== '') pages.push(page);
             }
 
@@ -129,7 +129,9 @@ const prototypes: { type: any, name: string, value: any}[] = [
     {
         type: Array.prototype, name: "time",
         value: function () {
-            return this.reduce((total, item) => total + (item.duration.seconds || 0), 0).duration();
+            return this.reduce((total: number, item: {
+                duration: { seconds: number }
+            }) => total + (item.duration.seconds || 0), 0).duration();
         }
     },
     {
@@ -147,7 +149,7 @@ const prototypes: { type: any, name: string, value: any}[] = [
         type: String.prototype, name: "duration",
         value: function () {
             const time = this?.split(":").map(Number) ?? [parseInt(this)];
-            return time.length === 1 ? time[0] : time.reduce((acc, val) => acc * 60 + val);
+            return time.length === 1 ? time[0] : time.reduce((acc: number, val: number) => acc * 60 + val);
         }
     },
 

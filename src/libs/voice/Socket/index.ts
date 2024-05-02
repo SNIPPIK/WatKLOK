@@ -17,7 +17,11 @@ const sodium = SodiumEncryption.getMethods(),
  * @description Интерфейс для подключения WS с UDP для передачи пакетов на сервера discord
  */
 export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
-    private _state: VoiceSocketState;
+    private _state: VoiceSocketState = {
+        code: VoiceSocketStatusCode.upWS,
+        connectionOptions: null,
+        ws: null
+    };
     /**
      * @description Текущее состояние сетевого экземпляра
      * @public
@@ -114,11 +118,10 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
         this.onWsClose = this.onWsClose.bind(this);
         this.onUdpClose = this.onUdpClose.bind(this);
 
-        this._state = {
-            code: VoiceSocketStatusCode.upWS,
+        Object.assign(this._state, {
             ws: this.createWebSocket(options.endpoint),
             connectionOptions: options
-        };
+        });
     };
 
     /**

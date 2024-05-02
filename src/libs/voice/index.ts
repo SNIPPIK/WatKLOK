@@ -1,6 +1,6 @@
-import type { GatewayVoiceServerUpdateDispatchData, GatewayVoiceStateUpdateDispatchData } from "discord-api-types/v10";
-import {VoiceSocket, VoiceSocketState, VoiceSocketStatusCode} from "@lib/voice/Socket";
+import type {GatewayVoiceServerUpdateDispatchData, GatewayVoiceStateUpdateDispatchData} from "discord-api-types/v10";
 import {GatewayOpcodes} from "discord-api-types/v10";
+import {VoiceSocket, VoiceSocketState, VoiceSocketStatusCode} from "@lib/voice/Socket";
 import {TypedEmitter} from "tiny-typed-emitter";
 import {Constructor} from "@handler";
 
@@ -83,15 +83,16 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents> {
      */
     public set state(newState: VoiceConnectionState) {
         const oldState = this._local.state;
-        const oldNetworking = Reflect.get(oldState, 'networking') as VoiceSocket;
-        const newNetworking = Reflect.get(newState, 'networking') as VoiceSocket;
+        const oldNetworking = Reflect.get(oldState, "networking") as VoiceSocket;
+        const newNetworking = Reflect.get(newState, "networking") as VoiceSocket;
 
         if (oldNetworking !== newNetworking) {
             if (oldNetworking) {
-                oldNetworking.on('error', () => {});
-                oldNetworking.off('error', this.onSocketError);
-                oldNetworking.off('close', this.onSocketClose);
-                oldNetworking.off('stateChange', this.onSocketStateChange);
+                oldNetworking.on("error", () => {
+                });
+                oldNetworking.off("error", this.onSocketError);
+                oldNetworking.off("close", this.onSocketClose);
+                oldNetworking.off("stateChange", this.onSocketStateChange);
                 oldNetworking.destroy();
             }
         }
@@ -159,7 +160,7 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents> {
                 sessionId: state.session_id,
                 userId: state.user_id,
             }
-        ).once('close', this.onSocketClose).on('stateChange', this.onSocketStateChange).on('error', this.onSocketError);
+        ).once("close", this.onSocketClose).on("stateChange", this.onSocketStateChange).on("error", this.onSocketError);
 
         this.state = { ...this.state, networking,
             status: VoiceConnectionStatus.Connecting
@@ -280,7 +281,9 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents> {
      * @param error - Распространяемая ошибка
      * @private
      */
-    private onSocketError(error: Error) { this.emit('error', error); }
+    private onSocketError(error: Error) {
+        this.emit("error", error);
+    }
 
     /**
      * @description Регистрирует пакет `VOICE_SERVER_UPDATE` для голосового соединения. Это приведет к повторному подключению с использованием
@@ -319,7 +322,7 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents> {
      * @public
      */
     public destroy(adapterAvailable = false) {
-        if (this.state.status === VoiceConnectionStatus.Destroyed) throw new Error('Cannot destroy VoiceConnection - it has already been destroyed');
+        if (this.state.status === VoiceConnectionStatus.Destroyed) throw new Error("Cannot destroy VoiceConnection - it has already been destroyed");
         if (adapterAvailable) this.state.adapter.sendPayload(Voice.payload(this.config));
 
         this.state = { status: VoiceConnectionStatus.Destroyed };
@@ -349,27 +352,27 @@ export enum VoiceConnectionStatus {
     /**
      * @description Пакеты `VOICE_SERVER_UPDATE` и `VOICE_STATE_UPDATE` были получены, теперь предпринимается попытка установить голосовое соединение.
      */
-    Connecting = 'connecting',
+    Connecting = "connecting",
 
     /**
      * @description Голосовое соединение было разрушено и не отслеживалось, его нельзя использовать повторно.
      */
-    Destroyed = 'destroyed',
+    Destroyed = "destroyed",
 
     /**
      * @description Голосовое соединение либо разорвано, либо не установлено.
      */
-    Disconnected = 'disconnected',
+    Disconnected = "disconnected",
 
     /**
      * @description Голосовое соединение установлено и готово к использованию.
      */
-    Ready = 'ready',
+    Ready = "ready",
 
     /**
      * @description Отправляем пакет на главный шлюз Discord, чтобы указать, что мы хотим изменить наше голосовое состояние.
      */
-    Signalling = 'signalling',
+    Signalling = "signalling",
 }
 
 /**

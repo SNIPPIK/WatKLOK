@@ -24,7 +24,7 @@ class onError extends Constructor.Assign<Handler.Event<"message/error">> {
                             color, thumbnail: image, timestamp: new Date(),
                             fields: [
                                 {
-                                    name: `**Играл:**`,
+                                    name: `**Играет:**`,
                                     value: `\`\`\`${title}\`\`\``
                                 },
                                 {

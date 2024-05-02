@@ -1,6 +1,6 @@
 import {VoiceOpcodes} from "discord-api-types/voice/v4";
 import {TypedEmitter} from "tiny-typed-emitter";
-import {WebSocket, Event, CloseEvent} from "ws";
+import {CloseEvent, Event, WebSocket} from "ws";
 
 /**
  * @author SNIPPIK
@@ -36,7 +36,7 @@ export class VoiceWebSocket extends TypedEmitter<WebSocketEvents> {
         const ws = new WebSocket(address);
 
         ws.onmessage = (event) => {
-            if (typeof event.data !== 'string') return;
+            if (typeof event.data !== "string") return;
 
             try {
                 const packet = JSON.parse(event.data);
@@ -79,7 +79,7 @@ export class VoiceWebSocket extends TypedEmitter<WebSocketEvents> {
             this.HeartbeatInterval = -1;
             this.ws.close(code);
         } catch (error) {
-            this.emit('error', error as Error);
+            this.emit("error", error as Error);
         }
     };
 }

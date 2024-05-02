@@ -4,7 +4,7 @@ import {Buffer} from "node:buffer";
 import {isIPv4} from "node:net";
 
 export class VoiceUDPSocket extends TypedEmitter<UDPSocketEvents> {
-    private readonly socket: Socket;
+    private readonly socket: Socket = createSocket("udp4");
     private readonly remote: {ip: string; port: number} = {ip: null, port: 443};
 
     /**
@@ -22,9 +22,6 @@ export class VoiceUDPSocket extends TypedEmitter<UDPSocketEvents> {
     public constructor(options: VoiceUDPSocket["remote"]) {
         super();
         Object.assign(this.remote, options);
-
-        //Создаем сокет
-        this.socket = createSocket("udp4");
 
         //Добавляем ивенты
         for (let event of ["message", "error", "close"]) {

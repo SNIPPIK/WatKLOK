@@ -1,4 +1,4 @@
-const SUPPORTED_ENCRYPTION_MODES = ['xsalsa20_poly1305_lite', 'xsalsa20_poly1305_suffix', 'xsalsa20_poly1305'];
+const SUPPORTED_ENCRYPTION_MODES = ["xsalsa20_poly1305_lite", "xsalsa20_poly1305_suffix", "xsalsa20_poly1305"];
 
 /**
  * @description Выбирает режим шифрования из списка заданных параметров. Выбирает наиболее предпочтительный вариант.
