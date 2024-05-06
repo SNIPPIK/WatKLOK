@@ -157,7 +157,7 @@ class Group extends Constructor.Assign<Handler.Command>{
                     const pages = queue.songs.slice(1).ArraySort(5, (track) => { num++;
                         return `\`${num}\` - \`\`[${track.duration.full}]\`\` [${track.requester.username}](${track.author.url}) - [${track.title}](${track.url})`;
                     }, "\n");
-                    const embed: EmbedData = {
+                    const embed = {
                         title: `Queue - ${message.guild.name}`,
                         color: Colors.Green,
                         fields: [
