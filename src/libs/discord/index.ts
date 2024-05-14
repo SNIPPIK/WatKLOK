@@ -1,5 +1,23 @@
-import {ActionRow, ActionRowBuilder,  Attachment, BaseInteraction, BaseMessageOptions, Client as DS_Client, EmbedData, GuildMember, IntentsBitField,Message,MessagePayload, Partials, ShardingManager, User, WebhookClient, WebhookMessageCreateOptions } from "discord.js";
+import {
+    ActionRow,
+    ActionRowBuilder,
+    Attachment,
+    BaseInteraction,
+    BaseMessageOptions,
+    Client as DS_Client,
+    EmbedData,
+    GuildMember,
+    IntentsBitField,
+    Message,
+    MessagePayload,
+    Partials,
+    ShardingManager,
+    User,
+    WebhookClient,
+    WebhookMessageCreateOptions
+} from "discord.js";
 import {env, Logger} from "@env";
+import process from "node:process";
 
 /**
  * @author SNIPPIK
@@ -61,7 +79,7 @@ export class Client extends DS_Client {
  */
 export class ShardManager extends ShardingManager {
     public constructor(path: string) {
-        const mode = env.get("shard.mode");
+        const mode = env.get("shard.mode")
         super(path, { token: env.get("token.discord"), mode, respawn: true, totalShards: env.get("shard.total"), execArgv: ["-r", "tsconfig-paths/register"] });
 
         process.title = "ShardManager";

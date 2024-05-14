@@ -75,7 +75,7 @@ namespace SupportDataBase {
                 const PublicData: any = await client.rest.put(Routes.applicationCommands(client.user.id), {body: this.commands.public});
                 const OwnerData: any = await client.rest.put(Routes["applicationGuildCommands"](client.user.id, env.get("owner.server")), {body: this.commands.owner});
 
-                Logger.log("DEBUG", `[Shard ${client.ID}] [SlashCommands] ${PublicData.length}/${OwnerData.length}`);
+                Logger.log("DEBUG", `[Shard ${client.ID}] [SlashCommands] ${PublicData.length}/${OwnerData.length} | ${this.commands.subCommands}`);
                 return resolve(true);
             });
         };

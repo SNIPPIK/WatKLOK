@@ -40,8 +40,13 @@
  2. Необходимо заполнить параметры `token` (необходим только `token.discord`)
 
 #### 4. Запускаем бота
- - Менеджер осколков -> `npm run shard`
- - Без менеджера -> `npm run client`
+
+- Режим отладки `Debug mode`
+    - Менеджер осколков -> `пока не поддерживается`
+    - Без менеджера -> `run client:dev`
+- Обычный запуск
+    - Менеджер осколков -> `npm run shard`
+    - Без менеджера -> `npm run client`
 
     
 # <img alt="Avatar" width="20px" src="https://raw.githubusercontent.com/SNIPPIK/WatKLOK/nightly/.github/resource/Icons/Disk.gif" /> Библиотеки для конвертации аудио

@@ -33,10 +33,10 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
      * @public
      */
     public set state(newState) {
-        const oldWs = Reflect.get(this._state, 'ws') as VoiceWebSocket;
-        const newWs = Reflect.get(newState, 'ws')    as VoiceWebSocket;
-        const oldUDP = Reflect.get(this._state, 'udp')  as VoiceUDPSocket;
-        const newUDP = Reflect.get(newState, 'udp')     as VoiceUDPSocket;
+        const oldWs = Reflect.get(this._state, VoiceProtocols.ws) as VoiceWebSocket;
+        const newWs = Reflect.get(newState, VoiceProtocols.ws) as VoiceWebSocket;
+        const oldUDP = Reflect.get(this._state, VoiceProtocols.udp) as VoiceUDPSocket;
+        const newUDP = Reflect.get(newState, VoiceProtocols.udp) as VoiceUDPSocket;
 
         if (oldWs && oldWs !== newWs) {
             oldWs.off("error", this.onError).off("open", this.onWsOpen).off("packet", this.onWsPacket).off("close", this.onWsClose)
@@ -263,14 +263,14 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
                     const {ip, port, ssrc, modes} = packet.d;
 
                     const udp = new VoiceUDPSocket({ip, port});
-                    udp.on('error', this.onError);
-                    udp.once('close', this.onUdpClose);
+                    udp.on("error", this.onError);
+                    udp.once("close", this.onUdpClose);
                     udp.IPDiscovery(ssrc).then((localConfig) => {
                         if (this.state.code !== VoiceSocketStatusCode.upUDP) return;
                         state.ws.sendPacket({
                             op: VoiceOpcodes.SelectProtocol,
                             d: {
-                                protocol: 'udp',
+                                protocol: VoiceProtocols.udp,
                                 data: {
                                     address: localConfig.ip,
                                     port: localConfig.port,
@@ -279,7 +279,7 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
                             }
                         });
                         this.state = {...this.state, code: VoiceSocketStatusCode.protocol};
-                    }).catch((error: Error) => this.emit('error', error));
+                    }).catch((error: Error) => this.emit("error", error));
 
                     this.state = {...state, udp, code: VoiceSocketStatusCode.upUDP, connectionData: {ssrc}};
                 }
@@ -349,6 +349,11 @@ export enum VoiceSocketStatusCode {
     close,
 }
 
+enum VoiceProtocols {
+    udp = "udp",
+    ws = "ws"
+}
+
 /**
  * @status VoiceSocketStatusCode.upWS
  * @description Статус запуска VoiceWebSocket
@@ -377,7 +382,7 @@ interface UDPSocketState {
     code: VoiceSocketStatusCode.upUDP;
     ws: VoiceWebSocket;
     udp: VoiceUDPSocket;
-    connectionData: Pick<ConnectionData, 'ssrc'>;
+    connectionData: Pick<ConnectionData, "ssrc">;
     connectionOptions: ConnectionOptions;
 }
 
@@ -389,7 +394,7 @@ interface ProtocolState {
     code: VoiceSocketStatusCode.protocol;
     ws: VoiceWebSocket;
     udp: VoiceUDPSocket;
-    connectionData: Pick<ConnectionData, 'ssrc'>;
+    connectionData: Pick<ConnectionData, "ssrc">;
     connectionOptions: ConnectionOptions;
 }
 

@@ -1,4 +1,4 @@
-import {ApplicationCommandOptionType, Colors, EmbedData} from "discord.js";
+import {ApplicationCommandOptionType, Colors} from "discord.js";
 import {History} from "@lib/player/utils/History";
 import {Constructor, Handler} from "@handler";
 import {Logger} from "@env";
@@ -157,7 +157,7 @@ class Group extends Constructor.Assign<Handler.Command>{
                     const pages = queue.songs.slice(1).ArraySort(5, (track) => { num++;
                         return `\`${num}\` - \`\`[${track.duration.full}]\`\` [${track.requester.username}](${track.author.url}) - [${track.title}](${track.url})`;
                     }, "\n");
-                    const embed: EmbedData = {
+                    const embed = {
                         title: `Queue - ${message.guild.name}`,
                         color: Colors.Green,
                         fields: [

@@ -21,10 +21,10 @@ class Interaction extends Constructor.Assign<Handler.Event<Events.InteractionCre
                 //Подменяем данные
                 message.author = message?.member?.user ?? message?.user;
 
-                const status = message?.isCommand() ? true : message?.isButton() ? false : null;
+                const status = message?.isCommand() ? 1 : message?.isButton() ? 2 : null;
 
-                if (status || status === false) {
-                    const item = (status ? Interaction._stepCommand : Interaction._stepButton)(message);
+                if (status) {
+                    const item = (status === 1 ? Interaction._stepCommand : Interaction._stepButton)(message);
 
                     //Если есть данные, то отправляем их в тестовый канал
                     if (item) {
@@ -62,16 +62,18 @@ class Interaction extends Constructor.Assign<Handler.Event<Events.InteractionCre
         };
 
         //Проверяем права пользователя
-        if (group?.permissions) {
+        else if (group?.permissions) {
             //Если прав не хватает, то уведомляем пользователя
             const clientPermissions = this._checkPermission(group.permissions, message.channel.permissionsFor(guild.members.me));
             if (clientPermissions) return {
                 content: `${author.username}, у меня нет прав на: ${clientPermissions}`,
                 color: "DarkRed", codeBlock: "css"
             };
-        }
-
-        if (!group?.execute) return { content: `${author.username}, у меня нет этой команды!`, color: "DarkRed", codeBlock: "css" };
+        } else if (!group?.execute) return {
+            content: `${author.username}, у меня нет этой команды!`,
+            color: "DarkRed",
+            codeBlock: "css"
+        };
 
         const options = message.options;
         return group.execute({
@@ -175,10 +177,7 @@ class Interaction extends Constructor.Assign<Handler.Event<Events.InteractionCre
         const fail: any[] = [];
 
         if (permissions && permissions?.length > 0) {
-            for (const permission of permissions) {
-                if (!Fields.has(permission)) fail.push(permission);
-            }
-
+            for (const permission of permissions) if (!Fields.has(permission)) fail.push(permission);
             return fail.join(", ");
         }
 

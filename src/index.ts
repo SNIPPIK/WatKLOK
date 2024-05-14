@@ -10,6 +10,9 @@ import {db} from "@lib/db";
  */
 if (process["argv"].includes("--ShardManager")) new ShardManager(__filename);
 else {
+    //Если включен режим отладки, режим отладки запускается через --dbg
+    if (process["argv"].includes("--dbg")) Logger.log("WARN", `[DEBUG MODE] Enabled...`);
+
     const client = new Client();
 
     /**

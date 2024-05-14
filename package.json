@@ -4,23 +4,25 @@
   "description": "Постоянно развивающийся музыкальный бот!",
   "license": "MIT",
   "dependencies": {
-    "discord.js": "^14.14.1",
+    "discord.js": "^14.15.2",
     "dotenv": "^16.4.5",
     "sodium-native": "^4.1.1",
     "tiny-typed-emitter": "^2.1.0"
   },
   "devDependencies": {
-    "@types/node": "^20.12.7",
+    "@types/node": "^20.12.11",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.4.5"
   },
   "scripts": {
+    "client:dev": "cd node_build && node -r tsconfig-paths/register src/index.js --dbg",
+
     "client": "cd node_build && node -r tsconfig-paths/register src/index.js",
     "shard": "cd node_build && node -r tsconfig-paths/register src/index.js --ShardManager",
     "build": "tsc -p tsconfig.json"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=21.0.0"
   },
   "author": {
     "name": "SNIPPIK",

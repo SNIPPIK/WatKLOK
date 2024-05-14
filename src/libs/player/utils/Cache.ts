@@ -18,7 +18,7 @@ export namespace Cache {
     export class Audio extends Constructor.Cycle<Song> {
         public constructor() {
             super({
-                name: "Audio/Cache",
+                name: "AudioCache",
                 duration: 20e3,
                 filter: (item) => {
                     const names = this.status(item);
