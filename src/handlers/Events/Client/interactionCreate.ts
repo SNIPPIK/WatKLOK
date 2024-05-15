@@ -93,8 +93,11 @@ class Interaction extends Constructor.Assign<Handler.Event<Events.InteractionCre
         const { author, member, guild } = message;
         const queue = db.audio.queue.get(message.guild.id);
 
+        //Игнорируем некоторые кнопки
+        if (["back", "next", "cancel"].includes(message.customId)) return;
+
         //Если нет очереди
-        if (!queue) return { content: `${author} | Музыка сейчас не играет`, color: "Yellow" };
+        else if (!queue) return {content: `${author} | Музыка сейчас не играет`, color: "Yellow"};
 
         //Если пользователь не подключен к голосовым каналам
         else if (!member?.voice?.channel || !member?.voice) return { content: `${author} | Необходимо подключиться к голосовому каналу!`, color: "Yellow" };

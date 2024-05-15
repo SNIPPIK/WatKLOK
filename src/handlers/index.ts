@@ -1,4 +1,11 @@
-import { ActionRowBuilder, ApplicationCommandOption, ClientEvents, Colors, EmbedData, PermissionResolvable } from "discord.js";
+import {
+    ActionRowBuilder,
+    ApplicationCommandOption,
+    ClientEvents,
+    Colors,
+    EmbedData,
+    PermissionResolvable
+} from "discord.js";
 import {AudioPlayerEvents} from "@lib/player/AudioPlayer";
 import {CollectionAudioEvents, db} from "@lib/db";
 import {Queue} from "@lib/player/queue/Queue";
@@ -561,6 +568,18 @@ export namespace Constructor {
             Object.assign(this.data, options);
             const {time, promise} = options;
 
+            //Если используется сборщик меню
+            if ("page" in options) {
+                //Добавляем кнопки
+                this.data.components = [{
+                    type: 1, components: [
+                        {type: 2, emoji: {name: "<-"}, custom_id: "back", style: 2},
+                        {type: 2, emoji: {name: "->"}, custom_id: "next", style: 2},
+                        {type: 2, emoji: {name: "🗑️"}, custom_id: "cancel", style: 4}
+                    ]
+                }] as any;
+            }
+
             //Отправляем сообщение
             this.channel.then((msg) => {
                 //Удаляем сообщение через время если это возможно
@@ -574,7 +593,7 @@ export namespace Constructor {
 
                 //Если меню, то не надо удалять
                 if ("page" in options) this.createMenuTable(msg);
-            }).catch((err) => Logger.log("ERROR", err));
+            }).catch((err) => Logger.log("ERROR", `${err}`));
         };
 
         /**
@@ -585,27 +604,31 @@ export namespace Constructor {
         private createMenuTable = (msg: Client.message) => {
             let {page, pages, callback} = this.options as messageTypes.menu;
 
-            for (const [key, emoji] of Object.entries({back: "⬅️", cancel: "🗑", next: "➡️"})) {
-                msg.react(emoji).then(() => msg.createReactionCollector({
-                    time: 60e3,
-                    filter: (reaction, user) => reaction.emoji.name === emoji && user.id !== msg.client.user.id
-                }).on("collect", ({users}): void => {
-                    users.remove(this.options.message.author).catch(() => null);
+            const collector = msg.createMessageComponentCollector({
+                time: 60e3, componentType: 2,
+                filter: (click) => click.user.id !== msg.client.user.id
+            });
 
-                    //Удаляем сообщение
-                    if (key === "cancel") message.delete = {time: 2e3, message: msg};
+            collector.on("collect", (i) => {
+                //Игнорируем ошибки
+                try {
+                    i.deferReply();
+                    i.deleteReply();
+                } catch {
+                }
 
-                    //Если нельзя поменять страницу
-                    else if (page === pages.length || page < 1) return;
+                //Если нельзя поменять страницу
+                if (page === pages.length || page < 1) return;
 
-                    //Выбираем что делать со страничкой, пролистать вперед или назад
-                    else if (key === "next") page++;
-                    else page--;
+                //Кнопка переключения на предыдущую страницу
+                if (i.customId === "back") page--;
+                //Кнопка переключения на следующую страницу
+                else if (i.customId === "next") page++;
+                //Кнопка отмены и удаления сообщения
+                else if (i.customId === "cancel") message.delete = {time: 2e3, message: msg};
 
-                    //Возвращаем функцию
-                    return callback(msg, pages, page);
-                }));
-            }
+                return callback(msg, pages, page);
+            });
         };
     }
 }

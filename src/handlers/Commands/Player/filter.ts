@@ -132,7 +132,8 @@ class Group extends Constructor.Assign<Handler.Command> {
                         embed.description = pages[0];
                         embed.footer = { text: `${message.author.username} | Лист 1 из ${pages.length}`, iconURL: message.author.displayAvatarURL() }
 
-                        return { pages, page: 0, embeds: [embed],
+                        return {
+                            pages, page: 0, embeds: [embed], time: 60e3,
                             callback: (msg, pages, page) => {
                                 return msg.edit({
                                     embeds: [{ ...embed, description: pages[page - 1], footer: { ...embed.footer, text: `${message.author.username} | Лист ${page} из ${pages.length}`} }]

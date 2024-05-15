@@ -128,7 +128,8 @@ class Group extends Constructor.Assign<Handler.Command>{
                         footer: { text: `${author.username} | Лист 1 из ${pages.length}`, iconURL: author.avatarURL() },
                     }
 
-                    return { embeds: [embed], pages, page: 1,
+                    return {
+                        embeds: [embed], pages, page: 1, time: 60e3,
                         callback: (msg, pages, page) => {
                             const updateEmbed = { ...embed, description: pages[page - 1], footer: { ...embed.footer, text: `${message.author.username} | Лист ${page} из ${pages.length}` } };
 
@@ -175,7 +176,7 @@ class Group extends Constructor.Assign<Handler.Command>{
                     if (pages.length > 0) embed.fields.push({ name: "**Следующее:**", value: pages[0] });
 
                     return {
-                        embeds: [embed], pages, page: 1,
+                        embeds: [embed], pages, page: 1, time: 60e3,
                         callback: (msg, pages: string[], page: number) => {
                             embed.fields[1] = { name: "**Следующее:**", value: pages[page - 1] };
                             const updateEmbed = { ...embed, footer: { ...embed.footer, text: `${message.author.username} | Лист ${page} из ${pages.length} | Songs: ${queue.songs.length}` } };
