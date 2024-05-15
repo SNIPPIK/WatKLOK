@@ -573,8 +573,8 @@ export namespace Constructor {
                 //Добавляем кнопки
                 this.data.components = [{
                     type: 1, components: [
-                        {type: 2, emoji: {name: "<-"}, custom_id: "back", style: 2},
-                        {type: 2, emoji: {name: "->"}, custom_id: "next", style: 2},
+                        {type: 2, emoji: {name: "⬅"}, custom_id: "back", style: 2},
+                        {type: 2, emoji: {name: "➡"}, custom_id: "next", style: 2},
                         {type: 2, emoji: {name: "🗑️"}, custom_id: "cancel", style: 4}
                     ]
                 }] as any;
@@ -625,7 +625,10 @@ export namespace Constructor {
                 //Кнопка переключения на следующую страницу
                 else if (i.customId === "next") page++;
                 //Кнопка отмены и удаления сообщения
-                else if (i.customId === "cancel") message.delete = {time: 2e3, message: msg};
+                else if (i.customId === "cancel") {
+                    message.delete = {time: 2e3, message: msg};
+                    return;
+                }
 
                 return callback(msg, pages, page);
             });
