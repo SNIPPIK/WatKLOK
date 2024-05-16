@@ -54,7 +54,7 @@ export namespace Cache {
 
                                 if (!req.destroyed) req.destroy();
                                 if (!file.destroyed) file.destroy();
-                                Logger.log("DEBUG", `[Cycle]: [Download]: in ${refreshName}.opus`);
+                                Logger.log("DEBUG", `[Download] in ${refreshName}`);
 
                                 return resolve(true);
                             });
