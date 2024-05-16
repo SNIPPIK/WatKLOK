@@ -1,6 +1,7 @@
 import {httpsClient} from "@lib/request";
 import {API} from "@handler";
 import {db} from "@lib/db";
+import {Logger} from "@env";
 
 /**
  * @author SNIPPIK
@@ -215,19 +216,25 @@ export class Song {
 
             //Проверяем ссылку на работоспособность, если 3 раза будет неудача ссылка будет удалена
             for (let r = 0; r < 3; r++) {
+
+                //Если нет ссылки, то ищем замену
                 if (!this.link) {
                     const link = await fetchAPIs(this);
 
                     if (link instanceof Error) return resolve(link);
-                    else this.link = link;
+                    this.link = link;
                 }
 
-                //Проверяем ссылку работает ли она
+                //Проверяем ссылку на актуальность
                 if (this.link) {
                     try {
-                        if (await new httpsClient(this.link, {method: "HEAD"}).status) break;
-                        else this.link = null;
-                    } catch {}
+                        const status = await new httpsClient(this.link, {method: "HEAD"}).status;
+
+                        if (!status) continue;
+                        else break;
+                    } catch (err) {
+                        Logger.log("ERROR", err);
+                    }
                 }
             }
 
