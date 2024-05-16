@@ -219,7 +219,7 @@ export class Song {
 
                 //Если нет ссылки, то ищем замену
                 if (!this.link) {
-                    const link = await fetchAPIs(this);
+                    const link = !db.api.platforms.audio.includes(this.platform) ? await fetchAPIs(this) : await fetchOther(this)
 
                     if (link instanceof Error) return resolve(link);
                     this.link = link;
@@ -248,36 +248,46 @@ export class Song {
 
 /**
  * @author SNIPPIK
- * @description Ищем аудио если его нет!
- * @param track {Song} Трек у которого нет аудио
+ * @description Ищем аудио если платформа может самостоятельно выдать аудио
+ * @param track - трек у которого нет аудио
  */
 function fetchAPIs(track: Song): Promise<string | Error> {
-    return new Promise((resolve) => {
-        //Если платформа может самостоятельно выдать аудио
-        if (!db.api.platforms.audio.includes(track.platform)) {
-            const api = new API.response(track.platform).find("track");
+    return new Promise(async (resolve) => {
+        const api = new API.response(track.platform).find("track");
 
-            //Если нет такого запроса
-            if (!api) return resolve(Error(`[Song/${track.platform}]: not found callback for track`));
+        //Если нет такого запроса
+        if (!api) return resolve(Error(`[Song/${track.platform}]: not found callback for track`));
 
-            api.callback(track.url, {audio: true}).then((track: Song | Error) => {
-                if (track instanceof Error) return resolve(track);
-                return resolve(track.link);
-            }).catch((err) => resolve(err));
+        try {
+            const song = await api.callback(track.url, {audio: true});
+
+            if (song instanceof Error) return resolve(song);
+            return resolve(song.link);
+        } catch (err) {
+            return resolve(err);
         }
+    });
+}
 
-        //Если платформа не может выдать аудио
-        else {
-            const youtube = new API.response("YOUTUBE");
+/**
+ * @author SNIPPIK
+ * @description Получаем ссылку на трек если прошлая уже не актуальна
+ * @param track - трек у которого нет аудио
+ */
+function fetchOther(track: Song): Promise<string | Error> {
+    return new Promise(async (resolve) => {
+        const youtube = new API.response("YOUTUBE");
 
-            youtube.find("search").callback(`${track.author.title} - ${track.title}`, {limit: 10}).then((videos) => {
-                if (videos instanceof Error || videos.length === 0) return resolve(null);
+        try {
+            const videos = await youtube.find("search").callback(`${track.author.title} - ${track.title}`, {limit: 10});
+            if (videos instanceof Error || videos.length === 0) return resolve(null);
 
-                youtube.find("track").callback(videos?.at(0)?.url, {audio: true}).then((track) => {
-                    if (track instanceof Error || !track.link) return resolve(null);
-                    return resolve(track.link);
-                }).catch((err) => resolve(Error(err)));
-            });
+            const song = await youtube.find("track").callback(videos?.at(0)?.url, {audio: true});
+            if (song instanceof Error || !song.link) return resolve(null);
+
+            return resolve(song.link);
+        } catch (err) {
+            return resolve(err);
         }
-    })
+    });
 }

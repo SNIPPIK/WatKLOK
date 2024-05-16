@@ -28,7 +28,7 @@ abstract class BaseQueue {
              * @public
              */
             public play = (track: Song, seek: number = 0): void => {
-                if (!track || !track.resource) {
+                if (!track || !("resource" in track)) {
                     this.emit("player/wait", this);
                     return;
                 }
