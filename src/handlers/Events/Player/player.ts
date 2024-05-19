@@ -2,6 +2,7 @@ import {History} from "@lib/player/utils/History";
 import {Constructor, Handler} from "@handler";
 import {db} from "@lib/db";
 import {env} from "@env";
+
 const timeout = parseInt(env.get("player.timeout"));
 
 /**
@@ -67,19 +68,30 @@ class onError extends Constructor.Assign<Handler.Event<"player/error">> {
             name: "player/error",
             type: "player",
             execute: (queue, _, err, crash) => {
-                //Выводим сообщение об ошибке
-                db.audio.queue.events.emit("message/error", queue, err);
+                //Если нет плеера, то нет смысла продолжать
+                if (!queue.player) return;
 
-                //Если возникает критическая ошибка
-                if (crash === "crash") return db.audio.queue.remove(queue.guild.id);
-                else if (crash === "skip") {
-                    queue.songs.shift();
+                switch (crash) {
+                    //Если возникает критическая ошибка
+                    case "crash": {
+                        db.audio.queue.remove(queue.guild.id);
 
-                    //Если нет плеер, то нет смысла продолжать
-                    if (!queue.player) return;
+                        //Выводим сообщение об ошибке
+                        return db.audio.queue.events.emit("message/error", queue, err);
+                    }
 
-                    //Включаем трек через время
-                    setTimeout(() => queue.player.play(queue.songs.song), 5e3);
+                    //Если надо пропустить трек из-за ошибки
+                    case "skip": {
+                        //Если трек не играет, то пропускаем его
+                        if (!queue.player.playing) {
+                            queue.songs.shift();
+                            //Включаем трек через время
+                            setTimeout(() => queue.player.play(queue.songs.song), 5e3);
+                        }
+
+                        //Выводим сообщение об ошибке
+                        return db.audio.queue.events.emit("message/error", queue, err);
+                    }
                 }
             }
         });
