@@ -7,8 +7,7 @@ import {TypedEmitter} from "tiny-typed-emitter";
 import {Buffer} from "node:buffer";
 
 const sodium = SodiumEncryption.getMethods(),
-    CHANNELS = 2,
-    TIMESTAMP_INC = (48_000 / 100) * CHANNELS,
+    TIMESTAMP_INC = (48_000 / 100) * 2,
     MAX_NONCE_SIZE = 2 ** 32 - 1;
 
 
@@ -33,20 +32,30 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
      * @public
      */
     public set state(newState) {
-        const oldWs = Reflect.get(this._state, VoiceProtocols.ws) as VoiceWebSocket;
-        const newWs = Reflect.get(newState, VoiceProtocols.ws) as VoiceWebSocket;
-        const oldUDP = Reflect.get(this._state, VoiceProtocols.udp) as VoiceUDPSocket;
-        const newUDP = Reflect.get(newState, VoiceProtocols.udp) as VoiceUDPSocket;
-
-        if (oldWs && oldWs !== newWs) {
-            oldWs.off("error", this.onError).off("open", this.onWsOpen).off("packet", this.onWsPacket).off("close", this.onWsClose)
-            oldWs.destroy();
+        function destroyer<O>(oldS: O, newS: O, callback: (oldS: O, newS: O) => void) {
+            if (oldS && oldS !== newS) {
+                callback(oldS, newS);
+                oldS["destroy"]();
+            }
         }
 
-        if (oldUDP && oldUDP !== newUDP) {
-            oldUDP.off("error", this.onError).off("close", this.onUdpClose);
-            oldUDP.destroy();
-        }
+        //Уничтожаем WebSocket
+        destroyer(
+            Reflect.get(this._state, VoiceProtocols.ws) as VoiceWebSocket,
+            Reflect.get(newState, VoiceProtocols.ws) as VoiceWebSocket,
+            (oldS) => {
+                oldS.off("error", this.onError).off("open", this.onWsOpen).off("packet", this.onWsPacket).off("close", this.onWsClose)
+            }
+        );
+
+        //Уничтожаем UDP подключение
+        destroyer(
+            Reflect.get(this._state, VoiceProtocols.udp) as VoiceUDPSocket,
+            Reflect.get(newState, VoiceProtocols.udp) as VoiceUDPSocket,
+            (oldS) => {
+                oldS.off("error", this.onError).off("close", this.onUdpClose);
+            }
+        );
 
         this.emit("stateChange", this._state, newState);
         this._state = newState;

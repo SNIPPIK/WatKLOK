@@ -24,9 +24,7 @@ export class VoiceUDPSocket extends TypedEmitter<UDPSocketEvents> {
         Object.assign(this.remote, options);
 
         //Добавляем ивенты
-        for (let event of ["message", "error", "close"]) {
-            this.socket.on(event, (...args) => this.emit(event as any, ...args));
-        }
+        for (let event of ["message", "error", "close"]) this.socket.on(event, (...args) => this.emit(event as any, ...args));
     };
 
     /**
