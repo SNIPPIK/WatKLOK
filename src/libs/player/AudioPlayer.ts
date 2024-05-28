@@ -104,7 +104,11 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
     public set status(status: keyof AudioPlayerEvents) {
         //Если новый статус не является старым
         if (status !== this.data.status) {
-            if (status === "player/pause" || status === "player/wait") this.stream?.stream?.emit("pause");
+            if (status === "player/pause" || status === "player/wait") {
+                this.connection.speak = false;
+                this.stream?.stream?.emit("pause");
+            } else this.connection.speak = true;
+
             this.emit(status, this);
         }
 
@@ -207,7 +211,6 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      */
     public stop = (): void => {
         if (this.status === "player/wait") return;
-        this.connection.speak = false;
         this.status = "player/wait";
     };
 
