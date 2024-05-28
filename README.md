@@ -13,7 +13,7 @@
 - Умеет кешировать треки и сохранять историю прослушиваний
 - Не использует [`Lavalink`](https://github.com/lavalink-devs/Lavalink) | [`Lavaplayer`](https://github.com/sedmelluq/lavaplayer) | [`YouTube-DL`](https://youtube-dl.org/)
 - Поддерживает [`Opus`](https://wikipedia.org/wiki/Opus) но может работать и без
-
+- Поддерживает плагины, [`готовые плагины`](.github/Plugins)
 
 ## Настройки [`токена`](https://discord.com/developers/applications)
 
