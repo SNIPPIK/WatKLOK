@@ -155,16 +155,10 @@ class Interaction extends Constructor.Assign<Handler.Event<Events.InteractionCre
             //Кнопка паузы
             case "resume_pause": {
                 //Если плеер играет
-                if (queue.player.status === "player/playing") return db.commands.get("player-control").execute({
-                    message,
-                    sub: "pause"
-                });
+                if (queue.player.status === "player/playing") return db.commands.get("player-control").execute({message, sub: "pause"});
 
                 //Если плеер стоит на паузе
-                else if (queue.player.status === "player/pause") return db.commands.get("player-control").execute({
-                    message,
-                    sub: "resume"
-                });
+                else if (queue.player.status === "player/pause") return db.commands.get("player-control").execute({message, sub: "resume"});
 
                 //Если статус плеера не совпадает ни с чем
                 return { content: `${message.author}, на данном этапе, паузу не возможно поставить!`, color: "Yellow" };
