@@ -1,5 +1,12 @@
 [
   {
+    "name": "loudnorm",
+    "unsupported": [],
+    "description": "Нормализует тон звуковой дорожки",
+    "filter": "loudnorm",
+    "args": false
+  },
+  {
     "name": "mono",
     "unsupported": ["8d", "chorus", "chorus2d", "chorus3d"],
     "description": "Используется только один аудиоканал для воспроизведения",
