@@ -48,7 +48,6 @@ abstract class BaseQueue {
             };
         }
     };
-
     /**
      * @description Сохраняем тип радио
      * @public
@@ -223,6 +222,7 @@ export namespace Queue {
              */
             public get size(): number { return this.length; };
         };
+
         /**
          * @description Получаем доступ к трекам
          * @public

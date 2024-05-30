@@ -262,6 +262,17 @@ export namespace Constructor {
         };
 
         /**
+         * @description Получаем случайный объект из класса MAP
+         * @public
+         */
+        public get random(): K {
+            const keys = Array.from(this.data.keys());
+            const key = keys[Math.floor(Math.random() * keys.length)];
+
+            return this.get(key);
+        };
+
+        /**
          * @description Получаем кол-во объектов в списке
          * @public
          */

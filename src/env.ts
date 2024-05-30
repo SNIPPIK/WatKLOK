@@ -252,6 +252,6 @@ declare global {
          * @description Получаем случайное число
          * @param min {number} Мин число
          */
-        random(min?: number): string | number;
+        random(min?: number): number;
     }
 }

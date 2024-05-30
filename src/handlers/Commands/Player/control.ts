@@ -1,6 +1,5 @@
 import {ApplicationCommandOptionType} from "discord.js";
 import {Constructor, Handler} from "@handler";
-import {Client} from "@lib/discord";
 import {db} from "@lib/db";
 
 class Group extends Constructor.Assign<Handler.Command> {
