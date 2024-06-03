@@ -167,7 +167,6 @@ class Group extends Constructor.Assign<Handler.Command> {
                         }
                     }
                 }
-
             }
         });
     };

@@ -33,6 +33,7 @@ class Interaction extends Constructor.Assign<Handler.Event<Events.InteractionCre
                             return;
                         }
                         new Constructor.message<any>({...item as any, message});
+                        return;
                     }
                 }
             }

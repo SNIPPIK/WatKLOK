@@ -1,4 +1,4 @@
-import {Handler, Constructor} from "@handler";
+import {Constructor, Handler} from "@handler";
 import {Colors} from "discord.js";
 import {db} from "@lib/db";
 import os from "node:os";
@@ -60,7 +60,11 @@ class Command_Info extends Constructor.Assign<Handler.Command> {
                     embeds: [{
                         timestamp: new Date(), color: Colors.Green,
                         thumbnail: { url: client.user.displayAvatarURL() },
-                        author: { name: "Разработчик: @snippik", iconURL: client.user.displayAvatarURL(), url: `https://t.me/snippik` },
+                        author: {
+                            name: "Разработчик: @snippik",
+                            iconURL: client.user.displayAvatarURL(),
+                            url: `https://github.com/SNIPPIK`
+                        },
                         title: `Информация`,
                         footer: {
                             text: `Latency - ${Latency} | Api - ${WS} | Uptime: ${(client.uptime / 1000).duration()}`,
