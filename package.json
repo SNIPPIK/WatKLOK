@@ -4,13 +4,13 @@
   "description": "Постоянно развивающийся музыкальный бот!",
   "license": "MIT",
   "dependencies": {
-    "discord.js": "^14.15.2",
+    "discord.js": "^14.15.3",
     "dotenv": "^16.4.5",
     "sodium-native": "^4.1.1",
     "tiny-typed-emitter": "^2.1.0"
   },
   "devDependencies": {
-    "@types/node": "^20.12.12",
+    "@types/node": "^20.14.0",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.4.5"
   },
