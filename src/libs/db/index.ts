@@ -1,4 +1,4 @@
-import {Attachment, EmbedData, Routes, StageChannel, VoiceChannel} from "discord.js";
+import {Attachment, EmbedData, REST, Routes, StageChannel, VoiceChannel} from "discord.js";
 import {AudioPlayer, AudioPlayerEvents, Filter} from "@lib/player/AudioPlayer";
 import onPlaying from "@handler/Events/Player/message";
 import {API, Constructor, Handler} from "@handler";
@@ -30,6 +30,7 @@ namespace SupportDataBase {
             /**
              * @description Ищем в array подходящий тип
              * @param names - Имя или имена для поиска
+             * @public
              */
             public get = (names: string | string[]): T => {
                 for (const cmd of this) {
@@ -70,12 +71,20 @@ namespace SupportDataBase {
          * @public
          */
         public registerCommands = (client: Client): Promise<boolean> => {
-            return new Promise<true>(async (resolve) => {
-                //Загружаем все команды
-                const PublicData: any = await client.rest.put(Routes.applicationCommands(client.user.id), {body: this.commands.public});
-                const OwnerData: any = await client.rest.put(Routes["applicationGuildCommands"](client.user.id, env.get("owner.server")), {body: this.commands.owner});
+            return new Promise<true>((resolve) => {
+                const rest = new REST().setToken(client.token);
+                const ID = client.user.id, guildID = env.get("owner.server");
 
-                Logger.log("DEBUG", `[Shard ${client.ID}] [SlashCommands] ${PublicData.length}/${OwnerData.length} | ${this.commands.subCommands}`);
+                // Загрузка приватных команд
+                rest.put(Routes.applicationGuildCommands(ID, guildID), {body: this.commands.owner})
+                    .then(() => Logger.log("DEBUG", `[Shard ${client.ID}] [SlashCommands | ${this.commands.owner}] has load private commands`))
+                    .catch(console.error);
+
+                // Загрузка глобальных команд
+                rest.put(Routes.applicationCommands(ID), {body: this.commands.public})
+                    .then(() => Logger.log("DEBUG", `[Shard ${client.ID}] [SlashCommands | ${this.commands.owner}] has load public commands`))
+                    .catch(console.error);
+
                 return resolve(true);
             });
         };
@@ -88,6 +97,8 @@ namespace SupportDataBase {
      */
     export class Audio {
         private readonly data = {
+            options: {volume: parseInt(env.get("audio.volume")), fade: parseInt(env.get("audio.fade"))},
+            filters: [] as Filter[],
             queue: new class extends Constructor.Collection<Queue.Music> {
                 private readonly _local = {
                     emitter: new class extends TypedEmitter<CollectionAudioEvents & AudioPlayerEvents> {
@@ -212,10 +223,7 @@ namespace SupportDataBase {
                  */
                 private readonly _downloader = env.get("cache") ? new Cache.Audio() : null;
                 public get downloader() { return this._downloader; };
-            },
-
-            options: { volume:  parseInt(env.get("audio.volume")), fade: parseInt(env.get("audio.fade")) },
-            filters: [] as  Filter[]
+            }
         };
         /**
          * @description Получаем циклы процесса
@@ -267,16 +275,44 @@ namespace SupportDataBase {
      * @abstract
      */
     export class APIs {
+        /**
+         * @description База с платформами
+         * @protected
+         * @readonly
+         */
         protected readonly _platforms = {
+            /**
+             * @description Поддерживаемые платформы
+             */
             supported: [] as API.request[],
+
+            /**
+             * @description Платформы с отсутствующими данными для авторизации
+             */
             authorization: [] as API.platform[],
+
+            /**
+             * @description Платформы с возможностью получить аудио
+             * По-умолчанию запрос идет к track
+             */
             audio: [] as API.platform[],
+
+            /**
+             * @description Заблокированные платформы, только через owner.list
+             */
             block: [] as API.platform[]
         };
+        /**
+         * @description База с лимитами обрабатываемых данных
+         * @protected
+         * @readonly
+         */
         protected readonly _limits = {
-            search: parseInt(env.get("APIs.limit.search")),
-            author: parseInt(env.get("APIs.limit.author")),
             playlist: parseInt(env.get("APIs.limit.playlist")),
+            album: parseInt(env.get("APIs.limit.album")),
+
+            search: parseInt(env.get("APIs.limit.search")),
+            author: parseInt(env.get("APIs.limit.author"))
         };
 
         /**
@@ -351,6 +387,7 @@ export const db = new class DataBase extends SupportDataBase.Commands {
 
     /**
      * @description База для управления APIs
+     * @public
      */
     public get api() { return this.data.apis };
 
@@ -428,7 +465,7 @@ export const db = new class DataBase extends SupportDataBase.Commands {
             }
 
             //Отправляем данные о командах на сервера discord
-            await this.registerCommands(client);
+            if (client.ID === 0) await this.registerCommands(client);
         })();
     };
 }
