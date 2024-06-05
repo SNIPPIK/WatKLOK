@@ -77,12 +77,12 @@ namespace SupportDataBase {
 
                 // Загрузка приватных команд
                 rest.put(Routes.applicationGuildCommands(ID, guildID), {body: this.commands.owner})
-                    .then(() => Logger.log("DEBUG", `[Shard ${client.ID}] [SlashCommands | ${this.commands.owner}] has load private commands`))
+                    .then(() => Logger.log("DEBUG", `[Shard ${client.ID}] [SlashCommands | ${this.commands.owner.length}] has load private commands`))
                     .catch(console.error);
 
                 // Загрузка глобальных команд
                 rest.put(Routes.applicationCommands(ID), {body: this.commands.public})
-                    .then(() => Logger.log("DEBUG", `[Shard ${client.ID}] [SlashCommands | ${this.commands.owner}] has load public commands`))
+                    .then(() => Logger.log("DEBUG", `[Shard ${client.ID}] [SlashCommands | ${this.commands.public.length}] has load public commands`))
                     .catch(console.error);
 
                 return resolve(true);
