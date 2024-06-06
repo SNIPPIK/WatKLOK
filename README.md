@@ -47,6 +47,8 @@
 - Обычный запуск
     - Менеджер осколков -> `npm run shard`
     - Без менеджера -> `npm run client`
+- Для удаления slash command
+    - Запустить -> `npm run destroy`
 
     
 # <img alt="Avatar" width="20px" src="https://raw.githubusercontent.com/SNIPPIK/WatKLOK/nightly/.github/resource/Icons/Disk.gif" /> Библиотеки для конвертации аудио

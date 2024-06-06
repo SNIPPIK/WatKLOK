@@ -1,6 +1,6 @@
 {
   "name": "watklok",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Постоянно развивающийся музыкальный бот!",
   "license": "MIT",
   "dependencies": {
@@ -16,6 +16,7 @@
   },
   "scripts": {
     "client:dev": "cd node_build && node -r tsconfig-paths/register src/index.js --dbg",
+    "destroy": "cd node_build && node -r tsconfig-paths/register src/index.js --RemoveAllCommands --dbg",
 
     "client": "cd node_build && node -r tsconfig-paths/register src/index.js",
     "shard": "cd node_build && node -r tsconfig-paths/register src/index.js --ShardManager",
