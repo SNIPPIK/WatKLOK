@@ -1,4 +1,5 @@
 import {ApplicationCommandOptionType, Colors, EmbedData, TextChannel} from "discord.js";
+import {SlashBuilder} from "@lib/discord/utils/SlashBuilder";
 import {API, Constructor, Handler} from "@handler";
 import {env, Logger} from "@env";
 import {db} from "@lib/db";
@@ -6,75 +7,78 @@ import {db} from "@lib/db";
 class Group extends Constructor.Assign<Handler.Command> {
     public constructor() {
         super({
-            name: "owner",
-            description: "Набор команд для разработчика",
-            options: [
-                {
-                    name: "eval",
-                    description: "Выполнение JS кода!",
-                    type: ApplicationCommandOptionType.Subcommand,
-                    options: [
-                        {
-                            name: "query",
-                            description: "Нужен JavaScript код!",
-                            required: true,
-                            type: ApplicationCommandOptionType["String"]
-                        }
-                    ]
-                },
-                {
-                    name: "post",
-                    description: "Опубликую новость за вас! В специальный канал!",
-                    type: ApplicationCommandOptionType.Subcommand,
-                    options: [
-                        {
-                            name: "description",
-                            description: "Что будет указано в посте?",
-                            required: true,
-                            type: ApplicationCommandOptionType["String"],
-                        },
-                    ]
-                },
-                {
-                    name: "platform",
-                    description: "Действия с платформой!",
-                    type: ApplicationCommandOptionType.Subcommand,
-                    options: [
-                        {
-                            name: "choice",
-                            description: "Действия",
-                            required: true,
-                            type: ApplicationCommandOptionType["String"],
-                            choices: [
-                                {
-                                    name: "block - Заблокировать доступ",
-                                    value: "block"
-                                },
-                                {
-                                    name: "unblock - Разблокировать доступ",
-                                    value: "unblock"
-                                },
-                                {
-                                    name: "status - Статусы платформы",
-                                    value: "status"
-                                }
-                            ]
-                        },
-                        {
-                            name: "platform",
-                            description: "Укажи платформу",
-                            required: true,
-                            type: ApplicationCommandOptionType["String"],
-                            choices: (db.api.platforms.supported.length < 25 ? db.api.platforms.supported : db.api.platforms.supported.splice(0, 20)).map((platform) => {
-                                return {
-                                    name: `[${platform.requests.length}] ${platform.url} | ${platform.name}`,
-                                    value: platform.name
-                                }
-                            }),
-                        }
-                    ]
-                }
-            ],
+            data: new SlashBuilder()
+                .setName("owner")
+                .setDescription("Набор команд для разработчика")
+                .setDMPermission(false)
+                .addSubCommands([
+                    {
+                        name: "eval",
+                        description: "Выполнение JS кода!",
+                        type: ApplicationCommandOptionType.Subcommand,
+                        options: [
+                            {
+                                name: "query",
+                                description: "Нужен JavaScript код!",
+                                required: true,
+                                type: ApplicationCommandOptionType["String"]
+                            }
+                        ]
+                    },
+                    {
+                        name: "post",
+                        description: "Опубликую новость за вас! В специальный канал!",
+                        type: ApplicationCommandOptionType.Subcommand,
+                        options: [
+                            {
+                                name: "description",
+                                description: "Что будет указано в посте?",
+                                required: true,
+                                type: ApplicationCommandOptionType["String"],
+                            },
+                        ]
+                    },
+                    {
+                        name: "platform",
+                        description: "Действия с платформой!",
+                        type: ApplicationCommandOptionType.Subcommand,
+                        options: [
+                            {
+                                name: "choice",
+                                description: "Действия",
+                                required: true,
+                                type: ApplicationCommandOptionType["String"],
+                                choices: [
+                                    {
+                                        name: "block - Заблокировать доступ",
+                                        value: "block"
+                                    },
+                                    {
+                                        name: "unblock - Разблокировать доступ",
+                                        value: "unblock"
+                                    },
+                                    {
+                                        name: "status - Статусы платформы",
+                                        value: "status"
+                                    }
+                                ]
+                            },
+                            {
+                                name: "platform",
+                                description: "Укажи платформу",
+                                required: true,
+                                type: ApplicationCommandOptionType["String"],
+                                choices: (db.api.platforms.supported.length < 25 ? db.api.platforms.supported : db.api.platforms.supported.splice(0, 20)).map((platform) => {
+                                    return {
+                                        name: `[${platform.requests.length}] ${platform.url} | ${platform.name}`,
+                                        value: platform.name
+                                    }
+                                }),
+                            }
+                        ]
+                    }
+                ])
+                .json,
             owner: true,
             execute: ({message, args, sub}) => {
                 switch (sub) {

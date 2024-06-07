@@ -1,50 +1,50 @@
-import {ApplicationCommandOptionType, StageChannel, VoiceChannel, ChannelType} from "discord.js";
+import {ApplicationCommandOptionType, ChannelType, StageChannel, VoiceChannel} from "discord.js";
 import {Constructor, Handler} from "@handler";
 import {Voice} from "@lib/voice";
 import {db} from "@lib/db";
+import {SlashBuilder} from "@lib/discord/utils/SlashBuilder";
 
 class Group extends Constructor.Assign<Handler.Command> {
     public constructor() {
         super({
-            name: "voice",
-            description: "Взаимодействие с голосовыми подключениями",
-            permissions: ["Speak", "Connect"],
-            options: [
-                {
-                    name: "leave",
-                    description: "Отключение от голосового канала!",
-                    type: ApplicationCommandOptionType.Subcommand
-                },
-                {
-                    name: "re-configure",
-                    description: "Переподключение к голосовому каналу!",
-                    type: ApplicationCommandOptionType.Subcommand
-                },
-                {
-                    name: "stage",
-                    description: "Запрос на транслирование музыки в трибуну!",
-                    type: ApplicationCommandOptionType.Subcommand,
-                    options: [
-                        {
-                            name: "choice",
-                            description: "Варианты взаимодействия с трибунами!",
-                            required: true,
-                            type: ApplicationCommandOptionType["String"],
-                            choices: [
-                                {
-                                    name: "join - Подключение к трибуне",
-                                    value: "join"
-                                },
-                                {
-                                    name: "request - Запрос на подключение",
-                                    value: "request"
-                                }
-                            ]
-                        }
-                    ]
-                }
-            ],
-
+            data: new SlashBuilder()
+                .setName("voice")
+                .setDescription("Взаимодействие с голосовыми подключениями")
+                .addSubCommands([
+                    {
+                        name: "leave",
+                        description: "Отключение от голосового канала!",
+                        type: ApplicationCommandOptionType.Subcommand
+                    },
+                    {
+                        name: "re-configure",
+                        description: "Переподключение к голосовому каналу!",
+                        type: ApplicationCommandOptionType.Subcommand
+                    },
+                    {
+                        name: "stage",
+                        description: "Запрос на транслирование музыки в трибуну!",
+                        type: ApplicationCommandOptionType.Subcommand,
+                        options: [
+                            {
+                                name: "choice",
+                                description: "Варианты взаимодействия с трибунами!",
+                                required: true,
+                                type: ApplicationCommandOptionType["String"],
+                                choices: [
+                                    {
+                                        name: "join - Подключение к трибуне",
+                                        value: "join"
+                                    },
+                                    {
+                                        name: "request - Запрос на подключение",
+                                        value: "request"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]).json,
             execute: ({message, args, sub}) => {
                 const { author, member, guild } = message;
                 const voiceChannel: VoiceChannel | StageChannel = member.voice.channel;
@@ -111,7 +111,7 @@ class Group extends Constructor.Assign<Handler.Command> {
                 }
             }
         });
-    }
+    };
 }
 
 /**

@@ -1,5 +1,5 @@
-import {Attachment, EmbedData, REST, Routes, StageChannel, VoiceChannel} from "discord.js";
 import {AudioPlayer, AudioPlayerEvents, Filter} from "@lib/player/AudioPlayer";
+import {Attachment, EmbedData, StageChannel, VoiceChannel} from "discord.js";
 import onPlaying from "@handler/Events/Player/message";
 import {API, Constructor, Handler} from "@handler";
 import {TypedEmitter} from "tiny-typed-emitter";
@@ -36,9 +36,9 @@ namespace SupportDataBase {
                 for (const cmd of this) {
                     if (names instanceof Array) {
                         for (const name of names) {
-                            if (cmd.name === name || cmd.name === name) return cmd;
+                            if (cmd.data.name === name || cmd.data.name === name) return cmd;
                         }
-                    } else if (cmd.name === names) return cmd;
+                    } else if (cmd.data.name === names) return cmd;
                 }
 
                 return null;
@@ -72,17 +72,16 @@ namespace SupportDataBase {
          */
         public registerCommands = (client: Client): Promise<boolean> => {
             return new Promise<true>((resolve) => {
-                const rest = new REST().setToken(client.token);
-                const ID = client.user.id, guildID = env.get("owner.server");
-
-                // Загрузка приватных команд
-                rest.put(Routes.applicationGuildCommands(ID, guildID), {body: this.commands.owner})
-                    .then(() => Logger.log("DEBUG", `[Shard ${client.ID}] [SlashCommands | ${this.commands.owner.length}] has load private commands`))
-                    .catch(console.error);
+                const guildID = env.get("owner.server"), guild = client.guilds.cache.get(guildID);
 
                 // Загрузка глобальных команд
-                rest.put(Routes.applicationCommands(ID), {body: this.commands.public})
+                client.application.commands.set(this.commands.map((command) => command.data) as any)
                     .then(() => Logger.log("DEBUG", `[Shard ${client.ID}] [SlashCommands | ${this.commands.public.length}] has load public commands`))
+                    .catch(console.error);
+
+                // Загрузка приватных команд
+                if (guild) guild.commands.set(this.commands.owner.map((command) => command.data) as any)
+                    .then(() => Logger.log("DEBUG", `[Shard ${client.ID}] [SlashCommands | ${this.commands.owner.length}] has load private commands`))
                     .catch(console.error);
 
                 return resolve(true);
@@ -421,12 +420,12 @@ export const db = new class DataBase extends SupportDataBase.Commands {
                 this.api.platforms.supported.push(item);
             },
             (item: Handler.Command) => {
-                if (item.options) {
-                    for (const option of item.options) {
+                if (item.data.options) {
+                    for (const option of item.data.options) {
                         if ("options" in option) this._commands.subCommands += option.options.length;
                     }
 
-                    this._commands.subCommands += item.options.length;
+                    this._commands.subCommands += item.data.options.length;
                 }
 
                 this.commands.push(item)

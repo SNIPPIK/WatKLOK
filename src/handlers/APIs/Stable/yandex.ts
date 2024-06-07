@@ -227,7 +227,6 @@ class cAPI extends Constructor.Assign<API.request> {
                 headers: { "Authorization": "OAuth " + this.authorization.token }, method: "GET"
             }).toJson.then((req) => {
                 if (!req || req instanceof Error) return resolve(Error("[APIs]: Не удалось получить данные!"));
-                else if (!this.authorization.token) return resolve(Error("[APIs]: Не удалось залогиниться!"));
                 else if (req?.error?.name === "session-expired") return resolve(Error("[APIs]: Токен не действителен!"));
                 else if (req?.error?.name === "not-allowed") return resolve(Error("[APIs]: Токен не был допущен! Необходимо обновить!"));
 
@@ -300,7 +299,7 @@ class cAPI extends Constructor.Assign<API.request> {
                 image: this.parseImage({image: author?.["ogImage"] ?? author?.["coverUri"]}) ?? null
             }
         });
-    }
+    };
 }
 
 /**

@@ -15,7 +15,7 @@ class cAPI extends Constructor.Assign<API.request> {
      */
     protected static authorization = {
         api: "https://api.vk.com/method",
-        token:`?access_token=${env.get("token.vk")}`
+        token: env.get("token.vk")
     };
 
     /**
@@ -101,9 +101,9 @@ class cAPI extends Constructor.Assign<API.request> {
      * @param type {string} Тип запроса
      * @param options {string} Параметры через &
      */
-    protected static API = (method: methodType, type: requestType, options: string): Promise<any | Error> => {
+    public static API = (method: "audio" | "execute" | "catalog", type: "getById" | "search" | "getPlaylistById", options: string): Promise<any | Error> => {
         return new Promise((resolve) => {
-            const url = `${this.authorization.api}/${method}.${type}${this.authorization.token}${options}&v=5.131`;
+            const url = `${this.authorization.api}/${method}.${type}` + `?access_token=${this.authorization.token}${options}&v=5.95`;
 
             new httpsClient(url).toJson.then((api: any) => {
                 if (!api || !api?.response) return resolve(Error("[APIs]: Невозможно найти данные!"));
@@ -148,6 +148,3 @@ class cAPI extends Constructor.Assign<API.request> {
  * @description Делаем классы глобальными
  */
 export default Object.values({cAPI});
-
-type requestType = "get" | "getById" | "search" | "getPlaylistById" | "getPlaylist";
-type methodType = "audio" | "execute" | "catalog";

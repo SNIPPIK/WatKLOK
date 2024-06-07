@@ -36,6 +36,9 @@ class onWait extends Constructor.Assign<Handler.Event<"player/wait">> {
             name: "player/wait",
             type: "player",
             execute: (queue) => {
+                //Если нет треков в очереди
+                if (!queue?.songs?.song) return db.audio.queue.remove(queue.guild.id);
+
                 //Проверяем надо ли удалить из очереди трек
                 const removedSong = queue.repeat === "off" || queue.repeat === "songs" ? queue.songs.shift() : null;
                 if (removedSong && (queue.repeat === "songs" || queue.radio)) queue.songs.push(removedSong);
@@ -47,8 +50,6 @@ class onWait extends Constructor.Assign<Handler.Event<"player/wait">> {
                         [queue.songs[i], queue.songs[j]] = [queue.songs[j], queue.songs[i]];
                     }
                 }
-
-                if (!queue?.songs?.song) return db.audio.queue.remove(queue.guild.id);
 
                 //Включаем трек через время
                 setTimeout(() => queue.player.play(queue.songs.song), timeout);

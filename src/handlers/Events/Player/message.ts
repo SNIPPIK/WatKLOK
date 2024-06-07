@@ -98,7 +98,7 @@ class onPlaying extends Constructor.Assign<Handler.Event<"message/playing">> {
                 });
             }
         });
-    }
+    };
 }
 
 /**
@@ -162,7 +162,7 @@ class onPush extends Constructor.Assign<Handler.Event<"message/push">> {
                 new Constructor.message<"embeds">(options);
             }
         });
-    }
+    };
 }
 
 /**
@@ -221,7 +221,7 @@ class onSearch extends Constructor.Assign<Handler.Event<"message/search">> {
                 });
             }
         });
-    }
+    };
 }
 
 /**

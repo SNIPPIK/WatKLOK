@@ -26,6 +26,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
     /**
      * @description Получаем фильтры для FFmpeg
      * @return object
+     * @public
      */
     public get filtersString() {
         const realFilters: string[] = [`volume=${db.audio.options.volume / 100}`];
@@ -82,7 +83,6 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
         return true;
     };
 
-
     /**
      * @description Взаимодействие с голосовым подключением
      * @param connection - Голосовое подключение
@@ -99,7 +99,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
     /**
      * @description Смена статуса плеера, если не знаешь что делаешь, то лучше не трогай!
      * @param status - Статус плеера
-     * @private
+     * @public
      */
     public set status(status: keyof AudioPlayerEvents) {
         //Если новый статус не является старым
@@ -118,7 +118,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
     /**
      * @description Смена потока
      * @param stream - Opus конвертор
-     * @private
+     * @public
      */
     public set stream(stream: SeekStream) {
         //Если есть текущий поток
@@ -185,7 +185,6 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
                 clearTimeout(timeout);
             });
     };
-
 
     /**
      * @description Ставим на паузу плеер

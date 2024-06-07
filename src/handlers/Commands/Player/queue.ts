@@ -3,105 +3,105 @@ import {History} from "@lib/player/utils/History";
 import {Constructor, Handler} from "@handler";
 import {Logger} from "@env";
 import {db} from "@lib/db";
+import {SlashBuilder} from "@lib/discord/utils/SlashBuilder";
 
 class Group extends Constructor.Assign<Handler.Command>{
     public constructor() {
         super({
-            name: "queue",
-            description: "Управление треками!",
-            options: [
-                //Group
-                {
-                    name: "songs",
-                    description: "Управление треками!",
-                    type: ApplicationCommandOptionType.SubcommandGroup,
-                    options: [
-                        {
-                            name: "skip",
-                            description: "Пропуск текущей музыки!",
-                            type: ApplicationCommandOptionType.Subcommand,
-                            options: [{
-                                name: "value",
-                                description: "Укажите какую музыку пропускаем!",
-                                type: ApplicationCommandOptionType["String"]
-                            }],
-                        },
-                        {
-                            name: "remove",
-                            description: "Эта команда удаляет из очереди музыку!",
-                            type: ApplicationCommandOptionType.Subcommand,
-                            options: [
-                                {
+            data: new SlashBuilder()
+                .setName("queue")
+                .setDescription("Управление треками!")
+                .addSubCommands([
+                    {
+                        name: "songs",
+                        description: "Управление треками!",
+                        type: ApplicationCommandOptionType.SubcommandGroup,
+                        options: [
+                            {
+                                name: "skip",
+                                description: "Пропуск текущей музыки!",
+                                type: ApplicationCommandOptionType.Subcommand,
+                                options: [{
                                     name: "value",
-                                    description: "Номер трека который надо удалить из очереди",
-                                    required: true,
-                                    type: ApplicationCommandOptionType.String
-                                }
-                            ]
-                        },
-                        {
-                            name: "history",
-                            description: "Все прослушанные треки этого сервера!",
-                            type: ApplicationCommandOptionType.Subcommand
-                        },
-                    ]
-                },
-
-                {
-                    name: "repeat",
-                    description: "Включение повтора и выключение повтора музыки!",
-                    type: ApplicationCommandOptionType.Subcommand,
-                    options: [
-                        {
-                            name: "type",
-                            description: "Тип повтора, необходимо указать!",
-                            type: ApplicationCommandOptionType["String"],
-                            choices: [
-                                {
-                                    name: "song | Повтор текущего трека",
-                                    value: "song"
-                                },
-                                {
-                                    name: "songs | Повтор всех треков",
-                                    value: "songs"
-                                },
-                                {
-                                    name: "off | Выключение повтора",
-                                    value: "off"
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    name: "list",
-                    description: "Список треков!",
-                    type: ApplicationCommandOptionType.Subcommand
-                },
-                {
-                    name: "radio",
-                    description: "Управление режимом 24/7",
-                    type: ApplicationCommandOptionType.Subcommand,
-                    options: [
-                        {
-                            name: "type",
-                            description: "Что необходимо сделать с режимом 24/7!",
-                            type: ApplicationCommandOptionType["String"],
-                            choices: [
-                                {
-                                    name: "enable",
-                                    value: "on",
-                                },
-                                {
-                                    name: "disable",
-                                    value: "off",
-                                }
-                            ]
-                        }
-                    ]
-                }
-            ],
-
+                                    description: "Укажите какую музыку пропускаем!",
+                                    type: ApplicationCommandOptionType["String"]
+                                }],
+                            },
+                            {
+                                name: "remove",
+                                description: "Эта команда удаляет из очереди музыку!",
+                                type: ApplicationCommandOptionType.Subcommand,
+                                options: [
+                                    {
+                                        name: "value",
+                                        description: "Номер трека который надо удалить из очереди",
+                                        required: true,
+                                        type: ApplicationCommandOptionType.String
+                                    }
+                                ]
+                            },
+                            {
+                                name: "history",
+                                description: "Все прослушанные треки этого сервера!",
+                                type: ApplicationCommandOptionType.Subcommand
+                            },
+                        ]
+                    },
+                    {
+                        name: "repeat",
+                        description: "Включение повтора и выключение повтора музыки!",
+                        type: ApplicationCommandOptionType.Subcommand,
+                        options: [
+                            {
+                                name: "type",
+                                description: "Тип повтора, необходимо указать!",
+                                type: ApplicationCommandOptionType["String"],
+                                choices: [
+                                    {
+                                        name: "song | Повтор текущего трека",
+                                        value: "song"
+                                    },
+                                    {
+                                        name: "songs | Повтор всех треков",
+                                        value: "songs"
+                                    },
+                                    {
+                                        name: "off | Выключение повтора",
+                                        value: "off"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        name: "list",
+                        description: "Список треков!",
+                        type: ApplicationCommandOptionType.Subcommand
+                    },
+                    {
+                        name: "radio",
+                        description: "Управление режимом 24/7",
+                        type: ApplicationCommandOptionType.Subcommand,
+                        options: [
+                            {
+                                name: "type",
+                                description: "Что необходимо сделать с режимом 24/7!",
+                                type: ApplicationCommandOptionType["String"],
+                                choices: [
+                                    {
+                                        name: "enable",
+                                        value: "on",
+                                    },
+                                    {
+                                        name: "disable",
+                                        value: "off",
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ])
+                .json,
             execute: ({message, args, sub}) => {
                 const { author, member, guild } = message;
                 const queue = db.audio.queue.get(guild.id);
@@ -276,7 +276,7 @@ class Group extends Constructor.Assign<Handler.Command>{
                 }
             }
         });
-    }
+    };
 }
 
 /**

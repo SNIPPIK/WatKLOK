@@ -1,11 +1,5 @@
-import {
-    ActionRowBuilder,
-    ApplicationCommandOption,
-    ClientEvents,
-    Colors,
-    EmbedData,
-    PermissionResolvable
-} from "discord.js";
+import {ActionRowBuilder, ClientEvents, Colors, EmbedData} from "discord.js";
+import {SlashBuilder} from "@lib/discord/utils/SlashBuilder";
 import {AudioPlayerEvents} from "@lib/player/AudioPlayer";
 import {CollectionAudioEvents, db} from "@lib/db";
 import {Queue} from "@lib/player/queue/Queue";
@@ -133,29 +127,7 @@ export namespace Handler {
      * @interface Command
      */
     export interface Command {
-        /**
-         * @description Имя команды
-         * @default null
-         * @readonly
-         * @public
-         */
-        name: string;
-
-        /**
-         * @description Описание команды
-         * @default "Нет описания"
-         * @readonly
-         * @public
-         */
-        description: string;
-
-        /**
-         * @description Опции для slashCommand
-         * @default null
-         * @readonly
-         * @public
-         */
-        options?: ApplicationCommandOption[];
+        data: SlashBuilder["json"];
 
         /**
          * @description Команду может использовать только разработчик
@@ -164,14 +136,6 @@ export namespace Handler {
          * @public
          */
         owner?: boolean;
-
-        /**
-         * @description Права бота
-         * @default null
-         * @readonly
-         * @public
-         */
-        permissions?: PermissionResolvable[];
 
         /**
          * @description Выполнение команды

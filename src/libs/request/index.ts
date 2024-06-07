@@ -42,6 +42,8 @@ abstract class Request {
             const request = this.protocol(this.data, (res) => {
                 if ((res.statusCode >= 300 && res.statusCode < 400) && res.headers?.location) {
                     this.data.path = res.headers.location;
+
+                    Logger.log("DEBUG", `[request/redirect]: ${res.headers.location}`);
                     return resolve(this.request);
                 }
 

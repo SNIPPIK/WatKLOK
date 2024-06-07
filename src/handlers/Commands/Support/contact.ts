@@ -1,5 +1,6 @@
 import {Constructor, Handler} from "@handler";
 import {Colors} from "discord.js";
+import {SlashBuilder} from "@lib/discord/utils/SlashBuilder";
 
 /**
  * @class Command_Contact
@@ -10,8 +11,10 @@ import {Colors} from "discord.js";
 class Command_Contact extends Constructor.Assign<Handler.Command> {
     public constructor() {
         super({
-            name: "contact",
-            description: "Связь с разработчиком!",
+            data: new SlashBuilder()
+                .setName("contact")
+                .setDescription("Связь с разработчиком!")
+                .json,
             execute: ({message}) => {
                 const {client} = message;
                 const Latency = (Date.now() - message.createdTimestamp < 0 ? Math.random() * 78 : Date.now() - message.createdTimestamp).toFixed(0);

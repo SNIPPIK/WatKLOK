@@ -1,4 +1,4 @@
-import {CommandInteractionOption, Events, PermissionsBitField} from "discord.js";
+import {CommandInteractionOption, Events} from "discord.js";
 import {Constructor, Handler} from "@handler";
 import {Client} from "@lib/discord";
 import {Logger} from "@env";
@@ -38,7 +38,7 @@ class Interaction extends Constructor.Assign<Handler.Event<Events.InteractionCre
                 }
             }
         });
-    }
+    };
 
     /**
      * @description Выполняем действия связанные с командами
@@ -47,7 +47,7 @@ class Interaction extends Constructor.Assign<Handler.Event<Events.InteractionCre
      * @private
      */
     private static _stepCommand = (message: Client.interact) => {
-        const {author, guild} = message;
+        const {author} = message;
         const group = db.commands.get([message.commandName, message.options._group]);
 
         //Если пользователь пытается включить команду вне сервера
@@ -62,15 +62,7 @@ class Interaction extends Constructor.Assign<Handler.Event<Events.InteractionCre
             color: "DarkRed"
         };
 
-        //Проверяем права пользователя
-        else if (group?.permissions) {
-            //Если прав не хватает, то уведомляем пользователя
-            const clientPermissions = this._checkPermission(group.permissions, message.channel.permissionsFor(guild.members.me));
-            if (clientPermissions) return {
-                content: `${author.username}, у меня нет прав на: ${clientPermissions}`,
-                color: "DarkRed", codeBlock: "css"
-            };
-        } else if (!group?.execute) return {
+        else if (!group?.execute) return {
             content: `${author.username}, у меня нет этой команды!`,
             color: "DarkRed",
             codeBlock: "css"
@@ -168,24 +160,6 @@ class Interaction extends Constructor.Assign<Handler.Event<Events.InteractionCre
 
         //Если пользователь нашел не существующую кнопку
         return { content: `${author} | Откуда ты взял эту кнопку!`, color: "DarkRed" }
-    };
-
-    /**
-     * @description Проверяем права бота и пользователя
-     * @param permissions - Права доступа
-     * @param Fields - Где проверять права доступа
-     * @readonly
-     * @private
-     */
-    private static _checkPermission = (permissions: Handler.Command["permissions"], Fields: Readonly<PermissionsBitField>) => {
-        const fail: any[] = [];
-
-        if (permissions && permissions?.length > 0) {
-            for (const permission of permissions) if (!Fields.has(permission)) fail.push(permission);
-            return fail.join(", ");
-        }
-
-        return null;
     };
 }
 

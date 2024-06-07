@@ -3,6 +3,11 @@ import {createSocket, Socket} from "node:dgram";
 import {Buffer} from "node:buffer";
 import {isIPv4} from "node:net";
 
+/**
+ * @author SNIPPIK
+ * @description Создает udp подключение к api discord
+ * @class VoiceUDPSocket
+ */
 export class VoiceUDPSocket extends TypedEmitter<UDPSocketEvents> {
     private readonly socket: Socket = createSocket("udp4");
     private readonly remote: {ip: string; port: number} = {ip: null, port: 443};
@@ -10,6 +15,7 @@ export class VoiceUDPSocket extends TypedEmitter<UDPSocketEvents> {
     /**
      * @description Отправляем буфер в Discord
      * @param packet - Буфер для отправки
+     * @public
      */
     public set sendPacket(packet: Buffer) {
         this.socket.send(packet, this.remote.port, this.remote.ip);
@@ -18,6 +24,7 @@ export class VoiceUDPSocket extends TypedEmitter<UDPSocketEvents> {
     /**
      * @description Создает новый голосовой UDP-сокет.
      * @param options - Данные для подключения
+     * @public
      */
     public constructor(options: VoiceUDPSocket["remote"]) {
         super();
@@ -30,8 +37,9 @@ export class VoiceUDPSocket extends TypedEmitter<UDPSocketEvents> {
     /**
      * @description Получаем IP-адрес и порт
      * @param ssrc -
+     * @public
      */
-    public IPDiscovery = (ssrc: number): Promise<{ip: string; port: number}> => {
+    public IPDiscovery = (ssrc: number): Promise<VoiceUDPSocket["remote"]> => {
         const discoveryBuffer = Buffer.alloc(74);
         discoveryBuffer.writeUInt16BE(1, 0);
         discoveryBuffer.writeUInt16BE(70, 2);
@@ -62,8 +70,9 @@ export class VoiceUDPSocket extends TypedEmitter<UDPSocketEvents> {
 
     /**
      * @description Закрывает сокет, экземпляр не сможет быть повторно использован.
+     * @public
      */
-    public destroy() {
+    public destroy = () => {
         if (this.socket) this.socket?.close();
     };
 }

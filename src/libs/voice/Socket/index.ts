@@ -1,19 +1,16 @@
-import {chooseEncryptionMode, randomNBit} from "@lib/voice/utils/Encryption";
-import {SodiumEncryption} from "@lib/voice/utils/Sodium";
+import {chooseEncryptionMode, encryptOpusPacket, randomNBit} from "@lib/voice/utils/Encryption";
 import {VoiceOpcodes} from "discord-api-types/voice/v4";
 import {VoiceWebSocket} from "@lib/voice/Socket/Web";
 import {VoiceUDPSocket} from "@lib/voice/Socket/UDP";
 import {TypedEmitter} from "tiny-typed-emitter";
 import {Buffer} from "node:buffer";
 
-const sodium = SodiumEncryption.getMethods(),
-    TIMESTAMP_INC = (48_000 / 100) * 2,
-    MAX_NONCE_SIZE = 2 ** 32 - 1;
-
+const TIMESTAMP_INC = (48_000 / 100) * 2;
 
 /**
  * @author SNIPPIK
  * @description Интерфейс для подключения WS с UDP для передачи пакетов на сервера discord
+ * @class VoiceSocket
  */
 export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
     private _state: VoiceSocketState = {
@@ -41,8 +38,8 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
 
         //Уничтожаем WebSocket
         destroyer(
-            Reflect.get(this._state, VoiceProtocols.ws) as VoiceWebSocket,
-            Reflect.get(newState, VoiceProtocols.ws) as VoiceWebSocket,
+            Reflect.get(this._state, "ws") as VoiceWebSocket,
+            Reflect.get(newState, "ws") as VoiceWebSocket,
             (oldS) => {
                 oldS.off("error", this.onError).off("open", this.onWsOpen).off("packet", this.onWsPacket).off("close", this.onWsClose)
             }
@@ -50,8 +47,8 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
 
         //Уничтожаем UDP подключение
         destroyer(
-            Reflect.get(this._state, VoiceProtocols.udp) as VoiceUDPSocket,
-            Reflect.get(newState, VoiceProtocols.udp) as VoiceUDPSocket,
+            Reflect.get(this._state, "udp") as VoiceUDPSocket,
+            Reflect.get(newState, "udp") as VoiceUDPSocket,
             (oldS) => {
                 oldS.off("error", this.onError).off("close", this.onUdpClose);
             }
@@ -83,14 +80,27 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
     };
 
     /**
-     * @description Отправляет аудио пакет, ранее подготовленный с помощью prepare Audio Packet(opus Packet). Аудио пакет израсходован и не может быть отправлен повторно.
+     * @description Отправляет аудио пакет, ранее подготовленный с помощью prepare Audio Packet(opus Packet).
+     * Аудио пакет израсходован и не может быть отправлен повторно.
+     *
      * @public
      */
-    public get preparedPacket() {
+    public get playAudioPacket() {
         const state = this.state;
 
-        if ("preparedPacket" in state && state?.preparedPacket !== undefined) {
-            this.playAudioPacket = state.preparedPacket;
+        if ("preparedPacket" in state && state?.preparedPacket) {
+            if (state.code !== VoiceSocketStatusCode.ready) return;
+
+            const {connectionData} = state;
+            connectionData.packetsPlayed++;
+            connectionData.sequence++;
+            connectionData.timestamp += TIMESTAMP_INC;
+
+            if (connectionData.sequence >= 2 ** 16) connectionData.sequence = 0;
+            else if (connectionData.timestamp >= 2 ** 32) connectionData.timestamp = 0;
+
+            this.speaking = true;
+            state.udp.sendPacket = state.preparedPacket;
             state.preparedPacket = undefined;
             return true;
         }
@@ -99,26 +109,34 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
     };
 
     /**
-     * @description Воспроизводит аудио пакет, обновляя временные метаданные, используемые для воспроизведения.
-     * @param audioPacket - Аудио пакет для воспроизведения
+     * @description Создает новый аудио пакет из пакета Opus. Для этого требуется зашифровать пакет,
+     * а затем добавить заголовок, содержащий метаданные.
+     *
+     * @param opusPacket - Пакет Opus для приготовления
+     * @public
      */
-    private set playAudioPacket(audioPacket: Buffer) {
+    public set preparedAudioPacket(opusPacket: Buffer) {
         const state = this.state;
-
         if (state.code !== VoiceSocketStatusCode.ready) return;
 
-        const { connectionData } = state;
-        connectionData.packetsPlayed++;
-        connectionData.sequence++;
-        connectionData.timestamp += TIMESTAMP_INC;
+        const {sequence, timestamp, ssrc} = state.connectionData;
+        const packetBuffer = Buffer.alloc(12);
+        packetBuffer[0] = 0x80;
+        packetBuffer[1] = 0x78;
 
-        if (connectionData.sequence >= 2 ** 16) connectionData.sequence = 0;
-        else if (connectionData.timestamp >= 2 ** 32) connectionData.timestamp = 0;
+        packetBuffer.writeUIntBE(sequence, 2, 2);
+        packetBuffer.writeUIntBE(timestamp, 4, 4);
+        packetBuffer.writeUIntBE(ssrc, 8, 4);
+        packetBuffer.copy(Buffer.alloc(24), 0, 0, 12);
 
-        this.speaking = true;
-        state.udp.sendPacket = audioPacket;
+        state.preparedPacket = Buffer.concat([packetBuffer, ...encryptOpusPacket(opusPacket, state.connectionData)]);
+        state.preparedPacket;
     };
 
+    /**
+     * @description Создаем класс VoiceSocket
+     * @param options
+     */
     public constructor(options: ConnectionOptions) {
         super();
         this.onWsOpen = this.onWsOpen.bind(this);
@@ -134,54 +152,9 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
     };
 
     /**
-     * @description Создает новый аудио пакет из пакета Opus. Для этого требуется зашифровать пакет,
-     * а затем добавить заголовок, содержащий метаданные.
-     *
-     * @param opusPacket - Пакет Opus для приготовления
-     */
-    public preparedAudioPacket = (opusPacket: Buffer) => {
-        const state = this.state;
-        if (state.code !== VoiceSocketStatusCode.ready) return;
-
-        const { sequence, timestamp, ssrc } = state.connectionData;
-        const packetBuffer = Buffer.alloc(12); packetBuffer[0] = 0x80; packetBuffer[1] = 0x78;
-
-        packetBuffer.writeUIntBE(sequence, 2, 2);
-        packetBuffer.writeUIntBE(timestamp, 4, 4);
-        packetBuffer.writeUIntBE(ssrc, 8, 4);
-        packetBuffer.copy(Buffer.alloc(24), 0, 0, 12);
-
-        state.preparedPacket = Buffer.concat([packetBuffer, ...this.encryptOpusPacket(opusPacket, state.connectionData)]);
-        return state.preparedPacket;
-    };
-
-    /**
-     * @description Шифрует пакет Opus, используя формат, согласованный экземпляром и Discord.
-     *
-     * @param packet - Пакет Opus для шифрования
-     * @param connectionData - Текущие данные подключения экземпляра
-     */
-    private encryptOpusPacket = (packet: Buffer, connectionData: ConnectionData)=>  {
-        const { secretKey, encryptionMode } = connectionData;
-
-        switch (encryptionMode) {
-            case "xsalsa20_poly1305_suffix": {
-                const random = sodium.random(24, connectionData.nonceBuffer);
-                return [sodium.close(packet, random, secretKey), random];
-            }
-            case "xsalsa20_poly1305_lite": {
-                connectionData.nonce++;
-                if (connectionData.nonce > MAX_NONCE_SIZE) connectionData.nonce = 0;
-                connectionData.nonceBuffer.writeUInt32BE(connectionData.nonce, 0);
-                return [ sodium.close(packet, connectionData.nonceBuffer, secretKey), connectionData.nonceBuffer.subarray(0, 4) ];
-            }
-            default: return [sodium.close(packet, Buffer.alloc(24), secretKey)];
-        }
-    };
-
-    /**
      * @description Создает новый веб-сокет для голосового шлюза Discord.
      * @param endpoint - Конечная точка, к которой нужно подключиться
+     * @private
      */
     private createWebSocket = (endpoint: string) => {
         return new VoiceWebSocket(`wss://${endpoint}?v=4`)
@@ -194,6 +167,7 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
     /**
      * @description Вызывается при открытии WebSocket. В зависимости от состояния, в котором находится экземпляр,
      * он либо идентифицируется с новым сеансом, либо попытается возобновить существующий сеанс.
+     * @private
      */
     private onWsOpen = () => {
         const state = this.state;
@@ -220,6 +194,8 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
      * экземпляр либо попытается возобновить работу, либо перейдет в закрытое состояние и выдаст событие "close"
      * с кодом закрытия, позволяя пользователю решить, хочет ли он повторно подключиться.
      * @param code - Код закрытия
+     * @private
+     * @readonly
      */
     private readonly onWsClose = ({ code }: {code: number}) => {
         const state = this.state;
@@ -239,11 +215,15 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
     /**
      * @description Распространяет ошибки из дочернего голосового веб-сокета и голосового UDP-сокета.
      * @param error - Ошибка, которая была выдана дочерним элементом
+     * @private
+     * @readonly
      */
     private readonly onError = (error: Error) => { this.emit("error", error); }
 
     /**
      * @description Вызывается, когда UDP-сокет сам закрылся, если он перестал получать ответы от Discord.
+     * @private
+     * @readonly
      */
     private readonly onUdpClose = () => {
         if (this.state.code === VoiceSocketStatusCode.ready) this.state = { ...this.state,
@@ -255,6 +235,7 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
     /**
      * @description Вызывается при получении пакета на WebSocket соединения.
      * @param packet - Полученный пакет
+     * @private
      */
     private onWsPacket = (packet: {d: any, op: VoiceOpcodes}) => {
         const state = this.state;
@@ -279,7 +260,7 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
                         state.ws.sendPacket({
                             op: VoiceOpcodes.SelectProtocol,
                             d: {
-                                protocol: VoiceProtocols.udp,
+                                protocol: "udp",
                                 data: {
                                     address: localConfig.ip,
                                     port: localConfig.port,
@@ -290,7 +271,7 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
                         this.state = {...this.state, code: VoiceSocketStatusCode.protocol};
                     }).catch((error: Error) => this.emit("error", error));
 
-                    this.state = {...state, udp, code: VoiceSocketStatusCode.upUDP, connectionData: {ssrc}};
+                    this.state = {...state, udp, code: VoiceSocketStatusCode.upUDP, connectionData: {ssrc} as any};
                 }
                 return;
             }
@@ -349,89 +330,38 @@ interface VoiceSocketEvents {
  * экземпляр переходит к открытиям, затем к идентификации и т.д.)
  */
 export enum VoiceSocketStatusCode {
-    upWS,
-    identify,
-    upUDP,
-    protocol,
-    ready,
-    resume,
-    close,
-}
-
-enum VoiceProtocols {
-    udp = "udp",
-    ws = "ws"
+    upWS, identify, upUDP, protocol, ready, resume, close
 }
 
 /**
- * @status VoiceSocketStatusCode.upWS
- * @description Статус запуска VoiceWebSocket
+ * @description Сокет создал VoiceWebSocket
+ * @interface Socket_ws_State
  */
-interface WebSocketState {
-    code: VoiceSocketStatusCode.upWS;
+interface Socket_ws_State {
     ws: VoiceWebSocket;
     connectionOptions: ConnectionOptions;
 }
 
 /**
- * @status VoiceSocketStatusCode.identify
- * @description Статус индификации
+ * @description Сокет создал VoiceUDPSocket
  */
-interface IdentifyState {
-    code: VoiceSocketStatusCode.identify;
-    ws: VoiceWebSocket;
-    connectionOptions: ConnectionOptions;
-}
-
-/**
- * @status VoiceSocketStatusCode.upUDP
- * @description Статус запуска VoiceUDPSocket
- */
-interface UDPSocketState {
-    code: VoiceSocketStatusCode.upUDP;
-    ws: VoiceWebSocket;
-    udp: VoiceUDPSocket;
-    connectionData: Pick<ConnectionData, "ssrc">;
-    connectionOptions: ConnectionOptions;
-}
-
-/**
- * @status VoiceSocketStatusCode.protocol
- * @description Статус определения протокола
- */
-interface ProtocolState {
-    code: VoiceSocketStatusCode.protocol;
-    ws: VoiceWebSocket;
-    udp: VoiceUDPSocket;
-    connectionData: Pick<ConnectionData, "ssrc">;
-    connectionOptions: ConnectionOptions;
-}
-
-/**
- * @status VoiceSocketStatusCode.ready
- * @description Статус о готовности голосового подключения
- */
-interface ReadyState {
-    code: VoiceSocketStatusCode.ready;
-    preparedPacket?: Buffer | undefined;
-    ws: VoiceWebSocket;
+interface Socket_udp_State {
     udp: VoiceUDPSocket;
     connectionData: ConnectionData;
-    connectionOptions: ConnectionOptions;
 }
 
 /**
- * @status VoiceSocketStatusCode.resume
- * @description Статус о возобновлении подключения
+ * @description Все статусы
+ * @class VoiceSocket
  */
-interface ResumeState {
-    code: VoiceSocketStatusCode.resume;
-    preparedPacket?: Buffer | undefined;
-    ws: VoiceWebSocket;
-    udp: VoiceUDPSocket;
-    connectionData: ConnectionData;
-    connectionOptions: ConnectionOptions;
-}
+export type VoiceSocketState =
+    WebSocketState
+    | IdentifyState
+    | UDPSocketState
+    | ProtocolState
+    | ReadyState
+    | ResumeState
+    | CloseState;
 
 /**
  * @status VoiceSocketStatusCode.close
@@ -442,15 +372,61 @@ interface CloseState {
 }
 
 /**
- * @description Все статусы
- * @class VoiceSocket
+ * @status VoiceSocketStatusCode.upWS
+ * @description Статус запуска VoiceWebSocket
  */
-export type VoiceSocketState = WebSocketState | IdentifyState | UDPSocketState | ProtocolState | ReadyState | ResumeState | CloseState;
+interface WebSocketState extends Socket_ws_State {
+    code: VoiceSocketStatusCode.upWS;
+}
+
+/**
+ * @status VoiceSocketStatusCode.identify
+ * @description Статус индификации
+ */
+interface IdentifyState extends Socket_ws_State {
+    code: VoiceSocketStatusCode.identify;
+}
+
+/**
+ * @status VoiceSocketStatusCode.upUDP
+ * @description Статус запуска VoiceUDPSocket
+ */
+interface UDPSocketState extends Socket_ws_State, Socket_udp_State {
+    code: VoiceSocketStatusCode.upUDP;
+}
+
+/**
+ * @status VoiceSocketStatusCode.protocol
+ * @description Статус определения протокола
+ */
+interface ProtocolState extends Socket_ws_State, Socket_udp_State {
+    code: VoiceSocketStatusCode.protocol;
+}
+
+/**
+ * @status VoiceSocketStatusCode.ready
+ * @description Статус о готовности голосового подключения
+ */
+interface ReadyState extends Socket_ws_State, Socket_udp_State {
+    code: VoiceSocketStatusCode.ready;
+    preparedPacket?: Buffer | undefined;
+}
+
+/**
+ * @status VoiceSocketStatusCode.resume
+ * @description Статус о возобновлении подключения
+ */
+interface ResumeState extends Socket_ws_State, Socket_udp_State {
+    code: VoiceSocketStatusCode.resume;
+    preparedPacket?: Buffer | undefined;
+}
 
 /**
  * @description Сведения, необходимые для подключения к голосовому шлюзу Discord. Эти сведения
  * сначала поступают на главный шлюз бота в виде пакетов VOICE_SERVER_UPDATE
  * и VOICE_STATE_UPDATE.
+ *
+ * @link https://discord.com/developers/docs/topics/voice-connections
  */
 interface ConnectionOptions {
     endpoint: string;
@@ -463,8 +439,10 @@ interface ConnectionOptions {
 /**
  * @description Информация о текущем соединении, например, какой режим шифрования должен использоваться при
  * соединении, информации о времени воспроизведения потоков.
+ *
+ * @link https://discord.com/developers/docs/topics/voice-connections
  */
-interface ConnectionData {
+export interface ConnectionData {
     encryptionMode: string;
     nonce: number;
     nonceBuffer: Buffer;

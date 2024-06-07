@@ -7,6 +7,7 @@ import {Constructor} from "@handler";
 /**
  * @author SNIPPIK
  * @description База с голосовыми подключениями
+ * @class Voice
  */
 export const Voice = new class Voice extends Constructor.Collection<VoiceConnection> {
     /**
@@ -175,8 +176,8 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents> {
     public playOpusPacket(buffer: Buffer) {
         const state = this.state;
         if (state.status !== VoiceConnectionStatus.Ready) return;
-        state.networking.preparedAudioPacket(buffer);
-        return state.networking.preparedPacket;
+        state.networking.preparedAudioPacket = buffer;
+        return state.networking.playAudioPacket;
     };
 
     /**

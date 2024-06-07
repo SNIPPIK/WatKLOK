@@ -1,3 +1,4 @@
+import {SlashBuilder} from "@lib/discord/utils/SlashBuilder";
 import {ApplicationCommandOptionType} from "discord.js";
 import {Constructor, Handler} from "@handler";
 import {db} from "@lib/db";
@@ -5,46 +6,46 @@ import {db} from "@lib/db";
 class Group extends Constructor.Assign<Handler.Command> {
     public constructor() {
         super({
-            name: "player-control",
-            description: "Взаимодействия с плеером",
-            permissions: ["Speak", "Connect"],
-            options: [
-                {
-                    name: "replay",
-                    description: "Повторить текущий трек?",
-                    type: ApplicationCommandOptionType.Subcommand
-                },
-                {
-                    name: "seek",
-                    description: "Пропуск времени в текущем треке!",
-                    type: ApplicationCommandOptionType.Subcommand,
-                    options: [
-                        {
-                            name: "value",
-                            description: "Пример - 00:00",
-                            required: true,
-                            type: ApplicationCommandOptionType["String"]
-                        }
-                    ]
+            data: new SlashBuilder()
+                .setName("player-control")
+                .setDescription("Взаимодействия с плеером")
+                .addSubCommands([
+                    {
+                        name: "replay",
+                        description: "Повторить текущий трек?",
+                        type: ApplicationCommandOptionType.Subcommand
+                    },
+                    {
+                        name: "seek",
+                        description: "Пропуск времени в текущем треке!",
+                        type: ApplicationCommandOptionType.Subcommand,
+                        options: [
+                            {
+                                name: "value",
+                                description: "Пример - 00:00",
+                                required: true,
+                                type: ApplicationCommandOptionType["String"]
+                            }
+                        ]
 
-                },
-                {
-                    name: "pause",
-                    description: "Приостановить воспроизведение текущего трека?!",
-                    type: ApplicationCommandOptionType.Subcommand
-                },
-                {
-                    name: "resume",
-                    description: "Возобновить воспроизведение текущего трека?!",
-                    type: ApplicationCommandOptionType.Subcommand
-                },
-                {
-                    name: "stop",
-                    description: "Выключение музыки",
-                    type: ApplicationCommandOptionType.Subcommand
-                }
-            ],
-
+                    },
+                    {
+                        name: "pause",
+                        description: "Приостановить воспроизведение текущего трека?!",
+                        type: ApplicationCommandOptionType.Subcommand
+                    },
+                    {
+                        name: "resume",
+                        description: "Возобновить воспроизведение текущего трека?!",
+                        type: ApplicationCommandOptionType.Subcommand
+                    },
+                    {
+                        name: "stop",
+                        description: "Выключение музыки",
+                        type: ApplicationCommandOptionType.Subcommand
+                    }
+                ])
+                .json,
             execute: ({message, args, sub}) => {
                 const {author, member, guild} = message;
                 const VoiceChannel = member?.voice?.channel;
@@ -132,8 +133,8 @@ class Group extends Constructor.Assign<Handler.Command> {
                     }
                 }
             }
-        })
-    }
+        });
+    };
 }
 
 /**

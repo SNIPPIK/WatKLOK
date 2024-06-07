@@ -1,79 +1,80 @@
 import {ApplicationCommandOptionType, Colors, EmbedData} from "discord.js";
 import {Constructor, Handler} from "@handler";
 import {db} from "@lib/db";
+import {SlashBuilder} from "@lib/discord/utils/SlashBuilder";
 
 class Group extends Constructor.Assign<Handler.Command> {
     public constructor() {
         super({
-            name: "filter",
-            description: "Управление фильтрами",
-            options: [
-                {
-                    name: "add",
-                    description: "Добавление фильтров!",
-                    type: ApplicationCommandOptionType.Subcommand,
-                    options: [
-                        {
-                            name: "filters",
-                            description: "Необходимо выбрать фильтр! Все доступные фильтры - all",
-                            type: ApplicationCommandOptionType["String"],
-                            choices: db.audio.filters.length < 25 ? db.audio.filters.map((filter) => {
-                                return {
-                                    name: `${filter.name} | ${filter.description.length > 75 ? `${filter.description.substring(0, 75)}...` : filter.description}`,
-                                    value: filter.name
-                                }
-                            }) : []
-                        },
-                        {
-                            name: "argument",
-                            description: "Аргумент для фильтра, если он необходим!",
-                            type: ApplicationCommandOptionType["String"]
-                        }
-                    ]
-                },
-                {
-                    name: "remove",
-                    description: "Удаление фильтров!",
-                    type: ApplicationCommandOptionType.Subcommand,
-                    options: [
-                        {
-                            name: "filters",
-                            description: "Необходимо выбрать фильтр! Все доступные фильтры - all",
-                            type: ApplicationCommandOptionType["String"],
-                            choices: db.audio.filters.length < 25 ? db.audio.filters.map((filter) => {
-                                return {
-                                    name: `${filter.name} | ${filter.description.length > 75 ? `${filter.description.substring(0, 75)}...` : filter.description}`,
-                                    value: filter.name
-                                }
-                            }) : []
-                        }
-                    ]
-                },
-                {
-                    name: "off",
-                    description: "Отключение фильтров!",
-                    type: ApplicationCommandOptionType.Subcommand
-                },
-
-                {
-                    name: "list",
-                    description: "Списки",
-                    type: ApplicationCommandOptionType.SubcommandGroup,
-                    options: [
-                        {
-                            name: "current",
-                            description: "Текущие фильтры!",
-                            type: ApplicationCommandOptionType.Subcommand
-                        },
-                        {
-                            name: "total",
-                            description: "Доступные фильтры!",
-                            type: ApplicationCommandOptionType.Subcommand
-                        }
-                    ]
-                }
-            ],
-
+            data: new SlashBuilder()
+                .setName("filter")
+                .setDescription("Управление фильтрами")
+                .addSubCommands([
+                    {
+                        name: "add",
+                        description: "Добавление фильтров!",
+                        type: ApplicationCommandOptionType.Subcommand,
+                        options: [
+                            {
+                                name: "filters",
+                                description: "Необходимо выбрать фильтр! Все доступные фильтры - all",
+                                type: ApplicationCommandOptionType["String"],
+                                choices: db.audio.filters.length < 25 ? db.audio.filters.map((filter) => {
+                                    return {
+                                        name: `${filter.name} | ${filter.description.length > 75 ? `${filter.description.substring(0, 75)}...` : filter.description}`,
+                                        value: filter.name
+                                    }
+                                }) : []
+                            },
+                            {
+                                name: "argument",
+                                description: "Аргумент для фильтра, если он необходим!",
+                                type: ApplicationCommandOptionType["String"]
+                            }
+                        ]
+                    },
+                    {
+                        name: "remove",
+                        description: "Удаление фильтров!",
+                        type: ApplicationCommandOptionType.Subcommand,
+                        options: [
+                            {
+                                name: "filters",
+                                description: "Необходимо выбрать фильтр! Все доступные фильтры - all",
+                                type: ApplicationCommandOptionType["String"],
+                                choices: db.audio.filters.length < 25 ? db.audio.filters.map((filter) => {
+                                    return {
+                                        name: `${filter.name} | ${filter.description.length > 75 ? `${filter.description.substring(0, 75)}...` : filter.description}`,
+                                        value: filter.name
+                                    }
+                                }) : []
+                            }
+                        ]
+                    },
+                    {
+                        name: "off",
+                        description: "Отключение фильтров!",
+                        type: ApplicationCommandOptionType.Subcommand
+                    },
+                    {
+                        name: "list",
+                        description: "Списки",
+                        type: ApplicationCommandOptionType.SubcommandGroup,
+                        options: [
+                            {
+                                name: "current",
+                                description: "Текущие фильтры!",
+                                type: ApplicationCommandOptionType.Subcommand
+                            },
+                            {
+                                name: "total",
+                                description: "Доступные фильтры!",
+                                type: ApplicationCommandOptionType.Subcommand
+                            }
+                        ]
+                    }
+                ])
+                .json,
             execute: ({message, args, sub}) => {
                 const { author, member, guild } = message;
                 const queue = db.audio.queue.get(guild.id);
@@ -188,7 +189,7 @@ class Group extends Constructor.Assign<Handler.Command> {
                 }
             }
         });
-    }
+    };
 }
 
 /**

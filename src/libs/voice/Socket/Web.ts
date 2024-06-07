@@ -13,6 +13,7 @@ export class VoiceWebSocket extends TypedEmitter<WebSocketEvents> {
         interval: null as NodeJS.Timeout,
         ack: 0, send: 0, misses: 0
     };
+
     /**
      * @description Устанавливает/очищает интервал для отправки сердечных сокращений по веб-сокету.
      * @param ms - Интервал в миллисекундах. Если значение отрицательное, интервал будет сброшен
@@ -30,7 +31,11 @@ export class VoiceWebSocket extends TypedEmitter<WebSocketEvents> {
         }, ms);
     };
 
-
+    /**
+     * @description Создаем WebSocket для передачи голосовых пакетов
+     * @param address - Адрес сервера для соединения
+     * @public
+     */
     public constructor(address: string) {
         super();
         const ws = new WebSocket(address);

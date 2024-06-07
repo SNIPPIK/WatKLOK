@@ -14,13 +14,14 @@ class cAPI extends Constructor.Assign<API.request> {
      * @protected
      */
     protected static authorization = {
-        link: "https://open.spotify.com",
-        api: "https://api.spotify.com/v1",
-        account: "https://accounts.spotify.com/api",
-        aut: Buffer.from(env.get("token.spotify")).toString("base64"),
+        urls: {
+            api: "https://api.spotify.com/v1",
+            account: "https://accounts.spotify.com/api",
+        },
 
+        auth: env.get("token.spotify"),
         token: "",
-        time:0
+        time: 0
     };
 
     /**
@@ -201,10 +202,10 @@ class cAPI extends Constructor.Assign<API.request> {
             try {
                 //Нужно обновить токен
                 if (!(this.authorization.token !== undefined && this.authorization.time > Date.now() + 2)) {
-                    const token = await new httpsClient(`${this.authorization.account}/token`, {
+                    const token = await new httpsClient(`${this.authorization.urls.account}/token`, {
                         headers: {
                             "Accept": "application/json",
-                            "Authorization": `Basic ${this.authorization.aut}`,
+                            "Authorization": `Basic ${Buffer.from(this.authorization.auth).toString("base64")}`,
                             "Content-Type": "application/x-www-form-urlencoded",
                             "accept-encoding": "gzip, deflate, br"
                         },
@@ -218,7 +219,7 @@ class cAPI extends Constructor.Assign<API.request> {
                     this.authorization.token = token["access_token"];
                 }
             } finally {
-                new httpsClient(`${this.authorization.api}/${method}`, {
+                new httpsClient(`${this.authorization.urls.api}/${method}`, {
                     headers: {
                         "Accept": "application/json",
                         "Content-Type": "application/x-www-form-urlencoded",

@@ -30,14 +30,11 @@ class onAPI extends Constructor.Assign<Handler.Event<"collection/api">> {
                 //Отправляем сообщение о том что запрос производится
                 event.emit("collection/error", message, `**${name}.${api.name}**\n\n${env.get("loading.emoji")} Ожидание ответа от сервера...\n${platform.audio ? "Эта платформа не может выдать исходный файл музыки! Поиск трека!" : ""}`, false, "Yellow");
 
-                let options: { audio?: boolean, limit?: number };
-
-                //Определяем какие параметры передавать запросам
-                if (api.name === "album") options = {limit: db.api.limits.playlist};
-                else if (api.name === "track") options = {audio: true};
-                else options = {limit: db.api.limits[api.name]};
-
-                api.callback(argument[1] as string, options).then((item) => {
+                api.callback(argument[1] as string, {
+                        audio: api.name === "track",
+                        limit: db.api.limits[api.name]
+                    }
+                ).then((item) => {
                     //Если нет данных или была получена ошибка
                     if (item instanceof Error) {
                         event.emit("collection/error", message, `**${name}.${api.name}**\n\n**❯** Данные не были получены!`);

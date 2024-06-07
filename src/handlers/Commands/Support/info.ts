@@ -1,3 +1,4 @@
+import {SlashBuilder} from "@lib/discord/utils/SlashBuilder";
 import {Constructor, Handler} from "@handler";
 import {Colors} from "discord.js";
 import {db} from "@lib/db";
@@ -14,8 +15,10 @@ const processor = cpu.length > 0 ? cpu[0]?.model : "Невозможно опр�
 class Command_Info extends Constructor.Assign<Handler.Command> {
     public constructor() {
         super({
-            name: "info",
-            description: "Здесь показана моя информация!",
+            data: new SlashBuilder()
+                .setName("info")
+                .setDescription("Здесь показана моя информация!")
+                .json,
             execute: ({message}) => {
                 const { client, guild } = message, queue = db.audio.queue.get(guild.id);
                 const Latency = (Date.now() - message.createdTimestamp < 0 ? Math.random() * 78 : Date.now() - message.createdTimestamp).toFixed(0);

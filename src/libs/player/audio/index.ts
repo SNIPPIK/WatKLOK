@@ -113,6 +113,7 @@ export class SeekStream {
     /**
      * @description Создаем класс и задаем параметры
      * @param options - Настройки кодировщика
+     * @public
      */
     public constructor(options: SeekStream["_options"]) {
         if (options.chunk > 0) this._options.chunk = 20 * options.chunk;
