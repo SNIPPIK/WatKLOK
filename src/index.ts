@@ -24,16 +24,20 @@ switch (
         const client = new Client();
 
         client.once("ready", () => {
-            db.registerCommands(client).then(() => {
-                Logger.log("LOG", `Removed all slash commands!`);
-                Logger.log("WARN", `Need wait 30-60 minutes, pls not close application!`);
+            client.application.commands.set([]).then(() => {
+                Logger.log("LOG", `Removed application SlashCommands!`);
             });
+
+            for (const [key, guild] of client.guilds.cache) {
+                guild.commands.set([]).then(() => {
+                    Logger.log("WARN", `[Guild - ${guild.id}] remove SlashCommands`);
+                })
+            }
         });
 
         client.login(env.get("token.discord")).then(() => {
             Logger.log("LOG", `[Shard ${client.ID}] is connected to websocket`);
         });
-
         break;
     }
 
@@ -41,7 +45,7 @@ switch (
      * @name "default"
      * @description Загрузка осколка
      */
-    default: {
+    case 3: {
         //Если включен режим отладки, режим отладки запускается через --dbg
         if (process["argv"].includes("--dbg")) Logger.log("WARN", `[DEBUG MODE] Enabled...`);
 
@@ -99,5 +103,6 @@ switch (
             Logger.log("ERROR", `\n┌ Name:    ${err.name}\n├ Message: ${err.message}\n└ Stack:   ${err.stack}`);
         });
         process.on("unhandledRejection", (err: Error) => console.error(err.stack));
+        break;
     }
 }
