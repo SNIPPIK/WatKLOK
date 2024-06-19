@@ -1,5 +1,6 @@
 import {AudioPlayer, AudioPlayerEvents, Filter} from "@lib/player/AudioPlayer";
 import {Attachment, EmbedData, StageChannel, VoiceChannel} from "discord.js";
+import {MessageBuilder} from "@lib/discord/utils/MessageBuilder";
 import onPlaying from "@handler/Events/Player/message";
 import {API, Constructor, Handler} from "@handler";
 import {TypedEmitter} from "tiny-typed-emitter";
@@ -201,7 +202,7 @@ namespace SupportDataBase {
                             },
                             custom: {
                                 remove: (item) => {
-                                    Constructor.message.delete = {message: item, time: 200}
+                                    MessageBuilder.delete = {message: item, time: 200}
                                 },
                                 push: (item) => {
                                     const old = this.array.find(msg => msg.guild.id === item.guild.id);

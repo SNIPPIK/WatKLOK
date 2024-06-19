@@ -55,10 +55,6 @@ export class Client extends DS_Client {
                 repliedUser: true,
             },
             intents: [
-                IntentsBitField.Flags["GuildMessages"],
-                IntentsBitField.Flags["DirectMessages"],
-                IntentsBitField.Flags["GuildMessageReactions"],
-                IntentsBitField.Flags["DirectMessageReactions"],
                 IntentsBitField.Flags["GuildEmojisAndStickers"],
                 IntentsBitField.Flags["GuildIntegrations"],
                 IntentsBitField.Flags["GuildVoiceStates"],
@@ -119,9 +115,10 @@ export namespace Client {
             _hoistedOptions: any[];
             getAttachment?: (name: string) => Attachment
         };
+        deferred: boolean
         reply: message["channel"]["send"];
         replied?: boolean;
-        followUp: interact["reply"];
+        followUp: interact["reply"]; editReply: interact["reply"];
     }
 
     /**

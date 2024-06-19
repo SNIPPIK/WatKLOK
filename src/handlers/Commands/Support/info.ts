@@ -1,3 +1,4 @@
+import {MessageBuilder} from "@lib/discord/utils/MessageBuilder";
 import {SlashBuilder} from "@lib/discord/utils/SlashBuilder";
 import {Constructor, Handler} from "@handler";
 import {Colors} from "discord.js";
@@ -58,11 +59,10 @@ class Command_Info extends Constructor.Assign<Handler.Command> {
                     Music.push(...infoPlayer);
                 }
 
-
-                return {
-                    embeds: [{
+                return new MessageBuilder().addEmbeds(
+                    [{
                         timestamp: new Date(), color: Colors.Green,
-                        thumbnail: { url: client.user.displayAvatarURL() },
+                        thumbnail: {url: client.user.displayAvatarURL()},
                         author: {
                             name: "Разработчик: @snippik",
                             iconURL: client.user.displayAvatarURL(),
@@ -80,11 +80,10 @@ class Command_Info extends Constructor.Assign<Handler.Command> {
                             },
                             {
                                 name: "Музыка", value: `\`\`\`css\n${Music.join("\n")} \`\`\``
-                            },
-
+                            }
                         ]
-                    }], time: 30e3
-                }
+                    }]
+                );
             }
         });
     };

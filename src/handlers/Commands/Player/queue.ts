@@ -4,6 +4,7 @@ import {Constructor, Handler} from "@handler";
 import {Logger} from "@env";
 import {db} from "@lib/db";
 import {SlashBuilder} from "@lib/discord/utils/SlashBuilder";
+import {MessageBuilder} from "@lib/discord/utils/MessageBuilder";
 
 class Group extends Constructor.Assign<Handler.Command>{
     public constructor() {
@@ -123,19 +124,25 @@ class Group extends Constructor.Assign<Handler.Command>{
                     );
 
                     //Создаем EMBED
-                    const embed = {
-                        title: `История прослушиваний`, color: Colors.Gold, description: pages[0], timestamp: new Date(),
-                        footer: { text: `${author.username} | Лист 1 из ${pages.length}`, iconURL: author.avatarURL() },
-                    }
-
-                    return {
-                        embeds: [embed], pages, page: 1, time: 60e3,
-                        callback: (msg, pages, page) => {
-                            const updateEmbed = { ...embed, description: pages[page - 1], footer: { ...embed.footer, text: `${message.author.username} | Лист ${page} из ${pages.length}` } };
-
-                            return msg.edit({ embeds: [updateEmbed] });
+                    return new MessageBuilder().addEmbeds([
+                        {
+                            title: `История прослушиваний`, color: Colors.Gold, description: pages[0], timestamp: new Date(),
+                            footer: { text: `${author.username} | Лист 1 из ${pages.length}`, iconURL: author.avatarURL() },
                         }
-                    };
+                    ]).setPages(pages).setTime(60e3).setCallback((msg, pages, page, embed) => {
+                        return msg.edit({
+                            embeds: [
+                                {
+                                    ...embed[0],
+                                    description: pages[page - 1],
+                                    footer: {
+                                        ...embed[0].footer,
+                                        text: `${message.author.username} | Лист ${page} из ${pages.length}`
+                                    }
+                                }
+                            ]
+                        });
+                    })
                 }
 
                 //Если нет очереди
@@ -158,32 +165,41 @@ class Group extends Constructor.Assign<Handler.Command>{
                     const pages = queue.songs.slice(1).ArraySort(5, (track) => { num++;
                         return `\`${num}\` - \`\`[${track.duration.full}]\`\` [${track.requester.username}](${track.author.url}) - [${track.title}](${track.url})`;
                     }, "\n");
-                    const embed = {
-                        title: `Queue - ${message.guild.name}`,
-                        color: Colors.Green,
-                        fields: [
-                            {
-                                name: `**Играет:**`,
-                                value: `\`\`\`${queue.songs.song.title}\`\`\``
+
+
+                    return new MessageBuilder().addEmbeds([
+                        {
+                            title: `Queue - ${message.guild.name}`,
+                            color: Colors.Green,
+                            fields: [
+                                {
+                                    name: `**Играет:**`,
+                                    value: `\`\`\`${queue.songs.song.title}\`\`\``
+                                },
+                                pages.length > 0 ? { name: "**Следующее:**", value: pages[0] } : null
+                            ],
+                            footer: {
+                                text: `${queue.songs.song.requester.username} | Лист 1 из ${pages.length} | Songs: ${queue.songs.length}/${queue.songs.time()}`,
+                                iconURL: queue.songs.song.requester.avatar
                             }
-                        ],
-                        footer: {
-                            text: `${queue.songs.song.requester.username} | Лист 1 из ${pages.length} | Songs: ${queue.songs.length}/${queue.songs.time()}`,
-                            iconURL: queue.songs.song.requester.avatar
                         }
-                    };
-
-                    if (pages.length > 0) embed.fields.push({ name: "**Следующее:**", value: pages[0] });
-
-                    return {
-                        embeds: [embed], pages, page: 1, time: 60e3,
-                        callback: (msg, pages: string[], page: number) => {
-                            embed.fields[1] = { name: "**Следующее:**", value: pages[page - 1] };
-                            const updateEmbed = { ...embed, footer: { ...embed.footer, text: `${message.author.username} | Лист ${page} из ${pages.length} | Songs: ${queue.songs.length}` } };
-
-                            return msg.edit({ embeds: [updateEmbed] });
-                        }
-                    };
+                    ]).setPages(pages).setTime(60e3).setCallback((msg, pages: string[], page: number, embed) => {
+                        return msg.edit({
+                            embeds: [
+                                {
+                                    ...embed[0],
+                                    fields: [
+                                        embed[0].fields[0],
+                                        { name: "**Следующее:**", value: pages[page - 1] }
+                                    ],
+                                    footer: {
+                                        ...embed[0].footer,
+                                        text: `${message.author.username} | Лист ${page} из ${pages.length} | Songs: ${queue.songs.length}`
+                                    }
+                                }
+                            ]
+                        });
+                    });
                 }
 
                 //Если пользователь меняет тип повтора

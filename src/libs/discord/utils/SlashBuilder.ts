@@ -1,4 +1,4 @@
-import type {LocalizationMap, Permissions} from 'discord-api-types/v10';
+import type {LocalizationMap, Permissions} from "discord-api-types/v10";
 import {ApplicationCommandOption} from "discord.js";
 
 /**

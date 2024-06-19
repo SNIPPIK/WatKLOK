@@ -1,3 +1,4 @@
+import {LightMessageBuilder, MessageBuilder} from "@lib/discord/utils/MessageBuilder";
 import {CommandInteractionOption, Events} from "discord.js";
 import {Constructor, Handler} from "@handler";
 import {Client} from "@lib/discord";
@@ -28,12 +29,16 @@ class Interaction extends Constructor.Assign<Handler.Event<Events.InteractionCre
 
                     //Если есть данные, то отправляем их в тестовый канал
                     if (item) {
-                        if (item instanceof Promise) {
-                            item.then(data => new Constructor.message<any>({...data, message})).catch((err) => Logger.log("ERROR", err));
-                            return;
+                        if (!(item instanceof Promise)) {
+                            if (item instanceof MessageBuilder) (item.send = message);
+                            else new LightMessageBuilder(item as any).send = message;
                         }
-                        new Constructor.message<any>({...item as any, message});
-                        return;
+                        else {
+                            item.then((data) => {
+                                if (item instanceof MessageBuilder) (item.send = message);
+                                else new LightMessageBuilder(data as any).send = message;
+                            }).catch((err) => Logger.log("ERROR", err));
+                        }
                     }
                 }
             }

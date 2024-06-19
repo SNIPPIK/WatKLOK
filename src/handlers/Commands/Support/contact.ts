@@ -1,6 +1,7 @@
 import {Constructor, Handler} from "@handler";
 import {Colors} from "discord.js";
 import {SlashBuilder} from "@lib/discord/utils/SlashBuilder";
+import {MessageBuilder} from "@lib/discord/utils/MessageBuilder";
 
 /**
  * @class Command_Contact
@@ -20,8 +21,8 @@ class Command_Contact extends Constructor.Assign<Handler.Command> {
                 const Latency = (Date.now() - message.createdTimestamp < 0 ? Math.random() * 78 : Date.now() - message.createdTimestamp).toFixed(0);
                 const WS = (client.ws.ping < 0 ? Math.random() * 78 : client.ws.ping).toFixed(0);
 
-                return {
-                    embeds: [{
+                return new MessageBuilder().addEmbeds([
+                    {
                         timestamp: new Date(), color: Colors.Green,
                         thumbnail: {url: client.user.displayAvatarURL()},
                         title: "Раздел для связи с разработчиком!",
@@ -29,14 +30,16 @@ class Command_Contact extends Constructor.Assign<Handler.Command> {
                             text: `Latency - ${Latency} | Api - ${WS} | Uptime: ${(client.uptime / 1000).duration()}`,
                             iconURL: client.user.displayAvatarURL()
                         }
-                    }], time: 30e3, components: [{
+                    }
+                ])
+                    .addComponents([{
                         type: 1, components: [
                             {type: 2, label: "SNIPPIK", url: "https://github.com/SNIPPIK", style: 5},
                             {type: 2, label: "GITHUB", url: "https://github.com/SNIPPIK/WatKLOK", style: 5},
                             {type: 2, label: "Discord", url: "https://discord.gg/qMf2Sv3", style: 5},
                         ]
-                    }] as any
-                }
+                    }])
+                    .setTime(30e3);
             }
         });
     };

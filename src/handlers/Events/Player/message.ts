@@ -1,4 +1,5 @@
 import {ActionRowBuilder, Colors, StringSelectMenuBuilder} from "discord.js";
+import {LightMessageBuilder, MessageBuilder} from "@lib/discord/utils/MessageBuilder";
 import {Constructor, Handler} from "@handler";
 import {Queue} from "@lib/player/queue/Queue";
 import {Song} from "@lib/player/queue/Song";
@@ -18,28 +19,27 @@ class onError extends Constructor.Assign<Handler.Event<"message/error">> {
             execute: (queue, error) => {
                 const {color, author, image, title, requester} = queue.songs.last;
 
-                new Constructor.message<"embeds">({ message: queue.message, replied: true, time: 10e3,
-                    embeds: [
-                        {
-                            color, thumbnail: image, timestamp: new Date(),
-                            fields: [
-                                {
-                                    name: `**Играет:**`,
-                                    value: `\`\`\`${title}\`\`\``
-                                },
-                                {
-                                    name: `**Error:**`,
-                                    value: `\`\`\`js\n${error}...\`\`\``
-                                }
-                            ],
-                            author: {name: author.title, url: author.url, iconURL: db.emojis.diskImage},
-                            footer: {
-                                text: `${requester.username} | ${queue.songs.time()} | 🎶: ${queue.songs.size}`,
-                                iconURL: requester?.avatar
+                new MessageBuilder().addEmbeds([
+                    {
+                        color, thumbnail: image, timestamp: new Date(),
+                        fields: [
+                            {
+                                name: `**Играет:**`,
+                                value: `\`\`\`${title}\`\`\``
+                            },
+                            {
+                                name: `**Error:**`,
+                                value: `\`\`\`js\n${error}...\`\`\``
                             }
+                        ],
+                        author: {name: author.title, url: author.url, iconURL: db.emojis.diskImage},
+                        footer: {
+                            text: `${requester.username} | ${queue.songs.time()} | 🎶: ${queue.songs.size}`,
+                            iconURL: requester?.avatar
                         }
-                    ]
-                })
+                    }
+                ]).setTime(10e3)
+                    .send = queue.message as any;
             }
         });
     }
@@ -57,45 +57,49 @@ class onPlaying extends Constructor.Assign<Handler.Event<"message/playing">> {
             type: "player",
             execute: (queue, isReturn) => {
                 const {color, author, image, title, url, duration} = queue.songs.song;
-                const embed = {
-                    color, thumbnail: image,
-                    author: {name: author.title, url: author.url, iconURL: db.emojis.diskImage},
-                    fields: [
-                        {
-                            name: `**Играет:**`,
-                            value: `\`\`\`${title}\`\`\``
-                        }
-                    ]
-                };
-
-                //Следующий трек или треки
-                if (queue.songs.size > 1) {
-                    const tracks = queue.songs.slice(1, 5).map((track, index) => {
-                        const title = `[${track.title.slice(0, 50)}](${track.url})`;
-
-                        if (track.platform === "YOUTUBE") return `\`${index+2}.\` \`\`[${track.duration.full}]\`\` ${title}`;
-                        return `\`${index+2}.\` \`\`[${track.duration.full}]\`\` [${track.author.title}](${track.author.url}) - ${title}`;
-                    });
-
-                    if (queue.songs.size > 5) embed.fields.push({ name: `**Следующее - ${queue.songs.size}**`, value: tracks.join("\n") });
-                    else embed.fields.push({ name: `**Следующее: **`, value: tracks.join("\n") });
-                }
-
-                //Progress bar
                 const currentTime = queue.player?.stream?.duration ?? 0;
                 const progress = `\`\`${currentTime.duration()}\`\` ${new ProgressBar(currentTime, duration.seconds).bar} \`\`${duration.full}\`\``;
-                embed.fields.push({ name: " ", value: `\n[|](${url})${progress}` });
 
-                if (isReturn) return embed;
+                const embed = new MessageBuilder().addEmbeds([
+                    {
+                        color, thumbnail: image,
+                        author: {name: author.title, url: author.url, iconURL: db.emojis.diskImage},
+                        fields: [
+                            {
+                                name: `**Играет:**`,
+                                value: `\`\`\`${title}\`\`\``
+                            },
 
-                //Создаем и отправляем сообщение
-                new Constructor.message<"embeds">({
-                    message: queue.message, embeds: [embed], time: 0, replied: true,
-                    components: [queue.components as any],
-                    promise: (msg: Client.message) =>  {
-                        if (!db.audio.cycles.messages.array.includes(msg)) db.audio.cycles.messages.set(msg);
+                            //Следующий трек или треки
+                            queue.songs.size > 1 ? (() => {
+                                const tracks = queue.songs.slice(1, 5).map((track, index) => {
+                                    const title = `[${track.title.slice(0, 50)}](${track.url})`;
+
+                                    if (track.platform === "YOUTUBE") return `\`${index + 2}.\` \`\`[${track.duration.full}]\`\` ${title}`;
+                                    return `\`${index + 2}.\` \`\`[${track.duration.full}]\`\` [${track.author.title}](${track.author.url}) - ${title}`;
+                                });
+
+                                if (queue.songs.size > 5) return {
+                                    name: `**Следующее - ${queue.songs.size}**`,
+                                    value: tracks.join("\n")
+                                };
+                                return {name: `**Следующее: **`, value: tracks.join("\n")};
+                            })() : null,
+
+                            {
+                                name: "",
+                                value: `\n[|](${url})${progress}`
+                            }
+                        ]
                     }
-                });
+                ]).setReplied(true);
+
+                if (isReturn) return embed.embeds.pop();
+
+                embed.setTime(0).addComponents([queue.components as any]).setPromise((msg: Client.message) => {
+                    if (!db.audio.cycles.messages.array.includes(msg)) db.audio.cycles.messages.set(msg);
+                })
+                    .send = queue.message;
             }
         });
     };
@@ -112,54 +116,53 @@ class onPush extends Constructor.Assign<Handler.Event<"message/push">> {
             name: "message/push",
             type: "player",
             execute: (queue, obj) => {
-                let options: any;
 
                 //Если был добавлен трек
                 if (queue instanceof Queue.Music) {
                     const {color, author, image, title, duration} = obj as Song;
-                    options = { message: queue.message, replied: true, time: 12e3, embeds: [
-                            {
-                                color, thumbnail: image,
-                                author: {name: author.title, iconURL: db.emojis.diskImage, url: author.url},
-                                footer: {
-                                    text: `${duration.full} | 🎶: ${queue.songs.size}`
-                                },
-                                fields: [
-                                    {
-                                        name: "**Добавлен трек:**",
-                                        value: `\`\`\`${title}\`\`\`\ `
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-                    //Если был добавлен плейлист
-                } else if ("items" in obj) {
-                    const {author, image, title, items} = obj;
-                    options = { message: queue, replied: true, time: 20e3,
-                        embeds: [
-                            {
-                                color: Colors.Blue, timestamp: new Date(),
-                                author: {name: author?.title, url: author?.url, iconURL: db.emojis.diskImage},
-                                thumbnail: typeof image === "string" ? {url: image} : image ?? {url: db.emojis.noImage},
 
-                                footer: {
-                                    text: `${queue.author.username} | ${items.time()} | 🎶: ${items?.length}`,
-                                    iconURL: queue.author.displayAvatarURL({})
-                                },
-                                fields: [
-                                    {
-                                        name: `**Добавлен плейлист:**`,
-                                        value: `\`\`\`${title}\`\`\`\ `
-                                    }
-                                ]
-                            }
-                        ]
-                    }
+                    new MessageBuilder().addEmbeds([
+                        {
+                            color, thumbnail: image,
+                            author: {name: author.title, iconURL: db.emojis.diskImage, url: author.url},
+                            footer: {
+                                text: `${duration.full} | 🎶: ${queue.songs.size}`
+                            },
+                            fields: [
+                                {
+                                    name: "**Добавлен трек:**",
+                                    value: `\`\`\`${title}\`\`\`\ `
+                                }
+                            ]
+                        }
+                    ]).setTime(12e3)
+                        .send = queue.message;
                 }
 
-                //Создаем и отправляем сообщение
-                new Constructor.message<"embeds">(options);
+                //Если был добавлен плейлист
+                else if ("items" in obj) {
+                    const {author, image, title, items} = obj;
+
+                    new MessageBuilder().addEmbeds([
+                        {
+                            color: Colors.Blue, timestamp: new Date(),
+                            author: {name: author?.title, url: author?.url, iconURL: db.emojis.diskImage},
+                            thumbnail: typeof image === "string" ? {url: image} : image ?? {url: db.emojis.noImage},
+
+                            footer: {
+                                text: `${queue.author.username} | ${items.time()} | 🎶: ${items?.length}`,
+                                iconURL: queue.author.displayAvatarURL({})
+                            },
+                            fields: [
+                                {
+                                    name: `**Добавлен плейлист:**`,
+                                    value: `\`\`\`${title}\`\`\`\ `
+                                }
+                            ]
+                        }
+                    ]).setTime(20e3)
+                        .send = queue;
+                }
             }
         });
     };
@@ -176,15 +179,15 @@ class onSearch extends Constructor.Assign<Handler.Event<"message/search">> {
             name: "message/search",
             type: "player",
             execute: (tracks, platform, message) => {
-                if (tracks?.length < 1 || !tracks) return void (new Constructor.message<"simple">({
-                    content: `${message.author} | Я не смог найти музыку с таким названием. Попробуй другое название!`,
-                    color: "DarkRed", message, replied: true
-                }));
+                if (tracks?.length < 1 || !tracks) {
+                    new LightMessageBuilder({
+                        content: `${message.author} | Я не смог найти музыку с таким названием. Попробуй другое название!`,
+                        color: "DarkRed"
+                    }).send = message;
+                }
 
-                new Constructor.message<"simple">({
-                    replied: true, time: 30e3, message, content: "Вот что мне удалось найти!",
-                    //Список треков под сообщением
-                    components: [new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId("menu-builder").setPlaceholder("Найденные треки")
+                new MessageBuilder().addEmbeds([{description: "Вот что мне удалось найти!"}]).setTime(30e3)
+                    .addComponents([new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId("menu-builder").setPlaceholder("Найденные треки")
                         .setOptions(...tracks.map((track) => {
                                 return {
                                     label: `${track.title}`,
@@ -193,10 +196,8 @@ class onSearch extends Constructor.Assign<Handler.Event<"message/search">> {
                                 }
                             }), {label: "Отмена", value: "stop"}
                         )
-                    )],
-
-                    //Действия после сообщения
-                    promise: (msg) => {
+                    )])
+                    .setPromise((msg) => {
                         //Создаем сборщик
                         const collector = msg.createMessageComponentCollector({
                             filter: (interaction) => !interaction.user.bot,
@@ -214,11 +215,10 @@ class onSearch extends Constructor.Assign<Handler.Event<"message/search">> {
                             interaction?.deleteReply();
 
                             //Удаляем данные
-                            Constructor.message.delete = {message: msg};
+                            MessageBuilder.delete = {message: msg};
                             collector.stop();
                         });
-                    }
-                });
+                    })
             }
         });
     };

@@ -1,3 +1,4 @@
+import {LightMessageBuilder} from "@lib/discord/utils/MessageBuilder";
 import {API, Constructor, Handler} from "@handler";
 import {Queue} from "@lib/player/queue/Queue";
 import {Song} from "@lib/player/queue/Song";
@@ -82,11 +83,14 @@ class onError extends Constructor.Assign<Handler.Event<"collection/error">> {
         super({
             name: "collection/error",
             type: "player",
-            execute: (message, error, replied = false,  color = "DarkRed") => {
+            execute: (message, error, _ = false,  color = "DarkRed") => {
                 try {
-                    new Constructor.message<"simple">({message, time: 7e3, content: error, color, replied});
-                } catch (e) {
-                    Logger.log("WARN", `[collection/error] ${e}]`);
+                    new LightMessageBuilder({
+                        content: error,
+                        color, time: 7e3
+                    }).send = message as any;
+                } catch (err) {
+                    Logger.log("WARN", `[collection/error] ${err}]`);
                 }
             }
         });

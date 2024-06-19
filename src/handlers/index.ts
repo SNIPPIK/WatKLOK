@@ -1,9 +1,10 @@
-import {ActionRowBuilder, ClientEvents, Colors, EmbedData} from "discord.js";
+import {LightMessageBuilder, MessageBuilder} from "@lib/discord/utils/MessageBuilder";
 import {SlashBuilder} from "@lib/discord/utils/SlashBuilder";
 import {AudioPlayerEvents} from "@lib/player/AudioPlayer";
 import {CollectionAudioEvents, db} from "@lib/db";
 import {Queue} from "@lib/player/queue/Queue";
 import {Song} from "@lib/player/queue/Song";
+import {ClientEvents} from "discord.js";
 import {readdirSync} from "node:fs";
 import {Client} from "@lib/discord";
 import {Logger} from "@env";
@@ -148,7 +149,7 @@ export namespace Handler {
             args?: string[],
             group?: string,
             sub?: string
-        }) => Constructor.messageOptions<any> | Promise<Constructor.messageOptions<any>>;
+        }) => MessageBuilder | LightMessageBuilder["options"] | Promise<MessageBuilder | LightMessageBuilder["options"]>;
     }
 
     /**
@@ -381,232 +382,6 @@ export namespace Constructor {
 
             //Изменить логику удаления
             remove?: (item: T) => void;
-        };
-    }
-}
-
-/**
- * @author SNIPPIK
- * @description Управление отправкой сообщений
- * @namespace Constructor
- * @dublicate
- */
-export namespace Constructor {
-    /**
-     * @author SNIPPIK
-     * @description Параметры для класса message
-     */
-    export type messageOptions<T> =
-        (T extends "menu" ? messageTypes.menu :
-            T extends "simple" ? messageTypes.simple :
-                T extends "embeds" ? messageTypes.embeds : never) & messageTypes.main;
-
-    /**
-     * @author SNIPPIK
-     * @description Типы данные для взаимодействия с классом message
-     */
-    export namespace messageTypes {
-        /**
-         * @description Конструктор меню
-         */
-        export interface menu {
-            content?: string;
-            embeds?: EmbedData[];
-            pages: string[];
-            page: number;
-            callback: (message: Client.message, pages: string[], page: number) => void;
-        }
-
-        /**
-         * @description Конструктор сообщения, отправка текстового сообщения в embed
-         */
-        export interface simple {
-            color?: "DarkRed" | "Blue" | "Green" | "Default" | "Yellow" | "Grey" | "Navy" | "Gold" | "Orange" | "Purple" | number;
-            codeBlock?: string;
-            content: string;
-        }
-
-        /**
-         * @description Конструктор embeds, отправка своих embeds
-         */
-        export interface embeds {
-            embeds: EmbedData[];
-        }
-
-        /**
-         * @description Дополнительные параметры для отправки
-         */
-        export interface main {
-            promise?: (msg: Client.message) => void;
-            components?: ActionRowBuilder[];
-            replied?: boolean;
-            time?: number;
-        }
-    }
-
-    /**
-     * @author SNIPPIK
-     * @description Создает сообщения для отправки на Discord
-     * @class message
-     */
-    export class message<T> {
-        //@ts-ignore
-        private readonly data: messageOptions<T> & {message: Client.message | Client.interact; fetchReply?: boolean} = {time: 15e3, fetchReply: true};
-        /**
-         * @description Получаем данные заданные при создании класса
-         * @return messageOptions
-         * @public
-         */
-        public get options() { return this.data; };
-
-        /**
-         * @description Получаем цвет, если он есть в параметрах конвертируем в число
-         * @private
-         */
-        private get color() {
-            const options = this.options;
-
-            if (!("color" in options)) return 258044;
-            else if (typeof options.color === "number") return options.color;
-            return Colors[options.color] ?? 258044;
-        };
-
-        /**
-         * @description Редактируем параметры заданные при создании класса
-         * @protected
-         */
-        protected get modificationOptions() {
-            let options = this.options;
-
-            //Если указано простое сообщение
-            if ("content" in options && !("page" in options)) {
-                const color = options.color;
-                let text = "";
-
-                if (options.codeBlock) {
-                    if (color === "DarkRed") text = `⛔️ **Error**\n`;
-                    else if (color === "Yellow") text = `⚠️ **Warning**\n`;
-                } else {
-                    if (color === "DarkRed") text = `⛔️ **Error** | `;
-                    else if (color === "Yellow") text = `⚠️ **Warning** | `;
-                }
-
-                options = {
-                    ...options, embeds: [{
-                        color: this.color,
-                        description: text + (options.codeBlock ? `\`\`\`${options.codeBlock}\n${options.content}\n\`\`\`` : options.content)
-                    }]
-                }
-                delete options["content"];
-            }
-
-            return options as any;
-        };
-
-        /**
-         * @description Получаем канал на который будет отослано сообщение
-         * @return Promise<Client.message>
-         */
-        protected get channel(): Promise<Client.message> {
-            const {message, replied} = this.options;
-
-            if ("replied" in message && !(message as any).replied && !replied) {
-                if (message.isRepliable()) return message.reply(this.modificationOptions);
-                return message.followUp(this.modificationOptions);
-            }
-
-            return message.channel.send(this.modificationOptions) as Promise<Client.message>;
-        };
-
-        /**
-         * @description Удаление сообщения через указанное время
-         * @param options - Параметры для удаления сообщения
-         */
-        public static set delete(options: { message: Client.message | Client.interact, time?: number }) {
-            const {message, time} = options;
-
-            //Удаляем сообщение
-            setTimeout(() => {
-                if ("deletable" in message && message.deletable) {
-                    message.delete().catch((err) => Logger.log("WARN", err));
-                } else if ("replied" in message && !(message as any).replied) {
-                    (message)?.deleteReply().catch((err) => Logger.log("WARN", err))
-                }
-            }, time ?? 15e3);
-        };
-
-        /**
-         * @description Создаем класс с заданными параметрами
-         * @param options
-         */
-        public constructor(options: message<T>["options"]) {
-            Object.assign(this.data, options);
-            const {time, promise} = options;
-
-            //Если используется сборщик меню
-            if ("page" in options) {
-                //Добавляем кнопки
-                this.data.components = [{
-                    type: 1, components: [
-                        {type: 2, emoji: {name: "⬅"}, custom_id: "back", style: 2},
-                        {type: 2, emoji: {name: "➡"}, custom_id: "next", style: 2},
-                        {type: 2, emoji: {name: "🗑️"}, custom_id: "cancel", style: 4}
-                    ]
-                }] as any;
-            }
-
-            //Отправляем сообщение
-            this.channel.then((msg) => {
-                //Удаляем сообщение через время если это возможно
-                if (time !== 0) message.delete = {message: msg, time};
-
-                //Если получить возврат не удалось, то ничего не делаем
-                if (!msg) return;
-
-                //Если надо выполнить действия после
-                if (promise) promise(msg);
-
-                //Если меню, то не надо удалять
-                if ("page" in options) this.createMenuTable(msg);
-            }).catch((err) => Logger.log("ERROR", `${err}`));
-        };
-
-        /**
-         * @description Создаем меню с объектами
-         * @param msg - Сообщение пользователя
-         * @return void
-         */
-        private createMenuTable = (msg: Client.message) => {
-            let {page, pages, callback} = this.options as messageTypes.menu;
-
-            const collector = msg.createMessageComponentCollector({
-                time: 60e3, componentType: 2,
-                filter: (click) => click.user.id !== msg.client.user.id
-            });
-
-            collector.on("collect", (i) => {
-                //Игнорируем ошибки
-                try {
-                    i.deferReply();
-                    i.deleteReply();
-                } catch {
-                }
-
-                //Если нельзя поменять страницу
-                if (page === pages.length || page < 1) return;
-
-                //Кнопка переключения на предыдущую страницу
-                if (i.customId === "back") page--;
-                //Кнопка переключения на следующую страницу
-                else if (i.customId === "next") page++;
-                //Кнопка отмены и удаления сообщения
-                else if (i.customId === "cancel") {
-                    message.delete = {time: 2e3, message: msg};
-                    return;
-                }
-
-                return callback(msg, pages, page);
-            });
         };
     }
 }

@@ -1,7 +1,8 @@
-import {ApplicationCommandOptionType, Colors, EmbedData} from "discord.js";
+import {MessageBuilder} from "@lib/discord/utils/MessageBuilder";
+import {ApplicationCommandOptionType, Colors} from "discord.js";
+import {SlashBuilder} from "@lib/discord/utils/SlashBuilder";
 import {Constructor, Handler} from "@handler";
 import {db} from "@lib/db";
-import {SlashBuilder} from "@lib/discord/utils/SlashBuilder";
 
 class Group extends Constructor.Assign<Handler.Command> {
     public constructor() {
@@ -121,7 +122,6 @@ class Group extends Constructor.Assign<Handler.Command> {
                             array = queue?.player?.filters;
                         }
 
-                        const embed: EmbedData = { title: "Все фильтры", color: Colors.Yellow, thumbnail: { url: message.client.user.avatarURL() }, timestamp: new Date() };
                         //Преобразуем все фильтры в string
                         const pages = array.ArraySort(5, (filter, index) => {
                             return `┌Номер в списке - [${index + 1}]
@@ -130,20 +130,26 @@ class Group extends Constructor.Assign<Handler.Command> {
                     ├ **Модификатор скорости:** ${filter.speed ? `${filter.speed}` : `Нет`}
                     └ **Описание:** ${filter.description ? `(${filter.description})` : `Нет`}`
                         });
-                        embed.description = pages[0];
-                        embed.footer = { text: `${message.author.username} | Лист 1 из ${pages.length}`, iconURL: message.author.displayAvatarURL() }
 
-                        return {
-                            pages, page: 0, embeds: [embed], time: 60e3,
-                            callback: (msg, pages, page) => {
-                                return msg.edit({
-                                    embeds: [{ ...embed, description: pages[page - 1], footer: { ...embed.footer, text: `${message.author.username} | Лист ${page} из ${pages.length}`} }]
-                                });
+                        return new MessageBuilder().addEmbeds([
+                            {
+                                title: "Все фильтры",
+                                description: pages[0],
+                                color: Colors.Yellow,
+                                thumbnail: { url: message.client.user.avatarURL() },
+                                timestamp: new Date(),
+                                footer: {
+                                    text: `${message.author.username} | Лист 1 из ${pages.length}`, iconURL: message.author.displayAvatarURL()
+                                }
                             }
-                        };
+                        ]).setPages(pages).setTime(60e3).setCallback((msg, pages, page, embed) => {
+                            return msg.edit({
+                                embeds: [{ ...embed[0], description: pages[page - 1], footer: { ...embed[0].footer, text: `${message.author.username} | Лист ${page} из ${pages.length}`} }]
+                            });
+                        })
                     }
                     case "off": {
-                        if (queue?.player.filters.length === 0) return { content: `${author.username}, включенных аудио фильтров нет!`, codeBlock: "css" };
+                        if (queue?.player.filters.length === 0) return { content: `${author.username}, включенных аудио фильтров нет!` };
 
                         queue.player.filters.splice(0, queue.player.filters.length); //Удаляем фильтр
                         queue.player.play(queue.songs.song, seek);
@@ -151,13 +157,13 @@ class Group extends Constructor.Assign<Handler.Command> {
                     }
 
                     case "add": {
-                        if (index !== -1) return { content: `Filter: ${name} уже включен!`, color: "Yellow", codeBlock: "css" };
+                        if (index !== -1) return { content: `Filter: ${name} уже включен!`, color: "Yellow" };
 
                         //Делаем проверку на совместимость
                         for (let i = 0; i < queue.player.filters.length; i++) {
                             const filter = queue.player.filters[i];
 
-                            if (Filter.unsupported.includes(filter.name)) return { content: `${author.username}, найден не совместимый фильтр! ${filter.name} нельзя использовать вместе с ${Filter.name}`, codeBlock: "css" };
+                            if (Filter.unsupported.includes(filter.name)) return { content: `${author.username}, найден не совместимый фильтр! ${filter.name} нельзя использовать вместе с ${Filter.name}` };
                         }
 
                         if (Filter.args) {
@@ -167,7 +173,6 @@ class Group extends Constructor.Assign<Handler.Command> {
                             if (!isOkArgs) return {
                                 content: `Filter: ${name} не изменен из-за несоответствия аргументов!\nMin: ${Filter.args[0]} | Max: ${Filter.args[1]}`,
                                 color: "Yellow",
-                                codeBlock: "css"
                             };
                         }
 
@@ -177,14 +182,14 @@ class Group extends Constructor.Assign<Handler.Command> {
                         queue.player.filters.push(Filter);
                         queue.player.play(queue.songs.song, seek);
 
-                        return {content: `Filter: ${Filter.user_arg ? `${name}:${args}` : name} включен!`, color: "Green", codeBlock: "css", replied: false};
+                        return {content: `**Filter:**\n${Filter.user_arg ? `${name}:${args}` : name} включен!`, color: "Green", replied: false};
                     }
                     case "remove": {
-                        if (index === -1) return { content: `Filter: ${name} не включен!`, color: "Yellow", codeBlock: "css" };
+                        if (index === -1) return { content: `Filter: ${name} не включен!`, color: "Yellow" };
 
                         queue.player.filters.splice(index, 1); //Удаляем фильтр
                         queue.player.play(queue.songs.song, seek);
-                        return {content: `Filter: ${name} отключен!`, color: "Green", codeBlock: "css", replied: false};
+                        return {content: `Filter: ${name} отключен!`, color: "Green", replied: false};
                     }
                 }
             }
