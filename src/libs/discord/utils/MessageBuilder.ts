@@ -38,7 +38,7 @@ export class MessageBuilder {
     };
 
     /**
-     * @description
+     * @description Отправка сообщения
      * @param interaction
      */
     private prepareChannel = (interaction: Client.interact | Client.message) => {
@@ -108,8 +108,8 @@ export class MessageBuilder {
     };
 
     /**
-     * @description Добавляем embeds в базу для дальнейшей отправки
-     * @param time - MessageBuilder["configuration"]["embeds"]
+     * @description Добавляем время удаления сообщения
+     * @param time - Время в миллисекундах
      */
     public setTime = (time: number) => {
       this.time = time;
@@ -117,7 +117,8 @@ export class MessageBuilder {
     };
 
     /**
-     * @description Выполнение функции после отправки сообщения
+     * @description Добавляем сomponents в базу для дальнейшей отправки
+     * @param data - Компоненты под сообщением
      */
     public addComponents = (data: MessageBuilder["components"]) => {
         Object.assign(this.components, data);
@@ -125,7 +126,8 @@ export class MessageBuilder {
     };
 
     /**
-     * @description Выполнение функции после отправки сообщения
+     * @description Добавляем pages в базу для дальнейшей обработки
+     * @param list - Список данных для обновления
      */
     public setPages = (list: string[]) => {
         this.pages = list;
@@ -143,7 +145,8 @@ export class MessageBuilder {
     };
 
     /**
-     * @description Выполнение функции после отправки сообщения
+     * @description Добавляем функцию для управления данными после отправки
+     * @param func - Функция для выполнения после
      */
     public setPromise = (func: MessageBuilder["promise"]) => {
         this.promise = func;
@@ -151,7 +154,8 @@ export class MessageBuilder {
     };
 
     /**
-     * @description Выполнение функции после отправки сообщения
+     * @description Добавляем функцию для управления данными после отправки, для menu
+     * @param func - Функция для выполнения после
      */
     public setCallback = (func: MessageBuilder["callback"]) => {
         this.callback = func;
@@ -159,7 +163,9 @@ export class MessageBuilder {
     };
 
     /**
-     * @description Выполнение функции после отправки сообщения
+     * @description Добавляем функцию для управления данными после отправки, для menu
+     * @param value - Был ли ответ на сообщение
+     * @default false
      */
     public setReplied = (value: boolean) => {
         this.replied = value;
