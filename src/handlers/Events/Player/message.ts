@@ -135,7 +135,7 @@ class onPush extends Constructor.Assign<Handler.Event<"message/push">> {
                                 }
                             ]
                         }
-                    ]).setTime(12e3)
+                    ]).setTime(12e3).setReplied(true)
                         .send = queue.message;
                 }
 
@@ -160,7 +160,7 @@ class onPush extends Constructor.Assign<Handler.Event<"message/push">> {
                                 }
                             ]
                         }
-                    ]).setTime(20e3)
+                    ]).setTime(20e3).setReplied(true)
                         .send = queue;
                 }
             }
@@ -196,7 +196,7 @@ class onSearch extends Constructor.Assign<Handler.Event<"message/search">> {
                                 }
                             }), {label: "Отмена", value: "stop"}
                         )
-                    )])
+                    )]).setReplied(true)
                     .setPromise((msg) => {
                         //Создаем сборщик
                         const collector = msg.createMessageComponentCollector({
