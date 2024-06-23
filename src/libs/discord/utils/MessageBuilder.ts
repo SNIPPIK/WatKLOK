@@ -58,7 +58,7 @@ export class MessageBuilder {
      * @return void
      */
     private createMenuTable = (msg: Client.message) => {
-        const page = this.page, pages = this.pages;
+        const pages = this.pages;
 
         msg.createMessageComponentCollector({
             time: 60e3, componentType: 2,
@@ -69,7 +69,7 @@ export class MessageBuilder {
                 try { i.deferReply(); i.deleteReply(); } catch {}
 
                 //Если нельзя поменять страницу
-                if (page === pages.length || page < 1) return;
+                if (this.page === pages.length || this.page < 1) return;
 
                 //Кнопка переключения на предыдущую страницу
                 if (i.customId === "back") this.page--;
@@ -81,7 +81,7 @@ export class MessageBuilder {
                     return;
                 }
 
-                return this.callback(msg, pages, page, this.embeds);
+                return this.callback(msg, pages, this.page, this.embeds);
             });
     };
 
