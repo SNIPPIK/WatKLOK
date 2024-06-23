@@ -45,6 +45,10 @@ export class SlashBuilder {
         return this;
     };
 
+    /**
+     * @description Устанавливаем перевод имени команды
+     * @param locale - Object, с именами для перевода
+     */
     public setNameLocale(locale: LocalizationMap) {
         this.name_localizations = locale;
         return this;
@@ -59,6 +63,10 @@ export class SlashBuilder {
         return this;
     };
 
+    /**
+     * @description Устанавливаем перевод описания команды
+     * @param locale - Object, с именами для перевода
+     */
     public setDescriptionLocale(locale: LocalizationMap) {
         this.description_localizations = locale;
         return this;
