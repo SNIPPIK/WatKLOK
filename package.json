@@ -12,7 +12,7 @@
   "devDependencies": {
     "@types/node": "^20.14.8",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.4.5"
+    "typescript": "^5.5.2"
   },
   "scripts": {
     "client:dev": "cd node_build && node -r tsconfig-paths/register src/index.js --dbg",
