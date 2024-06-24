@@ -218,7 +218,7 @@ class onSearch extends Constructor.Assign<Handler.Event<"message/search">> {
                             MessageBuilder.delete = {message: msg};
                             collector.stop();
                         });
-                    })
+                    }).send = message;
             }
         });
     };
