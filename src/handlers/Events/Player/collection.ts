@@ -83,10 +83,10 @@ class onError extends Constructor.Assign<Handler.Event<"collection/error">> {
         super({
             name: "collection/error",
             type: "player",
-            execute: (message, error, _ = false,  color = "DarkRed") => {
+            execute: (message, error, replied = false, color = "DarkRed") => {
                 try {
                     new LightMessageBuilder({
-                        content: error,
+                        content: error, replied,
                         color, time: 7e3
                     }).send = message as any;
                 } catch (err) {
