@@ -89,12 +89,9 @@ class Group extends Constructor.Assign<Handler.Command> {
 
                         return {content: `${author}, отключение от голосового канала!`};
                     }
-                    case "stage": {
-                        //Если текстовые каналы совпадают
-                        if (queue.message.channelId === message.channelId) return { content: `${author} | Этот текстовый канал совпадает с тем что в очереди!`, color: "Yellow" }
-
+                    case "stage": {
                         //Если голосовой канал не трибуна
-                        else if (voiceChannel.type === ChannelType["GuildVoice"]) return { content: `${author} | Этот голосовой канал не является трибуной!`, color: "Yellow" }
+                        if (voiceChannel.type === ChannelType["GuildVoice"]) return { content: `${author} | Этот голосовой канал не является трибуной!`, color: "Yellow" }
 
                         return new Promise((resolve) => {
                             (args[0] === "join" ? me.voice.setSuppressed : me.voice.setRequestToSpeak)(true)
