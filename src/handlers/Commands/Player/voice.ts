@@ -93,7 +93,7 @@ class Group extends Constructor.Assign<Handler.Command> {
                         const voiceConnection = Voice.get(guild.id);
 
                         //Если голосовой канал не трибуна
-                        if (VoiceChannel.type === ChannelType["GuildVoice"]) return {
+                        if (voiceChannel.type === ChannelType["GuildVoice"]) return {
                             content: `${author} | Этот голосовой канал не является трибуной!`,
                             color: "Yellow"
                         }
