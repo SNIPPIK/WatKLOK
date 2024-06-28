@@ -17,6 +17,9 @@ class onError extends Constructor.Assign<Handler.Event<"message/error">> {
             name: "message/error",
             type: "player",
             execute: (queue, error) => {
+                //Если больше нет треков в очереди
+                if (queue.songs.size < 1) return;
+                
                 const {color, author, image, title, requester} = queue.songs.last;
 
                 new MessageBuilder().addEmbeds([
@@ -218,7 +221,7 @@ class onSearch extends Constructor.Assign<Handler.Event<"message/search">> {
                             MessageBuilder.delete = {message: msg};
                             collector.stop();
                         });
-                    })
+                    }).send = message;
             }
         });
     };

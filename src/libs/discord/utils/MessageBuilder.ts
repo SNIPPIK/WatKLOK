@@ -200,11 +200,13 @@ export class LightMessageBuilder {
         color?: "DarkRed" | "Blue" | "Green" | "Default" | "Yellow" | "Grey" | "Navy" | "Gold" | "Orange" | "Purple" | number,
         codeBlock?: string,
         content: string,
-        time?: number
+        time?: number,
+        replied?: boolean
     } = {
         color: null,
         codeBlock: null,
-        content: null
+        content: null,
+        replied: null
     };
 
     public constructor(options: LightMessageBuilder["options"]) {
@@ -231,7 +233,7 @@ export class LightMessageBuilder {
                 color: this.parseColor,
                 description: text + (this.options.codeBlock ? `\`\`\`${this.options.codeBlock}\n${this.options.content}\n\`\`\`` : this.options.content)
             }
-        ]).send = interaction;
+        ]).setReplied(this.options.replied).send = interaction;
     };
 
     /**

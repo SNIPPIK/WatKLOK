@@ -45,7 +45,7 @@ class Group extends Constructor.Assign<Handler.Command> {
                         ]
                     }
                 ]).json,
-            execute: ({message, args, sub}) => {
+            execute: async ({message, args, sub}) => {
                 const { author, member, guild } = message;
                 const voiceChannel: VoiceChannel | StageChannel = member.voice.channel;
                 const me = message.guild.members?.me;
@@ -90,23 +90,37 @@ class Group extends Constructor.Assign<Handler.Command> {
                         return {content: `${author}, отключение от голосового канала!`};
                     }
                     case "stage": {
-                        //Если текстовые каналы совпадают
-                        if (queue.message.channelId === message.channelId) return { content: `${author} | Этот текстовый канал совпадает с тем что в очереди!`, color: "Yellow" }
+                        const voiceConnection = Voice.get(guild.id);
 
                         //Если голосовой канал не трибуна
-                        else if (voiceChannel.type === ChannelType["GuildVoice"]) return { content: `${author} | Этот голосовой канал не является трибуной!`, color: "Yellow" }
+                        if (voiceChannel.type === ChannelType["GuildVoice"]) return {
+                            content: `${author} | Этот голосовой канал не является трибуной!`,
+                            color: "Yellow"
+                        }
 
-                        return new Promise((resolve) => {
-                            (args[0] === "join" ? me.voice.setSuppressed : me.voice.setRequestToSpeak)(true)
-                                .then(() => {
-                                    if (args[0] === "join") return resolve({content: `${author} | Подключение к трибуне произведено!`, color: "Green"});
-                                    return resolve({content: `${author} | Запрос на трибуну отправлен!`, color: "Green"});
-                                })
-                                .catch(() => {
-                                    if (args[0] === "join") return resolve({content: `${author} | Не удалось подключиться к трибуне!`, color: "Yellow"});
-                                    return resolve({content: `${author} | Не удалось отправить запрос!`, color: "Yellow"});
-                                });
-                        });
+                        //Если бот не подключен к голосовому каналу
+                        else if (!voiceConnection) {
+                            Voice.join({
+                                channelId: message.channelId,
+                                guildId: message.guildId,
+                                selfDeaf: false,
+                                selfMute: true
+                            }, message.guild.voiceAdapterCreator);
+                        }
+                        try {
+                            if (args[0] === "join") await me.voice.setSuppressed(true);
+                            else await me.voice.setRequestToSpeak(true);
+                        } catch (err) {
+                            return {
+                                content: args[0] === "join" ? `${author} | Не удалось подключиться к трибуне!` :`${author} | Не удалось отправить запрос!`,
+                                color: "Yellow"
+                            }
+                        }
+
+                        return {
+                            content: args[0] === "join" ? `${author} | Подключение к трибуне произведено!` : `${author} | Запрос на трибуну отправлен!`,
+                            color: "Green"
+                        };
                     }
                 }
             }
