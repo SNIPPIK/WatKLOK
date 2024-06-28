@@ -7,7 +7,7 @@ currently being supported with security updates.
 
 | Version         | Supported          |
 |-----------------|--------------------|
-| 0.0.1-5         | :white_check_mark: |
+| 0.0.7           | :white_check_mark: |
 | 1.x - 4.x (old) | :x:                |
 
 ## Reporting a Vulnerability
