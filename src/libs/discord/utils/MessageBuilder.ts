@@ -59,6 +59,7 @@ export class MessageBuilder {
      */
     private createMenuTable = (msg: Client.message) => {
         const pages = this.pages;
+        let page = this.page;
 
         msg.createMessageComponentCollector({
             time: 60e3, componentType: 2,
@@ -68,20 +69,20 @@ export class MessageBuilder {
                 //Игнорируем ошибки
                 try { i.deferReply(); i.deleteReply(); } catch {}
 
-                //Если нельзя поменять страницу
-                if (this.page === pages.length || this.page < 1) return;
-
-                //Кнопка переключения на предыдущую страницу
-                if (i.customId === "back") this.page--;
-                //Кнопка переключения на следующую страницу
-                else if (i.customId === "next") this.page++;
                 //Кнопка отмены и удаления сообщения
-                else if (i.customId === "cancel") {
-                    MessageBuilder.delete = {time: 2e3, message: msg};
+                if (i.customId === "cancel") {
+                    MessageBuilder.delete = {time: 200, message: msg};
                     return;
                 }
+                //Если нельзя поменять страницу
+                else if (page === pages.length || page < 1) return;
 
-                return this.callback(msg, pages, this.page, this.embeds);
+                //Кнопка переключения на предыдущую страницу
+                if (i.customId === "back") page--;
+                //Кнопка переключения на следующую страницу
+                else if (i.customId === "next") page++;
+
+                return this.callback(msg, pages, page, this.embeds);
             });
     };
 
