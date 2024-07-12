@@ -16,7 +16,7 @@
     "skipLibCheck": true,           // Не проверять типы
     "listFiles": false,             // Печатать имена файлов
     "listEmittedFiles": true,       // Печатать список всех выходных файлов
-    "removeComments": true,         // Удалить все комментарии
+    "removeComments": false,        // Удалить все комментарии
 
     "esModuleInterop": true,        // Создать хелперы __importStar и __importDefault
     "importHelpers": false,         // Импортировать хелперы (__extends, __rest и так далее) из "tslib"

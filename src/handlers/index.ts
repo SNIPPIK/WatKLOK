@@ -1,13 +1,15 @@
 import {LightMessageBuilder, MessageBuilder} from "@lib/discord/utils/MessageBuilder";
+import {CollectionAudioEvents} from "@handler/Database/Global/Audio";
+import {IntentsCommand} from "@lib/discord/utils/IntentsCommand";
 import {SlashBuilder} from "@lib/discord/utils/SlashBuilder";
-import {AudioPlayerEvents} from "@lib/player/AudioPlayer";
-import {CollectionAudioEvents, db} from "@lib/db";
-import {Queue} from "@lib/player/queue/Queue";
-import {Song} from "@lib/player/queue/Song";
+import {AudioPlayerEvents} from "@lib/voice/player/AudioPlayer";
+import {Queue} from "@lib/voice/player/queue/Queue";
+import {Song} from "@lib/voice/player/queue/Song";
 import {ClientEvents} from "discord.js";
 import {readdirSync} from "node:fs";
 import {Client} from "@lib/discord";
 import {Logger} from "@env";
+import {db} from "@lib/db";
 
 /**
  * @author SNIPPIK
@@ -128,6 +130,12 @@ export namespace Handler {
      * @interface Command
      */
     export interface Command {
+        /**
+         * @description Данные команды для отправки на сервера discord
+         * @default Необходим ввод данных
+         * @readonly
+         * @public
+         */
         data: SlashBuilder["json"];
 
         /**
@@ -137,6 +145,22 @@ export namespace Handler {
          * @public
          */
         owner?: boolean;
+
+        /**
+         * @description Разрешения для команды
+         * @default null
+         * @readonly
+         * @public
+         */
+        intents?: IntentsCommand[];
+
+        /**
+         * @description Добавлять ли данные после загрузки всех команд
+         * @default false
+         * @readonly
+         * @public
+         */
+        afterLoad?: boolean;
 
         /**
          * @description Выполнение команды
@@ -159,7 +183,7 @@ export namespace Handler {
      */
     export interface Plugin {
         /**
-         * @description Запуск плагина
+         * @description При загрузке плагина будет выполнена это функция
          * @public
          */
         start: (options: {client: Client}) => void;
@@ -394,7 +418,7 @@ export namespace Constructor {
 export namespace API {
     /**
      * @author SNIPPIK
-     * @description Создаем класс для итогового запроса
+     * @description Создаем класс запроса для взаимодействия с APIs
      * @class item
      * @abstract
      */
@@ -517,7 +541,7 @@ export namespace API {
 
     /**
      * @author SNIPPIK
-     * @description Создаем класс для запроса на сервер
+     * @description Создаем класс для итоговой платформы для взаимодействия с APIs
      * @interface request
      * @abstract
      */
@@ -533,13 +557,13 @@ export namespace API {
 
     /**
      * @description Доступные платформы
-     * @type
+     * @type platform
      */
     export type platform = "YOUTUBE" | "SPOTIFY" | "VK" | "DISCORD" | "YANDEX";
 
     /**
      * @description Доступные запросы
-     * @type
+     * @type callbacks
      */
     export type callbacks = "track" | "playlist" | "search" | "album" | "author";
 

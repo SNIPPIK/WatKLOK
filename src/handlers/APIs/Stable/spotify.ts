@@ -1,4 +1,4 @@
-import {Song} from "@lib/player/queue/Song";
+import {Song} from "@lib/voice/player/queue/Song";
 import {API, Constructor} from "@handler";
 import {httpsClient} from "@lib/request";
 import {env} from "@env";
@@ -42,6 +42,7 @@ class cAPI extends Constructor.Assign<API.request> {
             requests: [
                 /**
                  * @description Запрос данных о треке
+                 * @type track
                  */
                 new class extends API.item<"track"> {
                     public constructor() {
@@ -73,6 +74,7 @@ class cAPI extends Constructor.Assign<API.request> {
 
                 /**
                  * @description Запрос данных об альбоме
+                 * @type album
                  */
                 new class extends API.item<"album"> {
                     public constructor() {
@@ -105,6 +107,7 @@ class cAPI extends Constructor.Assign<API.request> {
 
                 /**
                  * @description Запрос данных об плейлисте
+                 * @type playlist
                  */
                 new class extends API.item<"playlist"> {
                     public constructor() {
@@ -138,6 +141,7 @@ class cAPI extends Constructor.Assign<API.request> {
 
                 /**
                  * @description Запрос данных треков артиста
+                 * @type author
                  */
                 new class extends API.item<"author"> {
                     public constructor() {
@@ -168,6 +172,7 @@ class cAPI extends Constructor.Assign<API.request> {
 
                 /**
                  * @description Запрос данных по поиску
+                 * @type search
                  */
                 new class extends API.item<"search"> {
                     public constructor() {
@@ -252,7 +257,7 @@ class cAPI extends Constructor.Assign<API.request> {
             duration: { seconds: (track["duration_ms"] / 1000).toFixed(0) },
             image: track.album.images.sort((item1, item2) => item1.width > item2.width)[0],
         });
-    }
+    };
 }
 
 /**

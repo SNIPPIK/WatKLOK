@@ -1,23 +1,54 @@
-import {
+import type {
     ActionRow,
     ActionRowBuilder,
     Attachment,
     BaseInteraction,
     BaseMessageOptions,
-    Client as DS_Client,
     EmbedData,
     GuildMember,
-    IntentsBitField,
     Message,
+    User,
+    WebhookMessageCreateOptions
+} from "discord.js";
+import {
+    Client as DS_Client,
+    IntentsBitField,
     MessagePayload,
     Partials,
     ShardingManager,
-    User,
-    WebhookClient,
-    WebhookMessageCreateOptions
+    WebhookClient
 } from "discord.js";
+import type {LocalizationMap} from "discord-api-types/v10";
 import {env, Logger} from "@env";
-import process from "node:process";
+
+/**
+ * @author SNIPPIK
+ * @description ShardManager, используется для большего кол-ва серверов, все крупные боты это используют
+ * @class ShardManager
+ * @public
+ */
+export class ShardManager extends ShardingManager {
+    public constructor(path: string) {
+        const mode = env.get("shard.mode")
+        super(path, {
+            token: env.get("token.discord"), mode,
+            totalShards: env.get("shard.total"),
+            execArgv: ["-r", "tsconfig-paths/register"],
+            respawn: true
+        });
+        Logger.log("LOG", `[ShardManager/${mode}] running...`);
+
+        //Слушаем ивент для создания осколка
+        this.on("shardCreate", (shard) => {
+            shard.on("spawn", () => Logger.log("LOG",`[Shard ${shard.id}] added to manager`));
+            shard.on("ready", () => Logger.log("LOG",`[Shard ${shard.id}] is running`));
+            shard.on("death", () => Logger.log("LOG",`[Shard ${shard.id}] is killed`));
+        });
+
+        //Создаем дубликат
+        this.spawn({ amount: "auto", delay: -1 }).catch((err: Error) => Logger.log("ERROR",`[ShardManager]: ${err}`));
+    };
+}
 
 /**
  * @author SNIPPIK
@@ -25,29 +56,8 @@ import process from "node:process";
  * @public
  */
 export class Client extends DS_Client {
-    private readonly webhook = env.get("webhook.id") && env.get("webhook.token") ? new WebhookClient({id: env.get("webhook.id"), token: env.get("webhook.token")}) : null;
-    /**
-     * @description Получаем ID осколка
-     * @return number
-     * @public
-     */
-    public get ID() { return typeof this.shard?.ids[0] === "string" ? 0 : this.shard?.ids[0] ?? 0; };
-
-    /**
-     * @description Отправляем данные через систему Webhook
-     * @param options - Данные для отправки
-     * @public
-     */
-    public set sendWebhook(options: WebhookMessageCreateOptions) {
-        if (this.webhook) this.webhook.send(options).catch(() => {
-            Logger.log("WARN", "Fail to send webhook data for discord channel!");
-        });
-    };
-
-    /**
-     * @description Создаем класс бота и затем запускаем
-     * @public
-     */
+    private readonly webhook = env.get("webhook.id") && env.get("webhook.token") ?
+        new WebhookClient({id: env.get("webhook.id"), token: env.get("webhook.token")}) : null;
     public constructor() {
         super({
             allowedMentions: {
@@ -65,31 +75,23 @@ export class Client extends DS_Client {
             shards: "auto",
         });
     };
-}
 
-/**
- * @author SNIPPIK
- * @description ShardManager, используется для большего кол-ва серверов, все крупные боты это используют
- * @class ShardManager
- * @public
- */
-export class ShardManager extends ShardingManager {
-    public constructor(path: string) {
-        const mode = env.get("shard.mode")
-        super(path, { token: env.get("token.discord"), mode, respawn: true, totalShards: env.get("shard.total"), execArgv: ["-r", "tsconfig-paths/register"] });
+    /**
+     * @description Получаем ID осколка
+     * @return number
+     * @public
+     */
+    public get ID() { return typeof this.shard?.ids[0] === "string" ? 0 : this.shard?.ids[0] ?? 0; };
 
-        process.title = "ShardManager";
-        Logger.log("LOG", `[ShardManager/${mode}] running...`);
-
-        //Слушаем ивент для создания осколка
-        this.on("shardCreate", (shard) => {
-            shard.on("spawn", () => Logger.log("LOG",`[Shard ${shard.id}] added to manager`));
-            shard.on("ready", () => Logger.log("LOG",`[Shard ${shard.id}] is running`));
-            shard.on("death", () => Logger.log("LOG",`[Shard ${shard.id}] is killed`));
+    /**
+     * @description Отправляем данные через систему Webhook
+     * @param options - Данные для отправки
+     * @public
+     */
+    public set sendWebhook(options: WebhookMessageCreateOptions) {
+        if (this.webhook) this.webhook.send(options).catch(() => {
+            Logger.log("WARN", "Fail to send webhook data for discord channel!");
         });
-
-        //Создаем дубликат
-        this.spawn({ amount: "auto", delay: -1 }).catch((err: Error) => Logger.log("ERROR",`[ShardManager]: ${err}`));
     };
 }
 
@@ -101,23 +103,33 @@ export class ShardManager extends ShardingManager {
 export namespace Client {
     /**
      * @author SNIPPIK
+     * @type client_edited
+     * @description Поддержка последних данных для interact и message
+     * @description Поддержка последних данных для interact и message
+     */
+    type client_edited = {
+        client: Client; member: GuildMember; author: User;
+        locale: keyof LocalizationMap;
+
+        reply(options: SendMessageOptions & { fetchReply?: boolean }): Promise<message>;
+    };
+
+    /**
+     * @author SNIPPIK
      * @class interact
      * @description Структура сообщения с тестового канала вызванная через "/"
      */
     // @ts-ignore
-    export interface interact extends BaseInteraction {
-        client: Client;
-        member: GuildMember; customId: string; commandName: string; author: User;
-        deferReply: () => Promise<void>; deleteReply: () => Promise<void>;
+    export interface interact extends client_edited, BaseInteraction {
+        customId: string; commandName: string; deferred: boolean; replied?: boolean;
         options?: {
             _group?: string;
             _subcommand?: string;
             _hoistedOptions: any[];
             getAttachment?: (name: string) => Attachment
         };
-        deferred: boolean
-        reply: message["channel"]["send"];
-        replied?: boolean;
+
+        deferReply: () => Promise<void>; deleteReply: () => Promise<void>;
         followUp: interact["reply"]; editReply: interact["reply"];
     }
 
@@ -127,12 +139,8 @@ export namespace Client {
      * @description Структура сообщения с текстового канала
      */
     // @ts-ignore
-    export interface message extends Message {
-        client: Client;
-        channel: { send(options: SendMessageOptions & { fetchReply?: boolean }): Promise<message> };
-        edit(content: SendMessageOptions): Promise<message>
-        reply(options: SendMessageOptions): Promise<message>
-        user: null;
+    export interface message extends client_edited, Message {
+        channel: { send: message["reply"] }; edit: message["reply"]; user: null;
     }
 
     /**

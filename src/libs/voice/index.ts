@@ -1,6 +1,6 @@
 import type {GatewayVoiceServerUpdateDispatchData, GatewayVoiceStateUpdateDispatchData} from "discord-api-types/v10";
 import {GatewayOpcodes} from "discord-api-types/v10";
-import {VoiceSocket, VoiceSocketState, VoiceSocketStatusCode} from "@lib/voice/Socket";
+import {VoiceSocket, VoiceSocketState, VoiceSocketStatusCode} from "libs/voice/socket";
 import {TypedEmitter} from "tiny-typed-emitter";
 import {Constructor} from "@handler";
 

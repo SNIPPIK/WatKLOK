@@ -1,12 +1,13 @@
-import {Constructor, Handler} from "@handler";
-import {Colors} from "discord.js";
-import {SlashBuilder} from "@lib/discord/utils/SlashBuilder";
 import {MessageBuilder} from "@lib/discord/utils/MessageBuilder";
+import {SlashBuilder} from "@lib/discord/utils/SlashBuilder";
+import {Constructor, Handler} from "@handler";
+import {locale} from "@lib/locale";
+import {Colors} from "discord.js";
 
 /**
  * @class Command_Contact
  * @command contact
- * @description Связь с разработчиком | WARNING - изменение данных в этой команде запрещено лицензией
+ * @description Связь с разработчиком | WARNING - изменение данных в этой команде запрещено лицензией, я имею полное право заблокировать ваше приложение
  * @license https://github.com/SNIPPIK/WatKLOK/blob/nightly/LICENSE.md
  */
 class Command_Contact extends Constructor.Assign<Handler.Command> {
@@ -15,6 +16,9 @@ class Command_Contact extends Constructor.Assign<Handler.Command> {
             data: new SlashBuilder()
                 .setName("contact")
                 .setDescription("Связь с разработчиком!")
+                .setDescriptionLocale({
+                    "en-US": "Communication with the developer!"
+                })
                 .json,
             execute: ({message}) => {
                 const {client} = message;
@@ -25,7 +29,7 @@ class Command_Contact extends Constructor.Assign<Handler.Command> {
                     {
                         timestamp: new Date(), color: Colors.Green,
                         thumbnail: {url: client.user.displayAvatarURL()},
-                        title: "Раздел для связи с разработчиком!",
+                        title: locale._(message.locale,"command.contact.info"),
                         footer: {
                             text: `Latency - ${Latency} | Api - ${WS} | Uptime: ${(client.uptime / 1000).duration()}`,
                             iconURL: client.user.displayAvatarURL()

@@ -1,4 +1,4 @@
-import {Song} from "@lib/player/queue/Song";
+import {Song} from "@lib/voice/player/queue/Song";
 import {API, Constructor} from "@handler";
 import {httpsClient} from "@lib/request";
 import crypto from "node:crypto";
@@ -38,12 +38,13 @@ class cAPI extends Constructor.Assign<API.request> {
             requests: [
                 /**
                  * @description Запрос данных о треке
+                 * @type track
                  */
                 new class extends API.item<"track"> {
                     public constructor() {
                         super({
                             name: "track",
-                            filter: /(album)\/[0-9]+\/(track)\/[0-9]+/gi,
+                            filter: /track\/[0-9]+/gi,
                             callback: (url, {audio}) => {
                                 const ID = /track\/[0-9]+/gi.exec(url)?.pop()?.split("track")?.pop();
 
@@ -78,14 +79,15 @@ class cAPI extends Constructor.Assign<API.request> {
 
                 /**
                  * @description Запрос данных об альбоме
+                 * @type album
                  */
                 new class extends API.item<"album"> {
                     public constructor() {
                         super({
                             name: "album",
-                            filter: /(album)\/[0-9]+/,
+                            filter: /(album)\/[0-9]+/gi,
                             callback: (url, {limit}) => {
-                                const ID = /[0-9]+/.exec(url).pop();
+                                const ID = /[0-9]+/gi.exec(url)?.pop()?.split("album")?.pop();
 
                                 return new Promise<Song.playlist>(async (resolve, reject) => {
                                     //Если ID альбома не удалось извлечь из ссылки
@@ -115,14 +117,15 @@ class cAPI extends Constructor.Assign<API.request> {
 
                 /**
                  * @description Запрос данных об плейлисте
+                 * @type playlist
                  */
                 new class extends API.item<"playlist"> {
                     public constructor() {
                         super({
                             name: "playlist",
-                            filter: /(users\/[a-zA-Z0-9]+).*(playlists\/[0-9]+)/,
+                            filter: /(users\/[a-zA-Z0-9]+).*(playlists\/[0-9]+)/gi,
                             callback: (url, {limit}) => {
-                                const ID = /(users\/[a-zA-Z0-9]+).*(playlists\/[0-9]+)/.exec(url);
+                                const ID = this.filter.exec(url);
 
                                 return new Promise<Song.playlist>(async (resolve, reject) => {
                                     if (!ID[1]) return reject(Error("[APIs]: Не найден ID пользователя!"));
@@ -156,14 +159,15 @@ class cAPI extends Constructor.Assign<API.request> {
 
                 /**
                  * @description Запрос данных треков артиста
+                 * @type author
                  */
                 new class extends API.item<"author"> {
                     public constructor() {
                         super({
                             name: "author",
-                            filter: /(artist)\/[0-9]+/,
+                            filter: /(artist)\/[0-9]+/gi,
                             callback: (url, {limit}) => {
-                                const ID = /[0-9]+/.exec(url);
+                                const ID = this.filter.exec(url)?.pop()?.split("artist")?.pop();
 
                                 return new Promise<Song[]>(async (resolve, reject) => {
                                     //Если ID автора не удалось извлечь из ссылки
@@ -171,7 +175,7 @@ class cAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const api = await cAPI.API(`artists/${ID.pop()}/tracks`);
+                                        const api = await cAPI.API(`artists/${ID}/tracks`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
@@ -187,6 +191,7 @@ class cAPI extends Constructor.Assign<API.request> {
 
                 /**
                  * @description Запрос данных по поиску
+                 * @type search
                  */
                 new class extends API.item<"search"> {
                     public constructor() {

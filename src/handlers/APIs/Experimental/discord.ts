@@ -1,4 +1,4 @@
-import {Song} from "@lib/player/queue/Song";
+import {Song} from "@lib/voice/player/queue/Song";
 import {API, Constructor} from "@handler";
 import {Attachment} from "discord.js";
 
@@ -38,16 +38,16 @@ class cAPI extends Constructor.Assign<API.request> {
                                         title: attachment.name, author: null,
                                         image: {url: attachment.proxyURL},
                                         duration: {
-                                            seconds: ((attachment.size / 1024) / 16.5).toFixed(0)
+                                            seconds: ((attachment.size / 1024) / 39.2).toFixed(0)  //((attachment.size / 1024) / 16.5).toFixed(0)
                                         },
                                         link: attachment.url, url: attachment.url
-                                    })
+                                    });
 
                                     return resolve(track);
                                 });
                             }
                         });
-                    }
+                    };
                 }
             ]
         });

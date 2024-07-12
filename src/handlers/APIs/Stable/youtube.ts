@@ -1,8 +1,8 @@
-import {Song} from "@lib/player/queue/Song";
+import {Song} from "@lib/voice/player/queue/Song";
 import {API, Constructor} from "@handler";
 import {httpsClient} from "@lib/request";
 import querystring from "querystring";
-import { URL } from "node:url";
+import {URL} from "node:url";
 import {Script} from "vm";
 
 /**
@@ -167,14 +167,15 @@ class cAPI extends Constructor.Assign<API.request> {
             requests: [
                 /**
                  * @description Запрос данных о треке
+                 * @type track
                  */
                 new class extends API.item<"track"> {
                     public constructor() {
                         super({
                             name: "track",
-                            filter: /(watch|embed|youtu\.be)/gi,
+                            filter: /(watch|embed|youtu\.be|v\/)?([a-zA-Z0-9-_]{11})/gi,
                             callback: (url: string, {audio}) => {
-                                const ID = /[a-zA-Z0-9-_]{11}/.exec(url).pop();
+                                const ID = this.filter.exec(url).pop();
 
                                 return new Promise<Song>(async (resolve, reject) => {
                                     //Если ID видео не удалось извлечь из ссылки
@@ -204,6 +205,7 @@ class cAPI extends Constructor.Assign<API.request> {
 
                 /**
                  * @description Запрос данных об плейлисте
+                 * @type playlist
                  */
                 new class extends API.item<"playlist"> {
                     public constructor() {
@@ -211,7 +213,7 @@ class cAPI extends Constructor.Assign<API.request> {
                             name: "playlist",
                             filter: /playlist\?list=[a-zA-Z0-9-_]+/gi,
                             callback: (url: string, {limit}) => {
-                                const ID = url.match(this.filter);
+                                const ID = url.match(this.filter).pop();
                                 let author = null;
 
                                 return new Promise<Song.playlist>(async (resolve, reject) => {
@@ -220,7 +222,7 @@ class cAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const details = await cAPI.API(`https://www.youtube.com/${ID.pop()}`);
+                                        const details = await cAPI.API(`https://www.youtube.com/${ID}`);
 
                                         if (details instanceof Error) return reject(details);
 
@@ -249,6 +251,7 @@ class cAPI extends Constructor.Assign<API.request> {
 
                 /**
                  * @description Запрос данных треков артиста
+                 * @type author
                  */
                 new class extends API.item<"author"> {
                     public constructor() {
@@ -293,6 +296,7 @@ class cAPI extends Constructor.Assign<API.request> {
 
                 /**
                  * @description Запрос данных по поиску
+                 * @type search
                  */
                 new class extends API.item<"search"> {
                     public constructor() {

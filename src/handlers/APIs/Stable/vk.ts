@@ -1,4 +1,4 @@
-import {Song} from "@lib/player/queue/Song";
+import {Song} from "@lib/voice/player/queue/Song";
 import {API, Constructor} from "@handler";
 import {httpsClient} from "@lib/request";
 import {env} from "@env";
@@ -36,6 +36,7 @@ class cAPI extends Constructor.Assign<API.request> {
             requests: [
                 /**
                  * @description Запрос данных о треке
+                 * @type track
                  */
                 new class extends API.item<"track"> {
                     public constructor() {
@@ -43,7 +44,7 @@ class cAPI extends Constructor.Assign<API.request> {
                             name: "track",
                             filter: /(audio)([0-9]+_[0-9]+_[a-zA-Z0-9]+|-[0-9]+_[a-zA-Z0-9]+)/i,
                             callback: (url) => {
-                                const ID = /([0-9]+_[0-9]+_[a-zA-Z0-9]+|-[0-9]+_[a-zA-Z0-9]+)/i.exec(url);
+                                const ID = /([0-9]+_[0-9]+_[a-zA-Z0-9]+|-[0-9]+_[a-zA-Z0-9]+)/i.exec(url).pop();
 
                                 return new Promise<Song>(async (resolve, reject) => {
                                     //Если ID трека не удалось извлечь из ссылки
@@ -51,7 +52,7 @@ class cAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const api = await cAPI.API("audio", "getById", `&audios=${ID.pop()}`);
+                                        const api = await cAPI.API("audio", "getById", `&audios=${ID}`);
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
@@ -69,6 +70,7 @@ class cAPI extends Constructor.Assign<API.request> {
 
                 /**
                  * @description Запрос данных по поиску
+                 * @type search
                  */
                 new class extends API.item<"search"> {
                     public constructor() {

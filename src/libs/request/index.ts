@@ -11,7 +11,7 @@ import {Logger} from "@env";
  */
 abstract class Request {
     protected readonly data: {
-        method?: "POST" | "GET" | "HEAD";
+        method?: "POST" | "GET" | "HEAD" | "PATCH";
 
         //Headers запроса
         headers?: RequestOptions["headers"];
@@ -56,7 +56,7 @@ abstract class Request {
             request.once("error", resolve);
             request.once("timeout", () => resolve(Error(`[APIs]: Connection Timeout Exceeded ${this.data?.hostname}:${this.data?.port ?? 443}`)));
             request.once("close", () => {
-                request.removeAllListeners();
+                //request.removeAllListeners();
                 request.destroy();
             });
 
@@ -117,9 +117,9 @@ export class httpsClient extends Request {
                 const encoding = res.headers["content-encoding"];
                 let decoder: BrotliDecompress | Gunzip | Deflate | IncomingMessage = res, data = "";
 
-                if (encoding === "br") decoder = res.pipe(createBrotliDecompress());
-                else if (encoding === "gzip") decoder = res.pipe(createGunzip());
-                else if (encoding === "deflate") decoder = res.pipe(createDeflate());
+                if (encoding === "br") decoder = res.pipe(createBrotliDecompress()  as any);
+                else if (encoding === "gzip") decoder = res.pipe(createGunzip()     as any);
+                else if (encoding === "deflate") decoder = res.pipe(createDeflate() as any);
 
                 decoder.setEncoding("utf-8").on("data", (c) => data += c).once("end", () => {
                     setImmediate(() => { data = null });

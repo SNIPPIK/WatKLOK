@@ -1,9 +1,6 @@
 .git
-.github
 .idea
 node_modules
 node_build
-yarn.lock
 package-lock.json
-LICENSE
-SECURITY.md
+LICENSE.md

@@ -44,7 +44,7 @@ export class MessageBuilder {
     private prepareChannel = (interaction: Client.interact | Client.message) => {
         try {
             if ("replied" in interaction && !(interaction as any).replied && !this.replied) {
-                if (interaction.isRepliable()) return interaction.reply({...this as any, fetchReply: true});
+                if (!interaction.deferred) return interaction.reply({...this as any, fetchReply: true});
                 return interaction.followUp({...this as any, fetchReply: true});
             }
         } catch { /*Значит отправляем другое сообщение*/ }
@@ -59,30 +59,34 @@ export class MessageBuilder {
      */
     private createMenuTable = (msg: Client.message) => {
         const pages = this.pages;
+        let page = this.page;
 
-        msg.createMessageComponentCollector({
+        //Создаем сборщик
+        const collector = msg.createMessageComponentCollector({
             time: 60e3, componentType: 2,
             filter: (click) => click.user.id !== msg.client.user.id
-        })
-            .on("collect", (i) => {
-                //Игнорируем ошибки
-                try { i.deferReply(); i.deleteReply(); } catch {}
+        });
 
-                //Если нельзя поменять страницу
-                if (this.page === pages.length || this.page < 1) return;
+        //Собираем кнопки на которые нажал пользователь
+        collector.on("collect", (i) => {
+            //Игнорируем ошибки
+            try { i.deferReply(); i.deleteReply(); } catch {}
 
-                //Кнопка переключения на предыдущую страницу
-                if (i.customId === "back") this.page--;
-                //Кнопка переключения на следующую страницу
-                else if (i.customId === "next") this.page++;
-                //Кнопка отмены и удаления сообщения
-                else if (i.customId === "cancel") {
-                    MessageBuilder.delete = {time: 2e3, message: msg};
-                    return;
-                }
+            //Если нельзя поменять страницу
+            if (page === pages.length || page < 1) return;
 
-                return this.callback(msg, pages, this.page, this.embeds);
-            });
+            //Кнопка переключения на предыдущую страницу
+            if (i.customId === "back") page--;
+            //Кнопка переключения на следующую страницу
+            else if (i.customId === "next") page++;
+            //Кнопка отмены и удаления сообщения
+            else if (i.customId === "cancel") {
+                MessageBuilder.delete = {time: 2e3, message: msg};
+                return;
+            }
+
+            return this.callback(msg, pages, page, this.embeds);
+        });
     };
 
     /**
@@ -197,14 +201,16 @@ export class MessageBuilder {
  */
 export class LightMessageBuilder {
     private options: {
-        color?: "DarkRed" | "Blue" | "Green" | "Default" | "Yellow" | "Grey" | "Navy" | "Gold" | "Orange" | "Purple" | number,
+        color?: keyof typeof Colors | number,
         codeBlock?: string,
         content: string,
-        time?: number
+        time?: number,
+        replied?: boolean
     } = {
         color: null,
         codeBlock: null,
-        content: null
+        content: null,
+        replied: null
     };
 
     public constructor(options: LightMessageBuilder["options"]) {
@@ -231,7 +237,7 @@ export class LightMessageBuilder {
                 color: this.parseColor,
                 description: text + (this.options.codeBlock ? `\`\`\`${this.options.codeBlock}\n${this.options.content}\n\`\`\`` : this.options.content)
             }
-        ]).send = interaction;
+        ]).setReplied(this.options.replied).send = interaction;
     };
 
     /**

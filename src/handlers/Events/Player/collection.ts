@@ -1,8 +1,9 @@
 import {LightMessageBuilder} from "@lib/discord/utils/MessageBuilder";
 import {API, Constructor, Handler} from "@handler";
-import {Queue} from "@lib/player/queue/Queue";
-import {Song} from "@lib/player/queue/Song";
-import {env, Logger} from "@env";
+import {Queue} from "@lib/voice/player/queue/Queue";
+import {Song} from "@lib/voice/player/queue/Song";
+import {locale} from "@lib/locale";
+import {Logger} from "@env";
 import {db} from "@lib/db";
 
 /**
@@ -19,17 +20,19 @@ class onAPI extends Constructor.Assign<Handler.Event<"collection/api">> {
                 const platform = new API.response(argument[0] as string), name = platform.platform;
                 const event = db.audio.queue.events, collection = db.audio.queue;
 
-                if (platform.block) return void (event.emit("collection/error", message, `**${name}**\n\nРазработчик заблокировал доступ к этой платформе!\nВозможно из-за ошибки или блокировки со стороны сервера!`));
-                else if (platform.auth) return void (event.emit("collection/error", message, `**${name}**\n\nНет данных для авторизации, запрос не может быть выполнен!`));
-                else if (typeof argument[1] === "string" && !argument[1].match(platform.filter) && argument[1].startsWith("http")) return void (event.emit("collection/error", message, `**${name}**\n\nЭтот запрос не относится к этой платформе!`));
+                if (platform.block) return void (event.emit("collection/error", message, locale._(message.locale,"api.blocked", [name])));
+                else if (platform.auth) return void (event.emit("collection/error", message, locale._(message.locale,"api.auth", [name])));
+                else if (typeof argument[1] === "string" && !argument[1].match(platform.filter) && argument[1].startsWith("http"))
+                    return void (event.emit("collection/error", message, locale._(message.locale,"api.type.fail", [name])));
 
                 const api = platform.find(typeof argument[1] !== "string" ? argument[1].url : argument[1]);
 
-                if (!api || !api?.name) return void (event.emit("collection/error", message, `**${name}**\n\nУ меня нет поддержки этого запроса!`));
-                else if (!api) return void (event.emit("collection/error", message, `**${name}.${api.name}**\n\nУ меня нет поддержки для выполнения этого запроса!`));
+                if (!api || !api?.name) return void (event.emit("collection/error", message, locale._(message.locale,"api.type.fail", [name])));
+                else if (!api) return void (event.emit("collection/error", message, locale._(message.locale,"api.callback.null", [name, api.name])));
 
                 //Отправляем сообщение о том что запрос производится
-                event.emit("collection/error", message, `**${name}.${api.name}**\n\n${env.get("loading.emoji")} Ожидание ответа от сервера...\n${platform.audio ? "Эта платформа не может выдать исходный файл музыки! Поиск трека!" : ""}`, false, "Yellow");
+                const audio = platform.audio ? locale._(message.locale,"api.audio.null") : "";
+                event.emit("collection/error", message, locale._(message.locale,"api.wait", [name, api.name, audio]), false, "Yellow");
 
                 api.callback(argument[1] as string, {
                         audio: api.name === "track",
@@ -38,7 +41,7 @@ class onAPI extends Constructor.Assign<Handler.Event<"collection/api">> {
                 ).then((item) => {
                     //Если нет данных или была получена ошибка
                     if (item instanceof Error) {
-                        event.emit("collection/error", message, `**${name}.${api.name}**\n\n**❯** Данные не были получены!`);
+                        event.emit("collection/error", message, locale._(message.locale,"api.fail", [name, api.name]));
                         return;
                     }
 
@@ -48,6 +51,7 @@ class onAPI extends Constructor.Assign<Handler.Event<"collection/api">> {
                         return;
                     }
 
+                    //Запускаем проигрывание треков
                     let queue = collection.get(message.guild.id);
                     if (!queue) {
                         const item = new Queue.Music({message, voice});
@@ -57,6 +61,7 @@ class onAPI extends Constructor.Assign<Handler.Event<"collection/api">> {
                         setImmediate(() => queue.player.play(queue.songs.song));
                     }
 
+                    //Отправляем сообщение о том что было добавлено
                     if (item instanceof Song && queue.songs.size >= 1) event.emit("message/push", queue, item);
                     else if ("items" in item) event.emit("message/push", message, item);
 
@@ -83,10 +88,10 @@ class onError extends Constructor.Assign<Handler.Event<"collection/error">> {
         super({
             name: "collection/error",
             type: "player",
-            execute: (message, error, _ = false,  color = "DarkRed") => {
+            execute: (message, error, replied = false, color = "DarkRed") => {
                 try {
                     new LightMessageBuilder({
-                        content: error,
+                        content: error, replied,
                         color, time: 7e3
                     }).send = message as any;
                 } catch (err) {

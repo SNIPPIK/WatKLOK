@@ -1,4 +1,4 @@
-import {History} from "@lib/player/utils/History";
+import {History} from "@lib/voice/player/utils/History";
 import {Constructor, Handler} from "@handler";
 import {db} from "@lib/db";
 import {env} from "@env";
@@ -85,7 +85,9 @@ class onError extends Constructor.Assign<Handler.Event<"player/error">> {
                     case "skip": {
                         //Если трек не играет, то пропускаем его
                         if (!queue.player.playing) {
-                            queue.songs.shift();
+                            if (queue.songs.size > 1) queue.songs.splice(0, 1);
+                            else queue.songs.shift();
+
                             //Включаем трек через время
                             setTimeout(() => queue.player.play(queue.songs.song), 5e3);
                         }

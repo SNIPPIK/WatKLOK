@@ -9,18 +9,19 @@ class StatusPlugin extends Constructor.Assign<Handler.Plugin> {
     public constructor() {
         super({
             start: (options) => {
-                //Создаем интервал в 5 мин для смены статуса бота
+                if (options.client.ID > 0) return;
+
                 setInterval(() => {
                     options.client.user.setPresence({
                         activities: [
                             {
-                                name: "музыку",
-                                type: ActivityType.Listening //Слушает <name>
+                                name: `${options.client.guilds.cache.size} servers`,
+                                type: ActivityType.Watching
                             }
                         ],
-                        status: "online" //Статус бота
-                    })
-                }, 15e3);
+                        status: "online"
+                    });
+                }, 20e3);
             }
         });
     }

@@ -1,8 +1,8 @@
 {
   "name": "watklok",
-  "version": "0.0.7",
+  "version": "0.1.0",
   "description": "Постоянно развивающийся музыкальный бот!",
-  "license": "MIT",
+  "license": "BSD-3-Clause",
   "dependencies": {
     "discord.js": "^14.15.3",
     "dotenv": "^16.4.5",
@@ -10,16 +10,16 @@
     "tiny-typed-emitter": "^2.1.0"
   },
   "devDependencies": {
-    "@types/node": "^20.14.2",
+    "@types/node": "^20.14.10",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.4.5"
+    "typescript": "^5.5.3"
   },
   "scripts": {
-    "client:dev": "cd node_build && node -r tsconfig-paths/register src/index.js --dbg",
-    "destroy": "cd node_build && node -r tsconfig-paths/register src/index.js --RemoveAllCommands --dbg",
+    "client:dev": "cd node_build && node -r tsconfig-paths/register src --dbg",
+    "destroy": "cd node_build && node -r tsconfig-paths/register src --RemoveAllCommands --dbg",
 
-    "client": "cd node_build && node -r tsconfig-paths/register src/index.js",
-    "shard": "cd node_build && node -r tsconfig-paths/register src/index.js --ShardManager",
+    "client": "cd node_build && node -r tsconfig-paths/register src",
+    "shard": "cd node_build && node -r tsconfig-paths/register src --ShardManager",
     "build": "tsc -p tsconfig.json"
   },
   "engines": {
