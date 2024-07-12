@@ -16,6 +16,8 @@
 - Поддерживает плагины, [`готовые плагины`](.github/Plugins)
 
 ## Настройки [`токена`](https://discord.com/developers/applications)
+> [!TIP]
+> Для нормально работы необходимо!\
 
 <img align="center" alt="PGI Settings" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/nightly/.github/resource/PGI.png?raw=true" />
 <img align="center" alt="Bot Permissions" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/nightly/.github/resource/Bot Permissions.png?raw=true" />
@@ -50,8 +52,16 @@
 - Для удаления slash command
     - Запустить -> `npm run destroy`
 
+> [!IMPORTANT]
+> Если обнаружили ошибку или проект у вас не запускается вам [`сюда`](https://github.com/SNIPPIK/WatKLOK/issues)\
+> Напоминаю что автор не несет никакой ответственности за та что вы будете делать с кодом
+
     
 # <img alt="Avatar" width="20px" src="https://raw.githubusercontent.com/SNIPPIK/WatKLOK/nightly/.github/resource/Icons/Disk.gif" /> Библиотеки для конвертации аудио
+> [!CAUTION]
+> Хоть и данному проекту не требуется opus, он все-же опционален!\
+> Обязательно требуется sodium!
+
 - [`Opus Library`](src/libs/voice/audio/utils/Opus.ts) | Поддерживаемые библиотеки, опциональна!
     - [`opusscript`](https://www.npmjs.com/package/opusscript)
     - [`@discordjs/opus`](https://www.npmjs.com/package/@discordjs/opus)
