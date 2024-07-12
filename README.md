@@ -17,14 +17,19 @@
 
 ## Настройки [`токена`](https://discord.com/developers/applications)
 > [!TIP]
-> Для нормально работы необходимо!\
+> Для нормально работы необходимо!
 
 <img align="center" alt="PGI Settings" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/nightly/.github/resource/PGI.png?raw=true" />
 <img align="center" alt="Bot Permissions" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/nightly/.github/resource/Bot Permissions.png?raw=true" />
 
 
 ## <img alt="Avatar" width="20px" src="https://raw.githubusercontent.com/SNIPPIK/WatKLOK/nightly/.github/resource/Icons/Note.png" /> Гайд по запуску и настройке
-Перед начало убедись что у вас установлена [`Node.js`](https://nodejs.org/ru/), [`FFmpeg`](https://ffmpeg.org)
+> [!IMPORTANT]
+> Если обнаружили ошибку или проект у вас не запускается вам [`сюда`](https://github.com/SNIPPIK/WatKLOK/issues)\
+> Напоминаю что автор не несет никакой ответственности за та что вы будете делать с кодом
+
+> [!TIP]
+> Перед начало убедись что у вас установлена [`Node.js`](https://nodejs.org/ru/), [`FFmpeg`](https://ffmpeg.org)
 
 #### 1. Если не установлен [`FFmpeg`](https://github.com/BtbN/FFmpeg-Builds/releases)
    - `Windows` | Скачать [`FFmpeg`](https://github.com/BtbN/FFmpeg-Builds/releases)
@@ -51,11 +56,6 @@
     - Без менеджера -> `npm run client`
 - Для удаления slash command
     - Запустить -> `npm run destroy`
-
-> [!IMPORTANT]
-> Если обнаружили ошибку или проект у вас не запускается вам [`сюда`](https://github.com/SNIPPIK/WatKLOK/issues)\
-> Напоминаю что автор не несет никакой ответственности за та что вы будете делать с кодом
-
     
 # <img alt="Avatar" width="20px" src="https://raw.githubusercontent.com/SNIPPIK/WatKLOK/nightly/.github/resource/Icons/Disk.gif" /> Библиотеки для конвертации аудио
 > [!CAUTION]
