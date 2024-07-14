@@ -1,9 +1,8 @@
+import {Youtube_decoder} from "@lib/voice/player/decoder/youtube";
 import {Song} from "@lib/voice/player/queue/Song";
 import {API, Constructor} from "@handler";
 import {httpsClient} from "@lib/request";
-import querystring from "querystring";
-import {URL} from "node:url";
-import {Script} from "vm";
+
 
 /**
  * @author SNIPPIK
@@ -11,144 +10,6 @@ import {Script} from "vm";
  * @class cAPI
  */
 class cAPI extends Constructor.Assign<API.request> {
-    protected static decode = new class {
-        /**
-         * @description Применяет преобразование параметра расшифровки и n ко всем URL-адресам формата.
-         * @param format - Аудио или видео формат на youtube
-         * @param html5player - Ссылка на плеер
-         */
-        public extractSignature = (format: YouTubeFormat, html5player: string): Promise<YouTubeFormat | Error> => {
-            return new Promise(async (resolve) => {
-                const body = await new httpsClient(html5player).toString;
-
-                if (!body || body instanceof Error) return resolve(Error(`TypeError: has not found body!`));
-
-                try {
-                    const functions = this.extractFunctions(body);
-                    const url = this.setDownloadURL(format, {
-                        decipher: functions.length ? new Script(functions[0]) : null,
-                        nTransform: functions.length > 1 ? new Script(functions[1]) : null
-                    });
-
-                    if (url) format.url = url;
-
-                    return resolve(format);
-                } catch {
-                    return resolve(format);
-                }
-            });
-        };
-
-        /**
-         * @description Сопоставление начальной и конечной фигурной скобки входного JS
-         * @param mixedJson
-         */
-        private cutAfterJS = (mixedJson: string): string => {
-            const open = mixedJson[0] === '[' ? '[' : '{', close = mixedJson[0] === '[' ? '[' : '}';
-            let counter = 0, isEscaped = false, isEscapedObject = null;
-
-            for (let i = 0; i < mixedJson.length; i++) {
-                if (!isEscaped && isEscapedObject !== null && mixedJson[i] === isEscapedObject.e) { isEscapedObject = null; continue; }
-                else if (!isEscaped && isEscapedObject === null) {
-                    for (const escaped of [ { s: '"', e: '"' }, { s: "'", e: "'" }, { s: '`', e: '`' }, { s: '/', e: '/', prf: /(^|[[{:;,/])\s?$/ || /(^|[[{:;,])\s?$/ }]) {
-                        if (mixedJson[i] !== escaped.s) continue;
-                        else if (!escaped.prf || mixedJson.substring(i - 10, i).match(escaped.prf)) { isEscapedObject = escaped; break; }
-                    }
-
-                    if (isEscapedObject !== null) continue;
-                }
-
-                isEscaped = mixedJson[i] === '\\' && !isEscaped;
-
-                if (isEscapedObject !== null) continue;
-                else if (mixedJson[i] === open) counter++;
-                else if (mixedJson[i] === close) counter--;
-                else if (counter === 0) return mixedJson.substring(0, i + 1);
-            }
-
-            throw Error("Can't cut unsupported JSON (no matching closing bracket found)");
-        };
-
-        /**
-         * @description Применить расшифровку и n-преобразование к индивидуальному формату
-         * @param format - Аудио или видео формат на youtube
-         * @param script - Скрипт для выполнения на виртуальной машине
-         */
-        private setDownloadURL = (format: YouTubeFormat, script: {decipher?: Script, nTransform?: Script}): string | void => {
-            const url = format.url || format.signatureCipher || format.cipher, {decipher, nTransform} = script;
-            const extractDecipher = (url: string): string => {
-                const args = querystring.parse(url);
-                if (!args.s || !decipher) return args.url as string;
-
-                const components = new URL(decodeURIComponent(args.url as string));
-                components.searchParams.set(args.sp as string ? args.sp as string : 'signature', decipher.runInNewContext({sig: decodeURIComponent(args.s as string)}));
-                return components.toString();
-            }
-            const extractN = (url: string): string => {
-                const components = new URL(decodeURIComponent(url));
-                const n = components.searchParams.get('n');
-                if (!n || !nTransform) return url;
-                components.searchParams.set('n', nTransform.runInNewContext({ncode: n}));
-                return components.toString();
-            }
-
-            //Удаляем не нужные данные
-            delete format.signatureCipher;
-            delete format.cipher;
-
-            return !format.url ? extractN(extractDecipher(url)) : extractN(url);
-        };
-
-        /**
-         * @description Извлечь функции расшифровки подписи и преобразования n параметров из файла html5player
-         * @param body - Страница плеера
-         */
-        private extractFunctions = (body: string): string[] => {
-            const functions: string[] = [];
-
-            const decipherName = body.split(`a.set("alr","yes");c&&(c=`)[1].split(`(decodeURIC`)[0];
-            let ncodeName = body.split(`&&(b=a.get("n"))&&(b=`)[1].split(`(b)`)[0];
-
-            //extract Decipher
-            if (decipherName && decipherName.length) {
-                const functionStart = `${decipherName}=function(a)`;
-                const ndx = body.indexOf(functionStart);
-
-                if (ndx >= 0) {
-                    let functionBody = `var ${functionStart}${this.cutAfterJS(body.slice(ndx + functionStart.length))}`;
-                    functions.push(`${this.extractManipulations(functionBody, body)};${functionBody};${decipherName}(sig);`);
-                }
-            }
-
-            //extract ncode
-            if (ncodeName.includes('[')) ncodeName = body.split(`${ncodeName.split('[')[0]}=[`)[1].split(`]`)[0];
-            if (ncodeName && ncodeName.length) {
-                const functionStart = `${ncodeName}=function(a)`;
-                const ndx = body.indexOf(functionStart);
-
-                if (ndx >= 0) functions.push(`var ${functionStart}${this.cutAfterJS(body.slice(ndx + functionStart.length))};${ncodeName}(ncode);`);
-            }
-
-            //Проверяем если ли functions
-            if (!functions || !functions.length) return;
-            return functions;
-        };
-
-        /**
-         * @description Пытаемся вытащить фрагмент для дальнейшей манипуляции
-         * @param caller {string}
-         * @param body {string}
-         */
-        private extractManipulations = (caller: string, body: string): string => {
-            const name = caller.split(`a=a.split("");`)[1].split(".")[0];
-            const start = `var ${name}={`;
-            const index = body.indexOf(start);
-
-            if (!name || index < 0) return '';
-            return `var ${name}=${this.cutAfterJS(body.slice(index + start.length - 1))}`;
-        };
-    };
-
     /**
      * @description Создаем экземпляр запросов
      * @constructor cAPI
@@ -175,7 +36,7 @@ class cAPI extends Constructor.Assign<API.request> {
                             name: "track",
                             filter: /(watch|embed|youtu\.be|v\/)?([a-zA-Z0-9-_]{11})/gi,
                             callback: (url: string, {audio}) => {
-                                const ID = this.filter.exec(url).pop();
+                                const ID = this.filter.exec(url).at(0);
 
                                 return new Promise<Song>(async (resolve, reject) => {
                                     //Если ID видео не удалось извлечь из ссылки
@@ -191,7 +52,7 @@ class cAPI extends Constructor.Assign<API.request> {
                                         //Если надо получить аудио
                                         if (audio) {
                                             const format = await cAPI.extractStreamingData(result["streamingData"], result["html5"]);
-                                            result["videoDetails"]["format"] = {url: format.url};
+                                            result["videoDetails"]["format"] = {url: format["url"]};
                                         }
 
                                         const track = cAPI.track(result["videoDetails"]);
@@ -386,13 +247,13 @@ class cAPI extends Constructor.Assign<API.request> {
      * @param data {any} <videoData>.streamingData
      * @param html5player {string} Ссылка на плеер дешифровки
      */
-    protected static extractStreamingData = (data: any, html5player: string): Promise<YouTubeFormat> => {
+    protected static extractStreamingData = (data: any, html5player: string) => {
         return new Promise(async (resolve) => {
-            const format = (data["adaptiveFormats"] as YouTubeFormat[]).find((item) => item.mimeType.match(/opus|audio/) && !item.mimeType.match(/ec-3/));
-            const decoded = await this.decode.extractSignature(format, html5player);
+            const format = (data["adaptiveFormats"]).filter((item: any) => item.mimeType.match(/opus|audio/) && !item.mimeType.match(/ec-3/));
+            const decoded = await Youtube_decoder.decipherFormats(format, html5player);
 
             if (decoded instanceof Error) return resolve(null);
-            return resolve(decoded);
+            return resolve(decoded[0]);
         });
     };
 
@@ -461,17 +322,3 @@ class cAPI extends Constructor.Assign<API.request> {
  * @description Делаем классы глобальными
  */
 export default Object.values({cAPI});
-
-
-/**
- * @description Так выглядит youtube video or audio format
- */
-interface YouTubeFormat {
-    url: string;
-    signatureCipher?: string;
-    cipher?: string
-    sp?: string;
-    s?: string;
-    mimeType?: string;
-    bitrate?: number;
-}

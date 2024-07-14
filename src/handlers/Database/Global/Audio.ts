@@ -1,18 +1,16 @@
-import {AudioPlayer, AudioPlayerEvents, Filter} from "@lib/voice/player/AudioPlayer";
+import {AudioPlayer, AudioPlayerEvents} from "@lib/voice/player/AudioPlayer";
 import {Attachment, EmbedData, StageChannel, VoiceChannel} from "discord.js";
 import {MessageBuilder} from "@lib/discord/utils/MessageBuilder";
 import onPlaying from "@handler/Events/Player/message";
-import {TypedEmitter} from "tiny-typed-emitter";
-import {Constructor, Handler} from "@handler";
+import {Filters} from "@lib/voice/audio/utils/Filters";
 import {Queue} from "@lib/voice/player/queue/Queue";
 import {Cache} from "@lib/voice/player/utils/Cache";
 import {Song} from "@lib/voice/player/queue/Song";
-import {httpsClient} from "@lib/request";
+import {TypedEmitter} from "tiny-typed-emitter";
+import {Constructor, Handler} from "@handler";
 import {Client} from "@lib/discord";
 import {env, Logger} from "@env";
 import {db} from "@lib/db";
-
-const git = `${env.get("git")}/${env.get("branch")}/`;
 
 /**
  * @author SNIPPIK
@@ -22,7 +20,7 @@ const git = `${env.get("git")}/${env.get("branch")}/`;
 export class Database_Audio {
     private readonly data = {
         options: {volume: parseInt(env.get("audio.volume")), fade: parseInt(env.get("audio.fade"))},
-        filters: [] as Filter[],
+        filters: Filters,
         queue: new class extends Constructor.Collection<Queue.Music> {
             private readonly _local = {
                 emitter: new class extends TypedEmitter<CollectionAudioEvents & AudioPlayerEvents> {
@@ -175,22 +173,6 @@ export class Database_Audio {
      * @public
      */
     public get filters() { return this.data.filters; };
-
-    /**
-     * @description Получаем фильтры из базы данных WatKLOK
-     * @return Promise<Error | true>
-     * @public
-     */
-    public get loadFilters(): Promise<Error | true> {
-        return new Promise<Error | true>(async (resolve, reject) => {
-            const raw = await new httpsClient(git + env.get("filters.url"), {useragent: true}).toJson;
-
-            if (raw instanceof Error) return reject(Error("[Git]: Fail to getting data a github from filters.json"));
-            this.filters.push(...raw as any[]);
-
-            return resolve(true);
-        });
-    };
 }
 
 /**
