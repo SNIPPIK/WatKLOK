@@ -13,10 +13,9 @@ const loaders: {name: string, callback: (client: Client, item: any) => void}[] =
     {
         name: "handlers/APIs",
         callback: (_, item: API.request) => {
-            if (!item.auth)
-                db.api.platforms.authorization.push(item.name);
-            if (!item.audio)
-                db.api.platforms.audio.push(item.name);
+            if (!item.auth) db.api.platforms.authorization.push(item.name);
+            if (!item.audio) db.api.platforms.audio.push(item.name);
+
             db.api.platforms.supported.push(item);
         }
     },
@@ -45,8 +44,7 @@ const loaders: {name: string, callback: (client: Client, item: any) => void}[] =
         callback: (client, item: Handler.Plugin) => {
             try {
                 item.start({ client });
-            }
-            catch (err) {
+            } catch (err) {
                 throw new Error(`[Plugin]: ${err}`);
             }
         }

@@ -258,7 +258,86 @@ class Command_Filter extends Constructor.Assign<Handler.Command> {
 }
 
 /**
+ * @class Command_Seek
+ * @command seek
+ * @description Пропуск времени в текущем треке
+ *
+ * @param value - Время для пропуска времени
+ */
+class Command_Seek extends Constructor.Assign<Handler.Command> {
+    public constructor() {
+        super({
+            data: new SlashBuilder()
+                .setName("seek")
+                .setDescription("Пропуск времени в текущем треке!")
+                .setDescriptionLocale({
+                    "en-US": "Skipping the time in the current track!"
+                })
+                .addSubCommands([
+                    {
+                        name: "value",
+                        description: "Пример - 00:00",
+                        descriptionLocalizations: {
+                            "en-US": "Example - 00:00"
+                        },
+                        required: true,
+                        type: ApplicationCommandOptionType["String"]
+                    }
+                ])
+                .json,
+            intents: ["queue", "voice", "anotherVoice"],
+            execute: ({message, args}) => {
+                const {author, member, guild} = message;
+                const queue = db.audio.queue.get(guild.id);
+
+                //Если текущий трек является потоковым
+                if (queue.songs.song.duration.seconds === 0) return {
+                    content: locale._(message.locale, "player.audio.live", [author]),
+                    color: "Yellow"
+                };
+
+                //Если пользователь не указал время
+                else if (!args[0]) return {
+                    content: locale._(message.locale, "command.ffmpeg.seek.args.null", [author]),
+                    color: "Yellow"
+                };
+
+                const duration = args[0].duration();
+
+                //Если пользователь написал что-то не так
+                if (isNaN(duration)) return {
+                    content: locale._(message.locale, "global.arg.NaN", [author]),
+                    color: "Yellow"
+                };
+
+                //Если пользователь указал времени больше чем в треке
+                else if (duration > queue.songs.song.duration.seconds) return {
+                    content: locale._(message.locale, "command.ffmpeg.seek.args.big", [author]),
+                    color: "Yellow"
+                };
+
+                //Если музыку нельзя пропустить из-за плеера
+                else if (!queue.player.playing) return {
+                    content: locale._(message.locale, "player.played.not", [author]),
+                    color: "Yellow"
+                };
+
+                //Начинаем проигрывание трека с <пользователем указанного тайм кода>
+                queue.player.play(queue.songs.song, duration);
+
+                //Отправляем сообщение о пропуске времени
+                return {
+                    content: locale._(message.locale,"command.ffmpeg.seek.end", [args[0], queue.songs.song.title]),
+                    codeBlock: "css",
+                    color: "Green"
+                };
+            }
+        });
+    };
+}
+
+/**
  * @export default
  * @description Делаем классы глобальными
  */
-export default Object.values({Command_Filter});
+export default Object.values({Command_Filter, Command_Seek});

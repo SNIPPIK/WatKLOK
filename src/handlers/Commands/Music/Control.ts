@@ -22,8 +22,7 @@ class Command_Pause extends Constructor.Assign<Handler.Command> {
                 .json,
             intents: ["voice", "queue", "anotherVoice"],
             execute: ({message}) => {
-                const { author, member, guild } = message;
-                const VoiceChannel = member?.voice?.channel;
+                const { author, guild } = message;
                 const queue = db.audio.queue.get(guild.id);
 
                 //Если музыка уже приостановлена
@@ -502,8 +501,6 @@ class Command_Replay extends Constructor.Assign<Handler.Command> {
         });
     };
 }
-
-
 
 /**
  * @export default

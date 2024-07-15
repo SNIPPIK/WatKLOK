@@ -333,15 +333,15 @@ const locales = {
         ru: "{ARGUMENT} | Не удалось подключиться к трибуне!",
         "en-US": "{ARGUMENT} | Couldn't connect to the podium!"
     },
-    "command.control.seek.args.null": {
+    "command.ffmpeg.seek.args.null": {
         ru: "{ARGUMENT} | Укажи время, пример 00:00:00!",
         "en-US": "{ARGUMENT} | Specify the time, for example 00:00:00!"
     },
-    "command.control.seek.args.big": {
+    "command.ffmpeg.seek.args.big": {
         ru: "{ARGUMENT} | Ты указал слишком много времени!",
         "en-US": "{ARGUMENT} | You've given too much time!"
     },
-    "command.control.seek.end": {
+    "command.ffmpeg.seek.end": {
         ru: "⏭️ | Seeking to [{ARGUMENT}] song\n> {ARGUMENT}",
         "en-US": "⏭️ | Seeking to [{ARGUMENT}] song\n> {ARGUMENT}"
     },

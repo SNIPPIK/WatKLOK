@@ -5,6 +5,7 @@ import {Client} from "@lib/discord";
 import {locale} from "@lib/locale";
 import {Logger} from "@env";
 import {db} from "@lib/db";
+import {IntentCommand} from "@lib/discord/utils/IntentsCommand";
 
 /**
  * @author SNIPPIK
@@ -55,6 +56,9 @@ class Interaction extends Constructor.Assign<Handler.Event<Events.InteractionCre
             color: "DarkRed",
             codeBlock: "css"
         };
+
+        const check = IntentCommand.check(group.intents, message);
+        if (check) return check;
 
         const options = message.options;
         return group.execute({

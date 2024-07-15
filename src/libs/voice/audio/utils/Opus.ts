@@ -197,17 +197,17 @@ export class OpusEncoder extends Transform {
     _transform = async (chunk: Buffer, _: any, done: () => any) => {
         let index = this._temp.index, packet = () => chunk;
 
-        // Если есть прошлый фрагмент расшифровки
-        if (this._temp.remaining) {
-            chunk = Buffer.concat([this._temp.remaining, chunk]);
-            this._temp.remaining = null;
-        }
-
         // Если есть подключенная библиотека расшифровки opus, то используем ее
         if (this.encoder) {
             this._temp.buffer = Buffer.concat([this._temp.buffer, chunk]);
             packet = () => this._temp.buffer.subarray(index * bit, (index + 1) * bit);
         } else setImmediate(() => this._temp.remaining = chunk);
+
+        // Если есть прошлый фрагмент расшифровки
+        if (this._temp.remaining) {
+            chunk = Buffer.concat([this._temp.remaining, chunk]);
+            this._temp.remaining = null;
+        }
 
         // Начинаем чтение пакетов
         while (this.argument) {
