@@ -1,7 +1,7 @@
-<center><img src="https://raw.githubusercontent.com/SNIPPIK/WatKLOK/nightly/.github/resource/Icons/BG.png" alt="centered image" height="50"></center>
+<center><img src=".github/resource/Icons/BG.png" alt="centered image" height="50"></center>
 
 
-[<img align="right" alt="Avatar" width="350px" src="https://raw.githubusercontent.com/SNIPPIK/WatKLOK/nightly/.github/resource/Icons/Bot.png" />]()
+[<img align="right" alt="Avatar" width="350px" src=".github/resource/Icons/Bot.png" />]()
 
 # [`WatKLOK`](https://github.com/SNIPPIK/WatKLOK) 
 - Автор: [`SNIPPIK`](https://github.com/SNIPPIK)
@@ -19,11 +19,11 @@
 > [!TIP]
 > Для нормально работы необходимо!
 
-<img align="center" alt="PGI Settings" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/nightly/.github/resource/PGI.png?raw=true" />
-<img align="center" alt="Bot Permissions" width="1000px" src="https://github.com/SNIPPIK/WatKLOK/blob/nightly/.github/resource/Bot Permissions.png?raw=true" />
+<img align="center" alt="PGI Settings" width="1516" src=".github/resource/PGI.png" />
+<img align="center" alt="Bot Permissions" width="1390" src=".github/resource/Bot Permissions.png" />
 
 
-## <img alt="Avatar" width="20px" src="https://raw.githubusercontent.com/SNIPPIK/WatKLOK/nightly/.github/resource/Icons/Note.png" /> Гайд по запуску и настройке
+## <img alt="Avatar" width="20px" src=".github/resource/Icons/Note.png" /> Гайд по запуску и настройке
 > [!IMPORTANT]
 > Если обнаружили ошибку или проект у вас не запускается вам [`сюда`](https://github.com/SNIPPIK/WatKLOK/issues)\
 > Напоминаю что автор не несет никакой ответственности за та что вы будете делать с кодом
@@ -57,7 +57,7 @@
 - Для удаления slash command
     - Запустить -> `npm run destroy`
     
-# <img alt="Avatar" width="20px" src="https://raw.githubusercontent.com/SNIPPIK/WatKLOK/nightly/.github/resource/Icons/Disk.gif" /> Библиотеки для конвертации аудио
+# <img alt="Avatar" width="20px" src=".github/resource/Icons/Disk.gif" /> Библиотеки для конвертации аудио
 > [!CAUTION]
 > Хоть и данному проекту не требуется opus, он все-же опционален!\
 > Обязательно требуется sodium!
