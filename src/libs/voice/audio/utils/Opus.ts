@@ -1,4 +1,5 @@
 import {Transform, TransformOptions} from "node:stream";
+import {Buffer} from "node:buffer";
 
 /**
  * @author SNIPPIK
@@ -17,7 +18,16 @@ const OpusLibs = {
     "@discordjs/opus": (lib: any): Methods => {
         return { args: [48000, 2], encoder: lib.OpusEncoder }
     },
-}, Opus: Methods = {}, charCode = (x: string) => x.charCodeAt(0);
+}, Opus: Methods = {};
+
+/**
+ * @author SNIPPIK
+ * @description Превращаем имя переменной в буфер
+ * @param name - Имя переменной
+ */
+const bufferCode = (name: string) => {
+    return Buffer.from([...`${name}`].map((x: string) => x.charCodeAt(0)))
+};
 
 /**
  * @author SNIPPIK
@@ -30,9 +40,9 @@ const bit = 960 * 2 * 2;
  * @description Заголовки для поиска в chuck
  */
 const OGG = {
-    "OGGs_HEAD": Buffer.from([..."OggS"].map(charCode)),
-    "OPUS_HEAD": Buffer.from([..."OpusHead"].map(charCode)),
-    "OPUS_TAGS": Buffer.from([..."OpusTags"].map(charCode))
+    "OGGs_HEAD": bufferCode("OggS"),
+    "OPUS_HEAD": bufferCode("OpusHead"),
+    "OPUS_TAGS": bufferCode("OpusTags")
 };
 
 /**
@@ -63,7 +73,10 @@ export class OpusEncoder extends Transform {
     private readonly _temp = {
         remaining: null as Buffer,
         buffer: null    as Buffer,
-        bitstream: null as number
+        bitstream: null as number,
+
+        argument: true  as boolean,
+        index: 0
     };
     /**
      * @description Название библиотеки и тип аудио для ffmpeg
@@ -73,6 +86,15 @@ export class OpusEncoder extends Transform {
     public static get lib(): {name: string, ffmpeg: string} {
         if (Opus?.name) return { name: Opus.name, ffmpeg: "s16le" };
         return { name: "Native/Opus", ffmpeg: "opus" };
+    };
+
+    /**
+     * @description Проверяем возможно ли начать читать поток
+     * @private
+     */
+    private get argument() {
+        if (this.encoder) return this._temp.buffer.length >= bit * (this._temp.index + 1);
+        return this._temp.argument;
     };
 
     /**
@@ -96,23 +118,33 @@ export class OpusEncoder extends Transform {
      * @private
      */
     private encode = (chunk: Buffer) => {
+        // Если есть подключенный кодировщик, то используем его
         if (this.encoder) return this.encoder.encode(chunk, 960);
 
-        if (chunk.length < 26) return false;
+        // Если размер буфера не является нужным, то пропускаем
+        else if (chunk.length < 26) return false;
+
+        // Если не находим OGGs_HEAD в буфере
         else if (!chunk.subarray(0, 4).equals(OGG.OGGs_HEAD)) {
             this.emit("error", Error(`capture_pattern is not ${OGG.OGGs_HEAD}`));
             return false;
-        } else if (chunk.readUInt8(4) !== 0) {
+        }
+
+        // Если находим stream_structure_version в буфере, но не той версии
+        else if (chunk.readUInt8(4) !== 0) {
             this.emit("error", Error(`stream_structure_version is not ${0}`));
             return false;
         }
 
         const pageSegments = chunk.readUInt8(26);
-        if (chunk.length < 27 || chunk.length < 27 + pageSegments) return false;
 
-        const table = chunk.subarray(27, 27 + pageSegments);
-        let sizes = [], totalSize = 0;
+        // Если размер буфера не подходит, то пропускаем
+        //if (chunk.length < 27 || chunk.length < 27 + pageSegments) return false;
 
+        const table = chunk.subarray(27, 27 + pageSegments), sizes: number[] = [];
+        let totalSize = 0;
+
+        // Ищем номера opus буфера
         for (let i = 0; i < pageSegments;) {
             let size = 0, x = 255;
 
@@ -125,24 +157,32 @@ export class OpusEncoder extends Transform {
             totalSize += size;
         }
 
-        if (chunk.length < 27 + pageSegments + totalSize) return false;
+        // Если размер буфера не подходит, то пропускаем
+        //if (chunk.length < 27 + pageSegments + totalSize) return false;
 
-        const bitstream = chunk.readUInt32BE(14); let start = 27 + pageSegments;
+        const bitstream = chunk.readUInt32BE(14);
+        let start = 27 + pageSegments;
 
         //Ищем нужный пакет, тот самый пакет opus
         for (const size of sizes) {
             const segment = chunk.subarray(start, start + size);
             const header = segment.subarray(0, 8);
 
+            // Если уже есть буфер данных
             if (this._temp.buffer) {
                 if (header.equals(OGG.OPUS_TAGS)) this.emit("tags", segment);
                 else if (this._temp.bitstream === bitstream) this.push(segment);
-            } else if (header.equals(OGG.OPUS_HEAD)) {
+            }
+
+            // Если заголовок подходит под тип ogg/opus head
+            else if (header.equals(OGG.OPUS_HEAD)) {
                 this.emit("head", segment);
                 this._temp.buffer = segment;
                 this._temp.bitstream = bitstream;
-            } else this.emit("unknownSegment", segment);
+            }
 
+            // Если ничего из выше перечисленного не подходит
+            else this.emit("unknownSegment", segment);
             start += size;
         }
 
@@ -151,33 +191,40 @@ export class OpusEncoder extends Transform {
     };
 
     /**
-     * @description Модифицируем текущий фрагмент
+     * @description При получении данных через pipe или write, модифицируем их для одобрения со стороны discord
      * @public
      */
-    _transform = (chunk: Buffer, _: any, done: () => any) => {
-        let n = 0, buffer = () => chunk;
+    _transform = async (chunk: Buffer, _: any, done: () => any) => {
+        let index = this._temp.index, packet = () => chunk;
 
-        if (!this.encoder) setImmediate(() => this._temp.remaining = chunk);
-        else {
-            this._temp.buffer = Buffer.concat([this._temp.buffer, chunk]);
-            buffer = () => this._temp.buffer.subarray(n * bit, (n + 1) * bit);
-        }
-
+        // Если есть прошлый фрагмент расшифровки
         if (this._temp.remaining) {
             chunk = Buffer.concat([this._temp.remaining, chunk]);
             this._temp.remaining = null;
         }
 
-        while (this.encoder ? this._temp.buffer.length >= bit * (n + 1) : chunk) {
-            const packet = this.encode(buffer());
+        // Если есть подключенная библиотека расшифровки opus, то используем ее
+        if (this.encoder) {
+            this._temp.buffer = Buffer.concat([this._temp.buffer, chunk]);
+            packet = () => this._temp.buffer.subarray(index * bit, (index + 1) * bit);
+        } else setImmediate(() => this._temp.remaining = chunk);
 
-            if (!this.encoder) {
-                if (packet) chunk = packet;
+        // Начинаем чтение пакетов
+        while (this.argument) {
+            const encode = this.encode(packet());
+
+            if (this.encoder) this.push(encode);
+            else {
+                if (encode) chunk = encode;
                 else break;
-            } else this.push(packet); n++
+            }
+
+            index++;
         }
 
-        if (n > 0) this._temp.buffer = this._temp.buffer.subarray(n * bit);
+        // Если номер пакета больше 1, то добавляем прошлый пакет в базу
+        if (index > 0) this._temp.buffer = this._temp.buffer.subarray(index * bit);
+
         return done();
     };
 

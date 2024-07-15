@@ -194,7 +194,6 @@ export class Process {
     };
 }
 
-
 /**
  * @author SNIPPIK
  * @description Делаем проверку на наличие FFmpeg/avconv

@@ -1,5 +1,5 @@
-import type {LocalizationMap} from "discord-api-types/v10";
 import {TypedEmitter} from "tiny-typed-emitter";
+import {Filter} from "../audio/utils/Filters";
 import {VoiceConnection} from "@lib/voice";
 import {SeekStream} from "../audio";
 import {db} from "@lib/db";
@@ -245,34 +245,4 @@ export interface AudioPlayerEvents {
 
     //Плеер получил ошибку
     "player/error": (player: AudioPlayer, err: string, type?: "crash" | "skip") => void;
-}
-
-/**
- * @author SNIPPIK
- * @description Как выглядит фильтр
- * @interface Filter
- */
-export interface Filter {
-    //Имена
-    name: string;
-
-    //Имена несовместимых фильтров
-    unsupported: string[];
-
-    //Описание
-    description: string;
-
-    //Перевод фильтров
-    description_localizations: LocalizationMap;
-
-    //Сам фильтр
-    filter: string;
-
-    //Аргументы
-    args: false | [number, number];
-
-    user_arg: any;
-
-    //Меняется ли скорость
-    speed?: null | number;
 }

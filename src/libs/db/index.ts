@@ -141,9 +141,8 @@ export const db = new class Database {
 
         (async () => {
             //Проверяем статус получения фильтров
-            const filterStatus = await this.audio.loadFilters;
-            if (filterStatus instanceof Error) Logger.log("ERROR", `[Shard ${client.ID}] is initialized filters`);
-            else Logger.log("LOG", `[Shard ${client.ID}] is initialized filters`);
+            if (this.audio.filters.length > 0) Logger.log("LOG", `[Shard ${client.ID}] is initialized filters`);
+            else Logger.log("ERROR", `[Shard ${client.ID}] is initialized filters`);
 
             //Постепенно загружаем директории с данными
             for (const handler of loaders) {
