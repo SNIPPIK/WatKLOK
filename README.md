@@ -6,14 +6,14 @@
 # [`WatKLOK`](https://github.com/SNIPPIK/WatKLOK) 
 - Автор: [`SNIPPIK`](https://github.com/SNIPPIK)
 - Discord server: [`тут`](https://discord.gg/qMf2Sv3)
-- Доступные платформы: [`тут`](src/handlers/APIs)
 - Демонстрация: [`тут`](https://youtu.be/ljOOAQcvirQ)
+- Поддерживает плагины
+- Доступные платформы: [`тут`](src/handlers/APIs)
 - Поддерживаться только /команды
 - Все сообщения удаляются через время
-- Умеет кешировать треки и сохранять историю прослушиваний
 - Не использует [`Lavalink`](https://github.com/lavalink-devs/Lavalink) | [`Lavaplayer`](https://github.com/sedmelluq/lavaplayer) | [`YouTube-DL`](https://youtube-dl.org/)
 - Поддерживает [`Opus`](https://wikipedia.org/wiki/Opus) но может работать и без
-- Поддерживает плагины, [`готовые плагины`](.github/Plugins)
+- Умеет кешировать треки и сохранять историю прослушиваний
 
 ## Настройки [`токена`](https://discord.com/developers/applications)
 > [!TIP]
@@ -28,7 +28,7 @@
 > Если обнаружили ошибку или проект у вас не запускается вам [`сюда`](https://github.com/SNIPPIK/WatKLOK/issues)\
 > Напоминаю что автор не несет никакой ответственности за та что вы будете делать с кодом
 
-> [!TIP]
+> [!CAUTION]
 > Перед начало убедись что у вас установлена [`Node.js`](https://nodejs.org/ru/), [`FFmpeg`](https://ffmpeg.org)
 
 #### 1. Если не установлен [`FFmpeg`](https://github.com/BtbN/FFmpeg-Builds/releases)
