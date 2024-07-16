@@ -24,7 +24,7 @@ class StatusPlugin extends Constructor.Assign<Handler.Plugin> {
                 }, 20e3);
             }
         });
-    }
+    };
 }
 
 export default Object.values({StatusPlugin});

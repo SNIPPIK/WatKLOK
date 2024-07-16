@@ -104,7 +104,37 @@ class Command_Play extends Constructor.Assign<Handler.Command> {
 }
 
 /**
+ * @class Command_Replay
+ * @command remove
+ * @description Пропуск трека по номеру
+ *
+ * @param value - Номер пропускаемого трека
+ */
+class Command_Replay extends Constructor.Assign<Handler.Command> {
+    public constructor() {
+        super({
+            data: new SlashBuilder()
+                .setName("replay")
+                .setDescription("Повторить текущий трек?")
+                .setDescriptionLocale({
+                    "en-US": "Repeat current track?"
+                }).json,
+            intents: ["voice", "queue", "anotherVoice"],
+            execute: ({message}) => {
+                const { guild } = message;
+                const queue = db.audio.queue.get(guild.id);
+                const { title } = queue.songs.song;
+
+                queue.player.play(queue.songs.song);
+                //Сообщаем о том что музыка начата с начала
+                return { content: locale._(message.locale, "command.control.replay", [title]), color: "Green", codeBlock: "css" };
+            }
+        });
+    };
+}
+
+/**
  * @export default
  * @description Делаем классы глобальными
  */
-export default Object.values({Command_Play});
+export default Object.values({Command_Play, Command_Replay});

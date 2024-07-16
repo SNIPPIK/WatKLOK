@@ -133,8 +133,18 @@ export class Song {
      */
     public get title() {
         if (!this._track.title) return "null";
+        return this._track.title;
+    };
+    /**
+     * @description Получаем отредактированное название трека
+     * @public
+     */
+    public get titleReplaced() {
+        // Удаляем лишнее скобки
+        const title = `[${this.title.replace(/[\(\)\[\]"]/g, "").substring(0, 45)}](${this.url})`;
 
-        return this._track.title.substring(0, 120);
+        if (this.platform === "YOUTUBE") return `\`\`[${this.duration.full}]\`\` ${title}`;
+        return `\`\`[${this.duration.full}]\`\` [${this.author.title}](${this.author.url}) ${title}`;
     };
     /**
      * @description Получаем ссылку на трек
@@ -223,7 +233,7 @@ export class Song {
 
                     //Если вместо ссылки получили ошибку
                     if (link instanceof Error) {
-                        if (r < 3) return resolve(link);
+                        if (r >= 3) return resolve(link);
                         else continue;
                     }
 

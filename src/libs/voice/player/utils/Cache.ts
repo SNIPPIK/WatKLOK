@@ -15,7 +15,7 @@ export namespace Cache {
      * @author SNIPPIK
      * @description Здесь происходит управление кешированием треков
      */
-    export class Audio extends Constructor.Cycle<Song> {
+    export class AudioFile extends Constructor.Cycle<Song> {
         public constructor() {
             super({
                 name: "AudioCache",

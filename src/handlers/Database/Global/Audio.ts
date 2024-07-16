@@ -143,7 +143,7 @@ export class Database_Audio {
              * @description Здесь происходит управление кешированием треков
              * @private
              */
-            private readonly _downloader = env.get("cache") ? new Cache.Audio() : null;
+            private readonly _downloader = env.get("cache") ? new Cache.AudioFile() : null;
             public get downloader() { return this._downloader; };
         }
     };

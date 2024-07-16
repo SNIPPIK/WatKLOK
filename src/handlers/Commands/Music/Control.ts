@@ -454,56 +454,7 @@ class Command_Remove extends Constructor.Assign<Handler.Command> {
 }
 
 /**
- * @class Command_Replay
- * @command remove
- * @description Пропуск трека по номеру
- *
- * @param value - Номер пропускаемого трека
- */
-class Command_Replay extends Constructor.Assign<Handler.Command> {
-    public constructor() {
-        super({
-            data: new SlashBuilder()
-                .setName("replay")
-                .setDescription("Повторить текущий трек?")
-                .setDescriptionLocale({
-                    "en-US": "Repeat current track?"
-                }).json,
-            execute: ({message}) => {
-                const { author, member, guild } = message;
-                const VoiceChannel = member?.voice?.channel;
-                const queue = db.audio.queue.get(guild.id);
-
-                //Если пользователь не подключен к голосовым каналам
-                if (!VoiceChannel) return {
-                    content: locale._(message.locale,"player.voice.inactive", [author]),
-                    color: "Yellow"
-                };
-
-                //Если есть очередь и пользователь не подключен к тому же голосовому каналу
-                else if (queue && queue.voice && VoiceChannel?.id !== queue.voice.id && guild.members.me.voice.channel) return {
-                    content: locale._(message.locale,"player.voice.active", [author, queue.voice.id]),
-                    color: "Yellow"
-                };
-
-                //Если нет очереди
-                else if (!queue) return {
-                    content: locale._(message.locale,"player.queue.null", [author]),
-                    color: "Yellow"
-                };
-
-                let { title } = queue.songs.song;
-
-                queue.player.play(queue.songs.song);
-                //Сообщаем о том что музыка начата с начала
-                return { content: locale._(message.locale, "command.control.replay", [title]), color: "Green", codeBlock: "css" };
-            }
-        });
-    };
-}
-
-/**
  * @export default
  * @description Делаем классы глобальными
  */
-export default Object.values({Command_Pause, Command_Resume, Command_Stop, Command_Repeat, Command_Skip, Command_Remove, Command_Replay});
+export default Object.values({Command_Pause, Command_Resume, Command_Stop, Command_Repeat, Command_Skip, Command_Remove});

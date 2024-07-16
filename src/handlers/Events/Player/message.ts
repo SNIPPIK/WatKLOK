@@ -196,10 +196,7 @@ class onPlaying extends Constructor.Assign<Handler.Event<"message/playing">> {
                             //Следующий трек или треки
                             queue.songs.size > 1 ? (() => {
                                 const tracks = queue.songs.slice(1, 5).map((track, index) => {
-                                    const title = `[${track.title.slice(0, 50)}](${track.url})`;
-
-                                    if (track.platform === "YOUTUBE") return `\`${index + 2}.\` \`\`[${track.duration.full}]\`\` ${title}`;
-                                    return `\`${index + 2}.\` \`\`[${track.duration.full}]\`\` [${track.author.title}](${track.author.url}) - ${title}`;
+                                    return `\`${index + 2}\` ${track.titleReplaced}`;
                                 });
 
                                 if (queue.songs.size > 5) return {

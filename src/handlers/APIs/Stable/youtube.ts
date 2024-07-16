@@ -3,7 +3,6 @@ import {Song} from "@lib/voice/player/queue/Song";
 import {API, Constructor} from "@handler";
 import {httpsClient} from "@lib/request";
 
-
 /**
  * @author SNIPPIK
  * @description Динамически загружаемый класс
@@ -22,48 +21,10 @@ class cAPI extends Constructor.Assign<API.request> {
             auth: true,
 
             color: 16711680,
-            filter: /^(https?:\/\/)?(www\.)?(m\.)?(music\.)?( )?(youtube\.com|youtu\.?be)\/.+$/gi,
+            filter: /https?:\/\/(?:youtu\.be|(?:(?:www|m|music|gaming)\.)?youtube\.com)/gi,
             url: "youtube.com",
 
             requests: [
-                /**
-                 * @description Запрос данных о треке
-                 * @type track
-                 */
-                new class extends API.item<"track"> {
-                    public constructor() {
-                        super({
-                            name: "track",
-                            filter: /(watch|embed|youtu\.be|v\/)?([a-zA-Z0-9-_]{11})/gi,
-                            callback: (url: string, {audio}) => {
-                                const ID = this.filter.exec(url).at(0);
-
-                                return new Promise<Song>(async (resolve, reject) => {
-                                    //Если ID видео не удалось извлечь из ссылки
-                                    if (!ID) return reject(Error("[APIs]: Не удалось получить ID трека!"));
-
-                                    try {
-                                        //Создаем запрос
-                                        const result = await cAPI.API(`https://www.youtube.com/watch?v=${ID}&has_verified=1`);
-
-                                        //Если возникла ошибка при получении данных
-                                        if (result instanceof Error) return reject(result);
-
-                                        //Если надо получить аудио
-                                        if (audio) {
-                                            const format = await cAPI.extractStreamingData(result["streamingData"], result["html5"]);
-                                            result["videoDetails"]["format"] = {url: format["url"]};
-                                        }
-
-                                        const track = cAPI.track(result["videoDetails"]);
-                                        return resolve(track);
-                                    } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
-                                });
-                            }
-                        });
-                    };
-                },
-
                 /**
                  * @description Запрос данных об плейлисте
                  * @type playlist
@@ -103,6 +64,44 @@ class cAPI extends Constructor.Assign<API.request> {
                                             url, title: microformat.title, items, author,
                                             image: microformat.thumbnail["thumbnails"].pop()
                                         });
+                                    } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
+                                });
+                            }
+                        });
+                    };
+                },
+
+                /**
+                 * @description Запрос данных о треке
+                 * @type track
+                 */
+                new class extends API.item<"track"> {
+                    public constructor() {
+                        super({
+                            name: "track",
+                            filter: /(watch|embed|youtu\.be|v\/)?([a-zA-Z0-9-_]{11})/gi,
+                            callback: (url: string, {audio}) => {
+                                const ID = this.filter.exec(url).at(0);
+
+                                return new Promise<Song>(async (resolve, reject) => {
+                                    //Если ID видео не удалось извлечь из ссылки
+                                    if (!ID) return reject(Error("[APIs]: Не удалось получить ID трека!"));
+
+                                    try {
+                                        //Создаем запрос
+                                        const result = await cAPI.API(`https://www.youtube.com/watch?v=${ID}&has_verified=1`);
+
+                                        //Если возникла ошибка при получении данных
+                                        if (result instanceof Error) return reject(result);
+
+                                        //Если надо получить аудио
+                                        if (audio) {
+                                            const format = await cAPI.extractStreamingData(result["streamingData"], result["html5"]);
+                                            result["videoDetails"]["format"] = {url: format["url"]};
+                                        }
+
+                                        const track = cAPI.track(result["videoDetails"]);
+                                        return resolve(track);
                                     } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
                                 });
                             }
@@ -253,7 +252,7 @@ class cAPI extends Constructor.Assign<API.request> {
             const decoded = await Youtube_decoder.decipherFormats(format, html5player);
 
             if (decoded instanceof Error) return resolve(null);
-            return resolve(decoded[0]);
+            return resolve(decoded.at(-1));
         });
     };
 
