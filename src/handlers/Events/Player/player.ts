@@ -37,7 +37,7 @@ class onWait extends Constructor.Assign<Handler.Event<"player/wait">> {
             type: "player",
             execute: (queue) => {
                 //Если нет треков в очереди
-                if (!queue?.songs?.song) return db.audio.queue.remove(queue.guild.id);
+                if (!queue?.songs?.song || !queue.player) return db.audio.queue.remove(queue.guild.id);
 
                 //Проверяем надо ли удалить из очереди трек
                 const removedSong = queue.repeat === "off" || queue.repeat === "songs" ? queue.songs.shift() : null;
