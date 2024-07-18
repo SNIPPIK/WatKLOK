@@ -118,7 +118,7 @@ export class Youtube_decoder {
         }
 
         return formats;
-    }
+    };
 
     /**
      * @description Применить расшифровку и n-преобразование к индивидуальному формату
@@ -134,14 +134,14 @@ export class Youtube_decoder {
             const components = new URL(decodeURIComponent(args.url as string));
             components.searchParams.set(args.sp as string ? args.sp as string : DECIPHER_NAME, decipher.runInNewContext({sig: decodeURIComponent(args.s as string)}));
             return components.toString();
-        }
+        };
         const extractN = (url: string): string => {
             const components = new URL(decodeURIComponent(url));
             const n = components.searchParams.get(N_NAME);
             if (!n || !nTransform) return url;
             components.searchParams.set(N_NAME, nTransform.runInNewContext({ncode: n}));
             return components.toString();
-        }
+        };
 
         //Удаляем не нужные данные
         delete format.signatureCipher;
@@ -204,8 +204,8 @@ const DECIPHER_NAME_REGEXPS = [
     '([\\w$]+)\\s*=\\s*function\\((\\w+)\\)\\{\\s*\\2=\\s*\\2\\.split\\(""\\)\\s*;',
 ];
 
-const N_TRANSFORM_FUNC_NAME = "SNPK_NTransformFunc";
-const DECIPHER_FUNC_NAME = "SNPK_DecipherFunc";
+const N_TRANSFORM_FUNC_NAME = "SNPKNTransformFunc";
+const DECIPHER_FUNC_NAME = "SNPKDecipherFunc";
 
 const DECIPHER_ARGUMENT = "sig", DECIPHER_NAME = "signature";
 const N_ARGUMENT = "ncode", N_NAME = "n";
