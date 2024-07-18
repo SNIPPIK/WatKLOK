@@ -1,7 +1,7 @@
+import {LightMessageBuilder} from "@lib/discord/utils/MessageBuilder";
 import {Client} from "@lib/discord";
 import {locale} from "@lib/locale";
 import {db} from "@lib/db";
-import {LightMessageBuilder} from "@lib/discord/utils/MessageBuilder";
 
 /**
  * @author SNIPPIK

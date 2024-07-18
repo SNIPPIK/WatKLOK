@@ -34,11 +34,7 @@ class onAPI extends Constructor.Assign<Handler.Event<"collection/api">> {
                 const audio = platform.audio ? locale._(message.locale,"api.audio.null") : "";
                 event.emit("collection/error", message, locale._(message.locale,"api.wait", [name, api.name, audio]), false, "Yellow");
 
-                api.callback(argument[1] as string, {
-                        audio: api.name === "track",
-                        limit: db.api.limits[api.name]
-                    }
-                ).then((item) => {
+                api.callback(argument[1] as string, { limit: db.api.limits[api.name] }).then((item) => {
                     //Если нет данных или была получена ошибка
                     if (item instanceof Error) {
                         event.emit("collection/error", message, locale._(message.locale,"api.fail", [name, api.name]));

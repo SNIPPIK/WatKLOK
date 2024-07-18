@@ -5,6 +5,8 @@ import {Constructor} from "@handler";
 import * as path from "node:path";
 import {env, Logger} from "@env";
 
+const cache = `${env.get("cached.dir")}`;
+
 /**
  * @author SNIPPIK
  * @description Пространство для кеширования данных
@@ -18,7 +20,7 @@ export namespace Cache {
     export class AudioFile extends Constructor.Cycle<Song> {
         public constructor() {
             super({
-                name: "AudioCache",
+                name: "AudioFile",
                 duration: 20e3,
                 filter: (item) => {
                     const names = this.status(item);
@@ -78,7 +80,7 @@ export namespace Cache {
             const author = track.author.title.replace(/[|,'";*/\\{}!?.:<>]/gi, "");
 
             try {
-                const dir = `${path.resolve(`${env.get("cached.dir")}/Audio/[${author}]/[${title}]`)}`;
+                const dir = `${path.resolve(`${cache}/Audio/[${author}]/[${title}]`)}`;
                 const isOpus = existsSync(`${dir}.opus`), isRaw = existsSync(`${dir}.raw`);
 
                 return { status: isOpus ? "final" : isRaw ? "download" : "not", path: dir + (isOpus ? `.opus` : `.raw`) }

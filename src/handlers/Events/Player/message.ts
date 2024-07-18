@@ -8,6 +8,7 @@ import {locale} from "@lib/locale";
 import {db} from "@lib/db";
 
 /**
+ * @author SNIPPIK
  * @class onError
  * @event message/error
  * @description Сообщение об ошибке
@@ -49,6 +50,7 @@ class onError extends Constructor.Assign<Handler.Event<"message/error">> {
 }
 
 /**
+ * @author SNIPPIK
  * @class onPush
  * @event message/push
  * @description Сообщение о добавленном треке или плейлисте
@@ -62,7 +64,7 @@ class onPush extends Constructor.Assign<Handler.Event<"message/push">> {
 
                 //Если был добавлен трек
                 if (queue instanceof Queue.Music) {
-                    const {color, author, image, title, duration, requester} = obj as Song;
+                    const {color, author, image, title, duration} = obj as Song;
 
                     new MessageBuilder().addEmbeds([
                         {
@@ -116,6 +118,7 @@ class onPush extends Constructor.Assign<Handler.Event<"message/push">> {
 }
 
 /**
+ * @author SNIPPIK
  * @class onSearch
  * @event message/search
  * @description Сообщение с выбором трека
@@ -172,6 +175,7 @@ class onSearch extends Constructor.Assign<Handler.Event<"message/search">> {
 }
 
 /**
+ * @author SNIPPIK
  * @class onPlaying
  * @event message/playing
  * @description Сообщение о том что сейчас играет
