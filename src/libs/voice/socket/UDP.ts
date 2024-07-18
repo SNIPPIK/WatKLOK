@@ -9,8 +9,8 @@ import {isIPv4} from "node:net";
  * @class VoiceUDPSocket
  */
 export class VoiceUDPSocket extends TypedEmitter<UDPSocketEvents> {
-    private readonly socket: Socket = createSocket("udp4");
     private readonly remote: {ip: string; port: number} = {ip: null, port: 443};
+    private readonly socket: Socket = createSocket("udp4");
 
     /**
      * @description Отправляем буфер в Discord
@@ -31,7 +31,9 @@ export class VoiceUDPSocket extends TypedEmitter<UDPSocketEvents> {
         Object.assign(this.remote, options);
 
         //Добавляем ивенты
-        for (let event of ["message", "error", "close"]) this.socket.on(event, (...args) => this.emit(event as any, ...args));
+        for (let event of ["message", "error", "close"]) {
+            this.socket.on(event, (...args) => this.emit(event as any, ...args));
+        }
     };
 
     /**

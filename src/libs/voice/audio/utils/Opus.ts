@@ -117,7 +117,7 @@ export class OpusEncoder extends Transform {
      * @description Декодирование фрагмента в opus
      * @private
      */
-    private encode = (chunk: Buffer) => {
+    private packet = (chunk: Buffer) => {
         // Если есть подключенный кодировщик, то используем его
         if (this.encoder) return this.encoder.encode(chunk, 960);
 
@@ -211,7 +211,7 @@ export class OpusEncoder extends Transform {
 
         // Начинаем чтение пакетов
         while (this.argument) {
-            const encode = this.encode(packet());
+            const encode = this.packet(packet());
 
             if (this.encoder) this.push(encode);
             else {
