@@ -113,10 +113,7 @@ export class Youtube_decoder {
     public static decipherFormats = async (formats: YouTubeFormat[], html5player: string): Promise<YouTubeFormat[]> =>  {
         const [decipherScript, nTransformScript] = await this.extractPage(html5player);
 
-        for (let item of formats) {
-            item.url = this.setDownloadURL(item, {decipher: decipherScript, nTransform: nTransformScript});
-        }
-
+        for (let item of formats) item.url = this.setDownloadURL(item, {decipher: decipherScript, nTransform: nTransformScript});
         return formats;
     };
 
@@ -200,6 +197,7 @@ interface YouTubeFormat {
 const DECIPHER_NAME_REGEXPS = [
     '\\bm=([a-zA-Z0-9$]{2,})\\(decodeURIComponent\\(h\\.s\\)\\);',
     '\\bc&&\\(c=([a-zA-Z0-9$]{2,})\\(decodeURIComponent\\(c\\)\\)',
+    // eslint-disable-next-line max-len
     '(?:\\b|[^a-zA-Z0-9$])([a-zA-Z0-9$]{2,})\\s*=\\s*function\\(\\s*a\\s*\\)\\s*\\{\\s*a\\s*=\\s*a\\.split\\(\\s*""\\s*\\)',
     '([\\w$]+)\\s*=\\s*function\\((\\w+)\\)\\{\\s*\\2=\\s*\\2\\.split\\(""\\)\\s*;',
 ];

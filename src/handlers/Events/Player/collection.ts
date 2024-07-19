@@ -30,24 +30,29 @@ class onAPI extends Constructor.Assign<Handler.Event<"collection/api">> {
                 if (!api || !api?.name) return void (event.emit("collection/error", message, locale._(message.locale,"api.type.fail", [name])));
                 else if (!api) return void (event.emit("collection/error", message, locale._(message.locale,"api.callback.null", [name, api.name])));
 
-                //Отправляем сообщение о том что запрос производится
+                // Отправляем сообщение о том что запрос производится
                 const audio = platform.audio ? locale._(message.locale,"api.audio.null") : "";
                 event.emit("collection/error", message, locale._(message.locale,"api.wait", [name, api.name, audio]), false, "Yellow");
 
+                // Если ответ не был получен от сервера
+                const timeout = setTimeout(() => {
+                    event.emit("collection/error", message, locale._(message.locale,"api.wait.fail", [name, api.name]));
+                }, 10e3);
+
                 api.callback(argument[1] as string, { limit: db.api.limits[api.name] }).then((item) => {
-                    //Если нет данных или была получена ошибка
+                    // Если нет данных или была получена ошибка
                     if (item instanceof Error) {
                         event.emit("collection/error", message, locale._(message.locale,"api.fail", [name, api.name]));
                         return;
                     }
 
-                    //Если был указан поиск
+                    // Если был указан поиск
                     else if (item instanceof Array) {
                         event.emit("message/search", item, platform.platform, message);
                         return;
                     }
 
-                    //Запускаем проигрывание треков
+                    // Запускаем проигрывание треков
                     let queue = collection.get(message.guild.id);
                     if (!queue) {
                         const item = new Queue.Music({message, voice});
@@ -57,16 +62,19 @@ class onAPI extends Constructor.Assign<Handler.Event<"collection/api">> {
                         setImmediate(() => queue.player.play(queue.songs.song));
                     }
 
-                    //Отправляем сообщение о том что было добавлено
+                    clearTimeout(timeout);
+
+                    // Отправляем сообщение о том что было добавлено
                     if (item instanceof Song && queue.songs.size >= 1) event.emit("message/push", queue, item);
                     else if ("items" in item) event.emit("message/push", message, item);
 
-                    //Добавляем треки в очередь
+                    // Добавляем треки в очередь
                     for (const track of (item["items"] ?? [item]) as Song[]) {
                         track.requester = message.author;
                         queue.songs.push(track);
                     }
-                }).catch((err: Error) => { //Отправляем сообщение об ошибке
+                }).catch((err: Error) => { // Отправляем сообщение об ошибке
+                    clearTimeout(timeout);
                     event.emit("collection/error", message, `**${name}.${api.name}**\n\n**❯** **${err.message}**`, true);
                 });
             }

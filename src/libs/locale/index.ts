@@ -223,6 +223,10 @@ const locales = {
         ru: `**{ARGUMENT}.{ARGUMENT}**\n\n${env.get("loading.emoji")} Ожидание ответа от сервера...\n{ARGUMENT}`,
         "en-US": `**{ARGUMENT}.{ARGUMENT}**\n\n${env.get("loading.emoji")} Waiting for a response from the server...\n{ARGUMENT}`
     },
+    "api.wait.fail": {
+        ru: `**{ARGUMENT}.{ARGUMENT}**\n\nПревышено время ожидания ответа, возможно сервис сейчас недоступен!`,
+        "en-US": `**{ARGUMENT}.{ARGUMENT}**\n\nThe response waiting time has been exceeded, the service may not be available now!`
+    },
     "api.audio.null": {
         ru: "Эта платформа не может выдать исходный файл музыки! Поиск трека!",
         "en-US": "This platform cannot output the original music file! Track search!"

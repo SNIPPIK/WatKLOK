@@ -138,9 +138,9 @@ export class SeekStream {
                     stream?.destroy();
                     stream.end();
                 }
-
-                this._streams.length = 0;
             }
+
+            this._streams.splice(0, this._streams.length);
         });
 
         Object.keys(this._options).forEach(key => this._options[key] = null);
