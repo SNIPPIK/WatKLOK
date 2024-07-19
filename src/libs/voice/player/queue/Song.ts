@@ -144,7 +144,7 @@ export class Song {
         const title = `[${this.title.replace(/[\(\)\[\]"]/g, "").substring(0, 45)}](${this.url})`;
 
         if (this.platform === "YOUTUBE") return `\`\`[${this.duration.full}]\`\` ${title}`;
-        return `\`\`[${this.duration.full}]\`\` [${this.author.title}](${this.author.url}) ${title}`;
+        return `\`\`[${this.duration.full}]\`\` [${this.author.title}](${this.author.url}) - ${title}`;
     };
     /**
      * @description Получаем ссылку на трек
