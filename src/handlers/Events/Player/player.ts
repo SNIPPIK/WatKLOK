@@ -70,7 +70,7 @@ class onError extends Constructor.Assign<Handler.Event<"player/error">> {
             type: "player",
             execute: (queue, _, err, crash) => {
                 //Если нет плеера, то нет смысла продолжать
-                if (!queue.player) return;
+                if (!queue || !queue.player || !queue.player.play) return;
 
                 switch (crash) {
                     //Если возникает критическая ошибка

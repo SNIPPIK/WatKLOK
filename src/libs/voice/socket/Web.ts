@@ -79,7 +79,7 @@ export class VoiceWebSocket extends TypedEmitter<WebSocketEvents> {
      * @description Уничтожает голосовой веб-сокет. Интервал очищается, и соединение закрывается
      * @public
      */
-    public destroy = (code: number = 1e3): void => {
+    public destroy = (code: number = 1_000): void => {
         try {
             this.HeartbeatInterval = -1;
             this.ws.close(code);

@@ -120,34 +120,6 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents> {
         this.state.networking.speaking = enabled;
     };
 
-    /**
-     * @description Пытается настроить сетевой экземпляр для этого голосового соединения, используя полученные пакеты.
-     * Требуются оба пакета, и любой существующий сетевой экземпляр будет уничтожен.
-     *
-     * @remarks
-     * Это вызывается при изменении голосового сервера подключения, например, если бот перемещен на
-     * другой канал в той же гильдии, но имеет другой голосовой сервер. В этом случае
-     * необходимо повторно установить соединение с новым голосовым сервером.
-     *
-     * Соединение перейдет в состояние подключения, когда это будет вызвано.
-     * @public
-     */
-    public set socket({ server, state }: VoiceConnection["_local"]["packets"]) {
-        if (!server || !state || this.state.status === VoiceConnectionStatus.Destroyed || !server.endpoint) return;
-
-        const networking = new VoiceSocket(
-            {
-                endpoint: server.endpoint,
-                serverId: server.guild_id,
-                token: server.token,
-                sessionId: state.session_id,
-                userId: state.user_id,
-            }
-        ).once("close", this.onSocketClose).on("stateChange", this.onSocketStateChange).on("error", this.onSocketError);
-
-        this.state = { ...this.state, networking, status: VoiceConnectionStatus.Connecting };
-    };
-
     public constructor(config: VoiceConfig, options: CreateVoiceConnectionOptions) {
         super();
 
@@ -164,6 +136,37 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents> {
 
         this._local.state = { status: VoiceConnectionStatus.Signalling, adapter };
         this._local.joinConfig = config;
+    };
+
+    /**
+     * @description Пытается настроить сетевой экземпляр для этого голосового соединения, используя полученные пакеты.
+     * Требуются оба пакета, и любой существующий сетевой экземпляр будет уничтожен.
+     *
+     * @remarks
+     * Это вызывается при изменении голосового сервера подключения, например, если бот перемещен на
+     * другой канал в той же гильдии, но имеет другой голосовой сервер. В этом случае
+     * необходимо повторно установить соединение с новым голосовым сервером.
+     *
+     * Соединение перейдет в состояние подключения, когда это будет вызвано.
+     * @public
+     */
+    public configureSocket = () => {
+        const { server, state } = this._local.packets;
+        if (!server || !state || this.state.status === VoiceConnectionStatus.Destroyed || !server.endpoint) return;
+
+        const networking = new VoiceSocket(
+            {
+                endpoint: server.endpoint,
+                serverId: server.guild_id,
+                token: server.token,
+                sessionId: state.session_id,
+                userId: state.user_id,
+            }
+        ).once("close", this.onSocketClose).on("stateChange", this.onSocketStateChange).on("error", this.onSocketError);
+
+        this.state = { ...this.state, networking,
+            status: VoiceConnectionStatus.Connecting
+        };
     };
 
     /**
@@ -293,7 +296,7 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents> {
     private readonly addServerPacket = (packet: GatewayVoiceServerUpdateDispatchData) => {
         this._local.packets.server = packet;
 
-        if (packet.endpoint) this.socket = this._local.packets;
+        if (packet.endpoint) this.configureSocket();
         else if (this.state.status !== VoiceConnectionStatus.Destroyed) {
             this.state = { ...this.state, status: VoiceConnectionStatus.Disconnected, reason: VoiceConnectionDisconnectReason.EndpointRemoved };
         }

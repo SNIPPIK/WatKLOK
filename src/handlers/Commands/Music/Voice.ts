@@ -89,8 +89,10 @@ class Command_Voice extends Constructor.Assign<Handler.Command> {
                             color: "Yellow"
                         };
 
+                        VoiceChannel.setRTCRegion(null, 'Auto select channel region');
+
                         //Перенастройка подключения
-                        voiceConnection.socket();
+                        voiceConnection.configureSocket();
 
                         return {
                             content: locale._(message.locale,"command.voice.re-configure", [author]),

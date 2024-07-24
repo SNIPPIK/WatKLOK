@@ -139,7 +139,7 @@ export class OpusEncoder extends Transform {
         const pageSegments = chunk.readUInt8(26);
 
         // Если размер буфера не подходит, то пропускаем
-        //if (chunk.length < 27 || chunk.length < 27 + pageSegments) return false;
+        if (chunk.length < 27 || chunk.length < 27 + pageSegments) return false;
 
         const table = chunk.subarray(27, 27 + pageSegments), sizes: number[] = [];
         let totalSize = 0;
@@ -158,7 +158,7 @@ export class OpusEncoder extends Transform {
         }
 
         // Если размер буфера не подходит, то пропускаем
-        //if (chunk.length < 27 + pageSegments + totalSize) return false;
+        if (chunk.length < 27 + pageSegments + totalSize) return false;
 
         const bitstream = chunk.readUInt32BE(14);
         let start = 27 + pageSegments;
