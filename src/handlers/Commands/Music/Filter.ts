@@ -142,7 +142,10 @@ class Command_Filter extends Constructor.Assign<Handler.Command> {
                 const index = queue.player.filters.indexOf(Filter);
 
                 switch (sub) {
+                    // Список фильтров включенных
                     case "current":
+
+                    // Список всех фильтров
                     case "total": {
                         let array = db.audio.filters;
                         if (sub === "current") {
@@ -165,6 +168,7 @@ class Command_Filter extends Constructor.Assign<Handler.Command> {
                             ]);
                         });
 
+                        // Отправляем сообщение
                         return new MessageBuilder().addEmbeds([
                             {
                                 title: locale._(message.locale,"command.filter.all"),
@@ -187,6 +191,8 @@ class Command_Filter extends Constructor.Assign<Handler.Command> {
                             });
                         })
                     }
+
+                    // Выключаем все фильтры
                     case "off": {
                         //Если нет фильтров
                         if (queue?.player.filters.length === 0) return {
@@ -198,6 +204,7 @@ class Command_Filter extends Constructor.Assign<Handler.Command> {
                         return;
                     }
 
+                    // Добавляем фильтр
                     case "add": {
                         //Пользователь пытается включить включенный фильтр
                         if (index !== -1) return {
@@ -236,6 +243,8 @@ class Command_Filter extends Constructor.Assign<Handler.Command> {
                             replied: false
                         };
                     }
+
+                    // Удаляем фильтр из включенных
                     case "remove": {
                         //Пользователь пытается выключить выключенный фильтр
                         if (index === -1) return {

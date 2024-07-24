@@ -314,7 +314,7 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
      * @description Уничтожает сетевой экземпляр, переводя его в закрытое состояние.
      * @public
      */
-    public readonly destroy = () => {
+    public destroy = () => {
         this.state = {code: VoiceSocketStatusCode.close};
     };
 }

@@ -30,17 +30,20 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @public
      */
     public get filtersString() {
-        const realFilters: string[] = [`volume=${db.audio.options.volume / 100}`];
+        const realFilters: string[] = [`volume=${db.audio.options.volume / 100}`, `afade=t=in:st=0:d=${db.audio.options.fade}`];
         let chunk = 0;
 
+        // Берем данные из всех фильтров
         for (const filter of this.filters) {
             const filterString = filter.args ? `${filter.filter}${filter.user_arg ?? ""}` : filter.filter;
             realFilters.push(filterString);
 
-            if (filter.speed) chunk += typeof filter.speed === "number" ? Number(filter.speed) : Number(this.filters.slice(this.filters.indexOf(filter) + 1));
+            // Если есть модификация скорости, то изменяем размер пакета
+            if (filter.speed) {
+                if (typeof filter.speed === "number") chunk += Number(filter.speed);
+                else chunk += Number(this.filters.slice(this.filters.indexOf(filter) + 1))
+            }
         }
-
-        realFilters.push(`afade=t=in:st=0:d=${db.audio.options.fade}`);
 
         return { filters: realFilters.join(","), chunk };
     };

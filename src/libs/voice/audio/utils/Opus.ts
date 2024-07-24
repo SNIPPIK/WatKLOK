@@ -194,7 +194,7 @@ export class OpusEncoder extends Transform {
      * @description При получении данных через pipe или write, модифицируем их для одобрения со стороны discord
      * @public
      */
-    _transform = async (chunk: Buffer, _: any, done: () => any) => {
+    _transform = (chunk: Buffer, _: any, done: () => any) => {
         let index = this._temp.index, packet = () => chunk;
 
         // Если есть подключенная библиотека расшифровки opus, то используем ее

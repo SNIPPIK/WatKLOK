@@ -31,7 +31,7 @@ class Command_Contact extends Constructor.Assign<Handler.Command> {
                         thumbnail: {url: client.user.displayAvatarURL()},
                         title: locale._(message.locale,"command.contact.info"),
                         footer: {
-                            text: `Latency - ${Latency} | Api - ${WS} | Uptime: ${(client.uptime / 1000).duration()}`,
+                            text: locale._(message.locale, "ping", [Latency, WS, (client.uptime / 1000).duration()]),
                             iconURL: client.user.displayAvatarURL()
                         }
                     }

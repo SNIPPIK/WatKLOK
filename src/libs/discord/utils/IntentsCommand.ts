@@ -56,12 +56,15 @@ export class IntentCommand {
     public static check = (array: IntentsCommand[], message: Client.message | Client.interact) => {
         if (!array || array?.length === 0) return;
 
+        // Проверяем всю базу
         for (const key of array) {
             const intent = intends[key];
-            if (!intent) continue;
 
-            const data = intent(message);
-            if (data) return data;
+            //Если нет этого необходимости проверки запроса, то пропускаем
+            if (!intent) continue;
+            else return intent(message);
         }
+
+        return null;
     };
 }

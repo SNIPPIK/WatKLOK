@@ -1,7 +1,32 @@
 import {BrotliDecompress, createBrotliDecompress, createDeflate, createGunzip, Deflate, Gunzip} from "node:zlib";
+import {ClientRequest, IncomingMessage, request as httpRequest} from "http";
 import {request as httpsRequest, RequestOptions} from "https";
-import {IncomingMessage, request as httpRequest} from "http";
 import {Logger} from "@env";
+
+/**
+ * @author SNIPPIK
+ * @description Список ивент функций для ClientRequest
+ */
+const requests: { name: string, callback: (req: ClientRequest, url?: string) => any }[] = [
+    {
+        name: "timeout",
+        callback: (_, url) => {
+            return Error(`[APIs]: Connection Timeout Exceeded ${url}:443`);
+        }
+    },
+    {
+        name: "close",
+        callback: (request) => {
+            request.destroy();
+        }
+    },
+    {
+        name: "error",
+        callback: () => {
+            return;
+        }
+    }
+];
 
 /**
  * @author SNIPPIK
@@ -50,15 +75,11 @@ abstract class Request {
                 return resolve(res);
             });
 
-            //Если запрос POST, отправляем ответ на сервер
+            // Если запрос POST, отправляем ответ на сервер
             if (this.data.method === "POST" && this.data.body) request.write(this.data.body);
 
-            request.once("error", resolve);
-            request.once("timeout", () => resolve(Error(`[APIs]: Connection Timeout Exceeded ${this.data?.hostname}:${this.data?.port ?? 443}`)));
-            request.once("close", () => {
-                //request.removeAllListeners();
-                request.destroy();
-            });
+            // Подключаем ивенты для отслеживания состояния
+            for (const {name, callback} of requests) request.once(name, () => callback(request, this.data.hostname));
 
             request.end();
         });
@@ -148,16 +169,6 @@ export class httpsClient extends Request {
     };
 
     /**
-     * @description Проверяем ссылку на работоспособность
-     * @public
-     */
-    public get status(): Promise<boolean> | false {
-        return this.request.then((resource: IncomingMessage) => {
-            return resource?.statusCode && resource.statusCode >= 200 && resource.statusCode < 400;
-        });
-    };
-
-    /**
      * @description Берем данные из XML страницы
      * @public
      */
@@ -171,5 +182,15 @@ export class httpsClient extends Request {
             const filtered = items.map((tag) => tag.replace(/<\/?[^<>]+>/g, ""));
             return resolve(filtered.filter((text) => text.trim() !== ""));
         })
+    };
+
+    /**
+     * @description Проверяем ссылку на работоспособность
+     * @public
+     */
+    public get status(): Promise<boolean> | false {
+        return this.request.then((resource: IncomingMessage) => {
+            return resource?.statusCode && resource.statusCode >= 200 && resource.statusCode < 400;
+        });
     };
 }

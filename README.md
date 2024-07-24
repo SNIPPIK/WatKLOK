@@ -29,7 +29,8 @@
 > Напоминаю что автор не несет никакой ответственности за та что вы будете делать с кодом
 
 > [!CAUTION]
-> Перед начало убедись что у вас установлена [`Node.js`](https://nodejs.org/ru/), [`FFmpeg`](https://ffmpeg.org)
+> Перед начало убедись что у вас установлена [`Node.js`](https://nodejs.org/ru/), [`FFmpeg`](https://ffmpeg.org)\
+> Для работы музыки с VK требуется российский аккаунт и хост с российским IP
 
 #### 1. Если не установлен [`FFmpeg`](https://github.com/BtbN/FFmpeg-Builds/releases)
    - `Windows` | Скачать [`FFmpeg`](https://github.com/BtbN/FFmpeg-Builds/releases)

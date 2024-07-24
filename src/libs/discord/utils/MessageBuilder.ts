@@ -167,7 +167,7 @@ export class MessageBuilder {
     };
 
     /**
-     * @description Добавляем функцию для управления данными после отправки, для menu
+     * @description Необходимо ли сделать ответ на сообщение пользователя
      * @param value - Был ли ответ на сообщение
      * @default false
      */

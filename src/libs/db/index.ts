@@ -10,6 +10,9 @@ import {env, Logger} from "@env";
  * @description База с загрузчиками
  */
 const loaders: {name: string, callback: (client: Client, item: any) => void}[] = [
+    /**
+     * @description Загрузчик handlers/APIs, загружает классы для запросов на платформы
+     */
     {
         name: "handlers/APIs",
         callback: (_, item: API.request) => {
@@ -19,6 +22,9 @@ const loaders: {name: string, callback: (client: Client, item: any) => void}[] =
             db.api.platforms.supported.push(item);
         }
     },
+    /**
+     * @description Загрузчик handlers/Commands, загружает slashcommand для взаимодействия с ботом
+     */
     {
         name: "handlers/Commands",
         callback: (_, item: Handler.Command) => {
@@ -32,6 +38,9 @@ const loaders: {name: string, callback: (client: Client, item: any) => void}[] =
             db.commands.push(item);
         }
     },
+    /**
+     * @description Загрузчик handlers/Events, загружает ивенты для управления событиями бота
+     */
     {
         name: "handlers/Events",
         callback: (client, item: Handler.Event<any>) => {
@@ -39,6 +48,9 @@ const loaders: {name: string, callback: (client: Client, item: any) => void}[] =
             else db.audio.queue.events.on(item.name as any, (...args) => item.execute(...args));
         }
     },
+    /**
+     * @description Загрузчик handlers/Plugins, загружает плагины они являются набором любых функций
+     */
     {
         name: "handlers/Plugins",
         callback: (client, item: Handler.Plugin) => {

@@ -90,7 +90,7 @@ class Command_Voice extends Constructor.Assign<Handler.Command> {
                         };
 
                         //Перенастройка подключения
-                        voiceConnection.configureSocket();
+                        voiceConnection.socket();
 
                         return {
                             content: locale._(message.locale,"command.voice.re-configure", [author]),
