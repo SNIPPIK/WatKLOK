@@ -1,6 +1,6 @@
 import type {GatewayVoiceServerUpdateDispatchData, GatewayVoiceStateUpdateDispatchData} from "discord-api-types/v10";
 import {GatewayOpcodes} from "discord-api-types/v10";
-import {VoiceSocket, VoiceSocketState, VoiceSocketStatusCode} from "libs/voice/socket";
+import {stateDestroyer, VoiceSocket, VoiceSocketState, VoiceSocketStatusCode} from "@lib/voice/socket";
 import {TypedEmitter} from "tiny-typed-emitter";
 import {Constructor} from "@handler";
 
@@ -84,19 +84,16 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents> {
      */
     public set state(newState: VoiceConnectionState) {
         const oldState = this._local.state;
-        const oldNetworking = Reflect.get(oldState, "networking") as VoiceSocket;
-        const newNetworking = Reflect.get(newState, "networking") as VoiceSocket;
 
-        if (oldNetworking !== newNetworking) {
-            if (oldNetworking) {
-                oldNetworking.on("error", () => {
-                });
-                oldNetworking.off("error", this.onSocketError);
-                oldNetworking.off("close", this.onSocketClose);
-                oldNetworking.off("stateChange", this.onSocketStateChange);
-                oldNetworking.destroy();
+        //Уничтожаем VoiceSocket
+        stateDestroyer<VoiceSocket>(
+            Reflect.get(oldState, "networking") as VoiceSocket,
+            Reflect.get(newState, "networking") as VoiceSocket,
+            (old) => {
+                old.off("error", this.onSocketError).off("close", this.onSocketClose).off("stateChange", this.onSocketStateChange);
+                old.destroy();
             }
-        }
+        );
 
         if (newState.status === VoiceConnectionStatus.Ready) this._local.rejoin = 0;
 
@@ -123,19 +120,17 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents> {
     public constructor(config: VoiceConfig, options: CreateVoiceConnectionOptions) {
         super();
 
-        this.onSocketClose = this.onSocketClose.bind(this);
-        this.onSocketStateChange = this.onSocketStateChange.bind(this);
-        this.onSocketError = this.onSocketError.bind(this);
-
-        //Создаем адаптер
-        const adapter = options.adapterCreator({
-            onVoiceServerUpdate: (data) => this.addServerPacket(data),
-            onVoiceStateUpdate: (data) => this.addStatePacket(data),
-            destroy: () => this.destroy(false)
-        });
-
-        this._local.state = { status: VoiceConnectionStatus.Signalling, adapter };
         this._local.joinConfig = config;
+        this._local.state = {
+            status: VoiceConnectionStatus.Signalling,
+
+            // Создаем адаптер
+            adapter: options.adapterCreator({
+                onVoiceServerUpdate: (data) => this.addServerPacket(data),
+                onVoiceStateUpdate: (data) => this.addStatePacket(data),
+                destroy: () => this.destroy(false)
+            })
+        };
     };
 
     /**
@@ -152,20 +147,22 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents> {
      */
     public configureSocket = () => {
         const { server, state } = this._local.packets;
+
+        // Если нет некоторых данных, то прекращаем выполнение
         if (!server || !state || this.state.status === VoiceConnectionStatus.Destroyed || !server.endpoint) return;
 
-        const networking = new VoiceSocket(
-            {
-                endpoint: server.endpoint,
-                serverId: server.guild_id,
-                token: server.token,
-                sessionId: state.session_id,
-                userId: state.user_id,
-            }
-        ).once("close", this.onSocketClose).on("stateChange", this.onSocketStateChange).on("error", this.onSocketError);
-
-        this.state = { ...this.state, networking,
-            status: VoiceConnectionStatus.Connecting
+        // Создаем Socket подключение к discord
+        this.state = { ...this.state,
+            status: VoiceConnectionStatus.Connecting,
+            networking: new VoiceSocket(
+                {
+                    endpoint: server.endpoint,
+                    serverId: server.guild_id,
+                    token: server.token,
+                    sessionId: state.session_id,
+                    userId: state.user_id,
+                }
+            ).once("close", this.onSocketClose).on("stateChange", this.onSocketStateChange).on("error", this.onSocketError),
         };
     };
 
@@ -175,10 +172,8 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents> {
      * @public
      */
     public playOpusPacket = (buffer: Buffer) => {
-        const state = this.state;
-        if (state.status !== VoiceConnectionStatus.Ready) return;
-        state.networking.preparedAudioPacket = buffer;
-        return state.networking.playAudioPacket;
+        if (this.state.status !== VoiceConnectionStatus.Ready) return;
+        this.state.networking.playAudioPacket = buffer;
     };
 
     /**
@@ -257,11 +252,10 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents> {
             this.state = { ...this.state, status: VoiceConnectionStatus.Signalling };
             this._local.rejoin++;
 
-            if (!this.state.adapter.sendPayload(Voice.payload(this.config))) {
-                this.state = { ...this.state, status: VoiceConnectionStatus.Disconnected,
-                    reason: VoiceConnectionDisconnectReason.AdapterUnavailable
-                };
-            }
+            if (!this.state.adapter.sendPayload(Voice.payload(this.config))) this.state = {
+                ...this.state, status: VoiceConnectionStatus.Disconnected,
+                reason: VoiceConnectionDisconnectReason.AdapterUnavailable
+            };
         }
     };
 
@@ -273,8 +267,7 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents> {
      */
     private readonly onSocketStateChange = (oldState: VoiceSocketState, newState: VoiceSocketState) => {
         if (oldState.code === newState.code || this.state.status !== VoiceConnectionStatus.Connecting && this.state.status !== VoiceConnectionStatus.Ready) return;
-
-        if (newState.code === VoiceSocketStatusCode.ready) this.state = { ...this.state, status: VoiceConnectionStatus.Ready };
+        else if (newState.code === VoiceSocketStatusCode.ready) this.state = { ...this.state, status: VoiceConnectionStatus.Ready };
         else if (newState.code !== VoiceSocketStatusCode.close) this.state = { ...this.state, status: VoiceConnectionStatus.Connecting };
     };
 
@@ -311,8 +304,8 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents> {
     private readonly addStatePacket = (packet: GatewayVoiceStateUpdateDispatchData) => {
         this._local.packets.state = packet;
 
-        if (packet.self_deaf !== undefined) this._local.joinConfig.selfDeaf = packet.self_deaf;
-        if (packet.self_mute !== undefined) this._local.joinConfig.selfMute = packet.self_mute;
+        if (packet.self_deaf)  this._local.joinConfig.selfDeaf  = packet.self_deaf;
+        if (packet.self_mute)  this._local.joinConfig.selfMute  = packet.self_mute;
         if (packet.channel_id) this._local.joinConfig.channelId = packet.channel_id;
     };
 

@@ -1,4 +1,4 @@
-import {ChildProcessWithoutNullStreams, spawn, spawnSync} from "child_process";
+import {ChildProcessWithoutNullStreams, spawn, spawnSync} from "node:child_process";
 import {OpusEncoder} from "@lib/voice/audio/utils/Opus";
 import * as path from "node:path";
 import {env} from "@env";
@@ -26,7 +26,6 @@ export class SeekStream {
      */
     private readonly _options = {
         filters: null as string,
-        path:    null as string,
         seek:    0 as number,
         chunk:   20
     };
@@ -115,7 +114,7 @@ export class SeekStream {
      * @param options - Настройки кодировщика
      * @public
      */
-    public constructor(options: SeekStream["_options"]) {
+    public constructor(options: {path: string, seek?: number; filters?: string; chunk: number}) {
         if (options.chunk > 0) this._options.chunk = 20 * options.chunk;
         if (options.seek > 0) this._options.seek = (options.seek * 1e3) / this._options.chunk;
 

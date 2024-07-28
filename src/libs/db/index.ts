@@ -95,12 +95,6 @@ export const db = new class Database {
     public get commands() { return this.loaded.commands; };
 
     /**
-     * @description Путь до ветки github (Официального репозитория)
-     * @public
-     */
-    public readonly git = `${env.get("git")}/${env.get("branch")}/`;
-
-    /**
      * @description ID пользователей которые являются разработчиками
      * @public
      */
@@ -137,8 +131,8 @@ export const db = new class Database {
             bottom_youtube: env.get("progress.bottom.youtube"),
             bottom_spotify: env.get("progress.bottom.spotify"),
         },
-        noImage: this.git + env.get("image.not"),
-        diskImage: this.git + env.get("image.currentPlay")
+        noImage: env.get("image.not"),
+        diskImage: env.get("image.currentPlay")
     };
 
     /**

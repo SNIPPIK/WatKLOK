@@ -129,7 +129,7 @@ export class Youtube_decoder {
             if (!args.s || !decipher) return args.url as string;
 
             const components = new URL(decodeURIComponent(args.url as string));
-            components.searchParams.set(args.sp as string ? args.sp as string : DECIPHER_NAME, decipher.runInNewContext({sig: decodeURIComponent(args.s as string)}));
+            components.searchParams.set(args.sp as string ? args.sp as string : DECIPHER_ARGUMENT, decipher.runInNewContext({sig: decodeURIComponent(args.s as string)}));
             return components.toString();
         };
         const extractN = (url: string): string => {
@@ -202,10 +202,10 @@ const DECIPHER_NAME_REGEXPS = [
     '([\\w$]+)\\s*=\\s*function\\((\\w+)\\)\\{\\s*\\2=\\s*\\2\\.split\\(""\\)\\s*;',
 ];
 
-const N_TRANSFORM_FUNC_NAME = "SNPKNTransformFunc";
-const DECIPHER_FUNC_NAME = "SNPKDecipherFunc";
+const N_TRANSFORM_FUNC_NAME = "NTransformFunc";
+const DECIPHER_FUNC_NAME = "DecipherFunc";
 
-const DECIPHER_ARGUMENT = "sig", DECIPHER_NAME = "signature";
+const DECIPHER_ARGUMENT = "sig";
 const N_ARGUMENT = "ncode", N_NAME = "n";
 
 // Player regexps

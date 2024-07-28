@@ -41,7 +41,7 @@ export class VoiceUDPSocket extends TypedEmitter<UDPSocketEvents> {
      * @param ssrc -
      * @public
      */
-    public IPDiscovery = (ssrc: number): Promise<VoiceUDPSocket["remote"]> => {
+    public getIPDiscovery = (ssrc: number): Promise<VoiceUDPSocket["remote"]> => {
         const discoveryBuffer = Buffer.alloc(74);
         discoveryBuffer.writeUInt16BE(1, 0);
         discoveryBuffer.writeUInt16BE(70, 2);

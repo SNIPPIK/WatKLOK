@@ -19,7 +19,7 @@ export class VoiceWebSocket extends TypedEmitter<WebSocketEvents> {
      * @param ms - Интервал в миллисекундах. Если значение отрицательное, интервал будет сброшен
      * @public
      */
-    public set HeartbeatInterval(ms: number) {
+    public set liveInterval(ms: number) {
         if (this.life.interval !== undefined) clearInterval(this.life.interval);
 
         if (ms > 0) this.life.interval = setInterval(() => {
@@ -27,8 +27,25 @@ export class VoiceWebSocket extends TypedEmitter<WebSocketEvents> {
 
             this.life.send = Date.now();
             this.life.misses++;
-            this.packet({ op: VoiceOpcodes.Heartbeat, d: this.life.send });
+            this.packet = {
+                op: VoiceOpcodes.Heartbeat,
+                d: this.life.send
+            };
         }, ms);
+    };
+
+
+    /**
+     * @description Отправляет пакет с возможностью преобразования в JSON-строку через WebSocket.
+     * @param packet - Пакет для отправки
+     * @public
+     */
+    public set packet(packet: string | object) {
+        try {
+            this.ws.send(JSON.stringify(packet));
+        } catch (error) {
+            this.emit("error", error as Error);
+        }
     };
 
     /**
@@ -63,25 +80,12 @@ export class VoiceWebSocket extends TypedEmitter<WebSocketEvents> {
     };
 
     /**
-     * @description Отправляет пакет с возможностью преобразования в JSON-строку через WebSocket.
-     * @param packet - Пакет для отправки
-     * @public
-     */
-    public packet = (packet: string | object) => {
-        try {
-            this.ws.send(JSON.stringify(packet));
-        } catch (error) {
-            this.emit("error", error as Error);
-        }
-    };
-
-    /**
      * @description Уничтожает голосовой веб-сокет. Интервал очищается, и соединение закрывается
      * @public
      */
     public destroy = (code: number = 1_000): void => {
         try {
-            this.HeartbeatInterval = -1;
+            this.liveInterval = -1;
             this.ws.close(code);
         } catch (error) {
             this.emit("error", error as Error);

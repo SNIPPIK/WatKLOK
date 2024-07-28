@@ -29,11 +29,11 @@ export class MessageBuilder {
             //Если получить возврат не удалось, то ничего не делаем
             if (!message) return;
 
-            //Если надо выполнить действия после
-            if (this.promise) this.promise(message);
-
             //Если меню, то не надо удалять
             if (this.pages && this.pages.length > 1) this.createMenuTable(message);
+
+            //Если надо выполнить действия после
+            if (this.promise) this.promise(message);
         }).catch((err) => Logger.log("ERROR", `${err}`));
     };
 

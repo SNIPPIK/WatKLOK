@@ -1,6 +1,6 @@
 import {BrotliDecompress, createBrotliDecompress, createDeflate, createGunzip, Deflate, Gunzip} from "node:zlib";
-import {ClientRequest, IncomingMessage, request as httpRequest} from "http";
-import {request as httpsRequest, RequestOptions} from "https";
+import {ClientRequest, IncomingMessage, request as httpRequest} from "node:http";
+import {request as httpsRequest, RequestOptions} from "node:https";
 import {Logger} from "@env";
 
 /**

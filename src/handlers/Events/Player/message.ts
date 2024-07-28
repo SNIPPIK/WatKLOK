@@ -186,7 +186,7 @@ class onPlaying extends Constructor.Assign<Handler.Event<"message/playing">> {
             name: "message/playing",
             type: "player",
             execute: (queue, isReturn) => {
-                const {color, author, image, title, url, duration, platform} = queue.songs.song;
+                const {color, author, image, title, url, duration, requester, platform} = queue.songs.song;
                 const embed = new MessageBuilder().addEmbeds([
                     {
                         color, thumbnail: image,
@@ -241,7 +241,7 @@ class onPlaying extends Constructor.Assign<Handler.Event<"message/playing">> {
                                 case "last": {
                                     if (queue.songs.size < 2)
                                         return {
-                                            content: locale._(message.locale, "InteractionCreate.button.arg", [author]),
+                                            content: locale._(message.locale, "InteractionCreate.button.arg", [requester.username]),
                                             color: "Yellow"
                                         };
                                     else if (queue.songs.length > 1) {
@@ -251,21 +251,21 @@ class onPlaying extends Constructor.Assign<Handler.Event<"message/playing">> {
                                     }
                                     queue.player.stop();
                                     return {
-                                        content: locale._(message.locale, "InteractionCreate.button.last", [author]),
+                                        content: locale._(message.locale, "InteractionCreate.button.last", [requester.username]),
                                         color: "Green"
                                     };
                                 }
 
                                 //Кнопка случайного трека
                                 case "shuffle": {
-                                    if (queue.songs.size < 2)
-                                        return {
-                                            content: locale._(message.locale, "InteractionCreate.button.arg", [author]),
-                                            color: "Yellow"
-                                        };
+                                    if (queue.songs.size < 2) return {
+                                        content: locale._(message.locale, "InteractionCreate.button.arg", [requester.username]),
+                                        color: "Yellow"
+                                    };
+
                                     queue.shuffle = !queue.shuffle;
                                     return {
-                                        content: locale._(message.locale, "InteractionCreate.button.shuffle", [author, queue.shuffle ? locale._(message.locale, "on") : locale._(message.locale, "off")]),
+                                        content: locale._(message.locale, "InteractionCreate.button.shuffle", [requester.username, queue.shuffle ? locale._(message.locale, "on") : locale._(message.locale, "off")]),
                                         color: "Green"
                                     };
                                 }
@@ -300,10 +300,8 @@ class onPlaying extends Constructor.Assign<Handler.Event<"message/playing">> {
 
                                 //Кнопка паузы и продолжения
                                 case "resume_pause": {
-                                    if (queue.player.status === "player/playing")
-                                        return db.commands.get("pause").execute({ message });
-                                    else if (queue.player.status === "player/pause")
-                                        return db.commands.get("resume").execute({ message });
+                                    if (queue.player.status === "player/playing") return db.commands.get("pause").execute({ message });
+                                    else if (queue.player.status === "player/pause") return db.commands.get("resume").execute({ message });
                                     return {
                                         content: locale._(message.locale, "player.wait", [author]),
                                         color: "Yellow"

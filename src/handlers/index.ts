@@ -34,10 +34,10 @@ export class Handler<T> {
         this._options = options;
 
         readdirSync(this.path).forEach((dir) => {
-            if (dir.endsWith(".js")) return;
+            if (dir.endsWith(".ts") && !dir.endsWith(".js")) return;
 
             readdirSync(this.path + `/${dir}`).forEach((file) => {
-                if (!file.endsWith(".js")) return;
+                if (!file.endsWith(".ts") && !file.endsWith(".js")) return;
 
                 //Загружаем файл
                 try {

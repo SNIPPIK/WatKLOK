@@ -1,8 +1,8 @@
 import {Encryption} from "@lib/voice/audio/utils/Sodium";
 import {VoiceOpcodes} from "discord-api-types/voice/v4";
 import {TypedEmitter} from "tiny-typed-emitter";
-import {VoiceWebSocket} from "./Web";
-import {VoiceUDPSocket} from "./UDP";
+import {VoiceWebSocket} from "./WebSocket";
+import {VoiceUDPSocket} from "./SocketUDP";
 
 /**
  * @author SNIPPIK
@@ -18,7 +18,7 @@ const socketStatus = [
     {
         name: VoiceOpcodes.Hello,
         callback: (socket: VoiceSocket, packet: {d: any, op: VoiceOpcodes}) => {
-            if (socket.state.code !== VoiceSocketStatusCode.close) socket.state.ws.HeartbeatInterval = packet.d.heartbeat_interval;
+            if (socket.state.code !== VoiceSocketStatusCode.close) socket.state.ws.liveInterval = packet.d.heartbeat_interval;
         }
     },
     {
@@ -30,9 +30,9 @@ const socketStatus = [
                 const udp = new VoiceUDPSocket({ip, port});
                 udp.on("error", socket["GettingError"]);
                 udp.once("close", socket["UDPClose"]);
-                udp.IPDiscovery(ssrc).then((localConfig) => {
+                udp.getIPDiscovery(ssrc).then((localConfig) => {
                     if (socket.state.code !== VoiceSocketStatusCode.upUDP) return;
-                    socket.state.ws.packet({
+                    socket.state.ws.packet = {
                         op: VoiceOpcodes.SelectProtocol,
                         d: {
                             protocol: "udp",
@@ -42,7 +42,7 @@ const socketStatus = [
                                 mode: Encryption.mode(modes),
                             },
                         }
-                    });
+                    };
                     socket.state = {...socket.state, code: VoiceSocketStatusCode.protocol};
                 }).catch((error: Error) => socket.emit("error", error));
 
@@ -104,15 +104,8 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
      * @public
      */
     public set state(newState) {
-        function destroyer<O>(oldS: O, newS: O, callback: (oldS: O, newS: O) => void) {
-            if (oldS && oldS !== newS) {
-                callback(oldS, newS);
-                oldS["destroy"]();
-            }
-        }
-
         //Уничтожаем WebSocket
-        destroyer(
+        stateDestroyer(
             Reflect.get(this._state, "ws") as VoiceWebSocket,
             Reflect.get(newState, "ws") as VoiceWebSocket,
             (oldS) => {
@@ -121,7 +114,7 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
         );
 
         //Уничтожаем UDP подключение
-        destroyer(
+        stateDestroyer(
             Reflect.get(this._state, "udp") as VoiceUDPSocket,
             Reflect.get(newState, "udp") as VoiceUDPSocket,
             (oldS) => {
@@ -141,17 +134,18 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
     public set speaking(speaking: boolean) {
         const state = this.state;
 
+        // Если нельзя по состоянию или уже бот говорит
         if (state.code !== VoiceSocketStatusCode.ready || state.connectionData.speaking === speaking) return;
 
         state.connectionData.speaking = speaking;
-        state.ws.packet({
+        state.ws.packet = {
             op: VoiceOpcodes.Speaking,
             d: {
                 speaking: speaking ? 1 : 0,
                 delay: 0,
                 ssrc: state.connectionData.ssrc,
             },
-        });
+        };
     };
 
     /**
@@ -160,12 +154,14 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
      *
      * @public
      */
-    public get playAudioPacket() {
+    public set playAudioPacket(opusPacket: Buffer) {
         const state = this.state;
 
-        if ("preparedPacket" in state && state?.preparedPacket) {
-            if (state.code !== VoiceSocketStatusCode.ready) return;
+        // Если код не соответствует с отправкой
+        if (state.code !== VoiceSocketStatusCode.ready) return;
 
+        // Если есть готовый пакет для отправки
+        if (opusPacket) {
             const {connectionData} = state;
             connectionData.packetsPlayed++;
             connectionData.sequence++;
@@ -175,26 +171,10 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
             else if (connectionData.timestamp >= 2 ** 32) connectionData.timestamp = 0;
 
             this.speaking = true;
-            state.udp.packet = state.preparedPacket;
-            state.preparedPacket = undefined;
-            return true;
+
+            // Зашифровываем пакет для отправки discord
+            state.udp.packet = Encryption.packet(opusPacket, state.connectionData);
         }
-
-        return false;
-    };
-
-    /**
-     * @description Создает новый аудио пакет из пакета Opus. Для этого требуется зашифровать пакет,
-     * а затем добавить заголовок, содержащий метаданные.
-     *
-     * @param opusPacket - Пакет Opus для приготовления
-     * @public
-     */
-    public set preparedAudioPacket(opusPacket: Buffer) {
-        const state = this.state;
-        if (state.code !== VoiceSocketStatusCode.ready) return;
-
-        state.preparedPacket = Encryption.packet(opusPacket, state.connectionData);
     };
 
     /**
@@ -203,12 +183,6 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
      */
     public constructor(options: ConnectionOptions) {
         super();
-        this.WebSocketOpen = this.WebSocketOpen.bind(this);
-        this.GettingError = this.GettingError.bind(this);
-        this.WebSocketPacket = this.WebSocketPacket.bind(this);
-        this.WebSocketClose = this.WebSocketClose.bind(this);
-        this.UDPClose = this.UDPClose.bind(this);
-
         Object.assign(this._state, {
             ws: this.createWebSocket(options.endpoint),
             connectionOptions: options
@@ -239,7 +213,9 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
         const isWs = state.code === VoiceSocketStatusCode.upWS;
 
         if (isResume || isWs) {
-            state.ws.packet ({
+            if (isWs) this.state = { ...this.state, code: VoiceSocketStatusCode.identify } as IdentifyState;
+
+            state.ws.packet = {
                 op: isResume ? VoiceOpcodes.Resume : VoiceOpcodes.Identify,
                 d: {
                     server_id: state.connectionOptions.serverId,
@@ -247,9 +223,7 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
                     user_id: isWs ? state.connectionOptions.userId : null,
                     token: state.connectionOptions.token,
                 }
-            });
-
-            if (isWs) this.state = { ...this.state, code: VoiceSocketStatusCode.identify } as IdentifyState;
+            };
         }
     };
 
@@ -264,12 +238,15 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
     private readonly WebSocketClose = ({ code }: {code: number}) => {
         const state = this.state;
 
+        // Если надо возобновить соединение с discord
         if (code === 4_015 || code < 4_000) {
             if (state.code === VoiceSocketStatusCode.ready) this.state = { ...state,
                 ws: this.createWebSocket(state.connectionOptions?.endpoint),
                 code: VoiceSocketStatusCode.resume
             };
         }
+
+        // Если надо приостановить соединение с discord
         else if (state.code !== VoiceSocketStatusCode.close) {
             this.destroy();
             this.emit("close", code);
@@ -281,11 +258,11 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
      * @param packet - Полученный пакет
      * @private
      */
-    private readonly WebSocketPacket = (packet: {d: any, op: VoiceOpcodes}) => {
+    private readonly WebSocketPacket = (packet: {d: any, op: VoiceOpcodes}): void => {
         const status = socketStatus.find((item) => item.name === packet.op);
 
-        if (!status) return;
-        status.callback(this, packet);
+        // Если есть возможность выполнить функцию
+        if (status && status.callback) status.callback(this, packet);
     };
 
     /**
@@ -294,16 +271,17 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
      * @private
      * @readonly
      */
-    private readonly GettingError = (error: Error) => {
+    private readonly GettingError = (error: Error): void => {
         this.emit("error", error);
-    }
+    };
 
     /**
      * @description Вызывается, когда UDP-сокет сам закрылся, если он перестал получать ответы от Discord.
      * @private
      * @readonly
      */
-    private readonly UDPClose = () => {
+    private readonly UDPClose = (): void => {
+        // Если статус код соответствует с VoiceSocketStatusCode.ready, то возобновляем работу
         if (this.state.code === VoiceSocketStatusCode.ready) this.state = { ...this.state,
             ws: this.createWebSocket(this.state.connectionOptions.endpoint),
             code: VoiceSocketStatusCode.resume
@@ -314,9 +292,24 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
      * @description Уничтожает сетевой экземпляр, переводя его в закрытое состояние.
      * @public
      */
-    public destroy = () => {
-        this.state = {code: VoiceSocketStatusCode.close};
+    public destroy = (): void => {
+        this.state = { code: VoiceSocketStatusCode.close };
     };
+}
+
+/**
+ * @description Уничтожаем не используемый WebSocket или SocketUDP
+ * @param oldS - Прошлое состояние
+ * @param newS - Новое состояние
+ * @param callback - Функция по удалению
+ */
+export function stateDestroyer<O>(oldS: O, newS: O, callback: (oldS: O, newS: O) => void) {
+    if (oldS && oldS !== newS) {
+        // Уничтожаем прошлое... удаляем класс если есть функция для уничтожения
+        if (oldS["destroy"]) oldS["destroy"]();
+
+        callback(oldS, newS);
+    }
 }
 
 /**
@@ -415,7 +408,6 @@ interface ProtocolState extends Socket_ws_State, Socket_udp_State {
  */
 interface ReadyState extends Socket_ws_State, Socket_udp_State {
     code: VoiceSocketStatusCode.ready;
-    preparedPacket?: Buffer | undefined;
 }
 
 /**
@@ -424,7 +416,6 @@ interface ReadyState extends Socket_ws_State, Socket_udp_State {
  */
 interface ResumeState extends Socket_ws_State, Socket_udp_State {
     code: VoiceSocketStatusCode.resume;
-    preparedPacket?: Buffer | undefined;
 }
 
 /**

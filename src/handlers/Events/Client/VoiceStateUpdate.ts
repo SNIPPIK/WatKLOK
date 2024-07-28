@@ -36,11 +36,14 @@ class VoiceStateUpdate extends Constructor.Assign<Handler.Event<Events.VoiceStat
                 const queue = db.audio.queue.get(guild.id);
                 const temp = temple_db.get(guild.id);
 
-
+                // Если бот не в гс и есть очередь
                 if (!meVoice && queue) {
                     db.audio.queue.remove(guild.id);
                     return;
-                } else if (members < 1) {
+                }
+
+                // Если пользователей менее 1
+                else if (members < 1) {
                     if (queue) {
                         if (queue.player.status === "player/playing")
                             queue.player.pause();
@@ -55,7 +58,10 @@ class VoiceStateUpdate extends Constructor.Assign<Handler.Event<Events.VoiceStat
                                 Voice.remove(guild.id);
                         }, timeout * 1e3)
                     });
-                } else {
+                }
+
+                // Если не подошли прошлые аргументы
+                else {
                     if (queue) {
                         if (queue.player.status === "player/pause")
                             queue.player.resume();
