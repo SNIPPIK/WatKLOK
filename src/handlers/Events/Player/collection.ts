@@ -40,6 +40,8 @@ class onAPI extends Constructor.Assign<Handler.Event<"collection/api">> {
                 }, 10e3);
 
                 api.callback(argument[1] as string, { limit: db.api.limits[api.name] }).then((item) => {
+                    clearTimeout(timeout);
+
                     // Если нет данных или была получена ошибка
                     if (item instanceof Error) {
                         event.emit("collection/error", message, locale._(message.locale,"api.fail", [name, api.name]));
@@ -61,8 +63,6 @@ class onAPI extends Constructor.Assign<Handler.Event<"collection/api">> {
                         collection.set(message.guild.id, item, collection.runQueue);
                         setImmediate(() => queue.player.play(queue.songs.song));
                     }
-
-                    clearTimeout(timeout);
 
                     // Отправляем сообщение о том что было добавлено
                     if (item instanceof Song && queue.songs.size >= 1) event.emit("message/push", queue, item);
