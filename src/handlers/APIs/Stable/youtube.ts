@@ -81,7 +81,7 @@ class cAPI extends Constructor.Assign<API.request> {
                             name: "track",
                             filter: /(watch|embed|youtu\.be|v\/)?([a-zA-Z0-9-_]{11})/gi,
                             callback: (url: string, {audio}) => {
-                                const ID = this.filter.exec(url).at(0);
+                                const ID = this.filter.exec(url)?.at(0) ?? this.filter.exec(url)[0];
 
                                 return new Promise<Song>(async (resolve, reject) => {
                                     //Если ID видео не удалось извлечь из ссылки

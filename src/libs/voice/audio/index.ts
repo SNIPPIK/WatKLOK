@@ -103,7 +103,7 @@ export class SeekStream {
      * @private
      */
     private set input(options: {input: NodeJS.ReadWriteStream, events: string[]}) {
-        for (const event of options.events) options.input.once(event, this.cleanup);
+        for (const event of options.events) options.input.once(event, this.destroy);
         options.input.once("readable", () => { this._readable = true; });
 
         this.process.stdout.pipe(options.input);
@@ -129,10 +129,10 @@ export class SeekStream {
      * @description Удаляем ненужные данные
      * @public
      */
-    public cleanup = () => {
+    public destroy = () => {
         setImmediate(() => {
             for (const stream of this._streams) {
-                if (stream instanceof Process) stream.cleanup();
+                if (stream instanceof Process) stream.destroy();
                 else {
                     stream?.destroy();
                     stream.end();
@@ -180,14 +180,14 @@ export class Process {
      */
     public constructor(args: string[], name: string = env.get("ffmpeg.path")) {
         this._process = spawn(name, args, {shell: false});
-        ["end", "close", "error"].forEach((event) => this.process.once(event, this.cleanup));
+        ["end", "close", "error"].forEach((event) => this.process.once(event, this.destroy));
     };
 
     /**
      * @description Удаляем и отключаемся от процесса
      * @private
      */
-    public cleanup = () => {
+    public destroy = () => {
         if (this._process && !this.process?.killed) this.process?.kill();
         this._process = null;
     };

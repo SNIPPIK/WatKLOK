@@ -1,4 +1,5 @@
 import {Database_Commands} from "@handler/Database/Global/Commands";
+import {Database_Cache} from "@handler/Database/Global/Cache";
 import {Database_Audio} from "@handler/Database/Global/Audio";
 import {Database_APIs} from "@handler/Database/Global/APIs";
 import {API, Handler} from "@handler";
@@ -73,6 +74,7 @@ export const db = new class Database {
     private readonly loaded = {
         commands:   new Database_Commands(),
         audio:      new Database_Audio(),
+        cache:      new Database_Cache(),
         apis:       new Database_APIs()
     };
 
@@ -81,6 +83,12 @@ export const db = new class Database {
      * @public
      */
     public get audio() { return this.loaded.audio };
+
+    /**
+     * @description База для управления системой кеширования
+     * @public
+     */
+    public get cache() { return this.loaded.cache };
 
     /**
      * @description База для управления APIs

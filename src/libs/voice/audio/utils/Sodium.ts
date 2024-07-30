@@ -55,11 +55,7 @@ const MAX_NONCE_SIZE = 2 ** 32 - 1;
 /**
  * @description Доступные заголовки для отправки opus пакетов
  */
-const SUPPORTED_ENCRYPTION_MODES = [
-    "xsalsa20_poly1305_lite",
-    "xsalsa20_poly1305_suffix",
-    "xsalsa20_poly1305"
-];
+const SUPPORTED_ENCRYPTION_MODES = [ "_lite", "_suffix", ""].map(item => `xsalsa20_poly1305${item}`);
 
 /**
  * @author SNIPPIK

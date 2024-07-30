@@ -92,17 +92,17 @@ abstract class Request {
      * @public
      */
     public constructor(url: string, options?: httpsClient["data"]) {
-        if (url) {
+        // Если ссылка является ссылкой
+        if (url.startsWith("http")) {
             const {hostname, pathname, search, port, protocol} = new URL(url);
 
             //Создаем стандартные настройки
             Object.assign(this.data, {
-                headers: options?.headers ?? {},
-                method: options?.method ?? "GET",
-                port, hostname, body: options?.body ?? null,
-                path: pathname + search, protocol
+                port, hostname, path: pathname + search, protocol
             });
-        } else Object.assign(this.data, options);
+        }
+
+        Object.assign(this.data, options);
 
         if (options?.useragent) {
             const OS = [ "(X11; Linux x86_64)", "(Windows NT 10.0; Win64; x64)" ];

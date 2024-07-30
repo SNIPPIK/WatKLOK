@@ -1,4 +1,3 @@
-import {History} from "@lib/voice/player/utils/History";
 import {Constructor, Handler} from "@handler";
 import {db} from "@lib/db";
 import {env} from "@env";
@@ -19,10 +18,14 @@ class onEnd extends Constructor.Assign<Handler.Event<"player/ended">> {
                 if (seek !== 0) return;
                 db.audio.queue.events.emit("message/playing", queue);
 
-                if (History.enable && queue.songs.song.platform !== "DISCORD") new History(queue.songs.song, queue.guild.id);
+                // Кешируем проигранный трек
+                if (db.cache.history) {
+                    if (queue.songs.song.platform !== "DISCORD") return;
+                    new db.cache.history(queue.songs.song, queue.guild.id);
+                }
             }
         });
-    }
+    };
 }
 
 /**

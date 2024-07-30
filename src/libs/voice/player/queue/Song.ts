@@ -214,13 +214,13 @@ export class Song {
      */
     public get resource(): Promise<string | Error> {
         const platform = this.platform;
-        const isDownload = db.audio.cycles.downloader && platform !== "DISCORD";
+        const isDownload = db.cache.audio && platform !== "DISCORD";
 
         //Создаем обещание
         return new Promise(async (resolve) => {
             //Если трек уже кеширован, то сразу выдаем его
             if (isDownload) {
-                const info = db.audio.cycles.downloader.status(this);
+                const info = db.cache.audio.status(this);
                 if (info.status === "final") return resolve(`file:|${info.path}`);
             }
 
@@ -255,7 +255,7 @@ export class Song {
 
             //Если не удается найти ссылку через n попыток
             if (!this.link) return resolve(Error(`[SONG]: Fail update link resource`));
-            else if (isDownload && this.link) void (db.audio.cycles.downloader.set(this));
+            else if (isDownload && this.link) void (db.cache.audio.set(this));
             return resolve(`link:|${this.link}`);
         });
     };

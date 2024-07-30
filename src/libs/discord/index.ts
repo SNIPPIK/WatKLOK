@@ -29,14 +29,13 @@ import {env, Logger} from "@env";
  */
 export class ShardManager extends ShardingManager {
     public constructor(path: string) {
-        const mode = env.get("shard.mode")
         super(path, {
-            token: env.get("token.discord"), mode,
+            token: env.get("token.discord"), mode: "worker",
             totalShards: env.get("shard.total"),
             execArgv: ["-r", "tsconfig-paths/register"],
             respawn: true
         });
-        Logger.log("LOG", `[ShardManager/${mode}] running...`);
+        Logger.log("LOG", `[ShardManager/worker] running...`);
 
         //Слушаем ивент для создания осколка
         this.on("shardCreate", (shard) => {

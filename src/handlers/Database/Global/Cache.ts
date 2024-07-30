@@ -1,13 +1,99 @@
-import {existsSync, mkdirSync, readFileSync, writeFileSync} from "node:fs";
+import {createWriteStream, existsSync, mkdirSync, readFileSync, rename, writeFileSync} from "node:fs";
 import {Song} from "@lib/voice/player/queue/Song";
-import {env} from "@env";
+import {httpsClient} from "@lib/request";
+import {Constructor} from "@handler";
+import {env, Logger} from "@env";
+import path from "node:path";
+
+/**
+ * @author SNIPPIK
+ * @description Путь до директории с кешированными данными
+ */
+const cache = `${env.get("cached.dir")}`;
+
+/**
+ * @author SNIPPIK
+ * @description Сохраняем аудио файл трека
+ */
+class Audio extends Constructor.Cycle<Song> {
+    public constructor() {
+        super({
+            name: "AudioFile",
+            duration: 20e3,
+            filter: (item) => {
+                const names = this.status(item);
+
+                //Если уже скачено или не подходит для скачивания то, пропускаем
+                if (names.status === "final" || item.duration.seconds === 0 && item.duration.seconds >= 800) {
+                    this.remove(item);
+                    return false;
+
+                    //Если нет директории автора то, создаем ее
+                } else if (!existsSync(names.path)) {
+                    let dirs = names.path.split("/");
+
+                    if (!names.path.endsWith("/")) dirs.splice(dirs.length - 1);
+                    mkdirSync(dirs.join("/"), {recursive: true});
+                }
+                return true;
+            },
+            execute: (track) => new Promise<boolean>((resolve) => {
+                setImmediate(() => this.remove(track));
+
+                new httpsClient(track.link).request.then((req) => {
+                    if (req instanceof Error) return resolve(false);
+                    else if ("pipe" in req) {
+                        const status = this.status(track);
+                        const file = createWriteStream(status.path);
+
+                        file.once("ready", () => req.pipe(file as any));
+                        file.once("error", console.warn);
+                        file.once("finish", () => {
+                            const refreshName = this.status(track).path.split(".raw")[0];
+                            rename(status.path, `${refreshName}.opus`, () => null);
+
+                            if (!req.destroyed) req.destroy();
+                            if (!file.destroyed) {
+                                file.destroy();
+                                file.end();
+                            }
+                            Logger.log("DEBUG", `[Download] in ${refreshName}`);
+
+                            return resolve(true);
+                        });
+                    }
+
+                    return resolve(false);
+                });
+            })
+        });
+    };
+
+    /**
+     * @description Получаем статус скачивания и путь до файла
+     * @param track {Song}
+     */
+    public status = (track: Song): { status: "not" | "final" | "download", path: string } => {
+        const title = track.title.replace(/[|,'";*/\\{}!?.:<>]/gi, "");
+        const author = track.author.title.replace(/[|,'";*/\\{}!?.:<>]/gi, "");
+
+        try {
+            const dir = `${path.resolve(`${cache}/Audio/[${author}]/[${title}]`)}`;
+            const isOpus = existsSync(`${dir}.opus`), isRaw = existsSync(`${dir}.raw`);
+
+            return {status: isOpus ? "final" : isRaw ? "download" : "not", path: dir + (isOpus ? `.opus` : `.raw`)}
+        } catch {
+            return {status: "not", path: null};
+        }
+    };
+}
 
 /**
  * @author SNIPPIK
  * @description История прослушиваний для серверов
  * @class History
  */
-export class History {
+class History {
     private readonly data = {
         track: null     as Song,
         guildID: null   as string
@@ -18,18 +104,8 @@ export class History {
      * @private
      */
     private get path() {
-        const path = env.get("cached.dir");
-
-        return `${path}/Guilds/[${this.data.guildID}].json`;
+        return `${cache}/Guilds/[${this.data.guildID}].json`;
     };
-
-    /**
-     * @description Проверяем работает ли история
-     * @return boolean
-     * @public
-     * @static
-     */
-    public static get enable() { return env.get("history"); };
 
     /**
      * @description Загружаем файл
@@ -41,7 +117,6 @@ export class History {
 
         return readFileSync(this.path, {encoding: "utf-8"});
     };
-
 
     /**
      * @description Сохраняем данные о треке в локальную базу
@@ -140,6 +215,16 @@ export class History {
         }, 2e3);
     }
 }
+
+/**
+ * @author SNIPPIK
+ * @description Класс для управления другими классами
+ */
+export class Database_Cache {
+    public audio = env.get("cache") ? new Audio() : null;
+    public history = env.get("history") ? History : null;
+}
+
 
 /**
  * @author SNIPPIK

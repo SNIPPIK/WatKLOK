@@ -1,7 +1,6 @@
 import {MessageBuilder} from "@lib/discord/utils/MessageBuilder";
 import {ApplicationCommandOptionType, Colors} from "discord.js";
 import {SlashBuilder} from "@lib/discord/utils/SlashBuilder";
-import {History} from "@lib/voice/player/utils/History";
 import {Constructor, Handler} from "@handler";
 import {locale} from "@lib/locale";
 import {db} from "@lib/db";
@@ -48,12 +47,12 @@ class Command_songs extends Constructor.Assign<Handler.Command> {
                 // История прослушивания
                 if (sub === "history") {
                     //Если история отключена
-                    if (!History.enable) return {
+                    if (!db.cache.history) return {
                         content: locale._(message.locale,"player.history.disable", [author]),
                         color: "Yellow"
                     };
 
-                    const file = History.getFile(message.guildId);
+                    const file = db.cache.history.getFile(message.guildId);
 
                     //Если нет файла
                     if (!file) return {

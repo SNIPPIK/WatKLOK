@@ -4,7 +4,6 @@ import {MessageBuilder} from "@lib/discord/utils/MessageBuilder";
 import onPlaying from "@handler/Events/Player/message";
 import {Filters} from "@lib/voice/audio/utils/Filters";
 import {Queue} from "@lib/voice/player/queue/Queue";
-import {Cache} from "@lib/voice/player/utils/Cache";
 import {Song} from "@lib/voice/player/queue/Song";
 import {TypedEmitter} from "tiny-typed-emitter";
 import {Constructor, Handler} from "@handler";
@@ -137,14 +136,6 @@ export class Database_Audio {
                 };
             };
             public get messages() { return this._messages; };
-
-            /**
-             * @author SNIPPIK
-             * @description Здесь происходит управление кешированием треков
-             * @private
-             */
-            private readonly _downloader = env.get("cache") ? new Cache.AudioFile() : null;
-            public get downloader() { return this._downloader; };
         }
     };
     /**

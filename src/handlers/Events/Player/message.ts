@@ -1,8 +1,8 @@
 import {LightMessageBuilder, MessageBuilder} from "@lib/discord/utils/MessageBuilder";
 import {ActionRowBuilder, Colors, StringSelectMenuBuilder} from "discord.js";
 import interactionCreate from "@handler/Events/Client/interactionCreate";
-import {API, Constructor, Handler} from "@handler";
 import {Queue} from "@lib/voice/player/queue/Queue";
+import {API, Constructor, Handler} from "@handler";
 import {Song} from "@lib/voice/player/queue/Song";
 import {locale} from "@lib/locale";
 import {db} from "@lib/db";
