@@ -120,7 +120,7 @@ class Command_Filter extends Constructor.Assign<Handler.Command> {
                 .json,
             intents: ["voice", "queue", "anotherVoice"],
             execute: ({message, args, sub}) => {
-                const { author, member, guild } = message;
+                const { author, guild } = message;
                 const queue = db.audio.queue.get(guild.id);
 
                 //Если статус плеера не позволяет пропустить поток
@@ -296,7 +296,7 @@ class Command_Seek extends Constructor.Assign<Handler.Command> {
                 .json,
             intents: ["queue", "voice", "anotherVoice"],
             execute: ({message, args}) => {
-                const {author, member, guild} = message;
+                const {author, guild} = message;
                 const queue = db.audio.queue.get(guild.id);
 
                 //Если текущий трек является потоковым

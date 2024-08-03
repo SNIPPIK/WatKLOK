@@ -40,8 +40,7 @@ class Command_songs extends Constructor.Assign<Handler.Command> {
                 .json,
             intents: ["voice", "queue", "anotherVoice"],
             execute: ({message, sub}) => {
-                const { author, member, guild } = message;
-                const VoiceChannel = member?.voice?.channel;
+                const { author, guild } = message;
                 const queue = db.audio.queue.get(guild.id);
 
                 // История прослушивания

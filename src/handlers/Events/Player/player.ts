@@ -42,6 +42,9 @@ class onWait extends Constructor.Assign<Handler.Event<"player/wait">> {
                 //Если нет треков в очереди
                 if (!queue?.songs?.song || !queue.player) return db.audio.queue.remove(queue.guild.id);
 
+                // Последний трек
+                //if (queue.songs.size === 1) db.audio.queue.events.emit("message/last", queue.songs.song, queue.message);
+
                 //Проверяем надо ли удалить из очереди трек
                 const removedSong = queue.repeat === "off" || queue.repeat === "songs" ? queue.songs.shift() : null;
                 if (removedSong && (queue.repeat === "songs" || queue.radio)) queue.songs.push(removedSong);

@@ -172,21 +172,24 @@ export class Database_Audio {
  * @interface CollectionAudioEvents
  */
 export interface CollectionAudioEvents {
-    //Сообщение о добавленном треке или плейлисте, альбоме
+    // Сообщение о добавленном треке или плейлисте, альбоме
     "message/push": (queue: Queue.Music | Client.message, items: Song | Song.playlist) => void;
 
-    //Сообщение о текущем треке
+    // Сообщение о текущем треке
     "message/playing": (queue: Queue.Music, isReturn?: boolean) => void | EmbedData;
 
-    //Сообщение об ошибке
+    // Сообщение об ошибке
     "message/error": (queue: Queue.Music, error?: string | Error) => void;
 
-    //Сообщение о поиске и выборе трека
+    // Сообщение о поиске и выборе трека
     "message/search": (tracks: Song[], platform: string, message: Client.message) => void;
 
-    //Добавляем и создаем очередь
+    // Сообщение о последнем треке
+    "message/last": (track: Song, message: Client.message) => void;
+
+    // Добавляем и создаем очередь
     "collection/api": (message: Client.message, voice: VoiceChannel | StageChannel, argument: (string | Attachment)[]) => void;
 
-    //Если во время добавления трека или плейлиста произошла ошибка
+    // Если во время добавления трека или плейлиста произошла ошибка
     "collection/error": (message: Client.message, error: string, replied?: boolean, color?: "DarkRed" | "Yellow") => void;
 }

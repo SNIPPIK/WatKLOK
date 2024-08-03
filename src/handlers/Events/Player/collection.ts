@@ -1,10 +1,18 @@
 import {LightMessageBuilder} from "@lib/discord/utils/MessageBuilder";
-import {API, Constructor, Handler} from "@handler";
+import {StageChannel, VoiceChannel} from "discord.js";
 import {Queue} from "@lib/voice/player/queue/Queue";
+import {API, Constructor, Handler} from "@handler";
 import {Song} from "@lib/voice/player/queue/Song";
+import {Client} from "@lib/discord";
 import {locale} from "@lib/locale";
 import {Logger} from "@env";
 import {db} from "@lib/db";
+
+/**
+ * @author SNIPPIK
+ * @description Система ивентов
+ */
+const event = db.audio.queue.events;
 
 /**
  * @class onAPI
@@ -17,34 +25,34 @@ class onAPI extends Constructor.Assign<Handler.Event<"collection/api">> {
             name: "collection/api",
             type: "player",
             execute: (message, voice, argument) => {
-                const platform = new API.response(argument[0] as string), name = platform.platform;
-                const event = db.audio.queue.events, collection = db.audio.queue;
+                const platform = new API.response(argument[0] as string);
 
-                if (platform.block) return void (event.emit("collection/error", message, locale._(message.locale,"api.blocked", [name])));
-                else if (platform.auth) return void (event.emit("collection/error", message, locale._(message.locale,"api.auth", [name])));
+                if (platform.block) return void (event.emit("collection/error", message, locale._(message.locale,"api.blocked", [platform.platform])));
+                else if (platform.auth) return void (event.emit("collection/error", message, locale._(message.locale,"api.auth", [platform.platform])));
                 else if (typeof argument[1] === "string" && !argument[1].match(platform.filter) && argument[1].startsWith("http"))
-                    return void (event.emit("collection/error", message, locale._(message.locale,"api.type.fail", [name])));
+                    return void (event.emit("collection/error", message, locale._(message.locale,"api.type.fail", [platform.platform])));
 
                 const api = platform.find(typeof argument[1] !== "string" ? argument[1].url : argument[1]);
 
-                if (!api || !api?.name) return void (event.emit("collection/error", message, locale._(message.locale,"api.type.fail", [name])));
-                else if (!api) return void (event.emit("collection/error", message, locale._(message.locale,"api.callback.null", [name, api.name])));
+                if (!api || !api?.name) return void (event.emit("collection/error", message, locale._(message.locale,"api.type.fail", [platform.platform])));
+                else if (!api) return void (event.emit("collection/error", message, locale._(message.locale,"api.callback.null", [platform.platform, api.name])));
 
                 // Отправляем сообщение о том что запрос производится
                 const audio = platform.audio ? locale._(message.locale,"api.audio.null") : "";
-                event.emit("collection/error", message, locale._(message.locale,"api.wait", [name, api.name, audio]), false, "Yellow");
+                event.emit("collection/error", message, locale._(message.locale,"api.wait", [platform.platform, api.name, audio]), false, "Yellow");
 
                 // Если ответ не был получен от сервера
                 const timeout = setTimeout(() => {
-                    event.emit("collection/error", message, locale._(message.locale,"api.wait.fail", [name, api.name]));
+                    event.emit("collection/error", message, locale._(message.locale,"api.wait.fail", [platform.platform, api.name]));
                 }, 10e3);
 
-                api.callback(argument[1] as string, { limit: db.api.limits[api.name] }).then((item) => {
+                // Получаем данные в системе API
+                api.callback(argument[1] as string, { limit: db.api.limits[api.name], audio: true }).then((item) => {
                     clearTimeout(timeout);
 
                     // Если нет данных или была получена ошибка
                     if (item instanceof Error) {
-                        event.emit("collection/error", message, locale._(message.locale,"api.fail", [name, api.name]));
+                        event.emit("collection/error", message, locale._(message.locale,"api.fail", [platform.platform, api.name]));
                         return;
                     }
 
@@ -55,30 +63,43 @@ class onAPI extends Constructor.Assign<Handler.Event<"collection/api">> {
                     }
 
                     // Запускаем проигрывание треков
-                    let queue = collection.get(message.guild.id);
-                    if (!queue) {
-                        const item = new Queue.Music({message, voice});
-                        queue = item;
-
-                        collection.set(message.guild.id, item, collection.runQueue);
-                        setImmediate(() => queue.player.play(queue.songs.song));
-                    }
-
-                    // Отправляем сообщение о том что было добавлено
-                    if (item instanceof Song && queue.songs.size >= 1) event.emit("message/push", queue, item);
-                    else if ("items" in item) event.emit("message/push", message, item);
-
-                    // Добавляем треки в очередь
-                    for (const track of (item["items"] ?? [item]) as Song[]) {
-                        track.requester = message.author;
-                        queue.songs.push(track);
-                    }
+                    return onAPI.createQueue(message, voice, item);
                 }).catch((err: Error) => { // Отправляем сообщение об ошибке
                     clearTimeout(timeout);
-                    event.emit("collection/error", message, `**${name}.${api.name}**\n\n**❯** **${err.message}**`, true);
+                    event.emit("collection/error", message, `**${platform.platform}.${api.name}**\n\n**❯** **${err.message}**`, true);
                 });
             }
         });
+    };
+
+    /**
+     * @description Создаем очередь
+     * @param message - Сообщение пользователя
+     * @param voice   - Голосовой канал
+     * @param item    - Добавляемый объект
+     */
+    protected static createQueue = (message: Client.message, voice: VoiceChannel | StageChannel, item: any) => {
+        let queue = db.audio.queue.get(message.guild.id);
+
+        if (!queue) {
+            queue = new Queue.Music({message, voice});
+
+            // Добавляем очередь в базу
+            db.audio.queue.set(message.guild.id, queue, db.audio.queue.runQueue);
+
+            // В конце функции выполнить запуск проигрывания
+            setImmediate(() => queue.player.play(queue.songs.song));
+        }
+
+        // Отправляем сообщение о том что было добавлено
+        if (item instanceof Song && queue.songs.size >= 1) event.emit("message/push", queue, item);
+        else if ("items" in item) event.emit("message/push", message, item);
+
+        // Добавляем треки в очередь
+        for (const track of (item["items"] ?? [item]) as Song[]) {
+            track.requester = message.author;
+            queue.songs.push(track);
+        }
     };
 }
 
