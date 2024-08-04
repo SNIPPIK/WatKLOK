@@ -97,7 +97,7 @@ abstract class Request {
             const {hostname, pathname, search, port, protocol} = new URL(url);
 
             //Создаем стандартные настройки
-            Object.assign(this.data, {method: "GET"}, {
+            Object.assign(this.data, {
                 port, hostname, path: pathname + search, protocol
             });
         }
