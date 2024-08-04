@@ -104,8 +104,7 @@ class cAPI extends Constructor.Assign<API.request> {
 
                                         //Если надо получить аудио
                                         if (audio) {
-                                            const format = await cAPI.extractStreamingData(result["streamingData"]);
-
+                                            const format = await cAPI.extractFormat(result["streamingData"]);
                                             result["videoDetails"]["format"] = {url: format["url"]};
                                         }
 
@@ -301,20 +300,18 @@ class cAPI extends Constructor.Assign<API.request> {
      * @description Получаем аудио дорожки
      * @param data {any} <videoData>.streamingData
      */
-    protected static extractStreamingData = (data: any) => {
+    protected static extractFormat = (data: any) => {
         return new Promise(async (resolve) => {
-            const format = (data["adaptiveFormats"]).filter((item: any) => item.mimeType.match(/opus|audio/) && !item.mimeType.match(/ec-3/));
+            // Проверяем все форматы аудио и видео
+            for (const format of (data["adaptiveFormats"])) {
+                if (!format.url) continue;
 
-            if (format instanceof Error) return resolve(null);
-
-            const oneFormat = format.at(-1);
-
-            // Исправляем ссылку если она дублируется
-            if (oneFormat) {
-                if (!oneFormat.url.startsWith("https")) oneFormat.url = oneFormat.url.split("https://")[1];
+                // Если это аудио, то проверяем его
+                else if (format.mimeType.match(/opus|audio/) && !format.mimeType.match(/ec-3/)) {
+                    if (!format.url.startsWith("https")) format.url = format.url.split("https://")[1];
+                    return resolve(format);
+                }
             }
-
-            return resolve(oneFormat);
         });
     };
 
