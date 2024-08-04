@@ -306,7 +306,15 @@ class cAPI extends Constructor.Assign<API.request> {
             const format = (data["adaptiveFormats"]).filter((item: any) => item.mimeType.match(/opus|audio/) && !item.mimeType.match(/ec-3/));
 
             if (format instanceof Error) return resolve(null);
-            return resolve(format.at(-1));
+
+            const oneFormat = format.at(-1);
+
+            // Исправляем ссылку если она дублируется
+            if (oneFormat) {
+                if (!oneFormat.url.startsWith("https")) oneFormat.url = oneFormat.url.split("https://")[1];
+            }
+
+            return resolve(oneFormat);
         });
     };
 
