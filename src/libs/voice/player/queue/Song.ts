@@ -233,7 +233,7 @@ export class Song {
 
                     //Если вместо ссылки получили ошибку
                     if (link instanceof Error) {
-                        if (r >= 3) return resolve(link);
+                        if (r >= 3) break;
                         else continue;
                     }
 
@@ -245,10 +245,11 @@ export class Song {
                     try {
                         const status = await new httpsClient(this.link, {method: "HEAD"}).status;
 
-                        if (!status) continue;
-                        else break;
+                        if (status) break
+                        else this.link = null;
                     } catch (err) {
                         Logger.log("ERROR", err);
+                        this.link = null;
                     }
                 }
             }
