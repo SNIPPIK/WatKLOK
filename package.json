@@ -17,6 +17,7 @@
   "scripts": {
     "run:client": "tsc -p tsconfig.json && cd node_build && node -r tsconfig-paths/register src",
     "run:sharder": "tsc -p tsconfig.json && cd node_build && node -r tsconfig-paths/register src --ShardManager",
+    "run:debug": "tsc -p tsconfig.json && cd node_build && node -r tsconfig-paths/register src --dbg",
     "run:delete": "cd node_build && node -r tsconfig-paths/register src --RemoveAllCommands --dbg"
   },
   "engines": {

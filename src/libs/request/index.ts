@@ -68,7 +68,7 @@ abstract class Request {
                 if ((res.statusCode >= 300 && res.statusCode < 400) && res.headers?.location) {
                     this.data.path = res.headers.location;
 
-                    Logger.log("DEBUG", `[request/redirect]: ${res.headers.location}`);
+                    Logger.log("DEBUG", `request/redirect: [${res.headers.location}]`);
                     return resolve(this.request);
                 }
 
@@ -97,7 +97,7 @@ abstract class Request {
             const {hostname, pathname, search, port, protocol} = new URL(url);
 
             //Создаем стандартные настройки
-            Object.assign(this.data, {
+            Object.assign(this.data, {method: "GET"}, {
                 port, hostname, path: pathname + search, protocol
             });
         }

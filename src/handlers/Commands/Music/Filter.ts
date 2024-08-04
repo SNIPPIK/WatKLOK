@@ -35,6 +35,7 @@ class Command_Filter extends Constructor.Assign<Handler.Command> {
                                     "en-US": "You need to select a filter! All available filters are all"
                                 },
                                 type: ApplicationCommandOptionType["String"],
+                                required: true,
                                 choices: db.audio.filters.length < 25 ? db.audio.filters.map((filter) => {
                                     return {
                                         name: `${filter.name} | ${filter.description.length > 75 ? `${filter.description.substring(0, 75)}...` : filter.description}`,
@@ -70,6 +71,7 @@ class Command_Filter extends Constructor.Assign<Handler.Command> {
                                     "en-US": "You need to select a filter! All available filters are all"
                                 },
                                 type: ApplicationCommandOptionType["String"],
+                                required: true,
                                 choices: db.audio.filters.length < 25 ? db.audio.filters.map((filter) => {
                                     return {
                                         name: `${filter.name} | ${filter.description.length > 75 ? `${filter.description.substring(0, 75)}...` : filter.description}`,

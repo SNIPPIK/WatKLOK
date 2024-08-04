@@ -236,8 +236,8 @@ class cAPI extends Constructor.Assign<API.request> {
 
                 //Если есть статус, то проверяем
                 if (api["playabilityStatus"]?.status) {
-                    if (api["playabilityStatus"]?.status === "LOGIN_REQUIRED") return Error(`[APIs]: Данное видео невозможно включить из-за проблем с авторизацией!`);
-                    else if (api["playabilityStatus"]?.status !== "OK") return Error(`[APIs]: Не удалось получить данные! Status: ${api["playabilityStatus"]?.status}`);
+                    if (api["playabilityStatus"]?.status === "LOGIN_REQUIRED") return resolve(Error(`[APIs]: Данное видео невозможно включить из-за проблем с авторизацией!`));
+                    else if (api["playabilityStatus"]?.status !== "OK") return resolve(Error(`[APIs]: Не удалось получить данные! Status: ${api["playabilityStatus"]?.status}`));
                 }
 
                 return resolve(api);
