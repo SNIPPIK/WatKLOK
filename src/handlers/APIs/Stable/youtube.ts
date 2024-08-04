@@ -1,4 +1,3 @@
-import {Youtube_decoder} from "@lib/voice/player/decoder/youtube";
 import {Song} from "@lib/voice/player/queue/Song";
 import {API, Constructor} from "@handler";
 import {httpsClient} from "@lib/request";
@@ -9,6 +8,15 @@ import {httpsClient} from "@lib/request";
  * @class cAPI
  */
 class cAPI extends Constructor.Assign<API.request> {
+    /**
+     * @description Данные для создания запросов
+     * @protected
+     */
+    protected static authorization = {
+        AIza: "https://www.youtube.com/youtubei/v1",
+        auth: "AIzaSyB-63vPrdThhKuerbB2N_l7Jswcxj6yUAc"
+    };
+
     /**
      * @description Создаем экземпляр запросов
      * @constructor cAPI
@@ -80,7 +88,7 @@ class cAPI extends Constructor.Assign<API.request> {
                         super({
                             name: "track",
                             filter: /(watch|embed|youtu\.be|v\/)?([a-zA-Z0-9-_]{11})/gi,
-                            callback: (url: string, {audio}) => {
+                            callback: (url: string, { audio}) => {
                                 const ID = this.filter.exec(url)?.at(0) ?? this.filter.exec(url)[0];
 
                                 return new Promise<Song>(async (resolve, reject) => {
@@ -89,14 +97,15 @@ class cAPI extends Constructor.Assign<API.request> {
 
                                     try {
                                         //Создаем запрос
-                                        const result = await cAPI.API(`https://www.youtube.com/watch?v=${ID}&has_verified=1`);
+                                        const result = await cAPI.AIzaAPI(ID);
 
-                                        //Если возникла ошибка при получении данных
+                                        ///Если при получении данных возникла ошибка
                                         if (result instanceof Error) return reject(result);
 
                                         //Если надо получить аудио
                                         if (audio) {
-                                            const format = await cAPI.extractStreamingData(result["streamingData"], result["html5"]);
+                                            const format = await cAPI.extractStreamingData(result["streamingData"]);
+
                                             result["videoDetails"]["format"] = {url: format["url"]};
                                         }
 
@@ -190,6 +199,53 @@ class cAPI extends Constructor.Assign<API.request> {
     };
 
     /**
+     * @description Делаем запрос через API player youtubeAI
+     * @param ID {string} ID данных
+     */
+    protected static AIzaAPI = (ID: string): Promise<Error | any> => {
+        return new Promise((resolve) => {
+            new httpsClient(`${this.authorization.AIza}/player?key${this.authorization.auth}&prettyPrint=false`, {
+                method: "POST",
+                body: JSON.stringify({
+                    context: {
+                        client: {
+                            clientName: 'IOS',
+                            clientVersion: '19.09.3',
+                            deviceModel: 'iPhone14,3',
+                            userAgent: 'com.google.ios.youtube/19.09.3 (iPhone14,3; U; CPU iOS 15_6 like Mac OS X)',
+                            hl: 'en',
+                            timeZone: 'UTC',
+                            utcOffsetMinutes: 0
+                        }
+                    },
+                    videoId: ID,
+                    playbackContext: { contentPlaybackContext: { html5Preference: 'HTML5_PREF_WANTS' } },
+                    contentCheckOk: true,
+                    racyCheckOk: true
+                }),
+                headers: {
+                    'X-YouTube-Client-Name': '5',
+                    'X-YouTube-Client-Version': '19.09.3',
+                    Origin: 'https://www.youtube.com',
+                    'User-Agent': 'com.google.ios.youtube/19.09.3 (iPhone14,3; U; CPU iOS 15_6 like Mac OS X)',
+                    'content-type': 'application/json'
+                }
+            }).toJson.then((api) => {
+                //Если возникает ошибка при получении страницы
+                if (api instanceof Error) return resolve(Error("[APIs]: Не удалось получить данные!"));
+
+                //Если есть статус, то проверяем
+                if (api["playabilityStatus"]?.status) {
+                    if (api["playabilityStatus"]?.status === "LOGIN_REQUIRED") return Error(`[APIs]: Данное видео невозможно включить из-за проблем с авторизацией!`);
+                    else if (api["playabilityStatus"]?.status !== "OK") return Error(`[APIs]: Не удалось получить данные! Status: ${api["playabilityStatus"]?.status}`);
+                }
+
+                return resolve(api);
+            }).catch((err) => resolve(Error(`[APIs]: ${err}`)));
+        });
+    };
+
+    /**
      * @description Получаем страницу и ищем на ней данные
      * @param url {string} Ссылка на видео
      */
@@ -223,7 +279,7 @@ class cAPI extends Constructor.Assign<API.request> {
         const startPattern: string = input.match("var ytInitialPlayerResponse = ") ? "var ytInitialPlayerResponse = " : "var ytInitialData = ";
         const startIndex = input.indexOf(startPattern);
         const endIndex = input.indexOf("};", startIndex + startPattern.length);
-        
+
         //Если нет данных
         if (startIndex === -1 && endIndex === -1) return null;
 
@@ -244,15 +300,13 @@ class cAPI extends Constructor.Assign<API.request> {
     /**
      * @description Получаем аудио дорожки
      * @param data {any} <videoData>.streamingData
-     * @param html5player {string} Ссылка на плеер дешифровки
      */
-    protected static extractStreamingData = (data: any, html5player: string) => {
+    protected static extractStreamingData = (data: any) => {
         return new Promise(async (resolve) => {
             const format = (data["adaptiveFormats"]).filter((item: any) => item.mimeType.match(/opus|audio/) && !item.mimeType.match(/ec-3/));
-            const decoded = await Youtube_decoder.decipherFormats(format, html5player);
 
-            if (decoded instanceof Error) return resolve(null);
-            return resolve(decoded.at(-1));
+            if (format instanceof Error) return resolve(null);
+            return resolve(format.at(-1));
         });
     };
 
