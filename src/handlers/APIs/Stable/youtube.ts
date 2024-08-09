@@ -1,6 +1,9 @@
 import {Song} from "@lib/voice/player/queue/Song";
+import * as querystring from "node:querystring";
 import {API, Constructor} from "@handler";
 import {httpsClient} from "@lib/request";
+import {Script} from "vm";
+import {env} from "@env";
 
 /**
  * @author SNIPPIK
@@ -8,15 +11,6 @@ import {httpsClient} from "@lib/request";
  * @class cAPI
  */
 class cAPI extends Constructor.Assign<API.request> {
-    /**
-     * @description Данные для создания запросов
-     * @protected
-     */
-    protected static authorization = {
-        AIza: "https://www.youtube.com/youtubei/v1",
-        auth: "AIzaSyB-63vPrdThhKuerbB2N_l7Jswcxj6yUAc"
-    };
-
     /**
      * @description Создаем экземпляр запросов
      * @constructor cAPI
@@ -96,16 +90,34 @@ class cAPI extends Constructor.Assign<API.request> {
                                     if (!ID) return reject(Error("[APIs]: Не удалось получить ID трека!"));
 
                                     try {
-                                        //Создаем запрос
-                                        const result = await cAPI.AIzaAPI(ID);
+                                        let result = null;
 
-                                        ///Если при получении данных возникла ошибка
-                                        if (result instanceof Error) return reject(result);
+                                        if (env.get("token.youtube") !== "null") {
+                                            //Создаем запрос
+                                            result = await AIza_Decoder.API(ID);
 
-                                        //Если надо получить аудио
-                                        if (audio) {
-                                            const format = await cAPI.extractFormat(result["streamingData"]);
-                                            result["videoDetails"]["format"] = {url: format["url"]};
+                                            ///Если при получении данных возникла ошибка
+                                            if (result instanceof Error) return reject(result);
+
+                                            //Если надо получить аудио
+                                            if (audio) {
+                                                const format = await cAPI.extractFormat(result["streamingData"]);
+                                                result["videoDetails"]["format"] = {url: format["url"]};
+                                            }
+                                        } else {
+                                            //Создаем запрос
+                                            result = await cAPI.API(ID);
+
+                                            ///Если при получении данных возникла ошибка
+                                            if (result instanceof Error) return reject(result);
+
+                                            //Если надо получить аудио
+                                            if (audio) {
+                                                const formats = await Signature_Extractor.decipherFormats(result["streamingData"], getHTML5player(result));
+
+                                                const format = await cAPI.extractFormat(formats);
+                                                result["videoDetails"]["format"] = {url: format["url"]};
+                                            }
                                         }
 
                                         const track = cAPI.track(result["videoDetails"]);
@@ -194,53 +206,6 @@ class cAPI extends Constructor.Assign<API.request> {
                     };
                 }
             ]
-        });
-    };
-
-    /**
-     * @description Делаем запрос через API player youtubeAI
-     * @param ID {string} ID данных
-     */
-    protected static AIzaAPI = (ID: string): Promise<Error | any> => {
-        return new Promise((resolve) => {
-            new httpsClient(`${this.authorization.AIza}/player?key${this.authorization.auth}&prettyPrint=false`, {
-                method: "POST",
-                body: JSON.stringify({
-                    context: {
-                        client: {
-                            clientName: 'IOS',
-                            clientVersion: '19.09.3',
-                            deviceModel: 'iPhone14,3',
-                            userAgent: 'com.google.ios.youtube/19.09.3 (iPhone14,3; U; CPU iOS 15_6 like Mac OS X)',
-                            hl: 'en',
-                            timeZone: 'UTC',
-                            utcOffsetMinutes: 0
-                        }
-                    },
-                    videoId: ID,
-                    playbackContext: { contentPlaybackContext: { html5Preference: 'HTML5_PREF_WANTS' } },
-                    contentCheckOk: true,
-                    racyCheckOk: true
-                }),
-                headers: {
-                    'X-YouTube-Client-Name': '5',
-                    'X-YouTube-Client-Version': '19.09.3',
-                    Origin: 'https://www.youtube.com',
-                    'User-Agent': 'com.google.ios.youtube/19.09.3 (iPhone14,3; U; CPU iOS 15_6 like Mac OS X)',
-                    'content-type': 'application/json'
-                }
-            }).toJson.then((api) => {
-                //Если возникает ошибка при получении страницы
-                if (api instanceof Error) return resolve(Error("[APIs]: Не удалось получить данные!"));
-
-                //Если есть статус, то проверяем
-                if (api["playabilityStatus"]?.status) {
-                    if (api["playabilityStatus"]?.status === "LOGIN_REQUIRED") return resolve(Error(`[APIs]: Данное видео невозможно включить из-за проблем с авторизацией!`));
-                    else if (api["playabilityStatus"]?.status !== "OK") return resolve(Error(`[APIs]: Не удалось получить данные! Status: ${api["playabilityStatus"]?.status}`));
-                }
-
-                return resolve(api);
-            }).catch((err) => resolve(Error(`[APIs]: ${err}`)));
         });
     };
 
@@ -372,6 +337,373 @@ class cAPI extends Constructor.Assign<API.request> {
                 link: track?.format?.url || undefined
             })
         }
+    };
+}
+
+
+/**
+ * @author SNIPPIK
+ * @description Создаем запрос при помощи ключа
+ * @class AIza_Decoder
+ */
+class AIza_Decoder {
+    private static AIza = `AIzaSyB-${this.AIkey(17)}_${this.AIkey(13)}`
+
+    /**
+     * @description Делаем запрос через API player youtubeAI
+     * @param ID {string} ID данных
+     */
+    public static API = (ID: string): Promise<Error | any> => {
+        return new Promise((resolve) => {
+            new httpsClient(`https://www.youtube.com/youtubei/v1/player?key${this.AIza}&prettyPrint=false`, {
+                method: "POST",
+                body: JSON.stringify({
+                    context: {
+                        client: {
+                            clientName: 'IOS',
+                            clientVersion: '19.09.3',
+                            deviceModel: 'iPhone14,3',
+                            userAgent: 'com.google.ios.youtube/19.09.3 (iPhone14,3; U; CPU iOS 15_6 like Mac OS X)',
+                            hl: 'en',
+                            timeZone: 'UTC',
+                            utcOffsetMinutes: 0
+                        }
+                    },
+                    videoId: ID,
+                    playbackContext: { contentPlaybackContext: { html5Preference: 'HTML5_PREF_WANTS' } },
+                    contentCheckOk: true,
+                    racyCheckOk: true
+                }),
+                headers: {
+                    'X-YouTube-Client-Name': '5',
+                    'X-YouTube-Client-Version': '19.09.3',
+                    Origin: 'https://www.youtube.com',
+                    'User-Agent': 'com.google.ios.youtube/19.09.3 (iPhone14,3; U; CPU iOS 15_6 like Mac OS X)',
+                    'content-type': 'application/json'
+                }
+            }).toJson.then((api) => {
+                //Если возникает ошибка при получении страницы
+                if (api instanceof Error) return resolve(Error("[APIs]: Не удалось получить данные!"));
+
+                //Если есть статус, то проверяем
+                if (api["playabilityStatus"]?.status) {
+                    if (api["playabilityStatus"]?.status === "LOGIN_REQUIRED") return resolve(Error(`[APIs]: Данное видео невозможно включить из-за проблем с авторизацией!`));
+                    else if (api["playabilityStatus"]?.status !== "OK") return resolve(Error(`[APIs]: Не удалось получить данные! Status: ${api["playabilityStatus"]?.status}`));
+                }
+
+                return resolve(api);
+            }).catch((err) => resolve(Error(`[APIs]: ${err}`)));
+        });
+    };
+
+    /**
+     * @description Генерируем ключ для запросов на youtube
+     * @param length - Размер ключа
+     * @private
+     */
+    private static AIkey(length: number) {
+        let result = '';
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        const charactersLength = characters.length;
+        let counter = 0;
+        while (counter < length) {
+            result += characters.charAt(Math.floor(Math.random() * charactersLength));
+            counter += 1;
+        }
+        return result;
+    };
+}
+
+const getHTML5player = (body: string) => {
+    let html5playerRes =
+        /<script\s+src="([^"]+)"(?:\s+type="text\/javascript")?\s+name="player_ias\/base"\s*>|"jsUrl":"([^"]+)"/
+            .exec(body);
+    return html5playerRes ? html5playerRes[1] || html5playerRes[2] : null;
+};
+
+/**
+ * @author SNIPPIK
+ * @description Ищем имена в строке
+ * @param regex - Как искать имена
+ * @param body - Строка где будем искать
+ * @param first - Выдача первого объекта
+ */
+const mRegex = (regex: string | RegExp, body: string, first: boolean = true) => {
+    const reg =  body.match(new RegExp(regex, "s"));
+    return first ? reg[0] : reg[1];
+};
+
+/**
+ * @author SNIPPIK
+ * @description Получаем имена функций
+ * @param body - Станица youtube
+ * @param regexps
+ */
+const extractName = (body: string, regexps: string[]): string => {
+    let name: string = "";
+
+    for (const regex of regexps) {
+        try {
+            name = mRegex(regex, body, false);
+            try {
+                name = mRegex(`${name.replace(/\$/g, '\\$')}=\\[([a-zA-Z0-9$\\[\\]]{2,})\\]`, body, false);
+            } catch (err) {
+                // Function name is not inside an array
+            }
+            break;
+        } catch (err) {}
+    }
+    if (!name || name.includes('[')) throw Error();
+    return name;
+};
+
+/**
+ * @author SNIPPIK
+ * @description Функции для расшифровки
+ */
+const extractors: { name: string, callback: (body: string) => string }[] = [
+    /**
+     * @description Получаем функцию с данными
+     */
+    {
+        name: "extractDecipherFunction",
+        callback: (body) => {
+            try {
+                const helperObject = mRegex(HELPER_REGEXP, body);
+                const decipherFunc = mRegex(DECIPHER_REGEXP, body);
+                const resultFunc = `var ${DECIPHER_FUNC_NAME}=${decipherFunc};`;
+                const callerFunc = `${DECIPHER_FUNC_NAME}(${DECIPHER_ARGUMENT});`;
+                return helperObject + resultFunc + callerFunc;
+            } catch (e) {
+                return null;
+            }
+        }
+    },
+
+    /**
+     * @description Получаем имя функции
+     */
+    {
+        name: "extractDecipher",
+        callback: (body) => {
+            try {
+                const decipherFuncName = extractName(body, DECIPHER_NAME_REGEXPS);
+                const funcPattern = `(${decipherFuncName.replace(/\$/g, '\\$')}=function\\([a-zA-Z0-9_]+\\)\\{.+?\\})`;
+                const decipherFunc = `var ${mRegex(funcPattern, body, false)};`;
+                const helperObjectName = mRegex(";([A-Za-z0-9_\\$]{2,})\\.\\w+\\(", decipherFunc, false);
+                const helperPattern = `(var ${helperObjectName.replace(/\$/g, '\\$')}=\\{[\\s\\S]+?\\}\\};)`;
+                const helperObject = mRegex(helperPattern, body, false);
+                const callerFunc = `${decipherFuncName}(${DECIPHER_ARGUMENT});`;
+                return helperObject + decipherFunc + callerFunc;
+            } catch (e) {
+                return null;
+            }
+        }
+    },
+
+    /**
+     * @description Получаем данные n кода - для ускоренной загрузки с серверов
+     */
+    {
+        name: "extractTransform",
+        callback: (body) => {
+            try {
+                const nFunc = mRegex(N_TRANSFORM_REGEXP, body);
+                const resultFunc = `var ${N_TRANSFORM_FUNC_NAME}=${nFunc}`;
+                const callerFunc = `${N_TRANSFORM_FUNC_NAME}(${N_ARGUMENT});`;
+                return resultFunc + callerFunc;
+            } catch (e) {
+                return null;
+            }
+        }
+    },
+
+    {
+        name: "extractorTransformName",
+        callback: (body) => {
+            try {
+                const nFuncName = extractName(body, N_TRANSFORM_NAME_REGEXPS);
+                const funcPattern = `(${
+                    nFuncName.replace(/\$/g, '\\$')
+                    // eslint-disable-next-line max-len
+                }=\\s*function([\\S\\s]*?\\}\\s*return (([\\w$]+?\\.join\\(""\\))|(Array\\.prototype\\.join\\.call\\([\\w$]+?,[\\n\\s]*(("")|(\\("",""\\)))\\)))\\s*\\}))`;
+                const nTransformFunc = `var ${mRegex(funcPattern, body, false)};`;
+                const callerFunc = `${nFuncName}(${N_ARGUMENT});`;
+                return nTransformFunc + callerFunc;
+            } catch (e) {
+                return null;
+            }
+        }
+    }
+];
+
+/**
+ * @description Общий стандарт аудио или видео json объекта
+ * @interface YouTubeFormat
+ */
+interface YouTubeFormat {
+    url: string;
+    signatureCipher?: string;
+    cipher?: string
+    sp?: string;
+    s?: string;
+    mimeType?: string;
+    bitrate?: number;
+}
+
+
+// NewPipeExtractor regexps
+const DECIPHER_NAME_REGEXPS = [
+    '\\bm=([a-zA-Z0-9$]{2,})\\(decodeURIComponent\\(h\\.s\\)\\)',
+    '\\bc&&\\(c=([a-zA-Z0-9$]{2,})\\(decodeURIComponent\\(c\\)\\)',
+    // eslint-disable-next-line max-len
+    '(?:\\b|[^a-zA-Z0-9$])([a-zA-Z0-9$]{2,})\\s*=\\s*function\\(\\s*a\\s*\\)\\s*\\{\\s*a\\s*=\\s*a\\.split\\(\\s*""\\s*\\)',
+    '([\\w$]+)\\s*=\\s*function\\((\\w+)\\)\\{\\s*\\2=\\s*\\2\\.split\\(""\\)\\s*;',
+];
+
+const DECIPHER_FUNC_NAME = 'DisTubeDecipherFunc';
+const N_TRANSFORM_FUNC_NAME = 'DisTubeNTransformFunc';
+
+// LavaPlayer regexps
+const VARIABLE_PART = '[a-zA-Z_\\$][a-zA-Z_0-9]*';
+const VARIABLE_PART_DEFINE = `\\"?${VARIABLE_PART}\\"?`;
+const BEFORE_ACCESS = '(?:\\[\\"|\\.)';
+const AFTER_ACCESS = '(?:\\"\\]|)';
+const VARIABLE_PART_ACCESS = BEFORE_ACCESS + VARIABLE_PART + AFTER_ACCESS;
+const REVERSE_PART = ':function\\(a\\)\\{(?:return )?a\\.reverse\\(\\)\\}';
+const SLICE_PART = ':function\\(a,b\\)\\{return a\\.slice\\(b\\)\\}';
+const SPLICE_PART = ':function\\(a,b\\)\\{a\\.splice\\(0,b\\)\\}';
+const SWAP_PART = ':function\\(a,b\\)\\{' +
+    'var c=a\\[0\\];a\\[0\\]=a\\[b%a\\.length\\];a\\[b(?:%a.length|)\\]=c(?:;return a)?\\}';
+
+const DECIPHER_REGEXP = `function(?: ${VARIABLE_PART})?\\(a\\)\\{` +
+    `a=a\\.split\\(""\\);\\s*` +
+    `((?:(?:a=)?${VARIABLE_PART}${VARIABLE_PART_ACCESS}\\(a,\\d+\\);)+)` +
+    `return a\\.join\\(""\\)` +
+    `\\}`;
+
+const HELPER_REGEXP = `var (${VARIABLE_PART})=\\{((?:(?:${
+    VARIABLE_PART_DEFINE}${REVERSE_PART}|${
+    VARIABLE_PART_DEFINE}${SLICE_PART}|${
+    VARIABLE_PART_DEFINE}${SPLICE_PART}|${
+    VARIABLE_PART_DEFINE}${SWAP_PART}),?\\n?)+)\\};`;
+
+const SCVR = '[a-zA-Z0-9$_]';
+const FNR = `${SCVR}+`;
+const AAR = '\\[(\\d+)]';
+const N_TRANSFORM_NAME_REGEXPS = [
+    // NewPipeExtractor regexps
+    `${SCVR}+="nn"\\[\\+${
+        SCVR}+\\.${SCVR}+],${
+        SCVR}+=${SCVR
+    }+\\.get\\(${SCVR}+\\)\\)&&\\(${
+        SCVR}+=(${SCVR
+    }+)\\[(\\d+)]`,
+    `${SCVR}+="nn"\\[\\+${
+        SCVR}+\\.${SCVR}+],${
+        SCVR}+=${SCVR}+\\.get\\(${
+        SCVR}+\\)\\).+\\|\\|(${SCVR
+    }+)\\(""\\)`,
+    `\\(${SCVR}=String\\.fromCharCode\\(110\\),${
+        SCVR}=${SCVR}\\.get\\(${
+        SCVR}\\)\\)&&\\(${SCVR
+    }=(${FNR})(?:${AAR})?\\(${
+        SCVR}\\)`,
+    `\\.get\\("n"\\)\\)&&\\(${SCVR
+    }=(${FNR})(?:${AAR})?\\(${
+        SCVR}\\)`,
+    // Skick regexps
+    '(\\w+).length\\|\\|\\w+\\(""\\)',
+    '\\w+.length\\|\\|(\\w+)\\(""\\)',
+];
+
+// LavaPlayer regexps
+const N_TRANSFORM_REGEXP = 'function\\(\\s*(\\w+)\\s*\\)\\s*\\{' +
+    'var\\s*(\\w+)=(?:\\1\\.split\\(""\\)|String\\.prototype\\.split\\.call\\(\\1,""\\)),' +
+    '\\s*(\\w+)=(\\[.*?]);\\s*\\3\\[\\d+]' +
+    '(.*?try)(\\{.*?})catch\\(\\s*(\\w+)\\s*\\)\\s*\\' +
+    '{\\s*return"enhanced_except_([A-z0-9-]+)"\\s*\\+\\s*\\1\\s*}' +
+    '\\s*return\\s*(\\2\\.join\\(""\\)|Array\\.prototype\\.join\\.call\\(\\2,""\\))};';
+
+const DECIPHER_ARGUMENT = 'sig';
+const N_ARGUMENT = 'ncode';
+
+/**
+ * @author SNIPPIK
+ * @description Парсим страницу для получения данных с youtube
+ * @class Signature_Extractor
+ */
+class Signature_Extractor {
+    /**
+     * @description Применяем преобразования decipher и n параметров ко всем URL-адресам формата.
+     * @param formats - Все форматы аудио или видео
+     * @param html5player - Ссылка на плеер
+     */
+    public static decipherFormats = async (formats: YouTubeFormat[], html5player: string): Promise<YouTubeFormat[]> =>  {
+        const [decipherScript, nTransformScript] = await this.extractPage(html5player);
+
+        for (let item of formats) item.url = this.setDownloadURL(item, {decipher: decipherScript, nTransform: nTransformScript});
+        return formats;
+    };
+
+    /**
+     * @description Применить расшифровку и n-преобразование к индивидуальному формату
+     * @param format - Аудио или видео формат на youtube
+     * @param script - Скрипт для выполнения на виртуальной машине
+     */
+    private static setDownloadURL = (format: YouTubeFormat, script: {decipher?: Script, nTransform?: Script}): string => {
+        const url = format.url || format.signatureCipher || format.cipher, {decipher, nTransform} = script;
+        const extractDecipher = (url: string): string => {
+            const args = querystring.parse(url);
+            if (!args.s || !decipher) return args.url as string;
+
+            const components = new URL(decodeURIComponent(args.url as string));
+            components.searchParams.set(args.sp as string ? args.sp as string : DECIPHER_ARGUMENT, decipher.runInNewContext({sig: decodeURIComponent(args.s as string)}));
+            return components.toString();
+        };
+        const extractN = (url: string): string => {
+            const components = new URL(decodeURIComponent(url));
+            const n = components.searchParams.get("n");
+            if (!n || !nTransform) return url;
+            components.searchParams.set("n", nTransform.runInNewContext({ncode: n}));
+            return components.toString();
+        };
+
+        //Удаляем не нужные данные
+        delete format.signatureCipher;
+        delete format.cipher;
+
+        return !format.url ? extractN(extractDecipher(url)) : extractN(url);
+    };
+
+    /**
+     * @description Извлекает функции расшифровки сигнатур и преобразования n параметров из файла html5 player.
+     * @param html5 - Ссылка на плеер
+     */
+    private static extractPage = async (html5: string) => {
+        const body = await new httpsClient(html5).toString;
+
+        if (body instanceof Error) return null;
+        return [
+            this.extraction([extractors[1].callback, extractors[0].callback], body),
+            this.extraction([extractors[2].callback, extractors[3].callback], body)
+        ];
+    };
+
+    /**
+     * @description Получаем функции для расшифровки
+     * @param functions -
+     * @param body - Станица youtube
+     */
+    private static extraction = (functions: Function[], body: string) => {
+        for (const callback of functions) {
+            try {
+                const func = callback(body);
+                if (!func) continue;
+                return new Script(func);
+            } catch (err) {}
+        }
+        return null;
     };
 }
 
