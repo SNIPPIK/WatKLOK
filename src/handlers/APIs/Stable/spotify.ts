@@ -19,7 +19,7 @@ class cAPI extends Constructor.Assign<API.request> {
             account: "https://accounts.spotify.com/api",
         },
 
-        auth: env.get("token.spotify"),
+        auth: env.check("token.spotify") ? env.get("token.spotify"): null,
         token: "",
         time: 0
     };

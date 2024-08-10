@@ -15,7 +15,7 @@ class cAPI extends Constructor.Assign<API.request> {
      */
     protected static authorization = {
         api: "https://api.vk.com/method",
-        token: env.get("token.vk")
+        token: env.check("token.vk") ? env.get("token.vk") : null
     };
 
     /**

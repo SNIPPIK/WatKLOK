@@ -16,7 +16,7 @@ class cAPI extends Constructor.Assign<API.request> {
      * @protected
      */
     protected static authorization = {
-        token: env.get("token.yandex"),
+        token: env.check("token.yandex") ? env.get("token.yandex") : null,
         api: "https://api.music.yandex.net"
     };
 

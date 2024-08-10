@@ -66,6 +66,6 @@ export class Database_APIs {
      * @public
      */
     public get allow() {
-        return this._platforms.supported.filter((platform) => platform.name !== "DISCORD");
+        return this._platforms.supported.filter((platform) => platform.name !== "DISCORD" && platform.auth);
     };
 }

@@ -1,7 +1,7 @@
 import {httpsClient} from "@lib/request";
 import {API} from "@handler";
-import {db} from "@lib/db";
 import {Logger} from "@env";
+import {db} from "@lib/db";
 
 /**
  * @author SNIPPIK
@@ -292,7 +292,7 @@ function fetchAPIs(track: Song): Promise<string | Error> {
  */
 function fetchOther(track: Song): Promise<string | Error> {
     return new Promise(async (resolve) => {
-        const youtube = new API.response("YOUTUBE");
+        const youtube = new API.response(db.api.platforms.audio.at(-1));
 
         try {
             const videos = await youtube.find("search").callback(`${track.author.title} - ${track.title}`, {limit: 10});
