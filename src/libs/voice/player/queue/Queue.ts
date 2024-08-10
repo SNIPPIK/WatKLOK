@@ -1,5 +1,5 @@
 import {StageChannel, VoiceChannel} from "discord.js";
-import {AudioPlayer} from "@lib/voice/player/AudioPlayer";
+import {AudioPlayer} from "@lib/voice/player";
 import {Client} from "@lib/discord";
 import {Voice} from "@lib/voice";
 import {Song} from "./Song";

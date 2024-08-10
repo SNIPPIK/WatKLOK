@@ -1,8 +1,7 @@
-import {AudioPlayer, AudioPlayerEvents} from "@lib/voice/player/AudioPlayer";
+import {AudioPlayer, AudioPlayerEvents, Filters} from "@lib/voice/player";
 import {Attachment, EmbedData, StageChannel, VoiceChannel} from "discord.js";
 import {MessageBuilder} from "@lib/discord/utils/MessageBuilder";
 import onPlaying from "@handler/Events/Player/message";
-import {Filters} from "@lib/voice/audio/utils/Filters";
 import {Queue} from "@lib/voice/player/queue/Queue";
 import {Song} from "@lib/voice/player/queue/Song";
 import {TypedEmitter} from "tiny-typed-emitter";

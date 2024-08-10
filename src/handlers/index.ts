@@ -1,7 +1,7 @@
 import {LightMessageBuilder, MessageBuilder} from "@lib/discord/utils/MessageBuilder";
 import {CollectionAudioEvents} from "@handler/Database/Global/Audio";
 import {IntentsCommand} from "@lib/discord/utils/IntentsCommand";
-import {AudioPlayerEvents} from "@lib/voice/player/AudioPlayer";
+import {AudioPlayerEvents} from "@lib/voice/player";
 import {SlashBuilder} from "@lib/discord/utils/SlashBuilder";
 import {Queue} from "@lib/voice/player/queue/Queue";
 import {Song} from "@lib/voice/player/queue/Song";

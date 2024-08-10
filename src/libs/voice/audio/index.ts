@@ -88,7 +88,7 @@ export class SeekStream {
         const [type, file] = options.path.split(":|");
 
         this._streams.push(
-            new Process(["-vn",  "-loglevel", "panic", "-timeout", "10",
+            new Process(["-vn",  "-loglevel", "panic", "-timeout", "5",
                 ...(type === "link" ? ["-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5"] : []),
                 "-ss", `${options.seek ?? 0}`, "-i", file,
                 ...(options.filters ? ["-af", options.filters] : []),
@@ -135,7 +135,7 @@ export class SeekStream {
                 if (stream instanceof Process) stream.destroy();
                 else {
                     stream?.destroy();
-                    stream.end();
+                    stream?.end();
                 }
             }
 

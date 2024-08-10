@@ -141,7 +141,7 @@ class Command_Filter extends Constructor.Assign<Handler.Command> {
                 const name = args[args?.length - 2 ?? args?.length - 1] ?? args[0];
                 const arg = args.length > 1 ? Number(args[args?.length - 1]) : null;
                 const Filter = db.audio.filters.find((item) => item.name === name);
-                const index = queue.player.filters.indexOf(Filter);
+                const index = queue.player.filters.enable.indexOf(Filter);
 
                 switch (sub) {
                     // Список фильтров включенных
@@ -152,12 +152,12 @@ class Command_Filter extends Constructor.Assign<Handler.Command> {
                         let array = db.audio.filters;
                         if (sub === "current") {
                             //Если нет фильтров
-                            if (queue?.player.filters.length === 0) return {
+                            if (queue?.player.filters.enable.length === 0) return {
                                 content: locale._(message.locale,"command.filter.total.current.null", [author.username]),
                                 codeBlock: "css"
                             };
 
-                            array = queue?.player?.filters;
+                            array = queue?.player?.filters.enable;
                         }
 
                         //Преобразуем все фильтры в string
@@ -197,11 +197,11 @@ class Command_Filter extends Constructor.Assign<Handler.Command> {
                     // Выключаем все фильтры
                     case "off": {
                         //Если нет фильтров
-                        if (queue?.player.filters.length === 0) return {
+                        if (queue?.player.filters.enable.length === 0) return {
                             content: locale._(message.locale,"command.filter.total.current.null", [author.username])
                         };
 
-                        queue.player.filters.splice(0, queue.player.filters.length); //Удаляем фильтр
+                        queue.player.filters.enable.splice(0, queue.player.filters.enable.length); //Удаляем фильтр
                         queue.player.play(queue.songs.song, seek);
                         return;
                     }
@@ -215,7 +215,7 @@ class Command_Filter extends Constructor.Assign<Handler.Command> {
                         };
 
                         //Делаем проверку на совместимость
-                        for (let i = 0; i < queue.player.filters.length; i++) {
+                        for (let i = 0; i < queue.player.filters.enable.length; i++) {
                             const filter = queue.player.filters[i];
 
                             if (Filter.unsupported.includes(filter.name)) return {
@@ -236,7 +236,7 @@ class Command_Filter extends Constructor.Assign<Handler.Command> {
                         //Если надо добавить аргумент
                         if (arg && Filter.args) Filter.user_arg = arg;
 
-                        queue.player.filters.push(Filter);
+                        queue.player.filters.enable.push(Filter);
                         queue.player.play(queue.songs.song, seek);
 
                         return {
@@ -254,7 +254,7 @@ class Command_Filter extends Constructor.Assign<Handler.Command> {
                             color: "Yellow"
                         };
 
-                        queue.player.filters.splice(index, 1); //Удаляем фильтр
+                        queue.player.filters.enable.splice(index, 1); //Удаляем фильтр
                         queue.player.play(queue.songs.song, seek);
                         return {
                             content: locale._(message.locale,"command.filter.disable", [name]),
