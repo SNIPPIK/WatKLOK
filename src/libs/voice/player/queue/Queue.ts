@@ -32,8 +32,16 @@ abstract class BaseQueue {
                     return;
                 }
 
+                // Получаем ссылку на исходный трек
                 track.resource.then((path) => {
-                    if (path instanceof Error) {
+                    // Если нет ссылки на аудио
+                    if (!path) {
+                        this.emit("player/error", this, `Not found link audio!`, "skip");
+                        return;
+                    }
+
+                    // Если получена ошибка вместо ссылки
+                    else if (path instanceof Error) {
                         this.emit("player/error", this, `Failed to getting link audio!\n\n${path.name}\n- ${path.message}`, "skip");
                         return;
                     }

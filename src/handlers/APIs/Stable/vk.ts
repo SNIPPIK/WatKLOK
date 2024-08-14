@@ -58,6 +58,10 @@ class cAPI extends Constructor.Assign<API.request> {
                                         if (api instanceof Error) return reject(api);
 
                                         const track = cAPI.track(api.response.pop(), url);
+
+                                        //Если нет ссылки на трек
+                                        if (!track.link) return reject(Error("[APIs]: Невозможно получить файл аудио!"));
+
                                         return resolve(track);
                                     } catch (e) {
                                         return reject(Error(`[APIs]: ${e}`))

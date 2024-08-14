@@ -79,24 +79,23 @@ class onError extends Constructor.Assign<Handler.Event<"player/error">> {
                 if (!queue || !queue.player || !queue.player.play) return;
 
                 switch (crash) {
-                    //Если возникает критическая ошибка
-                    case "crash": {
-                        db.audio.queue.remove(queue.guild.id);
+                    //Если надо пропустить трек из-за ошибки
+                    case "skip": {
+                        //Если есть треки в очереди
+                        if (queue.songs.size > 0) {
+                            queue.songs.shift();
+
+                            //Включаем следующий трек через время
+                            queue.player.play(queue.songs.song);
+                        }
 
                         //Выводим сообщение об ошибке
                         return db.audio.queue.events.emit("message/error", queue, err);
                     }
 
-                    //Если надо пропустить трек из-за ошибки
-                    case "skip": {
-                        //Если трек не играет, то пропускаем его
-                        if (!queue.player.playing) {
-                            if (queue.songs.size > 1) queue.songs.splice(0, 1);
-                            else queue.songs.shift();
-
-                            //Включаем трек через время
-                            if (queue.songs.size > 0) setTimeout(() => queue.player.play(queue.songs.song), 5e3);
-                        }
+                    //Если возникает критическая ошибка
+                    case "crash": {
+                        db.audio.queue.remove(queue.guild.id);
 
                         //Выводим сообщение об ошибке
                         return db.audio.queue.events.emit("message/error", queue, err);
