@@ -42,9 +42,6 @@ class onWait extends Constructor.Assign<Handler.Event<"player/wait">> {
                 //Если нет треков в очереди
                 if (!queue?.songs?.song || !queue.player) return db.audio.queue.remove(queue.guild.id);
 
-                // Последний трек
-                //if (queue.songs.size === 1) db.audio.queue.events.emit("message/last", queue.songs.song, queue.message);
-
                 //Проверяем надо ли удалить из очереди трек
                 const removedSong = queue.repeat === "off" || queue.repeat === "songs" ? queue.songs.shift() : null;
                 if (removedSong && queue.repeat === "songs") queue.songs.push(removedSong);
@@ -78,29 +75,32 @@ class onError extends Constructor.Assign<Handler.Event<"player/error">> {
                 //Если нет плеера, то нет смысла продолжать
                 if (!queue || !queue.player || !queue.player.play) return;
 
-                switch (crash) {
-                    //Если надо пропустить трек из-за ошибки
-                    case "skip": {
-                        //Если есть треки в очереди
-                        if (queue.songs.size > 0) {
-                            queue.songs.shift();
+                setImmediate(() => {
+                    switch (crash) {
+                        //Если надо пропустить трек из-за ошибки
+                        case "skip": {
+                            //Если есть треки в очереди
+                            if (queue.songs.size > 0) {
+                                setImmediate(() => {
+                                    queue.songs.shift();
 
-                            //Включаем следующий трек через время
-                            queue.player.play(queue.songs.song);
+                                    //Включаем следующий трек через время
+                                    queue.player.play(queue.songs.song);
+                                });
+                            }
+                            return;
                         }
 
-                        //Выводим сообщение об ошибке
-                        return db.audio.queue.events.emit("message/error", queue, err);
+                        //Если возникает критическая ошибка
+                        case "crash": {
+                            db.audio.queue.remove(queue.guild.id);
+                            return;
+                        }
                     }
+                });
 
-                    //Если возникает критическая ошибка
-                    case "crash": {
-                        db.audio.queue.remove(queue.guild.id);
-
-                        //Выводим сообщение об ошибке
-                        return db.audio.queue.events.emit("message/error", queue, err);
-                    }
-                }
+                //Выводим сообщение об ошибке
+                return db.audio.queue.events.emit("message/error", queue, err);
             }
         });
     }

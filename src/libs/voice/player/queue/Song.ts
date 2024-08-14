@@ -232,9 +232,9 @@ export class Song {
                     const link = !db.api.platforms.audio.includes(this.platform) ? await fetchAPIs(this) : await fetchOther(this);
 
                     //Если вместо ссылки получили ошибку
-                    if (link instanceof Error) {
-                        if (r >= 3) break;
-                        else continue;
+                    if (link instanceof Error || !link) {
+                        if (r < 3) continue;
+                        else return resolve("Fail find other track, requested a max 3!");
                     }
 
                     this.link = link;

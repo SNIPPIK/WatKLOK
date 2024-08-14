@@ -19,9 +19,6 @@ class onError extends Constructor.Assign<Handler.Event<"message/error">> {
             name: "message/error",
             type: "player",
             execute: (queue, error) => {
-                //Если больше нет треков в очереди
-                if (queue.songs.size < 1) return;
-
                 const {color, author, image, title, requester} = queue.songs.last;
                 new MessageBuilder().addEmbeds([
                     {
@@ -42,8 +39,7 @@ class onError extends Constructor.Assign<Handler.Event<"message/error">> {
                             iconURL: requester?.avatar
                         }
                     }
-                ]).setTime(10e3)
-                    .send = queue.message as any;
+                ]).setTime(10e3).setReplied(true).send = queue.message as any;
             }
         });
     }
