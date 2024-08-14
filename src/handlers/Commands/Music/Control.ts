@@ -2,7 +2,7 @@ import {SlashBuilder} from "@lib/discord/utils/SlashBuilder";
 import {ApplicationCommandOptionType} from "discord.js";
 import {Constructor, Handler} from "@handler";
 import {locale} from "@lib/locale";
-import {env, Logger} from "@env";
+import {Logger} from "@env";
 import {db} from "@lib/db";
 
 /**
@@ -147,14 +147,6 @@ class Command_Stop extends Constructor.Assign<Handler.Command> {
                     content: locale._(message.locale,"player.queue.null", [author]),
                     color: "Yellow"
                 };
-
-                if (queue.radio) {
-                    //@ts-ignore
-                    if (!member.permissions.has("MANAGE_SERVER") && env.get("player.radio.admin")) return {
-                        content: locale._(message.locale,"player.radio.rule", [author, "MANAGE_SERVER"]),
-                        color: "Yellow"
-                    };
-                }
 
                 db.audio.queue.remove(queue.guild.id);
                 return {

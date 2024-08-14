@@ -16,7 +16,6 @@ abstract class BaseQueue {
     private readonly data = {
         repeat:     "off" as "off" | "song" | "songs",
         shuffle:    false as boolean,
-        radio:      false as boolean,
 
         message:    null as Client.message,
         voice:      null as VoiceChannel | StageChannel,
@@ -47,21 +46,6 @@ abstract class BaseQueue {
                 });
             };
         }
-    };
-    /**
-     * @description Сохраняем тип радио
-     * @public
-     */
-    public set radio(bol) {
-        this.data.radio = bol;
-    };
-
-    /**
-     * @description Включен ли режим радио
-     * @public
-     */
-    public get radio(): boolean {
-        return this.data.radio;
     };
 
     /**

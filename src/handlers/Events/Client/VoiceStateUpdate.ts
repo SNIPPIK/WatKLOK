@@ -45,9 +45,7 @@ class VoiceStateUpdate extends Constructor.Assign<Handler.Event<Events.VoiceStat
                 // Если пользователей менее 1
                 else if (members < 1) {
                     if (queue) {
-                        if (queue.player.status === "player/playing")
-                            queue.player.pause();
-                        if (queue.radio) return;
+                        if (queue.player.status === "player/playing") queue.player.pause();
                     }
                     if (!temp) temple_db.set(guild.id, {
                         guildID: guild.id,
@@ -63,9 +61,7 @@ class VoiceStateUpdate extends Constructor.Assign<Handler.Event<Events.VoiceStat
                 // Если не подошли прошлые аргументы
                 else {
                     if (queue) {
-                        if (queue.player.status === "player/pause")
-                            queue.player.resume();
-                        if (queue.radio) return;
+                        if (queue.player.status === "player/pause") queue.player.resume();
                     }
 
                     if (temp) {

@@ -87,30 +87,6 @@ const locales = {
         ru: "{ARGUMENT} | А как? Это же стрим!",
         "en-US": "{ARGUMENT} | And how? It's a stream!"
     },
-    "player.radio.enable": {
-        ru: "{ARGUMENT} | Включен режим радио!",
-        "en-US": "{ARGUMENT} | Radio mode is on!"
-    },
-    "player.radio.enable.retry": {
-        ru: "{ARGUMENT} | Уже включен режим радио!",
-        "en-US": "{ARGUMENT} | Radio mode is already enabled!"
-    },
-    "player.radio.disable": {
-        ru: "{ARGUMENT} | Выключен режим радио!",
-        "en-US": "{ARGUMENT} | Radio mode is off!!"
-    },
-    "player.radio.disable.retry": {
-        ru: "{ARGUMENT} | Уже выключен режим радио!",
-        "en-US": "{ARGUMENT} | Radio mode is already turned off!"
-    },
-    "player.radio.enable.rule": {
-        ru: "{ARGUMENT} | Эта команда доступна только для права \`{ARGUMENT}\`!",
-        "en-US": "{ARGUMENT} | This command is only available for the right \`{ARGUMENT}\`!"
-    },
-    "player.radio.rule": {
-        ru: "{ARGUMENT} | В данные момент включен режим радио для отключения необходимо иметь право \`{ARGUMENT}\`!",
-        "en-US": "{ARGUMENT} | At this moment, the radio mode is turned on. To turn it off, you must have the right \`{ARGUMENT}\`!"
-    },
     "player.queue.null": {
         ru: "{ARGUMENT} | Музыка сейчас не играет.",
         "en-US": "{ARGUMENT} | The music is not playing right now."

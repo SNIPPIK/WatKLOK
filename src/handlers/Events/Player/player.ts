@@ -47,7 +47,7 @@ class onWait extends Constructor.Assign<Handler.Event<"player/wait">> {
 
                 //Проверяем надо ли удалить из очереди трек
                 const removedSong = queue.repeat === "off" || queue.repeat === "songs" ? queue.songs.shift() : null;
-                if (removedSong && (queue.repeat === "songs" || queue.radio)) queue.songs.push(removedSong);
+                if (removedSong && queue.repeat === "songs") queue.songs.push(removedSong);
 
                 //Проверяем надо ли перетасовывать очередь
                 if (queue.shuffle && queue.repeat === "off") {
@@ -95,7 +95,7 @@ class onError extends Constructor.Assign<Handler.Event<"player/error">> {
                             else queue.songs.shift();
 
                             //Включаем трек через время
-                            setTimeout(() => queue.player.play(queue.songs.song), 5e3);
+                            if (queue.songs.size > 0) setTimeout(() => queue.player.play(queue.songs.song), 5e3);
                         }
 
                         //Выводим сообщение об ошибке
