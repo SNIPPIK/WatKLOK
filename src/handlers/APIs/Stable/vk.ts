@@ -41,10 +41,11 @@ class cAPI extends Constructor.Assign<API.request> {
                 new class extends API.item<"track"> {
                     public constructor() {
                         super({
+                            //https://vk.com/audio-2001033886_126033886
                             name: "track",
-                            filter: /(audio)([0-9]+_[0-9]+_[a-zA-Z0-9]+|-[0-9]+_[a-zA-Z0-9]+)/i,
+                            filter: /(audio)([0-9]+_[0-9]+_[a-zA-Z0-9]+|-[0-9]+_[a-zA-Z0-9]+)/gi,
                             callback: (url) => {
-                                const ID = /([0-9]+_[0-9]+_[a-zA-Z0-9]+|-[0-9]+_[a-zA-Z0-9]+)/i.exec(url).pop();
+                                const ID = /([0-9]+_[0-9]+_[a-zA-Z0-9]+|-[0-9]+_[a-zA-Z0-9]+)/gi.exec(url).pop();
 
                                 return new Promise<Song>(async (resolve, reject) => {
                                     //Если ID трека не удалось извлечь из ссылки
@@ -88,10 +89,12 @@ class cAPI extends Constructor.Assign<API.request> {
 
                                         //Если запрос выдал ошибку то
                                         if (api instanceof Error) return reject(api);
-                                        const tracks = (api.response.items.splice(0, limit)).map(cAPI.track);
+                                        const tracks = (api.response.items.splice(0, limit)).map((track: any) => cAPI.track(track));
 
                                         return resolve(tracks);
-                                    } catch (e) { return reject(Error(`[APIs]: ${e}`)) }
+                                    } catch (e) {
+                                        return reject(Error(`[APIs]: ${e}`))
+                                    }
                                 });
                             }
                         });

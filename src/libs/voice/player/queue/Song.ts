@@ -292,18 +292,18 @@ function fetchAPIs(track: Song): Promise<string | Error> {
  */
 function fetchOther(track: Song): Promise<string | Error> {
     return new Promise(async (resolve) => {
-        const youtube = new API.response(db.api.platforms.audio.at(-1));
+        const platform = new API.response(db.api.platforms.supported.find((plt) => plt.requests.length >= 2 && plt.audio).name);
 
         try {
-            const videos = await youtube.find("search").callback(`${track.author.title} - ${track.title}`, {limit: 10});
-            if (videos instanceof Error || videos.length === 0) return resolve(null);
+            const tracks = await platform.find("search").callback(`${track.author.title} - ${track.title}`, {limit: 5});
+            if (tracks instanceof Error || tracks.length === 0) return resolve(null);
 
-            const song = await youtube.find("track").callback(videos?.at(0)?.url, {audio: true});
+            const song = await platform.find("track").callback(tracks?.at(0)?.url, {audio: true});
             if (song instanceof Error || !song.link) return resolve(null);
 
             return resolve(song.link);
         } catch (err) {
-            return resolve(err);
+            return resolve(Error(err));
         }
     });
 }
