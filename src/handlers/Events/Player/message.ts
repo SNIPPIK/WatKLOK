@@ -209,7 +209,7 @@ class onPlaying extends Constructor.Assign<Handler.Event<"message/playing">> {
                             {
                                 name: "",
                                 value: (() => {
-                                    const current = queue.player?.stream?.duration ?? 0;
+                                    const current = queue.player.stream?.duration || 0;
                                     const progress = new PlayerProgress({ platform,
                                         duration: { current,
                                             total: duration.seconds
