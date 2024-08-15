@@ -3,7 +3,6 @@ import {AudioPlayer} from "@lib/voice/player";
 import {Client} from "@lib/discord";
 import {Voice} from "@lib/voice";
 import {Song} from "./Song";
-import {Logger} from "@env";
 import {db} from "@lib/db";
 
 /**
@@ -19,7 +18,7 @@ export class Queue {
 
         message:    null as Client.message,
         voice:      null as VoiceChannel | StageChannel,
-        player:     null as EditPlayer
+        player:     null as AudioPlayer
     };
     private readonly _components = [
         { type: 2, emoji: {id: db.emojis.button.shuffle},   custom_id: 'shuffle',       style: 2 },  //Shuffle
@@ -141,7 +140,7 @@ export class Queue {
         const ID = options.message.guildId;
 
         // Создаем плеер
-        this._data.player = new EditPlayer(ID);
+        this._data.player = new AudioPlayer(ID);
 
         // В конце функции выполнить запуск проигрывания
         setImmediate(() => {
@@ -223,46 +222,4 @@ class QueueSongs extends Array<Song> {
      * @public
      */
     public get size(): number { return this.length; };
-}
-
-/**
- * @author SNIPPIK
- * @description Редактированный плеер для очереди
- * @class EditPlayer
- * @private
- */
-class EditPlayer extends AudioPlayer {
-    /**
-     * @description Функция отвечает за циклическое проигрывание
-     * @param track - Трек который будет включен
-     * @param seek - Пропуск времени
-     * @public
-     */
-    public play = (track: Song, seek: number = 0): void => {
-        if (!track || !("resource" in track)) {
-            this.emit("player/wait", this);
-            return;
-        }
-
-        // Получаем ссылку на исходный трек
-        track.resource.then((path) => {
-            // Если нет ссылки на аудио
-            if (!path) {
-                this.emit("player/error", this, `Not found link audio!`, "skip");
-                return;
-            }
-
-            // Если получена ошибка вместо ссылки
-            else if (path instanceof Error) {
-                this.emit("player/error", this, `Failed to getting link audio!\n\n${path.name}\n- ${path.message}`, "skip");
-                return;
-            }
-
-            this.emit("player/ended", this, seek);
-            this.read = {path, seek};
-        }).catch((err) => {
-            this.emit("player/error", this, `${err}`, "skip");
-            Logger.log("ERROR", err);
-        });
-    };
 }

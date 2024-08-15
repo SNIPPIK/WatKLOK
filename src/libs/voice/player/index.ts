@@ -2,6 +2,7 @@ import type {LocalizationMap} from "discord-api-types/v10";
 import {TypedEmitter} from "tiny-typed-emitter";
 import {VoiceConnection} from "@lib/voice";
 import {SeekStream} from "../audio";
+import {Logger} from "@env";
 import {db} from "@lib/db";
 
 /**
@@ -355,6 +356,40 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
     };
 
     /**
+     * @description Функция отвечает за циклическое проигрывание
+     * @param track - Трек который будет включен
+     * @param seek - Пропуск времени
+     * @public
+     */
+    public play = (track: AudioPlayerInput, seek: number = 0): void => {
+        if (!track || !("resource" in track)) {
+            this.emit("player/wait", this);
+            return;
+        }
+
+        // Получаем ссылку на исходный трек
+        track.resource.then((path) => {
+            // Если нет ссылки на аудио
+            if (!path) {
+                this.emit("player/error", this, `Not found link audio!`, "skip");
+                return;
+            }
+
+            // Если получена ошибка вместо ссылки
+            else if (path instanceof Error) {
+                this.emit("player/error", this, `Failed to getting link audio!\n\n${path.name}\n- ${path.message}`, "skip");
+                return;
+            }
+
+            this.emit("player/ended", this, seek);
+            this.read = {path, seek};
+        }).catch((err) => {
+            this.emit("player/error", this, `${err}`, "skip");
+            Logger.log("ERROR", err);
+        });
+    };
+
+    /**
      * @description Ставим на паузу плеер
      * @public
      */
@@ -420,6 +455,16 @@ export interface AudioPlayerEvents {
 
     //Плеер получил ошибку
     "player/error": (player: AudioPlayer, err: string, type?: "crash" | "skip") => void;
+}
+
+/**
+ * @author SNIPPIK
+ * @description Данные входящие в качестве трека
+ * @interface AudioPlayerInput
+ * @private
+ */
+interface AudioPlayerInput {
+    resource: Promise<string | Error>
 }
 
 /**
