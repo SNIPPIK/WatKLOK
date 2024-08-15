@@ -6,7 +6,8 @@ import {db} from "@lib/db";
 /**
  * @author SNIPPIK
  * @description Все интерфейсы для работы системы треков
- * @namespace
+ * @namespace Song
+ * @public
  */
 export namespace Song {
     /**
@@ -94,8 +95,9 @@ export namespace Song {
 
 /**
  * @author SNIPPIK
- * @class Song
  * @description Ключевой элемент музыки
+ * @class Song
+ * @public
  */
 export class Song {
     private readonly _api: { platform: API.platform; color: number; } = null;
@@ -103,30 +105,18 @@ export class Song {
     private readonly _track: Song.track & { requester?: Song.requester; duration?: { full: string; seconds: number; }} = {
         title: null, url: null, image: null, author: null, duration: null
     };
-    public constructor(track: Song.track) {
-        //Высчитываем время
-        if (track.duration.seconds.match(/:/)) {
-            this._duration = { full: track.duration.seconds, seconds: track.duration.seconds.duration() };
-        } else {
-            const seconds = parseInt(track.duration.seconds) || 321;
+    /**
+     * @description Получаем платформу у которого был взят трек
+     * @public
+     */
+    public get platform() { return this._api.platform; };
 
-            //Время трека
-            if (isNaN(seconds) || !seconds) this._duration = { full: "Live", seconds: 0 };
-            else this._duration = { full: seconds.duration(), seconds };
-        }
+    /**
+     * @description Получаем цвет трека
+     * @public
+     */
+    public get color() { return this._api.color; };
 
-        const api = new API.response(track.url);
-
-        //Изображения трека
-        track["image"] = track?.image ?? { url: db.emojis.noImage };
-
-        //Удаляем ненужные данные
-        delete track.duration;
-
-        //Добавляем данные
-        Object.assign(this._track, track);
-        this._api = {platform: api.platform, color: api.color };
-    };
     /**
      * @description Получаем название трека
      * @public
@@ -135,6 +125,7 @@ export class Song {
         if (!this._track.title) return "null";
         return this._track.title;
     };
+
     /**
      * @description Получаем отредактированное название трека
      * @public
@@ -146,6 +137,7 @@ export class Song {
         if (this.platform === "YOUTUBE") return `\`\`[${this.duration.full}]\`\` ${title}`;
         return `\`\`[${this.duration.full}]\`\` [${this.author.title}](${this.author.url}) - ${title}`;
     };
+
     /**
      * @description Получаем ссылку на трек
      * @public
@@ -175,6 +167,11 @@ export class Song {
      * @public
      */
     public get requester() { return this._track.requester; };
+
+    /**
+     * @description Добавляем запросчика трека
+     * @param author - Автор запроса
+     */
     public set requester(author) {
         const { username, id, avatar } = author;
 
@@ -189,23 +186,18 @@ export class Song {
             avatar: `https://cdn.discordapp.com/avatars/${id}/${avatar}.webp`
         };
     };
+
     /**
      * @description Получаем ссылку на исходный файл
      * @public
      */
     public get link() { return this._track.link; };
-    public set link(url: string) { this._track.link = url; }
 
     /**
-     * @description Получаем платформу у которого был взят трек
-     * @public
+     * @description Добавление ссылки на трек
+     * @param url - Ссылка или путь
      */
-    public get platform() { return this._api.platform; };
-    /**
-     * @description Получаем цвет трека
-     * @public
-     */
-    public get color() { return this._api.color; };
+    public set link(url: string) { this._track.link = url; };
 
     /**
      * @description Проверяем ссылку на доступность и выдаем ее если ссылка имеет код !==200, то обновляем
@@ -213,35 +205,14 @@ export class Song {
      * @public
      */
     public get resource(): Promise<string | Error> {
-        const platform = this.platform;
-        const isDownload = db.cache.audio && platform !== "DISCORD";
-
-        //Создаем обещание
         return new Promise(async (resolve) => {
-            //Если трек уже кеширован, то сразу выдаем его
-            if (isDownload) {
-                const info = db.cache.audio.status(this);
-                if (info.status === "final") return resolve(`file:|${info.path}`);
-            }
+            const download = db.cache.audio && this.platform !== "DISCORD";
 
             //Проверяем ссылку на работоспособность, если 3 раза будет неудача ссылка будет удалена
-            for (let r = 0; r < 3; r++) {
-
-                //Если нет ссылки, то ищем замену
-                if (!this.link) {
-                    const link = !db.api.platforms.audio.includes(this.platform) ? await fetchAPIs(this) : await fetchOther(this);
-
-                    //Если вместо ссылки получили ошибку
-                    if (link instanceof Error || !link) {
-                        if (r < 3) continue;
-                        else return resolve("Fail find other track, requested a max 3!");
-                    }
-
-                    this.link = link;
-                }
+            for (let ref = 0; ref < 3; ref++) {
 
                 //Проверяем ссылку на актуальность
-                if (this.link) {
+                if (this.link && this.link.startsWith("http")) {
                     try {
                         const status = await new httpsClient(this.link, {method: "HEAD"}).status;
 
@@ -252,58 +223,54 @@ export class Song {
                         this.link = null;
                     }
                 }
+
+                //Если нет ссылки, то ищем замену
+                if (!this.link) {
+                    const link = !db.api.platforms.audio.includes(this.platform) ? await db.api.fetchAllow(this) : await db.api.fetch(this);
+
+                    //Если вместо ссылки получили ошибку
+                    if (link instanceof Error || !link) {
+                        if (ref < 3) continue;
+                        else return resolve("Fail find other track, requested a max 3!");
+                    }
+
+                    this.link = link;
+                }
             }
 
             //Если не удается найти ссылку через n попыток
             if (!this.link) return resolve(Error(`[SONG]: Fail update link resource`));
-            else if (isDownload && this.link) void (db.cache.audio.set(this));
+            else if (download && this.link) void (db.cache.audio.set(this));
             return resolve(`link:|${this.link}`);
         });
     };
-}
 
-/**
- * @author SNIPPIK
- * @description Ищем аудио если платформа может самостоятельно выдать аудио
- * @param track - трек у которого нет аудио
- */
-function fetchAPIs(track: Song): Promise<string | Error> {
-    return new Promise(async (resolve) => {
-        const api = new API.response(track.platform).find("track");
+    /**
+     * @description Создаем трек
+     * @param track - Данные трека с учетом <Song.track>
+     */
+    public constructor(track: Song.track) {
+        //Высчитываем время
+        if (track.duration.seconds.match(/:/)) {
+            this._duration = { full: track.duration.seconds, seconds: track.duration.seconds.duration() };
+        } else {
+            const seconds = parseInt(track.duration.seconds) || 321;
 
-        //Если нет такого запроса
-        if (!api) return resolve(Error(`[Song/${track.platform}]: not found callback for track`));
-
-        try {
-            const song = await api.callback(track.url, {audio: true});
-
-            if (song instanceof Error) return resolve(song);
-            return resolve(song.link);
-        } catch (err) {
-            return resolve(err);
+            //Время трека
+            if (isNaN(seconds) || !seconds) this._duration = { full: "Live", seconds: 0 };
+            else this._duration = { full: seconds.duration(), seconds };
         }
-    });
-}
 
-/**
- * @author SNIPPIK
- * @description Получаем ссылку на трек если прошлая уже не актуальна
- * @param track - трек у которого нет аудио
- */
-function fetchOther(track: Song): Promise<string | Error> {
-    return new Promise(async (resolve) => {
-        const platform = new API.response(db.api.platforms.supported.find((plt) => plt.requests.length >= 2 && plt.audio).name);
+        const api = new API.response(track.url);
 
-        try {
-            const tracks = await platform.find("search").callback(`${track.author.title} - ${track.title}`, {limit: 5});
-            if (tracks instanceof Error || tracks.length === 0) return resolve(null);
+        //Изображения трека
+        track["image"] = track?.image ?? { url: db.emojis.noImage };
 
-            const song = await platform.find("track").callback(tracks?.at(0)?.url, {audio: true});
-            if (song instanceof Error || !song.link) return resolve(null);
+        //Удаляем ненужные данные
+        delete track.duration;
 
-            return resolve(song.link);
-        } catch (err) {
-            return resolve(Error(err));
-        }
-    });
+        //Добавляем данные
+        Object.assign(this._track, track);
+        this._api = {platform: api.platform, color: api.color };
+    };
 }

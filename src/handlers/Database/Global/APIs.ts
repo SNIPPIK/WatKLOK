@@ -1,10 +1,12 @@
+import {Song} from "@lib/voice/player/queue/Song";
 import {API} from "@handler";
 import {env} from "@env";
 
 /**
  * @author SNIPPIK
  * @description Коллекция для взаимодействия с APIs
- * @abstract
+ * @class Database_APIs
+ * @public
  */
 export class Database_APIs {
     /**
@@ -62,10 +64,54 @@ export class Database_APIs {
     public get platforms() { return this._platforms; };
 
     /**
-     * @description Исключаем некоторые платформы из доступа
+     * @description Исключаем платформы из общего списка
+     * @return API.request[]
      * @public
      */
-    public get allow() {
-        return this._platforms.supported.filter((platform) => platform.name !== "DISCORD" && platform.auth);
+    public get allow() { return this._platforms.supported.filter((platform) => platform.name !== "DISCORD" && platform.auth); };
+
+    /**
+     * @author SNIPPIK
+     * @description Ищем аудио если платформа может самостоятельно выдать аудио
+     * @param track - трек у которого нет аудио
+     */
+    public readonly fetchAllow = (track: Song): Promise<string | Error> => {
+        return new Promise(async (resolve) => {
+            const api = new API.response(track.platform).find("track");
+
+            //Если нет такого запроса
+            if (!api) return resolve(Error(`[Song/${track.platform}]: not found callback for track`));
+
+            try {
+                const song = await api.callback(track.url, {audio: true});
+
+                if (song instanceof Error) return resolve(song);
+                return resolve(song.link);
+            } catch (err) {
+                return resolve(err);
+            }
+        });
+    };
+
+    /**
+     * @description Получаем ссылку на трек если прошлая уже не актуальна
+     * @param track - трек у которого нет аудио
+     */
+    public readonly fetch = (track: Song): Promise<string | Error> => {
+        return new Promise(async (resolve) => {
+            const platform = new API.response(this.platforms.supported.find((plt) => plt.requests.length >= 2 && plt.audio).name);
+
+            try {
+                const tracks = await platform.find("search").callback(`${track.author.title} - ${track.title}`, {limit: 5});
+                if (tracks instanceof Error || tracks.length === 0) return resolve(null);
+
+                const song = await platform.find("track").callback(tracks?.at(0)?.url, {audio: true});
+                if (song instanceof Error || !song.link) return resolve(null);
+
+                return resolve(song.link);
+            } catch (err) {
+                return resolve(Error(err));
+            }
+        });
     };
 }

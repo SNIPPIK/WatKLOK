@@ -28,32 +28,7 @@ export class Queue {
         { type: 2, emoji: {id: db.emojis.button.next},      custom_id: 'skip',          style: 2 },  //Skip song
         { type: 2, emoji: {id: db.emojis.button.loop},      custom_id: 'repeat',        style: 2 }   //Loop
     ];
-    /**
-     * @author SNIPPIK
-     * @description Создаем Array с треками для очереди
-     */
-    private readonly _songs = new class Songs extends Array<Song> {
-        /**
-         * @description Получаем текущий трек
-         * @return Song
-         * @public
-         */
-        public get song(): Song { return this.at(0); };
-
-        /**
-         * @description Получаем последний трек в очереди
-         * @return Song
-         * @public
-         */
-        public get last(): Song { return this.at(-1); };
-
-        /**
-         * @description Кол-во треков в очереди
-         * @return number
-         * @public
-         */
-        public get size(): number { return this.length; };
-    };
+    private readonly _songs = new QueueSongs();
 
     /**
      * @description Получаем доступ к трекам
@@ -219,6 +194,35 @@ export class Queue {
 
         for (let item of Object.keys(this._data)) this._data[item] = null;
     };
+}
+
+/**
+ * @author SNIPPIK
+ * @description Создаем Array с треками для очереди
+ * @class QueueSongs
+ * @private
+ */
+class QueueSongs extends Array<Song> {
+    /**
+     * @description Получаем текущий трек
+     * @return Song
+     * @public
+     */
+    public get song(): Song { return this.at(0); };
+
+    /**
+     * @description Получаем последний трек в очереди
+     * @return Song
+     * @public
+     */
+    public get last(): Song { return this.at(-1); };
+
+    /**
+     * @description Кол-во треков в очереди
+     * @return number
+     * @public
+     */
+    public get size(): number { return this.length; };
 }
 
 /**
