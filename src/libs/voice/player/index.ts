@@ -181,6 +181,7 @@ export const Filters: AudioFilter[] = [
  * @extends TypedEmitter
  */
 export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
+    private readonly id: string = null;
     private readonly audioFilters = new AudioFilters();
     private readonly data = {
         status: "player/wait"   as keyof AudioPlayerEvents,
@@ -189,7 +190,27 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
     };
 
     /**
+     * @description Задаем параметры плеера перед началом работы
+     * @param guild - ID сервера для аутентификации плеера
+     */
+    public constructor(guild: string) {
+        super();
+        this.id = guild;
+
+        // Добавляем плеер в базу для отправки пакетов
+        db.audio.cycles.players.set(this);
+    };
+
+    /**
+     * @description Выдаем ID сервера с которым работает плеер или аутентификатор плеера
+     * @return string - ID сервера для аутентификации плеера
+     * @public
+     */
+    public get ID() { return this.id; };
+
+    /**
      * @description Управляем фильтрами
+     * @return AudioFilters
      * @public
      */
     public get filters() { return this.audioFilters; };

@@ -3,7 +3,6 @@ import {CollectionAudioEvents} from "@handler/Database/Global/Audio";
 import {IntentsCommand} from "@lib/discord/utils/IntentsCommand";
 import {AudioPlayerEvents} from "@lib/voice/player";
 import {SlashBuilder} from "@lib/discord/utils/SlashBuilder";
-import {Queue} from "@lib/voice/player/queue/Queue";
 import {Song} from "@lib/voice/player/queue/Song";
 import {ClientEvents} from "discord.js";
 import {readdirSync} from "node:fs";
@@ -121,7 +120,7 @@ export namespace Handler {
          * @readonly
          * @public
          */
-        execute: T extends keyof CollectionAudioEvents ? CollectionAudioEvents[T] : T extends keyof AudioPlayerEvents ? (queue: Queue.Music, ...args: Parameters<AudioPlayerEvents[T]>) => any : T extends keyof ClientEvents ? (client: Client, ...args: ClientEvents[T]) => void : never;
+        execute: T extends keyof CollectionAudioEvents ? CollectionAudioEvents[T] : T extends keyof AudioPlayerEvents ? (...args: Parameters<AudioPlayerEvents[T]>) => any : T extends keyof ClientEvents ? (client: Client, ...args: ClientEvents[T]) => void : never;
     }
 
     /**
@@ -226,9 +225,8 @@ export namespace Constructor {
                 if (promise) promise(value);
                 this.data.set(ID, value);
                 return value;
-            } else {
-                Logger.log("WARN", `Collection has duplicated ${ID}`);
-            }
+            } else Logger.log("WARN", `Collection has duplicated ${ID}`);
+
 
             return item;
         };

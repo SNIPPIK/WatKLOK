@@ -59,7 +59,7 @@ class onPush extends Constructor.Assign<Handler.Event<"message/push">> {
             execute: (queue, obj) => {
 
                 //Если был добавлен трек
-                if (queue instanceof Queue.Music) {
+                if (queue instanceof Queue) {
                     const {color, author, image, title, duration} = obj as Song;
 
                     new MessageBuilder().addEmbeds([

@@ -14,7 +14,9 @@ class onEnd extends Constructor.Assign<Handler.Event<"player/ended">> {
         super({
             name: "player/ended",
             type: "player",
-            execute: (queue, _, seek) => {
+            execute: (player,  seek) => {
+                const queue = db.audio.queue.get(player.ID);
+
                 if (seek !== 0) return;
                 db.audio.queue.events.emit("message/playing", queue);
 
@@ -38,7 +40,9 @@ class onWait extends Constructor.Assign<Handler.Event<"player/wait">> {
         super({
             name: "player/wait",
             type: "player",
-            execute: (queue) => {
+            execute: (player) => {
+                const queue = db.audio.queue.get(player.ID);
+
                 //Если нет треков в очереди
                 if (!queue?.songs?.song || !queue.player) return db.audio.queue.remove(queue.guild.id);
 
@@ -71,7 +75,9 @@ class onError extends Constructor.Assign<Handler.Event<"player/error">> {
         super({
             name: "player/error",
             type: "player",
-            execute: (queue, _, err, crash) => {
+            execute: (player, err, crash) => {
+                const queue = db.audio.queue.get(player.ID);
+
                 //Если нет плеера, то нет смысла продолжать
                 if (!queue || !queue.player || !queue.player.play) return;
 

@@ -1,9 +1,6 @@
 import {LightMessageBuilder} from "@lib/discord/utils/MessageBuilder";
-import {StageChannel, VoiceChannel} from "discord.js";
 import {Queue} from "@lib/voice/player/queue/Queue";
 import {API, Constructor, Handler} from "@handler";
-import {Song} from "@lib/voice/player/queue/Song";
-import {Client} from "@lib/discord";
 import {locale} from "@lib/locale";
 import {Logger} from "@env";
 import {db} from "@lib/db";
@@ -63,43 +60,15 @@ class onAPI extends Constructor.Assign<Handler.Event<"collection/api">> {
                     }
 
                     // Запускаем проигрывание треков
-                    return onAPI.createQueue(message, voice, item);
+                    return Queue.startUp(message, voice, item);
                 }).catch((err: Error) => { // Отправляем сообщение об ошибке
+                    console.log(err);
+
                     clearTimeout(timeout);
                     event.emit("collection/error", message, `**${platform.platform}.${api.name}**\n\n**❯** **${err.message}**`, true);
                 });
             }
         });
-    };
-
-    /**
-     * @description Создаем очередь
-     * @param message - Сообщение пользователя
-     * @param voice   - Голосовой канал
-     * @param item    - Добавляемый объект
-     */
-    protected static createQueue = (message: Client.message, voice: VoiceChannel | StageChannel, item: any) => {
-        let queue = db.audio.queue.get(message.guild.id);
-
-        if (!queue) {
-            queue = new Queue.Music({message, voice});
-
-            // Добавляем очередь в базу
-            db.audio.queue.set(message.guild.id, queue, db.audio.queue.runQueue);
-
-            // В конце функции выполнить запуск проигрывания
-            setImmediate(() => queue.player.play(queue.songs.song));
-        }
-
-        // Отправляем сообщение о том что было добавлено
-        if (item instanceof Song && queue.songs.size >= 1) event.emit("message/push", queue, item);
-        else if ("items" in item) event.emit("message/push", message, item);
-
-        // Добавляем треки в очередь
-        for (const track of (item["items"] ?? [item]) as Song[]) {
-            track.requester = message.author;
-            queue.songs.push(track);
-        }
     };
 }
 
