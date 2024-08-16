@@ -1,5 +1,4 @@
 import {LightMessageBuilder} from "@lib/discord/utils/MessageBuilder";
-import {Queue} from "@lib/voice/player/queue/Queue";
 import {API, Constructor, Handler} from "@handler";
 import {locale} from "@lib/locale";
 import {Logger} from "@env";
@@ -60,7 +59,7 @@ class onAPI extends Constructor.Assign<Handler.Event<"collection/api">> {
                     }
 
                     // Запускаем проигрывание треков
-                    return Queue.startUp(message, voice, item);
+                    return db.audio.queue.create(message, voice, item);
                 }).catch((err: Error) => { // Отправляем сообщение об ошибке
                     console.log(err);
 

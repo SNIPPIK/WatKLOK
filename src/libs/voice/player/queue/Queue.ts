@@ -161,29 +161,6 @@ export class Queue {
     };
 
     /**
-     * @description Проверяем надо ли создать очередь и добавляем треки в нее
-     * @param message - Сообщение пользователя
-     * @param voice   - Голосовой канал
-     * @param item    - Добавляемый объект
-     */
-    public static startUp = (message: Client.message, voice: VoiceChannel | StageChannel, item: any) => {
-        let queue = db.audio.queue.get(message.guild.id);
-
-        // Проверяем есть ли очередь в списке
-        if (!queue) queue = new Queue({message, voice});
-
-        // Отправляем сообщение о том что было добавлено
-        if (item instanceof Song && queue.songs.size >= 1) db.audio.queue.events.emit("message/push", queue, item);
-        else if ("items" in item) db.audio.queue.events.emit("message/push", message, item);
-
-        // Добавляем треки в очередь
-        for (const track of (item["items"] ?? [item]) as Song[]) {
-            track.requester = message.author;
-            queue.songs.push(track);
-        }
-    };
-
-    /**
      * @description Очищаем очередь
      * @public
      */
