@@ -1,6 +1,7 @@
 import {BrotliDecompress, createBrotliDecompress, createDeflate, createGunzip, Deflate, Gunzip} from "node:zlib";
 import {ClientRequest, IncomingMessage, request as httpRequest} from "node:http";
 import {request as httpsRequest, RequestOptions} from "node:https";
+import {IMessageEvent, w3cwebsocket} from "websocket";
 import {Logger} from "@env";
 
 /**
@@ -102,8 +103,7 @@ abstract class Request {
             });
         }
 
-        Object.assign(this.data, options);
-
+        // Надо ли генерировать user-agent
         if (options?.useragent) {
             const OS = [ "(X11; Linux x86_64)", "(Windows NT 10.0; Win64; x64)" ];
             const version = `${(123).random(96)}.0.${(6250).random(1280)}.${(250).random(59)}`;
@@ -116,8 +116,18 @@ abstract class Request {
                 "Sec-Ch-Ua-Mobile": "?0"
             });
         }
+
+        Object.assign(this.data, options);
     };
 }
+
+/**
+ * @author SNIPPIK
+ * @description WebSocket для node.js
+ * @link https://github.com/theturtle32/WebSocket-Node
+ */
+export class WebSocket extends w3cwebsocket {}
+export interface WebSocketEvent extends IMessageEvent {}
 
 /**
  * @author SNIPPIK

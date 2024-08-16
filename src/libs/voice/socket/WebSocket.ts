@@ -1,6 +1,6 @@
 import {VoiceOpcodes} from "discord-api-types/voice/v4";
+import {WebSocket, WebSocketEvent} from "@lib/request"
 import {TypedEmitter} from "tiny-typed-emitter";
-import {CloseEvent, Event, WebSocket} from "ws";
 
 /**
  * @author SNIPPIK
@@ -57,26 +57,30 @@ export class VoiceWebSocket extends TypedEmitter<WebSocketEvents> {
         super();
         const ws = new WebSocket(address);
 
-        ws.onmessage = (event) => {
-            if (typeof event.data !== "string") return;
-
-            try {
-                const packet = JSON.parse(event.data);
-
-                if (packet.op === VoiceOpcodes.HeartbeatAck) {
-                    this.life.ack = Date.now();
-                    this.life.misses = 0;
-                }
-
-                this.emit("packet", packet);
-            } catch (error) {
-                this.emit("error", error as Error);
-            }
-        };
-
         //Подключаем события
-        for (let event of ["open", "close", "error"]) ws[`on${event}`] = (err: any) => this.emit(event as any, err);
+        for (const event of ["message", "open", "close", "error"]) {
+            if (this[`on${event}`]) ws[`on${event}`] = (arg: WebSocketEvent) => this[`on${event}`](arg);
+            else ws[`on${event}`] = (arg: WebSocketEvent) => this.emit(event as any, arg);
+        }
+
         this.ws = ws;
+    };
+
+    private readonly onmessage = (event: WebSocketEvent) => {
+        if (typeof event.data !== "string") return;
+
+        try {
+            const packet = JSON.parse(event.data);
+
+            if (packet.op === VoiceOpcodes.HeartbeatAck) {
+                this.life.ack = Date.now();
+                this.life.misses = 0;
+            }
+
+            this.emit("packet", packet);
+        } catch (error) {
+            this.emit("error", error as Error);
+        }
     };
 
     /**
@@ -99,6 +103,7 @@ export class VoiceWebSocket extends TypedEmitter<WebSocketEvents> {
  * @class VoiceWebSocket
  */
 interface WebSocketEvents {
+    "message": (message: WebSocketEvent) => void;
     "error": (error: Error) => void;
     "open": (event: Event) => void;
     "close": (event: CloseEvent) => void;
