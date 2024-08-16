@@ -149,12 +149,12 @@ export class Queue {
 
         // Добавляем данные в класс
         for (const [key, value] of Object.entries(options)) {
-            try { this[key] = value; } catch (err) { throw TypeError(`Error in queue, ${key} is not found in the server queue`); }
+            try {
+                this[key] = value;
+            } catch {
+                throw TypeError(`Error in queue, ${key} is not found in the server queue`);
+            }
         }
-
-        // Загружаем ивенты плеера
-        for (const event of db.audio.queue.events.player)
-            this.player.on(event, (...args: any[]) => db.audio.queue.events.emit(event as any, ...args));
 
         // Добавляем очередь в список очередей
         db.audio.queue.set(ID, this);

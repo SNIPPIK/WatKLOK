@@ -198,6 +198,10 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
         super();
         this.id = guild;
 
+        // Загружаем ивенты плеера
+        for (const event of db.audio.queue.events.player)
+            this.on(event, (...args: any[]) => db.audio.queue.events.emit(event as any, ...args));
+
         // Добавляем плеер в базу для отправки пакетов
         db.audio.cycles.players.set(this);
     };
