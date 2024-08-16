@@ -1,8 +1,8 @@
 import {Encryption} from "@lib/voice/audio/utils/Sodium";
 import {VoiceOpcodes} from "discord-api-types/voice/v4";
 import {TypedEmitter} from "tiny-typed-emitter";
-import {VoiceWebSocket} from "./WebSocket";
 import {VoiceUDPSocket} from "./SocketUDP";
+import {WebSocket} from "@lib/request";
 
 /**
  * @author SNIPPIK
@@ -18,7 +18,7 @@ const socketStatus = [
     {
         name: VoiceOpcodes.Hello,
         callback: (socket: VoiceSocket, packet: {d: any, op: VoiceOpcodes}) => {
-            if (socket.state.code !== VoiceSocketStatusCode.close) socket.state.ws.liveInterval = packet.d.heartbeat_interval;
+            if (socket.state.code !== VoiceSocketStatusCode.close) socket.state.ws.keepAlive = packet.d.heartbeat_interval;
         }
     },
     {
@@ -106,8 +106,8 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
     public set state(newState) {
         //Уничтожаем WebSocket
         stateDestroyer(
-            Reflect.get(this._state, "ws") as VoiceWebSocket,
-            Reflect.get(newState, "ws") as VoiceWebSocket,
+            Reflect.get(this._state, "ws") as WebSocket,
+            Reflect.get(newState, "ws") as WebSocket,
             (oldS) => {
                 oldS.off("error", this.GettingError).off("open", this.WebSocketOpen).off("packet", this.WebSocketPacket).off("close", this.WebSocketClose)
             }
@@ -195,7 +195,7 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
      * @private
      */
     private readonly createWebSocket = (endpoint: string) => {
-        return new VoiceWebSocket(`wss://${endpoint}?v=4`)
+        return new WebSocket(`wss://${endpoint}?v=4`)
             .on("error", this.GettingError)
             .once("open", this.WebSocketOpen)
             .on("packet", this.WebSocketPacket)
@@ -337,7 +337,7 @@ interface VoiceSocketEvents {
  * @interface Socket_ws_State
  */
 interface Socket_ws_State {
-    ws: VoiceWebSocket;
+    ws: WebSocket;
     connectionOptions: ConnectionOptions;
 }
 

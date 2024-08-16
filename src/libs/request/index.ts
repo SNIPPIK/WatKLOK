@@ -1,7 +1,9 @@
 import {BrotliDecompress, createBrotliDecompress, createDeflate, createGunzip, Deflate, Gunzip} from "node:zlib";
 import {ClientRequest, IncomingMessage, request as httpRequest} from "node:http";
+import {IMessageEvent as WebSocketEvent, w3cwebsocket as WS} from "websocket";
 import {request as httpsRequest, RequestOptions} from "node:https";
-import {IMessageEvent, w3cwebsocket} from "websocket";
+import {VoiceOpcodes} from "discord-api-types/voice/v4";
+import {TypedEmitter} from "tiny-typed-emitter";
 import {Logger} from "@env";
 
 /**
@@ -123,14 +125,6 @@ abstract class Request {
 
 /**
  * @author SNIPPIK
- * @description WebSocket для node.js
- * @link https://github.com/theturtle32/WebSocket-Node
- */
-export class WebSocket extends w3cwebsocket {}
-export interface WebSocketEvent extends IMessageEvent {}
-
-/**
- * @author SNIPPIK
  * @description Создаем http или https запрос
  * @class httpsClient
  * @public
@@ -203,4 +197,110 @@ export class httpsClient extends Request {
             return resource?.statusCode && resource.statusCode >= 200 && resource.statusCode < 400;
         });
     };
+}
+
+
+/**
+ * @author SNIPPIK
+ * @description WebSocket для node.js
+ */
+export class WebSocket extends TypedEmitter<WebSocketEvents> {
+    private readonly socket: WS;
+    private readonly KeepAlive = {
+        interval: null as NodeJS.Timeout, miss: 0, send: 0
+    };
+
+    /**
+     * @description Устанавливает/очищает интервал для отправки сердечных сокращений по веб-сокету.
+     * @param ms - Интервал в миллисекундах. Если значение отрицательное, интервал будет сброшен
+     * @public
+     */
+    public set keepAlive(ms: number) {
+        if (this.KeepAlive.interval !== undefined) clearInterval(this.KeepAlive.interval);
+
+        if (ms > 0) this.KeepAlive.interval = setInterval(() => {
+            if (this.KeepAlive.send !== 0 && this.KeepAlive.miss >= 3) this.destroy(0);
+
+            this.KeepAlive.send = Date.now();
+            this.KeepAlive.miss++;
+            this.packet = {
+                op: VoiceOpcodes.Heartbeat,
+                d: this.KeepAlive.send
+            };
+        }, ms);
+    };
+
+    /**
+     * @description Отправляет пакет с возможностью преобразования в JSON-строку через WebSocket.
+     * @param packet - Пакет для отправки
+     * @public
+     */
+    public set packet(packet: string | object) {
+        try {
+            this.socket.send(JSON.stringify(packet));
+        } catch (error) {
+            this.emit("error", error as Error);
+        }
+    };
+
+    /**
+     * @description Создаем WebSocket для передачи голосовых пакетов
+     * @param address - Адрес сервера для соединения
+     * @public
+     */
+    public constructor(address: string) {
+        super();
+        const Socket = new WS(address);
+
+        //Подключаем события
+        for (const event of ["message", "open", "close", "error"]) {
+            if (this[`on${event}`]) Socket[`on${event}`] = (arg: WebSocketEvent) => this[`on${event}`](arg);
+            else Socket[`on${event}`] = (arg: WebSocketEvent) => this.emit(event as any, arg);
+        }
+
+        this.socket = Socket;
+    };
+
+    /**
+     * @description Используется для перехвата сообщения от сервера
+     * @param event - Данные для перехвата
+     */
+    private readonly onmessage = (event: WebSocketEvent) => {
+        if (typeof event.data !== "string") return;
+
+        try {
+            const packet = JSON.parse(event.data);
+
+            if (packet.op === VoiceOpcodes.HeartbeatAck) this.KeepAlive.miss = 0;
+
+            this.emit("packet", packet);
+        } catch (error) {
+            this.emit("error", error as Error);
+        }
+    };
+
+    /**
+     * @description Уничтожает голосовой веб-сокет. Интервал очищается, и соединение закрывается
+     * @public
+     */
+    public destroy = (code: number = 1_000): void => {
+        try {
+            this.keepAlive = -1;
+            this.socket.close(code);
+        } catch (error) {
+            this.emit("error", error as Error);
+        }
+    };
+}
+
+/**
+ * @description Ивенты для VoiceWebSocket
+ * @interface WebSocketEvents
+ * @class VoiceWebSocket
+ */
+interface WebSocketEvents {
+    "error": (error: Error) => void;
+    "open": (event: Event) => void;
+    "close": (event: CloseEvent) => void;
+    "packet": (packet: any) => void;
 }
