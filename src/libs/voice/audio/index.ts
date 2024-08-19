@@ -2,6 +2,7 @@ import {ChildProcessWithoutNullStreams, spawn, spawnSync} from "node:child_proce
 import {OpusEncoder} from "@lib/voice/audio/utils/Opus";
 import * as path from "node:path";
 import {env} from "@env";
+import {db} from "@lib/db";
 
 /**
  * @author SNIPPIK
@@ -88,7 +89,7 @@ export class SeekStream {
         const [type, file] = options.path.split(":|");
 
         this._streams.push(
-            new Process(["-vn",  "-loglevel", "panic", "-timeout", "5",
+            new Process(["-vn",  "-loglevel", "panic", "-timeout", `${db.audio.options.audio.timeout}`,
                 ...(type === "link" ? ["-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5"] : []),
                 "-ss", `${options.seek ?? 0}`, "-i", file,
                 ...(options.filters ? ["-af", options.filters] : []),

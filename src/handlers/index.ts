@@ -227,7 +227,6 @@ export namespace Constructor {
                 return value;
             } else Logger.log("WARN", `Collection has duplicated ${ID}`);
 
-
             return item;
         };
 

@@ -1,11 +1,11 @@
 import {LightMessageBuilder, MessageBuilder} from "@lib/discord/utils/MessageBuilder";
+import {IntentCommand} from "@lib/discord/utils/IntentsCommand";
 import {CommandInteractionOption, Events} from "discord.js";
 import {Constructor, Handler} from "@handler";
 import {Client} from "@lib/discord";
 import {locale} from "@lib/locale";
 import {Logger} from "@env";
 import {db} from "@lib/db";
-import {IntentCommand} from "@lib/discord/utils/IntentsCommand";
 
 /**
  * @author SNIPPIK

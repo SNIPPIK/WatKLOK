@@ -32,7 +32,7 @@ class Command_Info extends Constructor.Assign<Handler.Command> {
                 const OS_page = locale._(message.locale, "command.info.page", [
                    version, processor, process.version, client?.shard?.ids || 1,
                     client.ID, client.guilds.cache.size, client.channels.cache.size, db.audio.queue.size,
-                    `${db.commands.length}/${db.commands.subCommands}`, (process.memoryUsage().rss / 1.5).bytes(),
+                    `${db.commands.length}/${db.commands.subCommands}`, (process.memoryUsage().heapUsed + process.memoryUsage().heapTotal).bytes(),
                     (process.memoryUsage().heapUsed).bytes(), (process.memoryUsage().heapTotal).bytes()
                 ]);
                 return new MessageBuilder().addEmbeds([

@@ -1,8 +1,5 @@
 import {Constructor, Handler} from "@handler";
 import {db} from "@lib/db";
-import {env} from "@env";
-
-const timeout = parseInt(env.get("player.timeout"));
 
 /**
  * @class onEnd
@@ -59,7 +56,7 @@ class onWait extends Constructor.Assign<Handler.Event<"player/wait">> {
                 }
 
                 //Включаем трек через время
-                setTimeout(() => queue.player.play(queue.songs.song), timeout);
+                setTimeout(() => queue.player.play(queue.songs.song), db.audio.options.timeout);
             }
         });
     }
@@ -90,8 +87,8 @@ class onError extends Constructor.Assign<Handler.Event<"player/error">> {
                                 setImmediate(() => {
                                     queue.songs.shift();
 
-                                    //Включаем следующий трек через время
-                                    queue.player.play(queue.songs.song);
+                                    //Включаем трек через время
+                                    setTimeout(() => queue.player.play(queue.songs.song), db.audio.options.timeout);
                                 });
                             }
                             return;

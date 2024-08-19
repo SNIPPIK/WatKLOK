@@ -6,6 +6,7 @@ import {API, Constructor, Handler} from "@handler";
 import {Song} from "@lib/voice/player/queue/Song";
 import {locale} from "@lib/locale";
 import {db} from "@lib/db";
+import {Logger} from "@env";
 
 /**
  * @author SNIPPIK
@@ -181,7 +182,7 @@ class onPlaying extends Constructor.Assign<Handler.Event<"message/playing">> {
         super({
             name: "message/playing",
             type: "player",
-            execute: (queue, isReturn) => {
+            execute: (queue, message) => {
                 const {color, author, image, title, url, duration, requester, platform} = queue.songs.song;
                 const embed = new MessageBuilder().addEmbeds([
                     {
@@ -309,8 +310,15 @@ class onPlaying extends Constructor.Assign<Handler.Event<"message/playing">> {
                     });
                 });
 
-                //Если надо отдать embed
-                if (isReturn) return embed.embeds.pop();
+                // Если надо обновить сообщение
+                if (message) {
+                    //Обновляем сообщение
+                    message.edit({ embeds: embed.embeds as any, components: [queue.components as any] }).catch((e) => {
+                        Logger.log("DEBUG", `[TimeCycle]: [editMessage]: ${e.message}`);
+                    });
+                    return;
+                }
+
                 embed.setTime(0).addComponents([queue.components as any]).send = queue.message;
             }
         });

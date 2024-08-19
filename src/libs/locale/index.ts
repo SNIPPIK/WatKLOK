@@ -406,16 +406,16 @@ const locales = {
         "en-US": "Filter: {ARGUMENT} is already enabled!"
     },
     "command.filter.enable": {
-        ru: "**Filter:**\n{ARGUMENT} включен!",
-        "en-US": "**Filter:**\n{ARGUMENT} enabled!"
+        ru: "**Filter:** {ARGUMENT} включен!",
+        "en-US": "**Filter:** {ARGUMENT} enabled!"
     },
     "command.filter.disable.retry": {
         ru: "Filter: {ARGUMENT} не включен!",
         "en-US": "Filter: {ARGUMENT} is not enabled!"
     },
     "command.filter.disable": {
-        ru: "**Filter:**\n{ARGUMENT} выключен!",
-        "en-US": "**Filter:**\n{ARGUMENT} is disabled!"
+        ru: "**Filter:** {ARGUMENT} выключен!",
+        "en-US": "**Filter:** {ARGUMENT} is disabled!"
     }
 };
 
@@ -456,7 +456,7 @@ export class locale {
         translate = translate[language] as string;
 
         //Если нет такого перевода
-        if (!translate) translate = translate[this.language];
+        if (!translate) translate = locales[context][this.language];
 
         //Если есть аргументы
         if (args && args.length > 0) {

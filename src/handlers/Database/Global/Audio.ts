@@ -1,14 +1,13 @@
-import {Attachment, EmbedData, StageChannel, VoiceChannel} from "discord.js";
 import {AudioPlayer, AudioPlayerEvents, Filters} from "@lib/voice/player";
+import {Attachment, StageChannel, VoiceChannel} from "discord.js";
 import {MessageBuilder} from "@lib/discord/utils/MessageBuilder";
-import onPlaying from "@handler/Events/Player/message";
 import {Queue} from "@lib/voice/player/queue/Queue";
 import {Song} from "@lib/voice/player/queue/Song";
 import {TypedEmitter} from "tiny-typed-emitter";
-import {Constructor, Handler} from "@handler";
+import {Constructor} from "@handler";
 import {Client} from "@lib/discord";
-import {env, Logger} from "@env";
 import {db} from "@lib/db";
+import {env} from "@env";
 
 /**
  * @author SNIPPIK
@@ -18,9 +17,17 @@ import {db} from "@lib/db";
 export class Database_Audio {
     private readonly data = {
         queue: new AudioQueues(),
-        cycles: new AudioCycles(),
+        cycles: new Cycles(),
 
-        options: {volume: parseInt(env.get("audio.volume")), fade: parseInt(env.get("audio.fade"))},
+        options: {
+            volume: parseInt(env.get("audio.volume")),
+            fade: parseInt(env.get("audio.fade")),
+            timeout: parseInt(env.get("player.timeout")),
+
+            audio: {
+                timeout: parseInt(env.get("audio.timeout")),
+            }
+        },
         filters: Filters
     };
     /**
@@ -54,10 +61,10 @@ export class Database_Audio {
 /**
  * @author SNIPPIK
  * @description Циклы для работы аудио, лучше не трогать без понимания как все это работает
- * @class AudioCycles
+ * @class Cycles
  * @private
  */
-class AudioCycles {
+class Cycles {
     /**
      * @author SNIPPIK
      * @description Здесь происходит управление плеерами
@@ -100,19 +107,10 @@ class AudioCycles {
                     const queue = db.audio.queue.get(guild.id);
 
                     if (!queue || !queue.songs.size) return this.remove(message);
-                    else if (!queue.player.playing || !queue.player.stream.duration || !message.editable) return;
+                    else if (!queue.player.playing || !message.editable) return;
 
-                    setImmediate(() => {
-                        const newEmbed = (new onPlaying[0]() as Handler.Event<"message/playing">).execute(queue, true) as EmbedData;
-
-                        //Обновляем сообщение
-                        message.edit({
-                            embeds: [newEmbed as any],
-                            components: [queue.components as any]
-                        }).catch((e) => {
-                            Logger.log("DEBUG", `[TimeCycle]: [editMessage]: ${e.message}`);
-                        });
-                    });
+                    // Обновляем сообщение о текущем треке
+                    db.audio.queue.events.emit("message/playing", queue, message);
                 },
                 custom: {
                     remove: (item) => {
@@ -196,7 +194,7 @@ export interface CollectionAudioEvents {
     "message/push": (queue: Queue | Client.message, items: Song | Song.playlist) => void;
 
     // Сообщение о текущем треке
-    "message/playing": (queue: Queue, isReturn?: boolean) => void | EmbedData;
+    "message/playing": (queue: Queue, message?: Client.message) => void;
 
     // Сообщение об ошибке
     "message/error": (queue: Queue, error?: string | Error) => void;
