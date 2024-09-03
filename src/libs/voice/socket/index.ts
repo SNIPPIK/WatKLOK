@@ -172,7 +172,7 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
 
             this.speaking = true;
 
-            // Зашифровываем пакет для отправки discord
+            // Зашифровываем пакет для отправки на сервера discord
             state.udp.packet = Encryption.packet(opusPacket, state.connectionData);
         }
     };
@@ -195,11 +195,8 @@ export class VoiceSocket extends TypedEmitter<VoiceSocketEvents> {
      * @private
      */
     private readonly createWebSocket = (endpoint: string) => {
-        return new WebSocket(`wss://${endpoint}?v=4`)
-            .on("error", this.GettingError)
-            .once("open", this.WebSocketOpen)
-            .on("packet", this.WebSocketPacket)
-            .once("close", this.WebSocketClose);
+        return new WebSocket(`wss://${endpoint}?v=4`).on("error", this.GettingError).once("open", this.WebSocketOpen)
+            .on("packet", this.WebSocketPacket).once("close", this.WebSocketClose);
     };
 
     /**
