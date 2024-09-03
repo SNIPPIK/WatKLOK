@@ -118,13 +118,10 @@ export class SeekStream {
         if (options.seek > 0) this._options.seek = (options.seek * 1e3) / this._options.chunk;
 
         this.ffmpeg = options;
-
-        setTimeout(() => {
-            this.input = {
-                input: this.stream as any,
-                events: ["end", "close", "error"]
-            };
-        }, 4e3)
+        this.input = {
+            input: this.stream as any,
+            events: ["end", "close", "error"]
+        };
     };
 
     /**
