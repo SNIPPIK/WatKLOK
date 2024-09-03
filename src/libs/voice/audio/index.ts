@@ -1,8 +1,8 @@
 import {ChildProcessWithoutNullStreams, spawn, spawnSync} from "node:child_process";
 import {OpusEncoder} from "@lib/voice/audio/utils/Opus";
 import * as path from "node:path";
-import {env} from "@env";
 import {db} from "@lib/db";
+import {env} from "@env";
 
 /**
  * @author SNIPPIK
@@ -88,14 +88,12 @@ export class SeekStream {
     private set ffmpeg(options: {path: string, seek?: number; filters?: string}) {
         const [type, file] = options.path.split(":|");
 
-        this._streams.push(
-            new Process(["-vn",  "-loglevel", "panic", "-timeout", `${db.audio.options.audio.timeout}`,
-                ...(type === "link" ? ["-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5"] : []),
-                "-ss", `${options.seek ?? 0}`, "-i", file,
-                ...(options.filters ? ["-af", options.filters] : []),
-                "-f", `${OpusEncoder.lib.ffmpeg}`, "pipe:1"
-            ])
-        );
+        this._streams.push(new Process(["-vn",  "-loglevel", "panic", "-timeout", `${db.audio.options.audio.timeout}`,
+            ...(type === "link" ? ["-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5"] : []),
+            "-ss", `${options.seek ?? 0}`, "-i", file,
+            ...(options.filters ? ["-af", options.filters] : []),
+            "-f", `${OpusEncoder.lib.ffmpeg}`, "pipe:1"
+        ]));
     };
 
     /**
@@ -120,10 +118,13 @@ export class SeekStream {
         if (options.seek > 0) this._options.seek = (options.seek * 1e3) / this._options.chunk;
 
         this.ffmpeg = options;
-        this.input = {
-            input: this.stream as any,
-            events: ["end", "close", "error"]
-        };
+
+        setTimeout(() => {
+            this.input = {
+                input: this.stream as any,
+                events: ["end", "close", "error"]
+            };
+        }, 4e3)
     };
 
     /**

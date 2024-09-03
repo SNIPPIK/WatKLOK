@@ -122,24 +122,24 @@ export class OpusEncoder extends Transform {
         if (this.encoder) return this.encoder.encode(chunk, 960);
 
         // Если размер буфера не является нужным, то пропускаем
-        else if (chunk.length < 26) return null;
+        else if (chunk.length < 26) return false;
 
         // Если не находим OGGs_HEAD в буфере
         else if (!chunk.subarray(0, 4).equals(OGG.OGGs_HEAD)) {
             this.emit("error", Error(`capture_pattern is not ${OGG.OGGs_HEAD}`));
-            return null;
+            return false;
         }
 
         // Если находим stream_structure_version в буфере, но не той версии
         else if (chunk.readUInt8(4) !== 0) {
             this.emit("error", Error(`stream_structure_version is not ${0}`));
-            return null;
+            return false;
         }
 
         const pageSegments = chunk.readUInt8(26);
 
         // Если размер буфера не подходит, то пропускаем
-        if (chunk.length < 27 || chunk.length < 27 + pageSegments) return null;
+        if (chunk.length < 27 || chunk.length < 27 + pageSegments) return false;
 
         const table = chunk.subarray(27, 27 + pageSegments), sizes: number[] = [];
         let totalSize = 0;
@@ -149,7 +149,7 @@ export class OpusEncoder extends Transform {
             let size = 0, x = 255;
 
             while (x === 255) {
-                if (i >= table.length) return null;
+                if (i >= table.length) return false;
                 x = table.readUInt8(i); i++; size += x;
             }
 
@@ -158,7 +158,7 @@ export class OpusEncoder extends Transform {
         }
 
         // Если размер буфера не подходит, то пропускаем
-        if (chunk.length < 27 + pageSegments + totalSize) return null;
+        if (chunk.length < 27 + pageSegments + totalSize) return false;
 
         const bitstream = chunk.readUInt32BE(14);
         let start = 27 + pageSegments;

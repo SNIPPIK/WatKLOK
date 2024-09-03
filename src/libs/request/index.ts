@@ -1,7 +1,7 @@
 import {BrotliDecompress, createBrotliDecompress, createDeflate, createGunzip, Deflate, Gunzip} from "node:zlib";
 import {ClientRequest, IncomingMessage, request as httpRequest} from "node:http";
-import {IMessageEvent as WebSocketEvent, w3cwebsocket as WS} from "websocket";
-//import {WebSocket as WS, MessageEvent as WebSocketEvent} from "ws";
+//import {IMessageEvent as WebSocketEvent, w3cwebsocket as WS} from "websocket";
+import {MessageEvent as WebSocketEvent, WebSocket as WS} from "ws";
 import {request as httpsRequest, RequestOptions} from "node:https";
 import {VoiceOpcodes} from "discord-api-types/voice/v4";
 import {TypedEmitter} from "tiny-typed-emitter";
