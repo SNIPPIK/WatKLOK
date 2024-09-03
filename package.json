@@ -4,7 +4,7 @@
   "description": "Постоянно развивающийся музыкальный бот!",
   "license": "BSD-3-Clause",
   "dependencies": {
-    "discord.js": "^14.16.3",
+    "discord.js": "^14.16.1",
     "dotenv": "^16.4.5",
     "sodium-native": "^4.1.1",
     "tiny-typed-emitter": "^2.1.0",
