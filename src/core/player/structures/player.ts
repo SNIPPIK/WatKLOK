@@ -502,12 +502,10 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
         }
 
         // Передаем плеер в цикл если его там нет!
-        if (!this.cycle) {
-            this.cycle = true;
+        this.cycle = true;
 
-            // Переводим плеер в состояние чтения аудио
-            this.status = AudioPlayerState.playing;
-        }
+        // Переводим плеер в состояние чтения аудио
+        this.status = AudioPlayerState.playing;
 
         // Меняем позицию если удачно
         this._tracks.position = index;

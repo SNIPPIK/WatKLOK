@@ -39,24 +39,20 @@ export default createEvent({
             return null;
         }
 
-        let msg: WebhookMessage | null = null;
-
-        try {
-            /**
-             * Отправляем временное уведомление о начале запроса
-             */
-            msg = await ctx.followup({
+        /**
+         * Уведомление и REST-запрос не зависят друг от друга —
+         * запускаем их параллельно вместо последовательного await.
+         */
+        const [msg, result] = await Promise.all([
+            ctx.followup({
                 flags: MessageFlags.IsComponentsV2,
-
                 components: [
                     {
                         type: 17,
                         accent_color: platform.color,
-
                         components: [
                             {
                                 type: 9,
-
                                 components: [
                                     {
                                         type: 10,
@@ -69,10 +65,7 @@ export default createEvent({
                                             platform.audio
                                                 ? "api.platform.request"
                                                 : "api.platform.request.long",
-                                            [
-                                                db.emoji.loading,
-                                                platform.platform,
-                                            ]
+                                            [db.emoji.loading, platform.platform]
                                         ),
                                     },
                                     {
@@ -80,29 +73,26 @@ export default createEvent({
                                         content: `-# ${ctx.author.username}`,
                                     },
                                 ],
-
                                 accessory: {
                                     type: 11,
-                                    media: {
-                                        url: ctx.author.avatarURL(),
-                                    },
+                                    media: { url: ctx.author.avatarURL() },
                                 },
                             },
                         ],
                     },
                 ],
-            });
+            })
+                .then((m: WebhookMessage) => {
+                    m.author = ctx.author;
+                    return m;
+                })
+                .catch((err) => {
+                    console.log(err);
+                    return null as WebhookMessage | null;
+                }),
 
-            // Вставляем оригинального автора
-            msg.author = ctx.author;
-        } catch (err) {
-            console.log(err);
-        }
-
-        /**
-         * Выполняем REST-запрос
-         */
-        const result = await api.request();
+            api.request(),
+        ]);
 
         /**
          * Если произошла ошибка — сразу выходим.
@@ -123,14 +113,7 @@ export default createEvent({
          * Создаём очередь только после успешного REST-запроса.
          */
         const queue = db.queues.create(ctx);
-
-        /**
-         * Добавляем результат в очередь.
-         */
-        const track = !Array.isArray(result)
-            ? result
-            : result[0];
-
+        const track = !Array.isArray(result) ? result : result[0];
         queue.tracks.push(result, ctx.author);
 
         /**
@@ -143,12 +126,7 @@ export default createEvent({
          */
         setImmediate(async () => {
             try {
-                await ctx.client.events.runCustom(
-                    "message/push",
-                    msg,
-                    queue,
-                    track,
-                );
+                await ctx.client.events.runCustom("message/push", msg, queue, track);
             } catch (err) {
                 console.error(err);
             }

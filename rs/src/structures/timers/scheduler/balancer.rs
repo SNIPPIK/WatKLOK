@@ -217,6 +217,7 @@ pub static GLOBAL_BALANCER: Lazy<Mutex<AutoBalancer>> =
     Lazy::new(|| Mutex::new(AutoBalancer::new()));
 
 /// Добавляет сессию в балансировщике.
+#[inline]
 pub fn add_global_session(
     id: u32,
     session: SocketBuffered,
@@ -232,6 +233,7 @@ pub fn add_global_session(
 }
 
 /// Удаляет сессию из глобального балансировщика.
+#[inline]
 pub fn remove_global_session(id: u32) {
     let mut balancer = GLOBAL_BALANCER
         .lock()

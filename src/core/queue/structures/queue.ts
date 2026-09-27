@@ -24,13 +24,15 @@ export class Queue {
     protected _buttons: QueueButtons;
 
     /** Время создания очереди */
-    public timestamp: number = parseInt(Math.max(Date.now() / 1e3).toFixed(0));
+    public timestamp: number = Math.floor(Date.now() / 1000);
 
     /** Хранилище треков, с умной системой управления */
     public tracks = new ControllerTracks<Track>();
 
     /** Голосовое подключение */
     public voice = new ControllerVoice<VoiceConnection>();
+
+    protected _headerCache: { trackId: string; blocks: any[] } | null = null;
 
     /**
      * @description Записываем сообщение в базу для дальнейшего использования
@@ -128,7 +130,6 @@ export class Queue {
      * @public
      */
     public get components(): any[] {
-        // Если класс кнопок (компонентов был уничтожен)
         if (!this._buttons) {
             Logger.log("ERROR", "[Queue/MessageV2]: Fail init buttons class");
             return null;
@@ -139,33 +140,42 @@ export class Queue {
 
         try {
             const { api, artist, name, image, user, url } = tracks.track;
+
+            // Пересобираем "шапку" только если сменился трек
+            if (!this._headerCache || this._headerCache.trackId !== url) {
+                const underline = "‾".repeat(Math.min(name.length, 64));
+
+                this._headerCache = {
+                    trackId: url,
+                    blocks: [
+                        {
+                            type: 10,
+                            content: `## ${db.emoji.disk} [${artist.title}](${artist.url})`
+                        },
+                        {
+                            type: 10,
+                            content: `\`\`\`${name}\`\`\`[${underline}](${url})`
+                        }
+                    ]
+                };
+            }
+
             const message = {
-                "type": 17, // Container
-                "accent_color": api.color,
-                "components": [
+                type: 17,
+                accent_color: api.color,
+                components: [
                     {
-                        "type": 9, // Block
-                        "components": [
-                            {
-                                "type": 10,
-                                "content": `## ${db.emoji.disk} [${artist.title}](${artist.url})`
-                            },
-                            {
-                                "type": 10,
-                                "content": `\`\`\`${name}\`\`\`[${("‾").repeat(name.length > 64 ? 64 : name.length)}](${url})`
-                            }
-                        ],
-                        "accessory": {
-                            "type": 11,
-                            "description": `Artbook - ${name}`, // Подсказка
-                            "media": {
-                                "url": image,
-                            }
+                        type: 9,
+                        components: this._headerCache.blocks,
+                        accessory: {
+                            type: 11,
+                            description: `Artbook - ${name}`,
+                            media: { url: image }
                         }
                     },
                     {
-                        "type": 10, // Text
-                        "content": `> -# \`${db.emoji.user} ${user.username}\` | \`${player.audio.volumeIndicator}\` ${tracks.footer}` + player.progress
+                        type: 10,
+                        content: `> -# \`${db.emoji.user} ${user.username}\` | \`${player.audio.volumeIndicator}\` ${tracks.footer}` + player.progress
                     },
                     ...buttons
                 ]
@@ -177,7 +187,7 @@ export class Queue {
         }
 
         return null;
-    };
+    }
 
     /**
      * @description Эта функция частично удаляет очередь
@@ -216,24 +226,20 @@ export class Queue {
         Logger.log("LOG", `[Queue/${this.message.guild_id}] has destroyed`);
         this._message.client.events.runCustom("queue/destroy", this);
 
-        this._message.destroy();
+        Promise.allSettled([
+            Promise.resolve(this._message?.destroy()),
+            Promise.resolve(this._buttons?.destroy()),
+            Promise.resolve(this._player?.destroy()),
+            Promise.resolve(this.voice?.connection?.disconnect()),
+            Promise.resolve(this.voice?.connection?.destroy()),
+        ]).catch(() => null);
+
         this._message = null;
         this.timestamp = null;
-
-        this._buttons.destroy();
         this._buttons = null;
-
-        // Удаляем плеер
-        this._player.destroy();
         this._player = null;
-
-        // Удаляем треки
         this.tracks.clear();
         this.tracks = null;
-
-        // Удаляем подключение
-        this.voice.connection.disconnect();
-        this.voice.connection.destroy();
         this.voice = null;
     };
 }

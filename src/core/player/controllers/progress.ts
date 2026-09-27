@@ -27,6 +27,15 @@ const emoji = {
 let buttons: { [key: string]: string; } = null;
 
 /**
+ * @author SNIPPIK
+ * @description Кэш резолва кнопки платформы по названию, чтобы не пересобирать
+ * шаблонную строку `button_${platform}` и не звать `toLowerCase()` на каждый
+ * вызов `bar()`. Число платформ конечно и невелико, кэш никогда не разрастётся.
+ * @private
+ */
+const buttonResolveCache = new Map<string, string>();
+
+/**
  * Класс для формирования визуального прогресс-бара трека с использованием
  * кастомных эмодзи (левая/центральная/правая части) и кнопки платформы.
  *
@@ -34,6 +43,11 @@ let buttons: { [key: string]: string; } = null;
  * - все неизменяемые строки (полностью пустой/заполненный бары, шаблон live)
  *   собираются один раз в конструкторе;
  * - прямые ссылки на строки эмодзи исключают лишние обращения к объектам;
+ * - все возможные варианты `repeat(0..size)` для заполненного и пустого
+ *   сегментов предпосчитаны в конструкторе, поэтому `bar()` никогда не вызывает
+ *   `.repeat()` — только индексирует готовый массив;
+ * - резолв кнопки платформы кэшируется, чтобы не пересобирать строку и не
+ *   звать `toLowerCase()` на каждый вызов;
  * - условные вычисления выполняются только при частичном заполнении.
  *
  * @example
@@ -101,6 +115,20 @@ export class PlayerProgress {
     private readonly liveEmptyCenter: string;
 
     /**
+     * Предпосчитанные варианты `uppedCenter.repeat(n)` для n = 0..size.
+     * Индексируется напрямую в `bar()`, чтобы не звать `.repeat()`
+     * в горячем цикле обновления прогресс-бара.
+     */
+    private readonly uppedCenterCache: string[];
+
+    /**
+     * Предпосчитанные варианты `emptyCenter.repeat(n)` для n = 0..size.
+     * Индексируется напрямую в `bar()`, чтобы не звать `.repeat()`
+     * в горячем цикле обновления прогресс-бара.
+     */
+    private readonly emptyCenterCache: string[];
+
+    /**
      * Создаёт экземпляр генератора прогресс-бара.
      *
      * @param size - Количество центральных сегментов бара (ширина).
@@ -119,6 +147,12 @@ export class PlayerProgress {
         this.emptyBar = this.emptyLeft + this.emptyCenter.repeat(size) + this.emptyRight;
         this.fullBar  = this.uppedLeft + this.uppedCenter.repeat(size) + this.uppedRight;
         this.liveEmptyCenter = this.emptyCenter.repeat(size - 1);
+
+        // Предпосчитанные таблицы repeat(0..size): в bar() возможные значения
+        // filled/emptyCount всегда лежат в этом диапазоне, поэтому вместо
+        // конкатенации на каждый вызов делаем один просчёт при создании класса.
+        this.uppedCenterCache = Array.from({ length: size + 1 }, (_, n) => this.uppedCenter.repeat(n));
+        this.emptyCenterCache = Array.from({ length: size + 1 }, (_, n) => this.emptyCenter.repeat(n));
     }
 
     /**
@@ -134,7 +168,9 @@ export class PlayerProgress {
      *   вставляется кнопка платформы, оставшееся место заполняется пустыми сегментами.
      *
      * Кнопка платформы выбирается по полю `platform` из глобального объекта `buttons`,
-     * который лениво инициализируется при первом вызове. Если платформа не указана
+     * который лениво инициализируется при первом вызове, а результат резолва
+     * кэшируется в `buttonResolveCache`, чтобы не пересобирать строку и не
+     * звать `toLowerCase()` при каждом вызове. Если платформа не указана
      * или не найдена, используется кнопка по умолчанию (`"button"`).
      *
      * @param input - Объект с данными трека.
@@ -147,7 +183,7 @@ export class PlayerProgress {
     public bar = ({ duration: { current, total }, platform }: PlayerProgressInput): string => {
         // Ленивая инициализация глобального реестра кнопок платформ.
         if (!buttons) initButtons();
-        const button = buttons[`button_${platform?.toLowerCase()}`] ?? buttons["button"];
+        const button = resolveButton(platform);
 
         // Live-режим: общая длительность неизвестна или бесконечна.
         if (total === 0 || total === Infinity) {
@@ -171,10 +207,12 @@ export class PlayerProgress {
 
         // Сборка строки: левая заполненная граница + заполненные сегменты +
         // кнопка + пустые сегменты + правая пустая граница.
+        // uppedCenterCache/emptyCenterCache уже содержат нужные repeat-строки —
+        // индексируем вместо вызова .repeat() на каждый тик.
         return this.uppedLeft +
-            this.uppedCenter.repeat(filled) +
+            this.uppedCenterCache[filled] +
             button +
-            this.emptyCenter.repeat(emptyCount) +
+            this.emptyCenterCache[emptyCount] +
             this.emptyRight;
     };
 }
@@ -237,4 +275,25 @@ function initButtons() {
     }, {
         button: env.get("progress.button"),
     });
+}
+
+/**
+ * @author SNIPPIK
+ * @description Резолвит кнопку платформы с кэшированием результата,
+ * чтобы не пересобирать шаблонную строку и не звать `toLowerCase()`
+ * на каждый вызов `bar()`. Число уникальных платформ конечно и невелико,
+ * поэтому кэш безопасен и никогда не разрастётся заметно.
+ * @param platform - Название платформы (может быть undefined)
+ * @private
+ */
+function resolveButton(platform: string | undefined): string {
+    const key = platform ?? "";
+    let cached = buttonResolveCache.get(key);
+
+    if (cached === undefined) {
+        cached = buttons[`button_${key.toLowerCase()}`] ?? buttons["button"];
+        buttonResolveCache.set(key, cached);
+    }
+
+    return cached;
 }

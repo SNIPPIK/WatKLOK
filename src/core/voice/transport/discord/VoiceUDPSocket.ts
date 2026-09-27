@@ -155,6 +155,7 @@ export class VoiceUDPSocket extends TypedEmitter<UDPSocketEvents> {
             } else {
                 // Устанавливаем статус «соединение установлено».
                 this._status = VoiceUDPSocketStatuses.connected;
+
                 // Публикуем адрес и порт.
                 this.emit("discovery", { address, port });
             }

@@ -159,6 +159,14 @@ class LyricsProvider<T extends Track> {
  * @private
  */
 export class TrackResolvers {
+    /**
+     * @description Число повторов HEAD-проверки одной и той же ссылки,
+     * прежде чем считать её недействительной и отдавать управление
+     * внешнему ResourceProvider (который уже решит — сбрасывать ссылку или нет).
+     * @const LINK_HEAD_RETRIES
+     * @private
+     */
+    private static readonly LINK_HEAD_RETRIES = 2;
     public static providers = {
         /**
          * @description Провайдер аудио: проверяет кэш, при необходимости
@@ -184,11 +192,11 @@ export class TrackResolvers {
                 for (let trk of songs) {
                     if (trk instanceof Error) continue;
 
-                    // Прокидываем путь для будущего симлинка.
+                    // Прокидываем путь для будущей ссылки.
                     (trk as any).similarTrackPath = status?.path;
 
-                    // Проверяем доступность через HEAD.
-                    const song = await this.head(trk);
+                    // Проверяем доступность через HEAD
+                    const song = await this.headWithRetry(trk);
                     if (song instanceof Error) continue;
 
                     // Переносим прокси и ссылку в исходный трек.
@@ -204,7 +212,8 @@ export class TrackResolvers {
             // Ссылка уже есть и это HTTP-URL — валидируем через HEAD.
             if (track.link?.startsWith?.("http")) {
                 (track as any).similarTrackPath = status?.path;
-                const song = await this.head(track);
+                // Было: await this.head(track)
+                const song = await this.headWithRetry(track);
 
                 // Если это TransientError — резолвер повторит ту же ссылку,
                 // если настоящая ошибка — сбросит и пойдёт за новой.
@@ -247,6 +256,48 @@ export class TrackResolvers {
             return api?.syncedLyrics || api?.plainLyrics;
         })
     };
+
+    /**
+     * @description Повторяет HEAD-проверку по одной и той же ссылке несколько раз
+     * подряд, прежде чем признать её недействительной. Это отдельный, "быстрый"
+     * слой ретраев поверх `head` — в отличие от ретраев `ResourceProvider`, здесь
+     * не сбрасывается `track.link` и не запрашивается новая ссылка у платформы,
+     * что даёт больше шансов пережить единичный сетевой сбой без лишней задержки.
+     *
+     * # Аргументы
+     * * `track`   — трек со ссылкой (и опционально прокси).
+     * * `retries` — сколько ДОПОЛНИТЕЛЬНЫХ попыток сделать после первой неудачной.
+     *
+     * # Возвращаемое значение
+     * Актуальный URL при успехе; последняя полученная ошибка при исчерпании попыток.
+     *
+     * @private
+     * @static
+     */
+    private static headWithRetry = async (track: Track, retries: number = TrackResolvers.LINK_HEAD_RETRIES): Promise<string | Error> => {
+        let lastError: Error | string = "Unknown error";
+
+        for (let attempt = 0; attempt <= retries; attempt++) {
+            const result = await this.head(track);
+
+            // Успех — сразу отдаём ссылку.
+            if (typeof result === "string") return result;
+
+            lastError = result;
+
+            // Небольшая линейная пауза перед повтором по той же ссылке.
+            if (attempt < retries) {
+                await this.sleep(150 * (attempt + 1));
+            }
+        }
+
+        return lastError instanceof Error
+            ? lastError
+            : Error(`[TrackResolvers.head]: Max retries reached. Last error: ${lastError}`);
+    };
+
+    /// Асинхронная пауза указанной длительности (мс).
+    private static sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     /**
      * @description Проверяет доступность аудио по URL через HEAD-запрос,

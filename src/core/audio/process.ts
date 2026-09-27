@@ -56,8 +56,6 @@ export class Process {
             "-vn",
             "-nostdin",
             "-hide_banner",
-            "-analyzeduration",     "0",
-            "-probesize",           "32",
             "-loglevel",            "error",
         );
         this._process = spawn(name, args, {

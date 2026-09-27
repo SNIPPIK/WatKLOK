@@ -12,7 +12,7 @@ use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Condvar, Mutex,
-    },
+    }
 };
 
 /// Проверяет, нужно ли остановить reader.
@@ -218,16 +218,9 @@ pub(crate) fn reader_loop(stdout: ChildStdout, active: Arc<AtomicBool>, destroye
         if parser.pending_len() > MAX_PARSER_PENDING {
             break;
         }
-
-        frames.clear();
     }
 
     // Поток завершается — сбрасываем флаг активности, чтобы внешний код
     // знал, что reader больше не работает.
     active.store(false, Ordering::Release);
-
-    // Очищаем парсер и освобождаем память временного вектора.
-    parser.cleanup();
-    frames.clear();
-    frames.shrink_to_fit();
 }

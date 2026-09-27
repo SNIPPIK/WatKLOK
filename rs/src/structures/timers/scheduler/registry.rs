@@ -34,6 +34,7 @@ impl SessionRegistry {
     /// # Аргументы
     /// * `id` — идентификатор сессии.
     /// * `session` — обёртка UDP-сессии.
+    #[inline]
     pub fn add(&self, id: u32, session: Arc<SocketBuffered>) {
         self.update(|map| {
             map.insert(id, session);
@@ -46,6 +47,7 @@ impl SessionRegistry {
     ///
     /// # Аргументы
     /// * `id` — идентификатор удаляемой сессии.
+    #[inline]
     pub fn remove(&self, id: u32) {
         self.update(|map| {
             map.remove(&id);
@@ -54,6 +56,7 @@ impl SessionRegistry {
 
     /// Проверяет, что реестр не содержит ни одной сессии.
     #[must_use]
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.sessions.load().is_empty()
     }
@@ -61,6 +64,7 @@ impl SessionRegistry {
     /// Количество зарегистрированных сессий (snapshot; может устареть сразу
     /// после возврата при конкурентных обновлениях).
     #[must_use]
+    #[inline]
     pub fn len(&self) -> usize {
         self.sessions.load().len()
     }
@@ -70,6 +74,7 @@ impl SessionRegistry {
     /// Снимок отражает состояние на момент вызова и не изменяется
     /// при последующих обновлениях реестра.
     #[must_use]
+    #[inline]
     pub fn snapshot(&self) -> Arc<HashMap<u32, Arc<SocketBuffered>>> {
         self.sessions.load_full()
     }
@@ -82,6 +87,7 @@ impl SessionRegistry {
     ///
     /// # Аргументы
     /// * `update_fn` — замыкание, изменяющее карту.
+    #[inline]
     fn update<F>(&self, update_fn: F)
     where
         F: FnOnce(&mut HashMap<u32, Arc<SocketBuffered>>),

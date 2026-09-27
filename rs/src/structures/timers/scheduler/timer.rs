@@ -36,6 +36,15 @@ pub struct WaitOutcome {
 /// изменит его конкурентно во время ожидания — изменение будет учтено
 /// только на следующем вызове `wait_until`. Это осознанный выбор: пересчёт
 /// внутри одного тика усложнил бы код без заметной практической пользы.
+///
+/// Отдельно: досрочное пробуждение через `wake_state` (например, при
+/// добавлении новой сессии или при остановке планировщика) НЕ сдвигает
+/// сам `deadline` — оно лишь заставляет поток раньше перепроверить флаг
+/// `running` и пересчитать оставшееся время до того же дедлайна. Это
+/// осознанно: планировщик тикает по фиксированной сетке `TICK_INTERVAL`,
+/// а не "как можно скорее после последнего изменения реестра"; быстрая
+/// реакция на `running == false` — единственная цель этого пробуждения
+/// в горячем пути.
 pub struct PrecisionTimer;
 
 impl PrecisionTimer {
@@ -50,20 +59,20 @@ impl PrecisionTimer {
     /// # Возвращаемое значение
     /// `WaitOutcome` с признаком достижения дедлайна, суммарным временем спина
     /// и величиной промаха сна за дедлайн.
-    pub fn wait_until(
-        deadline: Instant,
-        running: &AtomicBool,
-        wake_state: &(Mutex<bool>, Condvar),
-        telemetry: &SchedulerTelemetry,
-    ) -> WaitOutcome {
+    pub fn wait_until(deadline: Instant, running: &AtomicBool, wake_state: &(Mutex<bool>, Condvar), telemetry: &SchedulerTelemetry) -> WaitOutcome {
         let mut spin_time = Duration::ZERO;
         let mut sleep_overshoot = Duration::ZERO;
 
         // Текущий запас под спин (адаптируется извне между вызовами).
         // spin_margin_ns инициализируется ненулевым значением в
-        // SchedulerTelemetry::default(), поэтому даже первый вызов
-        // wait_until (до первого adapt_margin) проходит через
-        // yield/spin-уточнение, а не уходит в чистый OS-сон до дедлайна.
+        // SchedulerTelemetry::default() и дополнительно устанавливается
+        // при старте воркера (см. cycle_thread), поэтому даже первый
+        // вызов wait_until проходит через yield/spin-уточнение, а не
+        // уходит в чистый OS-сон до самого дедлайна. Ниже это
+        // предполагается как инвариант (spin_margin > 0); если он
+        // всё же окажется нулевым, код останется корректным — просто
+        // фаза "глубокого сна" будет пропущена и ожидание целиком
+        // сведётся к yield/spin.
         let spin_margin = Duration::from_nanos(telemetry.spin_margin_ns.load(Ordering::Relaxed));
 
         // Порог для перехода из глубокого сна в yield.
@@ -139,6 +148,7 @@ impl PrecisionTimer {
     ///
     /// Если флаг `wake` уже установлен — возвращается немедленно,
     /// сбрасывая его. Отравление мьютекса игнорируется.
+    #[inline]
     fn wait_with_timeout(lock: &Mutex<bool>, cvar: &Condvar, timeout: Duration) {
         let mut wake = lock.lock().unwrap_or_else(|p| p.into_inner());
 
@@ -164,6 +174,7 @@ impl PrecisionTimer {
     /// * `state` — метрики планировщика (читает/записывает `spin_margin_ns`).
     /// * `avg_spin` — среднее время активного ожидания (EMA).
     /// * `avg_overshoot` — средний промах сна за дедлайн (EMA).
+    #[inline]
     pub fn adapt_margin(state: &SchedulerTelemetry, avg_spin: Duration, avg_overshoot: Duration) {
         let old_margin = Duration::from_nanos(state.spin_margin_ns.load(Ordering::Relaxed));
         let granularity = Duration::from_nanos(state.sleep_granularity_ns.load(Ordering::Relaxed));

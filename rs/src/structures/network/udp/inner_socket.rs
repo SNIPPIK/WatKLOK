@@ -124,6 +124,7 @@ impl SocketInner {
     ///
     /// Возвращает `true`, если очередь содержит хотя бы один пакет,
     /// ожидающий отправки.
+    #[inline]
     pub fn has_pending_packets(&self) -> bool {
         !self.buffer.is_empty() || self.buffer.len() > 0
     }
@@ -134,6 +135,7 @@ impl SocketInner {
     /// Если в очереди есть пакеты, отправляет их (внутренний `tick` также обновляет таймер keepalive).
     /// Иначе проверяет, не пора ли отправить keepalive (если с последней отправки прошло
     /// больше `KEEP_ALIVE_INTERVAL`).
+    #[inline]
     pub fn auto_tick(&self, now: u64, budget: u8) {
 
         // Проверяем, есть ли пакеты, ожидающие отправки.
@@ -266,6 +268,7 @@ impl SocketInner {
     /// Keepalive — это НЕ RTP: 8 сырых байт, без шифрования, без заголовка,
     /// без счётчиков `sequence`/`timestamp`/`counter` внутри `VoiceRTPSocket`.
     /// Работает даже до `initialize`.
+    #[inline]
     fn tick_alive(&self, now: u64) {
         let count = self.keepalive_counter.fetch_add(1, Ordering::Relaxed);
         let mut pkt = [0u8; KEEPALIVE_SIZE];

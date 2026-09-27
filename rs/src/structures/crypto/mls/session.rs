@@ -99,6 +99,7 @@ impl MlsSession {
     ///
     /// Устанавливается в `destroy()` и остаётся `true` до конца жизни объекта.
     #[napi(getter)]
+    #[inline]
     pub fn destroyed(&self) -> bool {
         self.destroyed
     }
@@ -109,6 +110,7 @@ impl MlsSession {
     /// обработки commit/welcome. Сбрасывается после успешного завершения
     /// перехода с `transition_id == 0`.
     #[napi(getter)]
+    #[inline]
     pub fn reinitializing(&self) -> bool {
         self.reinitializing
     }
@@ -118,6 +120,7 @@ impl MlsSession {
     /// Используется как защита от повторного входа в `execute_transition`
     /// и от параллельного шифрования во время смены версии протокола.
     #[napi(getter, js_name = "isTransitioning")]
+    #[inline]
     pub fn is_transitioning(&self) -> bool {
         self.is_transitioning
     }
@@ -126,6 +129,7 @@ impl MlsSession {
     ///
     /// `None`, если переходов ещё не было или сессия была уничтожена.
     #[napi(getter, js_name = "lastTransitionId")]
+    #[inline]
     pub fn last_transition_id(&self) -> Option<u16> {
         self.last_transition_id
     }
@@ -134,6 +138,7 @@ impl MlsSession {
     ///
     /// `false`, если нативная сессия ещё не создана или не завершила обмен ключами.
     #[napi(getter)]
+    #[inline]
     pub fn ready(&self) -> bool {
         self.inner
             .as_ref()
@@ -146,6 +151,7 @@ impl MlsSession {
     /// `None`, если нативная сессия ещё не создана. Значения соответствуют
     /// внутреннему перечислению `davey::Status`.
     #[napi(getter)]
+    #[inline]
     pub fn status(&self) -> Option<u8> {
         self.inner
             .as_ref()
@@ -158,6 +164,7 @@ impl MlsSession {
     /// с полем `self.version`, которое хранит запрошенную версию и может
     /// отличаться от фактической версии нативной сессии.
     #[napi(getter, js_name = "protocolVersion")]
+    #[inline]
     pub fn protocol_version(&self) -> u16 {
         self.inner
             .as_ref()
@@ -174,6 +181,7 @@ impl MlsSession {
     /// Если нативная сессия уже создана — передаёт значение напрямую,
     /// иначе откладывает до момента инициализации.
     #[napi(setter, js_name = "externalSender")]
+    #[inline]
     pub fn set_external_sender(&mut self, data: Buffer) -> Result<()> {
         match self.inner.as_mut() {
             // Сессия есть — применяем сразу.
@@ -207,6 +215,7 @@ impl MlsSession {
     /// # Возвращаемое значение
     /// Новый key-package, если он был создан.
     #[napi(js_name = "prepareEpoch")]
+    #[inline]
     pub fn prepare_epoch(&mut self, epoch: u32, protocol_version: u16) -> Result<Option<Buffer>> {
         // Уничтоженная сессия не обрабатывает данные.
         if self.destroyed { return Ok(None); }
@@ -236,6 +245,7 @@ impl MlsSession {
     /// # Возвращаемое значение
     /// Новый key-package, если он был создан.
     #[napi(js_name = "recoverFromInvalidTransition")]
+    #[inline]
     pub fn recover_from_invalid_transition(&mut self, transition_id: u16) -> Result<Option<Buffer>> {
         // Уничтоженная сессия не восстанавливается.
         if self.destroyed { return Ok(None); }
@@ -264,6 +274,7 @@ impl MlsSession {
     /// # Возвращаемое значение
     /// Новый key-package, если он был создан.
     #[napi]
+    #[inline]
     pub fn reinit(&mut self) -> Result<Option<Buffer>> {
         self.reinit_internal()
     }
@@ -273,6 +284,7 @@ impl MlsSession {
     /// Для версии > 0 создаёт или повторно инициализирует нативную сессию,
     /// применяет отложенный external sender и возвращает key-package.
     /// Для версии 0 сбрасывает сессию и включает passthrough.
+    #[inline]
     fn reinit_internal(&mut self) -> Result<Option<Buffer>> {
         // Уничтоженная сессия повторно не инициализируется.
         if self.destroyed { return Ok(None); }
@@ -354,6 +366,7 @@ impl MlsSession {
 
     /// Сбрасывает состояние нативной сессии без её уничтожения.
     #[napi]
+    #[inline]
     pub fn reset(&mut self) -> Result<()> {
         match self.inner.as_mut() {
             Some(inner) => {
@@ -372,6 +385,7 @@ impl MlsSession {
     /// Полностью уничтожает сессию и освобождает ресурсы.
     /// Идемпотентен: повторный вызов не выполняет действий.
     #[napi]
+    #[inline]
     pub fn destroy(&mut self) {
         // Защита от повторного вызова.
         if self.destroyed { return; }
@@ -409,6 +423,7 @@ impl MlsSession {
     /// * `enabled` — `true` для включения.
     /// * `expiry` — время жизни режима в секундах (опционально).
     #[napi(js_name = "setPassthroughMode")]
+    #[inline]
     pub fn set_passthrough_mode(&mut self, enabled: bool, expiry: Option<u32>) {
         // Если сессии нет — операция игнорируется.
         if let Some(inner) = self.inner.as_mut() {
@@ -428,6 +443,7 @@ impl MlsSession {
     /// # Ошибки
     /// Возвращает ошибку, если нативная сессия ещё не создана.
     #[napi(js_name = "getSerializedKeyPackage")]
+    #[inline]
     pub fn get_serialized_key_package(&mut self) -> Result<Buffer> {
         // Без активной сессии key-package создать нельзя.
         let inner = self
@@ -457,6 +473,7 @@ impl MlsSession {
     /// # Возвращаемое значение
     /// `ProposalsResult` с commit и welcome (если есть).
     #[napi(js_name = "processProposals")]
+    #[inline]
     pub fn process_proposals(&mut self, operation_type: u8, proposals: Buffer, recognized_user_ids: Option<Vec<String>>) -> Result<ProposalsResult> {
         // Удаляем устаревшие переходы.
         self.expire_transitions();
@@ -538,6 +555,7 @@ impl MlsSession {
     /// `TransitionResult` с `transition_id`, флагом успеха и признаком
     /// невалидности (для инициирования повторной инициализации).
     #[napi(js_name = "processCommit")]
+    #[inline]
     pub fn process_commit(&mut self, payload: Buffer) -> Result<TransitionResult> {
         // Удаляем устаревшие переходы.
         self.expire_transitions();
@@ -631,6 +649,7 @@ impl MlsSession {
     /// # Аргументы
     /// * `payload` — сериализованные данные welcome.
     #[napi(js_name = "processWelcome")]
+    #[inline]
     pub fn process_welcome(&mut self, payload: Buffer) -> Result<TransitionResult> {
         // Удаляем устаревшие переходы.
         self.expire_transitions();
@@ -730,6 +749,7 @@ impl MlsSession {
     /// # Возвращаемое значение
     /// `true`, если переход требует вызова `execute_transition`.
     #[napi(js_name = "prepareTransition")]
+    #[inline]
     pub fn prepare_transition(&mut self, transition_id: u16, protocol_version: u16) -> bool {
         // Удаляем устаревшие переходы.
         self.expire_transitions();
@@ -777,6 +797,7 @@ impl MlsSession {
     /// `true`, если переход выполнен; `false`, если запись отсутствует
     /// или уже выполняется другой переход.
     #[napi(js_name = "executeTransition")]
+    #[inline]
     pub fn execute_transition(&mut self, transition_id: u16) -> bool {
         // Удаляем устаревшие переходы.
         self.expire_transitions();
@@ -840,6 +861,7 @@ impl MlsSession {
     /// # Возвращаемое значение
     /// Вектор зашифрованных пакетов или `None`.
     #[napi]
+    #[inline]
     pub fn encrypt(&mut self, packets: Vec<Buffer>) -> Option<Vec<Buffer>> {
         // Passthrough-режим или нестабильное состояние — не шифруем.
         if self.version == 0 || self.is_transitioning || self.reinitializing { return None; }
@@ -888,6 +910,7 @@ impl MlsSession {
     /// Каждая запись в `pending_transitions` имеет `expires_at`, и если
     /// `execute_transition` не был вызван за `TRANSITION_TIMEOUT`,
     /// запись считается устаревшей и удаляется.
+    #[inline]
     fn expire_transitions(&mut self) {
         // Одно чтение времени на всю операцию — дешевле, чем в замыкании.
         let now = Instant::now();
@@ -903,6 +926,7 @@ impl MlsSession {
     ///
     /// Используется при повторной инициализации (когда прежние переходы
     /// больше не актуальны) и при уничтожении сессии.
+    #[inline]
     fn clear_transitions(&mut self) {
         self.pending_transitions.clear();
     }
@@ -953,6 +977,7 @@ impl MlsSession {
     ///
     /// # Ошибки
     /// Возвращает ошибку для неизвестных значений.
+    #[inline]
     fn map_operation(operation: u8) -> Result<davey::ProposalsOperationType> {
         match operation {
             // Код 0 → APPEND.

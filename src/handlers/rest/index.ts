@@ -1,12 +1,4 @@
-import {
-    APIRequestData,
-    APIRequests,
-    APIRequestsKeys,
-    RestAPINames,
-    APIPlatformType,
-    REST_STOP_WORDS,
-    RestWorkerResult
-} from "#handler/rest/index.abstract.js";
+import { APIRequestData, APIRequests, APIRequestsKeys, RestAPINames, APIPlatformType, REST_STOP_WORDS, RestWorkerResult } from "#handler/rest/index.abstract.js";
 import type { RestServerSide } from "./index.server.js";
 import { Logger, SimpleWorker } from "#structures";
 import { RestClientSide } from "./index.client.js";
@@ -422,7 +414,7 @@ export class RestObject<T extends APIRequestsKeys = APIRequestsKeys> extends Res
                         track.time.total - song.time.total
                     );
 
-                    const name = getSmartMatch(original, candidate, 0.4);
+                    const name = getSmartMatch(original, candidate, 0.6);
 
                     return (
                         getSmartMatch(original, candidate) ||
@@ -681,7 +673,7 @@ const fuzzyCheck = (word: string, words: Iterable<string>): boolean => {
  * @param threshold - Порог схожести (0..1). Чем выше, тем строже сравнение.
  * @returns `true`, если строки достаточно похожи, иначе `false`.
  */
-const getSmartMatch = (original: string, candidate: string, threshold = 0.8): boolean => {
+const getSmartMatch = (original: string, candidate: string, threshold = 0.9): boolean => {
     const source = normalize(original);
     const target = normalize(candidate);
 

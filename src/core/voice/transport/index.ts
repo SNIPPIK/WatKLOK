@@ -74,12 +74,6 @@ export class Transport extends TypedEmitter<TransportEvents> {
     private destroyed = false;
 
     /**
-     * Поколение попыток подключения UDP.
-     * Гарантирует, что устаревший ответ discovery не будет применён.
-     */
-    private generation = 0;
-
-    /**
      * Готовность транспорта к безопасной передаче аудио.
      *
      * Условия:
@@ -448,16 +442,8 @@ export class Transport extends TypedEmitter<TransportEvents> {
      * @param data - Данные, полученные в состоянии Ready (адрес, порт, ssrc и т.д.).
      */
     private _prepareUDPConnection = async (data: TransportState_Ready["payload"]) => {
-        const generation = ++this.generation;
-
         this.emit("info", "[Transport/UDP]: Waiting discovery response");
         const discovery = await this._udp!.create(data);
-
-        // Транспорт мог быть уничтожен во время ожидания discovery
-        if (this.destroyed) return;
-
-        // Если за время ожидания начата новая попытка — игнорируем старый ответ
-        if (generation !== this.generation) return;
 
         // Ошибка при получении адреса — завершаем
         if (discovery instanceof Error) {
@@ -465,6 +451,9 @@ export class Transport extends TypedEmitter<TransportEvents> {
             this.destroy();
             return;
         }
+
+        // Транспорт мог быть уничтожен во время ожидания discovery
+        if (this.destroyed) return;
 
         this.emit("open");
 

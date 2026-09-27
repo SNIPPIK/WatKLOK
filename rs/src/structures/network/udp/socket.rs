@@ -100,6 +100,7 @@ impl SocketBuffered {
     /// # Аргументы
     /// * `now` — текущее время в миллисекундах (используется для keepalive и статистики).
     /// * `budget` — максимальное количество пакетов к отправке за тик.
+    #[inline]
     pub fn tick(&self, now: u64, budget: u8) {
         self.inner.auto_tick(now, budget);
     }
@@ -114,6 +115,7 @@ impl SocketBuffered {
     /// # Ошибки
     /// Возвращает napi-ошибку при неверной длине ключа или ошибке AES-GCM.
     #[napi(js_name = "initialize_rtp")]
+    #[inline]
     pub fn initialize_rtp(&self, ssrc: u32, key: Vec<u8>) -> Result<()> {
         // Прокидываем ошибку AES в napi-ошибку.
         self.inner.rtp.initialize(ssrc, key)
@@ -122,6 +124,7 @@ impl SocketBuffered {
 
     /// Текущее количество пакетов в очереди на отправку.
     #[napi(getter)]
+    #[inline]
     pub fn packets(&self) -> u32 {
         let queued = self.inner.buffer.len();
 
@@ -137,6 +140,7 @@ impl SocketBuffered {
 
     /// Количество пакетов, сброшенных из-за переполнения очереди или временных ошибок.
     #[napi(getter)]
+    #[inline]
     pub fn drops(&self) -> u32 {
         self.inner.send_drops.load(Ordering::Relaxed) as u32
     }
@@ -154,6 +158,7 @@ impl SocketBuffered {
     /// # Аргументы
     /// * `packet` — данные для отправки.
     #[napi]
+    #[inline]
     pub fn push_packet(&self, packet: Buffer) {
         if packet.is_empty() { return; }
         self.inner.push(packet.to_vec());

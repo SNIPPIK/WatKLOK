@@ -602,6 +602,17 @@
   },
 
 
+  "command.ping.wait": {
+    "en-US": "`🪶` Calculating...",
+    "ru": "`🪶` Расчет..."
+  },
+
+  "command.ping.responce": {
+    "en-US": "`🌐` Pong! (**Client**: `{ARGUMENT}ms` - **API**: `{ARGUMENT}ms` - **Shard ({ARGUMENT})**: `{ARGUMENT}ms`)",
+    "ru": "`🌐` Ответ! (**Client**: `{ARGUMENT}ms` - **API**: `{ARGUMENT}ms` - **Shard ({ARGUMENT})**: `{ARGUMENT}ms`)"
+  },
+
+
   "command.value.now": {
     "en-US": "{ARGUMENT} | Changing player volume! Please wait!",
     "ru": "{ARGUMENT} | Изменение громкости плеера! Пожалуйста подождите!"
