@@ -106,7 +106,7 @@ pub struct Inner {
     pub conn_task: Mutex<Option<JoinHandle<()>>>,
 
     /// Таблица JS-обработчиков: имя события → список threadsafe-функций.
-    pub events: Mutex<HashMap<String, Vec<EventFn>>>,
+    pub events: Mutex<HashMap<String, Vec<EventFn>>>
 }
 
 impl Inner {

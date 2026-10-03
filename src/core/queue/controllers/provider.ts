@@ -13,6 +13,14 @@ export const TRACK_BUFFERED_TIME = 500;
 
 /**
  * @author SNIPPIK
+ * @description Время ожидания проверки трека
+ * @const TRACK_CHECK_WAIT
+ * @public
+ */
+export const TRACK_CHECK_WAIT = 10e3;
+
+/**
+ * @author SNIPPIK
  * @description Ошибка временного характера: timeout, 5xx, обрыв соединения.
  * Не означает, что ссылка битая — её нужно просто повторить без сброса.
  * @class TransientError
@@ -50,7 +58,7 @@ class ResourceProvider<T extends Track> {
          *                      использовать существующую ссылку.
          */
         private readonly prepare: (track: T, attempt: number, hadLink: boolean) => Promise<string | Error>,
-        private readonly options = { retries: 3, initialDelay: 70 }
+        private readonly options = { retries: 2, initialDelay: 130 }
     ) {};
 
     /**

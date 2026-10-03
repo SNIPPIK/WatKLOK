@@ -121,11 +121,14 @@ pub mod ws_status {
 
 /// Коды закрытия соединения, специфичные для Discord Voice.
 pub mod close_codes {
-    /// Тайм-аут heartbeat — сервер не подтвердил сигнал вовремя.
-    pub const SESSION_TIMEOUT: u32 = 4014;
-
+    /// Session timeout (в т.ч. пропущенный HEARTBEAT_ACK).
+    pub const SESSION_TIMEOUT: u32 = 4009;
+    /// Бот отключён от голосового канала (кик, удаление канала).
+    pub const DISCONNECTED: u32 = 4014;
     /// Голосовой сервер не найден.
     pub const SERVER_NOT_FOUND: u32 = 4011;
+    /// Звонок завершён (DM/группа).
+    pub const CALL_TERMINATED: u32 = 4022;
 }
 
 /// Проверяет, относится ли op-код к диапазону DAVE.

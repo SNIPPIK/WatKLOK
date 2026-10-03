@@ -37,7 +37,9 @@ impl SessionRegistry {
     #[inline]
     pub fn add(&self, id: u32, session: Arc<SocketBuffered>) {
         self.update(|map| {
-            map.insert(id, session);
+            // FnMut (rcu может перезапустить замыкание) — владение
+            // сессией отдавать нельзя, клонируем Arc.
+            map.insert(id, Arc::clone(&session));
         });
     }
 
@@ -79,22 +81,28 @@ impl SessionRegistry {
         self.sessions.load_full()
     }
 
-    /// Применяет замыкание к текущей карте сессий и публикует результат.
+    /// Применяет замыкание к копии текущей карты и атомарно публикует результат.
     ///
-    /// `Arc::make_mut` копирует карту только при наличии других владельцев
-    /// снимка, иначе изменяет её на месте. Это даёт дешёвые обновления,
-    /// когда никто не читает снимок параллельно.
+    /// Используется `ArcSwap::rcu`: если между чтением и публикацией другой
+    /// поток успел обновить реестр, замыкание применяется заново к свежей
+    /// карте. Прежняя схема `load_full` + `store` теряла конкурентные
+    /// обновления: потерянный `remove` оставлял сессию в реестре навсегда
+    /// (её `Arc<SocketBuffered>` держался и тикал до конца процесса).
+    ///
+    /// Карта копируется на каждое обновление всегда: `ArcSwap` сам держит
+    /// ссылку на текущую версию, поэтому `Arc::make_mut` из прежнего кода
+    /// копировал карту в любом случае — «дешёвого пути без копии» не было.
     ///
     /// # Аргументы
-    /// * `update_fn` — замыкание, изменяющее карту.
+    /// * `update_fn` — замыкание, изменяющее карту (может вызываться повторно).
     #[inline]
-    fn update<F>(&self, update_fn: F)
-    where
-        F: FnOnce(&mut HashMap<u32, Arc<SocketBuffered>>),
+    fn update<F>(&self, mut update_fn: F) where
+        F: FnMut(&mut HashMap<u32, Arc<SocketBuffered>>),
     {
-        let mut current = self.sessions.load_full();
-        let map = Arc::make_mut(&mut current);
-        update_fn(map);
-        self.sessions.store(current);
+        self.sessions.rcu(|current| {
+            let mut map: HashMap<u32, Arc<SocketBuffered>> = (**current).clone();
+            update_fn(&mut map);
+            Arc::new(map)
+        });
     }
 }

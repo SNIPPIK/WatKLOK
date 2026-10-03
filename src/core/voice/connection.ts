@@ -122,8 +122,12 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents> {
      */
     public constructor( public configuration: VoiceConnectionConfiguration, adapterCreator: DiscordGatewayAdapterCreator) {
         super();
-
+        // Создаем адаптер
         this.adapter = new VoiceAdapter();
+
+        // Создаем транспортный шлюз
+        this.transport = new Transport(this.adapter);
+
         this.adapter.adapter = adapterCreator({
             /**
              * @description Регистрирует пакет VOICE_SERVER_UPDATE
@@ -154,9 +158,6 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents> {
              */
             destroy: this.destroy
         });
-
-        // Создаем транспортный шлюз
-        this.transport = new Transport(this.adapter);
         this.speaker = new VoiceSpeakerManager(this);
 
         // Задаем статус подключения

@@ -114,14 +114,24 @@ impl Scheduler {
     /// * `session` — обёртка UDP-сессии.
     #[inline]
     pub fn add_session(&self, id: u32, session: Arc<crate::structures::network::udp::socket::SocketBuffered>) {
-        // Добавляем в реестр до захвата worker-лока: remove_session,
-        // захватив лок позже, увидит уже непустой реестр (см. документацию
-        // WorkerHandle) и не станет останавливать воркер, который мы,
-        // возможно, только что решили не трогать.
+        // Добавляем в реестр до захвата worker-лока
         self.shared.registry.add(id, session);
 
         {
             let mut worker = self.worker.lock().unwrap_or_else(|e| e.into_inner());
+
+            // Воркер мог умереть сам (например, panic внутри `session.tick`):
+            // handle остаётся `Some`, но поток уже завершён. Без этой
+            // проверки планировщик навсегда оставался «мёртвым»: сессии
+            // висели в реестре и никогда не тикали, а их Arc/сокеты
+            // не освобождались. Завершённый поток join-им (reap) и
+            // запускаем заново.
+            if worker.handle.as_ref().is_some_and(JoinHandle::is_finished) {
+                if let Some(h) = worker.handle.take() {
+                    let _ = h.join();
+                }
+            }
+
             if worker.handle.is_none() {
                 self.spawn_worker(&mut worker);
             }

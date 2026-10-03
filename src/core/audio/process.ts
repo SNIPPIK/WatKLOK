@@ -46,7 +46,7 @@ export class Process {
             if (isLink) args.unshift(
                 "-reconnect",                   "1",
                 "-reconnect_streamed",          "1",
-                "-reconnect_delay_max",         "5",
+                "-reconnect_delay_max",         "20",
                 "-reconnect_on_network_error",  "1"
             );
         }
@@ -92,7 +92,7 @@ export class Process {
                 if (!process.killed) {
                     process.kill("SIGKILL");
                 }
-            }, 1500).unref();
+            }, 1500);
         }
     };
 }

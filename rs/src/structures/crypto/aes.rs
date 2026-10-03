@@ -160,7 +160,7 @@ pub struct VoiceRTPSocket {
     timestamp: AtomicU32,
 
     /// Счётчик nonce (32 бит, инкрементируется после каждого использования).
-    counter: AtomicU32,
+    counter: AtomicU32
 }
 
 impl VoiceRTPSocket {
@@ -410,20 +410,18 @@ impl VoiceRTPSocket {
         let sequence = self.sequence.fetch_add(1, Ordering::Relaxed);
 
         // Атомарно получаем timestamp и увеличиваем на TIMESTAMP_INC.
-        let timestamp = self
-            .timestamp
-            .fetch_add(TIMESTAMP_INC, Ordering::Relaxed);
+        let timestamp = self.timestamp.fetch_add(TIMESTAMP_INC, Ordering::Relaxed);
 
         // Записываем sequence в big-endian (2 байта).
-        header[RTP_SEQUENCE_OFFSET..RTP_SEQUENCE_OFFSET + 2]
+        header[RTP_SEQUENCE_OFFSET..RTP_TIMESTAMP_OFFSET]
             .copy_from_slice(&sequence.to_be_bytes());
 
         // Записываем timestamp в big-endian (4 байта).
-        header[RTP_TIMESTAMP_OFFSET..RTP_TIMESTAMP_OFFSET + 4]
+        header[RTP_TIMESTAMP_OFFSET..RTP_SSRC_OFFSET]
             .copy_from_slice(&timestamp.to_be_bytes());
 
         // Записываем SSRC (4 байта).
-        header[RTP_SSRC_OFFSET..RTP_SSRC_OFFSET + 4]
+        header[RTP_SSRC_OFFSET..RTP_HEADER_SIZE]
             .copy_from_slice(&ssrc.to_be_bytes());
 
         header

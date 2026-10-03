@@ -164,13 +164,13 @@ export class AudioSaver<T extends Track = Track> extends PromiseCycle<T> {
         const isLocalFile = track.link?.startsWith("/") || track.link?.includes(":\\");
 
         // --- Попытка линковки (второй проход или локальный файл) ---
-        // Этот вызов может создать симлинк, если трек уже существует локально.
+        // Этот вызов может создать ссылку, если трек уже существует локально.
         await this.symlink(track);
 
         // --- Скачивание (только для удалённых файлов) ---
         if (!isLocalFile) {
             // Аргументы ffmpeg: входной URL, формат opus, выходной временный файл.
-            const args = ["-i", track.link, "-f", "opus", tmp];
+            const args = ["-i", track.link, "-c:a", "libopus", "-f", "opus", tmp];
 
             // Если платформа не может играть нативно из сети
             if (track.proxy && track.link.startsWith("http") && FFMPEG_PROXY) {
@@ -178,7 +178,7 @@ export class AudioSaver<T extends Track = Track> extends PromiseCycle<T> {
                 args.unshift("-http_proxy", createProxyFFmpeg(FFMPEG_PROXY));
             }
 
-            // Оборачиваем процесс ffmpeg в промис с контролем таймаута.
+            // Оборачиваем процесс ffmpeg в обещание с контролем тайм-аута.
             return new Promise((resolve) => {
                 const ffmpeg = new Process(args);
 
@@ -186,7 +186,7 @@ export class AudioSaver<T extends Track = Track> extends PromiseCycle<T> {
 
                 /**
                  * Единая точка завершения — вызывается при любом исходе.
-                 * Гарантирует, что промис разрешится ровно один раз.
+                 * Гарантирует, что обещание разрешится ровно один раз.
                  *
                  * @param success - Успешно ли завершилось скачивание.
                  */
@@ -229,7 +229,7 @@ export class AudioSaver<T extends Track = Track> extends PromiseCycle<T> {
 
                         Logger.log("DEBUG", `[AudioSaver/Success]: ${track.ID}`);
 
-                        // Если для трека указан путь симлинка, создаём его,
+                        // Если для трека указан путь ссылки, создаём его,
                         // предварительно подменив link на локальный путь.
                         if (similarPath) {
                             void (async () => {
@@ -313,7 +313,7 @@ export class AudioSaver<T extends Track = Track> extends PromiseCycle<T> {
                     return true;
                 }
             } catch {
-                // readlink выбросит ошибку, если файла нет или это не симлинк — игнорируем.
+                // readlink выбросит ошибку, если файла нет или это не ссылка — игнорируем.
             }
 
             // Создаём родительские директории для ссылки, если их нет.
@@ -326,7 +326,7 @@ export class AudioSaver<T extends Track = Track> extends PromiseCycle<T> {
                 if (stat.isSymbolicLink()) {
                     await afs.unlink(linkPath);
                 } else {
-                    // Это не симлинк, перезаписывать небезопасно — отказываемся.
+                    // Это не ссылка, перезаписывать небезопасно — отказываемся.
                     return false;
                 }
             } catch {

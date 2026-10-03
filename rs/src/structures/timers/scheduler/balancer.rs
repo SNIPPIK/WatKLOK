@@ -207,6 +207,20 @@ impl AutoBalancer {
 
         // Удаляем ставшие ненужными worker'ы.
         self.cleanup_empty_workers();
+
+        // HashMap не возвращает память после удаления элементов: после
+        // пика в тысячи сессий `session_map` держал бы ёмкость вечно.
+        self.shrink_session_map();
+    }
+
+    /// Возвращает память `session_map`, если она заметно избыточна.
+    fn shrink_session_map(&mut self) {
+        const KEEP_MIN: usize = 256;
+
+        let cap = self.session_map.capacity();
+        if cap > KEEP_MIN && self.session_map.len() * 4 < cap {
+            self.session_map.shrink_to(self.session_map.len().max(KEEP_MIN));
+        }
     }
 }
 

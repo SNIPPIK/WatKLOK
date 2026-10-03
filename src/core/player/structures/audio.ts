@@ -1,3 +1,4 @@
+import { TRACK_CHECK_WAIT } from "#core/queue/controllers/provider.js";
 import { AudioResource } from "#core/audio/index.js";
 import { db } from "#db";
 
@@ -35,6 +36,9 @@ export class PlayerAudio<T extends AudioResource> {
      * Пересчитывается только при изменении `_volume`.
      */
     private _volumeIndicator: string;
+
+    /** Таймер чтения аудио потока, для авто удаления */
+    private _timeout: NodeJS.Timeout | null;
 
     /**
      * Создаёт экземпляр менеджера аудио.
@@ -94,33 +98,47 @@ export class PlayerAudio<T extends AudioResource> {
      * - старый не будет уничтожен
      */
     public set preload(stream: T) {
-        if (this._streams.length >= 2) {
+        // Если уже есть пред-загруженное аудио
+        if (this._streams.length > 1) {
             const old = this._streams.shift();
             old?.destroy();
         }
 
         this._streams.push(stream);
 
+        // Отслеживаем аудио поток на готовность к чтению
         stream.once("readable", () => {
+            // Удаляем таймер
+            clearTimeout(this._timeout);
+
             const index = this._streams.indexOf(stream);
 
+            // Если есть активный поток
             if (index === -1) return;
-
             if (index > 0) {
                 const old = this._streams.shift();
                 old?.destroy();
             }
         });
 
+        // Отслеживаем аудио поток на ошибки
         stream.once("error", () => {
-            const index = this._streams.indexOf(stream);
+            // Удаляем таймер
+            clearTimeout(this._timeout);
 
+            const index = this._streams.indexOf(stream);
             if (index !== -1) {
                 this._streams.splice(index, 1);
             }
 
+            // Уничтожаем новый аудио поток
             stream.destroy();
         });
+
+        // Установка таймера ожидания
+        this._timeout = setTimeout(() => {
+            stream.emit("error", Error("Timeout: the stream has been exceeded!"));
+        }, TRACK_CHECK_WAIT);
     };
 
     /**
@@ -140,6 +158,9 @@ export class PlayerAudio<T extends AudioResource> {
 
         this._streams.length = 0;
         this._streams = [];
+
+        clearTimeout(this._timeout);
+        this._timeout = null;
     };
 
     /**

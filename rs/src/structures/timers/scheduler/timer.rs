@@ -105,7 +105,8 @@ impl PrecisionTimer {
                 Self::wait_with_timeout(&wake_state.0, &wake_state.1, timeout);
 
                 let after_wait = Instant::now();
-                if after_wait > deadline {
+                
+                if after_wait >= deadline {
                     sleep_overshoot = after_wait.duration_since(deadline);
                     return WaitOutcome {
                         reached_deadline: true,
@@ -135,6 +136,7 @@ impl PrecisionTimer {
                 }
                 std::hint::spin_loop();
             }
+
             spin_time += spin_start.elapsed();
             return WaitOutcome {
                 reached_deadline: true,
@@ -190,9 +192,9 @@ impl PrecisionTimer {
             target = target.saturating_add(avg_overshoot / 2);
         }
 
-        if avg_spin > TARGET_SPIN_TIME {
+        if avg_spin >= TARGET_SPIN_TIME {
             target = target.saturating_sub((avg_spin - TARGET_SPIN_TIME) / 2);
-        } else if avg_spin < TARGET_SPIN_TIME / 2 {
+        } else if avg_spin <= TARGET_SPIN_TIME / 2 {
             target = target.saturating_add((TARGET_SPIN_TIME / 2 - avg_spin) / 2);
         }
 

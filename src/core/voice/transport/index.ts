@@ -1,14 +1,11 @@
-import { VoiceCloseCodes, VoiceOpcodes } from "discord-api-types/voice/v8";
-import { MLSSession } from "#core/voice/structures/MLSSession.js";
-import { WebSocketOpcodes } from "#core/voice/index.js";
-import { VoiceAdapter } from "./adapter.js";
-import { TypedEmitter } from "#structures";
-
-// Layers
-import { UDPLayer } from "#core/voice/transport/layers/UDPLayer.js";
 import { DAVELayer, OPCODE_DAVE_MLS_WELCOME } from "#core/voice/transport/layers/DAVELayer.js";
-import { iType, VoiceWebSocket } from "#native";
-
+import { NativeWebSocket } from "#core/voice/transport/discord/NativeWebSocket.js";
+import { VoiceCloseCodes, VoiceOpcodes } from "discord-api-types/voice/v8";
+import { UDPLayer } from "#core/voice/transport/layers/UDPLayer.js";
+import { MLSSession } from "#core/voice/structures/MLSSession.js";
+import { VoiceAdapter } from "#core/voice/transport/adapter.js";
+import { WebSocketOpcodes } from "#core/voice/index.js";
+import { TypedEmitter } from "#structures";
 
 /**
  * @author SNIPPIK
@@ -48,7 +45,7 @@ export class Transport extends TypedEmitter<TransportEvents> {
      * Клиент WebSocket для общения с Discord Voice Gateway.
      * Может быть `null` после уничтожения транспорта.
      */
-    public _ws: iType<typeof VoiceWebSocket> | null = new VoiceWebSocket();
+    public _ws: NativeWebSocket | null = new NativeWebSocket();
 
     /**
      * SSRC (синхронизационный источник), полученный от Discord.
@@ -168,8 +165,6 @@ export class Transport extends TypedEmitter<TransportEvents> {
 
     /**
      * Создаёт транспорт и подписывается на события WebSocket.
-     *
-     * @param adapter - Адаптер, содержащий данные сервера и текущего состояния клиента.
      */
     public constructor(private adapter: VoiceAdapter) {
         super();
@@ -198,9 +193,7 @@ export class Transport extends TypedEmitter<TransportEvents> {
         /**
          * При закрытии WS пытаемся переподключиться или завершаем работу.
          */
-        this._ws.on("close", (argument) => {
-            const {code, reason} = argument;
-
+        this._ws.on("close", ([code, reason]: any) => {
             // Коды, при которых переподключение запрещено
             // Три неудачные попытки — завершаем
             if (STOP_CODES.includes(code)) {
@@ -247,8 +240,8 @@ export class Transport extends TypedEmitter<TransportEvents> {
          * При готовности голосового канала запускаем подготовку UDP.
          */
         this._ws.on("ready", (payload) => {
-            const d = payload[0].d;
             if (this.destroyed) return;
+            const d = payload.at(0).d;
 
             this.reconnecting = 0; // сброс счётчика попыток
             this.ssrc = d.ssrc; // ← добавить
@@ -265,8 +258,8 @@ export class Transport extends TypedEmitter<TransportEvents> {
          * При получении session description инициализируем шифрование.
          */
         this._ws.on("sessionDescription", (payload) => {
-            const d = payload[0].d;
             if (this.destroyed) return;
+            const d = payload[0].d;
 
             this.state = {
                 code: TransportStateCode.Session,
@@ -280,22 +273,27 @@ export class Transport extends TypedEmitter<TransportEvents> {
         this._ws.on("error", (err) => {
             if (this.destroyed) return;
 
-            this.emit("close", VoiceCloseCodes.BadRequest, `[Voice/WS-Error]: \n${err.stack}`);
+            this.emit("close", VoiceCloseCodes.BadRequest, `[Voice/WS-Error]: \n${err.at(0).stack}`);
         });
 
         /**
          * Обновление списка подключённых клиентов в адаптере.
          */
         this._ws.on("Users", (payload) => {
-            const d = payload[0].d;
             if (this.destroyed) return;
 
-            if ("user_id" in d) {
-                // Пользователь отключился — удаляем из множества
-                this.adapter.clients.delete(d.user_id);
-            } else {
+            const d = payload.at(0);
+            switch (d.op) {
                 // Добавляем новых пользователей
-                for (const id of d.user_ids) this.adapter.clients.add(id);
+                case VoiceOpcodes.ClientsConnect: {
+                    for (const id of d.d.user_ids) this.adapter.clients.add(id);
+                    return;
+                }
+
+                // Пользователь отключился — удаляем из списка
+                case VoiceOpcodes.ClientDisconnect: {
+                    this.adapter.clients.delete(d.d.user_id);
+                }
             }
         });
 
@@ -308,11 +306,10 @@ export class Transport extends TypedEmitter<TransportEvents> {
          * - `DavePrepareEpoch` – подготовка новой эпохи
          */
         this._ws.on("daveSession", async (payload) => {
-            const { op, d } = payload[0];
-
             const client = this._dave.client;
             if (client.destroyed) return;
 
+            const { op, d } = payload.at(0);
             switch (op) {
                 /**
                  * @description Подготовка перехода (transition) на новую версию протокола DAVE.
@@ -368,10 +365,10 @@ export class Transport extends TypedEmitter<TransportEvents> {
          * - `DaveMlsWelcome` – обработка welcome-сообщения.
          */
         this._ws.on("binary", async (payload1) => {
-            const { op, payload } = payload1[0];
             const client = this._dave.client;
             if (client.destroyed) return;
 
+            const { op, payload } = payload1.at(0);
             switch (op) {
                 /**
                  * @description Установка внешнего отправителя (External Sender) для MLS-сессии.

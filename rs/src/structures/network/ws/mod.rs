@@ -28,7 +28,7 @@ use crate::structures::network::ws::{
 #[napi]
 pub struct VoiceWebSocket {
     /// Разделяемое внутреннее состояние (сокет, очередь, флаги, события).
-    inner: Arc<Inner>,
+    inner: Arc<Inner>
 }
 
 #[napi]
@@ -92,7 +92,7 @@ impl VoiceWebSocket {
                 let _null = || serde_json::Value::Null;
                 let args: Vec<serde_json::Value> = match event_name.as_str() {
                     // Без аргументов.
-                    "open" | "resumed" | "disconnect" => vec![],
+                    "open" | "resumed" => vec![],
 
                     // Одна строка.
                     "info" => vec![serde_json::Value::String(data.payload.unwrap_or_default())],
@@ -114,12 +114,11 @@ impl VoiceWebSocket {
                     }
 
                     // Два аргумента: код и причина.
-                    "close" => {
+                    "close" | "disconnect" => {
                         let parsed: serde_json::Value = serde_json::from_str(
                             data.payload.as_deref().unwrap_or("null"),
                         ).unwrap_or(serde_json::Value::Null);
 
-                        // 1006 — код "abnormal closure", используется как дефолт.
                         let code = parsed.get("code").and_then(|v| v.as_u64()).unwrap_or(1006);
                         let reason = parsed.get("reason").and_then(|v| v.as_str()).unwrap_or("").to_string();
 

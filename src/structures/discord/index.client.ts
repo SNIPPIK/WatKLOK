@@ -20,7 +20,7 @@ export class DiscordClient extends Client {
     public readonly cooldowns: LimitedCollection<string, number> = new LimitedCollection();
 
     /**
-     * Создаёт экземпляр клиента, конфигурируя:
+     * Создаёт экземпляр клиента:
      * - команды (префиксные и отложенный ответ);
      * - глобальные middleware (`checkCooldown`);
      * - разрешённые упоминания (только роли, без ответа автору).
@@ -96,7 +96,7 @@ export class DiscordClient extends Client {
         await this.start();
 
         // Загрузка слэш-команд (кэшируется в commands.json).
-        await this.uploadCommands({ cachePath: "./commands.json" }).catch((err) => {
+        await this.uploadCommands({ cachePath: "./build/commands.json" }).catch((err) => {
             this.logger.error(`Failed to upload commands: ${err.message}`);
         });
     };
@@ -105,7 +105,7 @@ export class DiscordClient extends Client {
      * Перезагружает все динамические модули: события, команды, языки,
      * затем повторно выгружает команды на Discord API.
      *
-     * @returns {Promise<void>} Промис, разрешающийся при успешной перезагрузке.
+     * @returns {Promise<void>} Обещание, разрешающийся при успешной перезагрузке.
      */
     public async reload(): Promise<void> {
         // Логируем начало перезагрузки.

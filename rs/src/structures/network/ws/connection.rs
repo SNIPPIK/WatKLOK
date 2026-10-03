@@ -8,12 +8,13 @@ use std::sync::{
 use tokio_tungstenite::{
     tungstenite::{
         client::IntoClientRequest,
+        Error as WsError,
         Message
     },
     connect_async
 };
 use crate::structures::network::ws::{
-    opcodes::{is_dave, op, ws_status},
+    opcodes::{ is_dave, op, ws_status },
     inner::Inner,
     heartbeat
 };
@@ -119,6 +120,12 @@ pub async fn run(inner: Arc<Inner>, url: String) {
     });
 
     // Основной цикл приёма сообщений.
+    //
+    // Флаг нужен, чтобы гарантированно эмитить ровно один close-ивент:
+    // либо из полученного Close-кадра, либо (fallback) 1006 после выхода
+    // из цикла — если соединение оборвалось без него (EOF или ошибка I/O,
+    // например "Connection reset by peer (os error 104)").
+    let mut close_emitted = false;
     while let Some(result) = stream.next().await {
         match result {
             // Текстовое сообщение — разбираем как JSON.
@@ -134,18 +141,39 @@ pub async fn run(inner: Arc<Inner>, url: String) {
                     None => (1000, String::new()),
                 };
                 inner.emit_json("close", json!({ "code": code, "reason": reason }));
+                close_emitted = true;
                 break;
             }
 
             // Ping/Pong и прочие служебные кадры — игнорируем.
             Ok(_) => {}
 
-            // Ошибка чтения — вызываем и завершаем цикл.
+            // Ошибка чтения — репортим error, но НЕ выходим сразу:
             Err(e) => {
-                inner.emit_json("error", json!({ "message": e.to_string() }));
+                let abnormal = matches!(e, WsError::Protocol(_) | WsError::Io(_) | WsError::ConnectionClosed);
+
+                // Если событие является не нормальным
+                if abnormal {
+                    inner.emit_json("info", json!(format!("[WebSocket] connection lost: {e}")));
+                } else {
+                    inner.emit_json("error", json!({ "message": e.to_string() }));
+                }
                 break;
             }
         }
+    }
+
+    // Страховка: соединение оборвалось без Close-кадра (ошибка I/O,
+    // "Connection reset by peer", EOF и т.п.) — эмитим abnormal closure,
+    // чтобы JS-сторона всегда получала парный close на open.
+    if !close_emitted {
+        inner.emit_json(
+            "close",
+            json!({
+                "code": 1006u32,
+                "reason": "Abnormal closure (connection reset or stream ended without close frame)"
+            }),
+        );
     }
 
     // Переводим состояние в "закрывается".

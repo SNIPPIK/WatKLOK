@@ -15,8 +15,6 @@ pub(crate) const MAX_PARSER_PENDING: usize = 8 * 1024 * 1024;
 /// - `-nostdin` — не читать stdin;
 /// - `-hide_banner` — скрыть баннер FFmpeg.
 pub(crate) const FFMPEG_PREFIX: &[&str] = &[
-    //"-analyzeduration", "0",
-    //"-probesize", "32",
     "-vn",
     "-loglevel", "error",
     "-nostdin",

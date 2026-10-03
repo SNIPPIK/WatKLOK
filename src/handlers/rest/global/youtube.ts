@@ -125,6 +125,8 @@ const Clients = {
     AIzaKey: generateFakeApiKey()
 })
 class RestYouTubeAPI extends RestServerSide.API {
+    /** Кэш visitorData, полученных от YouTube */
+    private visitor: { data: string; expires: number; } | null = null;
     readonly requests: RestServerSide.API["requests"] = [
         /**
          * @description Запрос данных об плейлисте
@@ -417,41 +419,100 @@ class RestYouTubeAPI extends RestServerSide.API {
      * @param audio - нужно ли получить аудио
      * @protected
      */
-    protected API = (ID: string, audio: boolean): Promise<Error | json> => {
-        const client = audio ? Clients.ANDROID : Clients.WEB_EMBEDDED;
+    protected API = async (ID: string, audio: boolean): Promise<Error | json> => {
+        // Visitor-данные нужны YouTube для "привязки" анонимного клиента;
+        // без них часть ответов приходит как SIGN_IN_REQUIRED.
+        const visitorData = await this.getVisitorData();
 
-        return new Promise((resolve) => {
-            new httpsClient({
+        // Внутренний хелпер: собрать тело/заголовки под конкретный клиент и дёрнуть /player.
+        // Принимает один из заранее описанных клиентов (ANDROID или WEB_EMBEDDED).
+        const requestPlayer = async (client: typeof Clients.ANDROID | typeof Clients.WEB_EMBEDDED) => {
+            // structuredClone — чтобы не мутировать шаблон Clients.*.request:
+            // один и тот же объект переиспользуется между вызовами.
+            // as any — потому что тип шаблона не описывает поля videoId/cpn/context на этом уровне.
+            const body = structuredClone(client.request) as any;
+
+            // Пробрасываем visitorData внутрь context.client.
+            // ??= — не перезаписываем уже существующие вложенные объекты,
+            // если клиент-шаблон их предусмотрел.
+            if (visitorData) {
+                body.context ??= {};
+                body.context.client ??= {};
+
+                body.context.client.visitorData = visitorData;
+            }
+
+            // Идентификатор видео и client playback nonce.
+            // cpn — "случайный" идентификатор сессии воспроизведения,
+            // YouTube требует его наличия в /player запросе.
+            body.videoId = ID;
+            body.cpn = generateClientPlaybackNonce(16);
+
+            // Заголовки: базовый Content-Type + переопределения из шаблона клиента.
+            // Спред после Content-Type намеренно: заголовки клиента могут его перетереть.
+            const headers = {
+                "Content-Type": "application/json",
+                ...(client["headers"] ?? {})
+            };
+
+            // Дублируем visitorData в заголовок — некоторые клиенты YouTube
+            // читают его именно отсюда, а не из тела.
+            if (visitorData) {
+                headers["X-Goog-Visitor-Id"] = visitorData;
+            }
+
+            // Собственно POST на /youtubei/v1/player.
+            // key=AIzaKey — публичный ключ InnerTube, одинаковый для веб-клиентов.
+            // agent — общий HTTP(S)-агент (прокси/DNS/TLS-настройки), если задан.
+            // toJson — геттер/метод клиента, возвращает распарсенный ответ либо Error.
+            return await new httpsClient({
                 method: "POST",
                 url: `https://www.youtube.com/youtubei/v1/player?key=${this.options.AIzaKey}`,
-                headers: {
-                    "Content-Type": "application/json",
-                    ...client["headers"] ? client["headers"] : {}
-                },
-                body: JSON.stringify({
-                    ...client.request,
-                    "videoId": ID
-                }),
+                headers,
+                body: JSON.stringify(body),
                 agent: this.agent
-            })
-                // Получаем исходную страницу
-                .toJson
+            }).toJson;
+        };
 
-                // Получаем результат из Promise
-                .then((api) => {
-                    // Если возникает ошибка при получении страницы
-                    if (api instanceof Error) return resolve(locale.err("api.request.fail"));
+        // Выбор "основного" клиента по флагу audio:
+        //   audio=true  -> ANDROID (обычно отдаёт audio-only потоки);
+        //   audio=false -> WEB_EMBEDDED (универсальный, с embed-совместимыми ссылками).
+        const primary = audio ? Clients.ANDROID : Clients.WEB_EMBEDDED;
 
-                    // Если указано аудио, но его нет!
-                    else if (audio && !api["streamingData"]?.["formats"]) return resolve(locale.err("api.request.fail"));
+        // Первый запрос основным клиентом.
+        let api = await requestPlayer(primary);
 
-                    // Отдаем данные
-                    return resolve(api);
-                })
+        // Если ответ — не Error (т.е. валидный JSON), смотрим playabilityStatus.
+        if (!(api instanceof Error)) {
+            const status = api.playabilityStatus?.status;
 
-                // Если происходит ошибка
-                .catch((err) => resolve(Error(`[APIs]: ${err}`)));
-        });
+            // OK — сразу возвращаем, ничего дополнительно пробовать не нужно.
+            if (status === "OK") return api;
+
+            // Fallback только для аудио-сценария:
+            // ANDROID иногда требует вход (SIGN_IN_REQUIRED), тогда пробуем
+            // WEB_EMBEDDED, у которого требования к авторизации мягче.
+            if (status === "SIGN_IN_REQUIRED" && audio) {
+                const embedded = await requestPlayer(Clients.WEB_EMBEDDED);
+
+                // Возвращаем embedded-ответ, только если он реально OK.
+                // Иначе падаем в `return api` ниже — исходный ответ
+                // информативнее для вызывающего кода (там будет причина отказа).
+                if (!(embedded instanceof Error) &&
+                    embedded.playabilityStatus?.status === "OK") {
+                    return embedded;
+                }
+            }
+
+            // Ни OK, ни удачного fallback — отдаём как есть.
+            // Вызывающий сам разберёт playabilityStatus.reason и т.п.
+            return api;
+        }
+
+        // Сюда попали, только если primary-запрос вернул Error
+        // (сетевой сбой, невалидный JSON, HTTP-ошибка). Fallback не пробуем:
+        // ошибка транспорта, скорее всего, воспроизведётся и на другом клиенте.
+        return locale.err("api.request.fail");
     };
 
     /**
@@ -718,6 +779,77 @@ class RestYouTubeAPI extends RestServerSide.API {
         // Если цикл завершился, а глубина так и не стала нулевой — JSON неполный.
         return null;
     }
+
+    /**
+     * Получает и кэширует `visitorData` из главной страницы YouTube.
+     *
+     * `visitorData` — анонимный идентификатор клиента, который YouTube
+     * ожидает в запросах к InnerTube (`/youtubei/v1/player`). Без него
+     * часть ответов приходит как `SIGN_IN_REQUIRED`.
+     *
+     * @returns Валидный `visitorData` из кэша или свежесгенерированный;
+     *          `null`, если получить не удалось (сеть, парсинг, отсутствие
+     *          в HTML). Вызывающий должен уметь работать без него.
+     *
+     * @example
+     * const vd = await this.getVisitorData();
+     * if (vd) headers["X-Goog-Visitor-Id"] = vd;
+     */
+    protected getVisitorData = async (): Promise<string | null> => {
+        // Быстрый путь: если в кэше есть значение и срок его жизни
+        // ещё не истёк — отдаём без сетевого запроса.
+        if (this.visitor && this.visitor.expires > Date.now()) {
+            return this.visitor.data;
+        }
+
+        try {
+            // Забираем HTML главной страницы YouTube.
+            // userAgent: true — клиент подставит "обычный" браузерный UA,
+            //               иначе YouTube может отдать другую разметку/заглушку.
+            // accept-language — тоже часть "браузерного" профиля запроса:
+            //                    от него зависит, какая локаль вернётся в HTML.
+            const html = await new httpsClient({
+                url: "https://www.youtube.com",
+                userAgent: true,
+                headers: {
+                    "accept-language": "en-US,en;q=0.9"
+                },
+                agent: this.agent
+            }).toString;
+
+            // Сетевая ошибка/не-JSON — не роняем вызывающего, просто
+            // сообщаем "visitorData нет". Fallback в API() сам решит,
+            // как без него жить.
+            if (html instanceof Error) return null;
+
+            // Достаём visitorData из HTML.
+            // YouTube не гарантирует стабильного имени поля: в разных
+            // сборках встречается либо "VISITOR_DATA", либо "visitorData".
+            // Пробуем оба варианта; ?? выбирает первый успешный match.
+            const match =
+                html.match(/"VISITOR_DATA":"([^"]+)"/) ??
+                html.match(/"visitorData":"([^"]+)"/);
+
+            // Ни один шаблон не сработал — структура HTML изменилась
+            // или страница пришла не в том виде. Безопасно вернуть null.
+            if (!match) return null;
+
+            // Кэшируем на сутки. 24 часа — компромисс: YouTube не
+            // документирует TTL visitorData, но на практике значения
+            // живут долго; при истечении просто перезапросим HTML.
+            this.visitor = {
+                data: match[1],
+                expires: Date.now() + 1000 * 60 * 60 * 24
+            };
+
+            return this.visitor.data;
+        } catch {
+            // Любое необработанное исключение (например, из httpsClient)
+            // глушим и превращаем в null — visitorData не критичен
+            // настолько, чтобы валить вызывающий код.
+            return null;
+        }
+    };
 }
 
 /**

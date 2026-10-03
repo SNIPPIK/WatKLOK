@@ -109,13 +109,22 @@ impl AudioEngine {
         // Сохраняем процесс. Если движок уничтожили между spawn и сохранением —
         // убиваем FFmpeg и выходим с ошибкой.
         {
-            let mut guard = self.child.lock().unwrap();
+            let mut guard = self.child.lock().unwrap_or_else(|p| p.into_inner());
             if self.destroyed.load(Ordering::Acquire) {
                 let _ = child.kill();
                 let _ = child.wait();
                 self.reading_active.store(false, Ordering::Release);
                 return Err(Error::from_reason("AudioEngine was destroyed during start"));
             }
+
+            // Страховка от утечки при повторном start(): в норме reader уже
+            // сам reap-нул прошлый процесс, но если нет — присваивание ниже
+            // молча дропнуло бы `Child` без kill/wait (зомби / живой ffmpeg).
+            if let Some(mut old) = guard.take() {
+                let _ = old.kill();
+                let _ = old.wait();
+            }
+
             *guard = Some(child);
         }
 
@@ -124,12 +133,13 @@ impl AudioEngine {
         let destroyed = Arc::clone(&self.destroyed);
         let pause_state = Arc::clone(&self.pause_state);
         let buffer_state = Arc::clone(&self.buffer);
+        let child_state = Arc::clone(&self.child);
 
         // Создаём поток чтения: он читает stdout, парсит Ogg/Opus и
         // складывает готовые пакеты в буфер.
         let handle = thread::Builder::new()
             .name("audio-reader".into())
-            .spawn(move || reader_loop(stdout, active, destroyed, pause_state, buffer_state))
+            .spawn(move || reader_loop(stdout, active, destroyed, pause_state, buffer_state, child_state))
             .map_err(|e| {
                 // Если поток не создан — убиваем ffmpeg и сбрасываем флаги.
                 let mut child = match self.child.lock() {
@@ -146,16 +156,17 @@ impl AudioEngine {
 
         // Сохраняем handle потока.
         {
-            let mut guard = self.reader_handle.lock().unwrap();
+            let mut guard = self.reader_handle.lock().unwrap_or_else(|p| p.into_inner());
 
             // Если движок уничтожили между spawn и сохранением handle —
             // очищаем ресурсы в обратном порядке.
             if self.destroyed.load(Ordering::Acquire) {
                 self.reading_active.store(false, Ordering::Release);
-                // Будим возможные ожидания, чтобы поток завершился.
-                self.pause_state.1.notify_all();
-                self.buffer.1.notify_all();
                 drop(guard);
+
+                // Будим возможные ожидания, чтобы поток завершился.
+                // Через мьютексы — иначе notify может потеряться (см. wake_reader).
+                self.wake_reader();
 
                 // Убиваем ffmpeg.
                 if let Ok(mut cg) = self.child.lock() {
@@ -169,6 +180,13 @@ impl AudioEngine {
                 let _ = handle.join();
 
                 return Err(Error::from_reason("AudioEngine destroyed during start"));
+            }
+
+            // Предыдущий reader к этому моменту уже завершился (иначе
+            // `reading_active` не был бы false), поэтому join мгновенный.
+            // Без него handle просто затирался бы.
+            if let Some(old) = guard.take() {
+                let _ = old.join();
             }
 
             *guard = Some(handle);

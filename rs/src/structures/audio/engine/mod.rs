@@ -24,6 +24,10 @@ use std::{
     thread::JoinHandle,
 };
 
+/// Верхняя граница `max_minutes`: 240 мин = 720 000 слотов (~17 МБ под
+/// сами слоты кольцевого буфера, выделяются сразу при создании).
+const MAX_BUFFER_MINUTES: u32 = 240;
+
 /// Движок аудио-буфера, связанный с процессом FFmpeg и потоком чтения.
 ///
 /// Управляет жизненным циклом дочернего процесса FFmpeg и фонового потока,
@@ -33,7 +37,11 @@ use std::{
 #[napi]
 pub struct AudioEngine {
     /// Дочерний процесс FFmpeg. Мьютекс нужен для безопасного доступа и kill.
-    pub(crate) child: Mutex<Option<Child>>,
+    ///
+    /// Лежит в `Arc`, потому что reader при самостоятельном завершении
+    /// (EOF/ошибка) сам убивает и `wait()`-ит процесс — иначе ffmpeg
+    /// остаётся зомби до явного `destroy()`.
+    pub(crate) child: Arc<Mutex<Option<Child>>>,
 
     /// Флаг активности потока чтения. `true` — поток работает.
     pub(crate) reading_active: Arc<AtomicBool>,
@@ -81,12 +89,17 @@ impl AudioEngine {
     /// Новый экземпляр `AudioEngine` в остановленном состоянии.
     #[napi(constructor)]
     pub fn new(max_minutes: u32) -> Self {
-        // 50 пакетов/сек * 60 сек * минуты, минимум 1500.
-        let capacity = (50u32 * 60 * max_minutes).max(1500) as usize;
+        // 50 пакетов/сек * 60 сек * минуты, минимум 1500, максимум
+        // MAX_BUFFER_MINUTES. Без saturating_mul большой `max_minutes`
+        // переполнял u32 (паника в debug, тихий wrap в release), а без
+        // верхнего предела — приводил к попытке выделить гигабайты слотов.
+        let capacity = (50u32 * 60)
+            .saturating_mul(max_minutes.min(MAX_BUFFER_MINUTES))
+            .max(1500) as usize;
 
         Self {
             // Процесс FFmpeg ещё не запущен.
-            child: Mutex::new(None),
+            child: Arc::new(Mutex::new(None)),
 
             // Reader неактивен до вызова start().
             reading_active: Arc::new(AtomicBool::new(false)),

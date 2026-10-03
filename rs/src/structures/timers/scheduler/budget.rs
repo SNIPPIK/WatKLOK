@@ -12,10 +12,13 @@ const MAX_SEND_BURST: u8 = 3;
 /// Порог отставания, после которого одного обычного пакета уже недостаточно
 /// для своевременной доставки.
 ///
-/// Соответствие:
-/// 20 ms → normal
-/// 20–30 ms → burst 2
-/// >30 ms → burst 3
+/// Соответствие (опоздание пробуждения относительно дедлайна тика):
+/// < 1 ms → normal
+/// 1–10 ms → burst 2
+/// >= 10 ms → burst 3
+///
+/// Пороги подбираются здесь же: если burst срабатывает слишком часто,
+/// увеличьте значения этих двух констант.
 const BURST_THRESHOLD_1: Duration = Duration::from_millis(1);
 
 /// Второй порог отставания: при его превышении разрешается максимальный
@@ -70,21 +73,18 @@ impl SendBudget {
     ///   (`>= BURST_THRESHOLD_2`).
     #[inline]
     pub fn calculate_send_budget(late: Duration) -> SendBudget {
-        match late {
-            // Сильно отстали — разрешаем максимальный burst.
-            BURST_THRESHOLD_2 => {
-                SendBudget::Burst(MAX_SEND_BURST)
-            }
-
+        // Сравнение именно диапазонами. Прежний `match` с константами
+        // в паттернах проверял РАВЕНСТВО (`late == 10ms`), поэтому burst
+        // срабатывал только при опоздании ровно 1 или 10 мс.
+        if late >= BURST_THRESHOLD_2 {
+            // Сильно отстали — максимальный burst.
+            SendBudget::Burst(MAX_SEND_BURST)
+        } else if late >= BURST_THRESHOLD_1 {
             // Умеренное отставание — двойной burst.
-            BURST_THRESHOLD_1 => {
-                SendBudget::Burst(2)
-            }
-
-            // В пределах нормы — обычный режим.
-            _ => {
-                SendBudget::Normal
-            }
+            SendBudget::Burst(2)
+        } else {
+            // В пределах нормы.
+            SendBudget::Normal
         }
     }
 }

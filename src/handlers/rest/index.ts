@@ -381,6 +381,7 @@ export class RestObject<T extends APIRequestsKeys = APIRequestsKeys> extends Res
         const { name, artist, api } = track;
         const original_name = `${name} ${artist.title}`;
         const original = normalize(original_name);
+        const original_alt = normalize(name);
 
         // Формируем массив обещаний для каждой платформы (кроме исходной)
         const platformPromises = array
@@ -406,21 +407,17 @@ export class RestObject<T extends APIRequestsKeys = APIRequestsKeys> extends Res
 
                 // Фильтрация треков по длительности и совпадению слов
                 const findTrack = search.find((song) => {
-                    const candidate = normalize(
-                        `${song.name} ${song.artist?.title ?? ""}`
-                    );
-
-                    const timeDiff = Math.abs(
-                        track.time.total - song.time.total
-                    );
-
+                    const candidate = normalize(`${song.name} ${song.artist?.title ?? ""}`);
+                    const candidate_alt = normalize(`${song.name}`);
+                    const timeDiff = Math.abs(track.time.total - song.time.total);
                     const name = getSmartMatch(original, candidate, 0.6);
 
                     return (
                         getSmartMatch(original, candidate) ||
                         (timeDiff <= 5 && name) ||
                         (timeDiff <= 10 && name) ||
-                        (timeDiff <= 15 && name)
+                        (timeDiff <= 15 && name) ||
+                        (timeDiff <= 5 && original_alt === candidate_alt)
                     );
                 });
 

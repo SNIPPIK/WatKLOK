@@ -54,7 +54,6 @@ impl PacketType {
                 | Self::Silent
                 | Self::VBR
                 | Self::PLC
-                | Self::Head
         )
     }
 
