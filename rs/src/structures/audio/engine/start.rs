@@ -1,5 +1,4 @@
-//! Запуск FFmpeg и фонового потока чтения.
-
+use crate::structures::audio::engine::constants::{OUTPUT_SUFFIX_HEAD, OUTPUT_SUFFIX_TAIL};
 use super::{
     constants::{FFMPEG_PREFIX, RECONNECT_FLAGS},
     reader::reader_loop,
@@ -8,13 +7,12 @@ use super::{
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use std::{
-    process::{Command, Stdio},
-    sync::{atomic::Ordering, Arc},
     thread,
+    process::{ Command, Stdio },
+    sync::{
+        atomic::Ordering, Arc
+    }
 };
-use std::sync::OnceLock;
-use crate::structures::audio::engine::constants::{OUTPUT_SUFFIX_HEAD, OUTPUT_SUFFIX_TAIL};
-use crate::structures::timers::scheduler::constants::TICK_INTERVAL_MS;
 
 #[napi]
 impl AudioEngine {
@@ -81,7 +79,7 @@ impl AudioEngine {
 
         // Выходные флаги: Opus/Ogg/pipe:1 — всегда в самом конце команды.
         cmd.args(OUTPUT_SUFFIX_HEAD)
-            .arg(opus_frame_size_str())
+            .arg("20")
             .args(OUTPUT_SUFFIX_TAIL);
 
         // Запускаем ffmpeg с piped stdout и заглушённым stderr.
@@ -194,15 +192,4 @@ impl AudioEngine {
 
         Ok(())
     }
-}
-
-/// Возвращает строковое представление размера Opus-фрейма (в мс),
-/// равного интервалу тика планировщика.
-///
-/// Значение вычисляется один раз и кешируется через `OnceLock`,
-/// чтобы избежать повторных аллокаций при каждом `start`.
-fn opus_frame_size_str() -> &'static str {
-    // Кеш на весь процесс: преобразование числа в строку делается ровно один раз.
-    static VALUE: OnceLock<String> = OnceLock::new();
-    VALUE.get_or_init(|| TICK_INTERVAL_MS.to_string())
 }

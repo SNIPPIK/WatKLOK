@@ -1,7 +1,7 @@
 use crate::structures::timers::scheduler::constants::TICK_INTERVAL_MS;
 use std::{
     sync::{
-        atomic::{AtomicU16, AtomicU32, Ordering},
+        atomic::{compiler_fence, AtomicU16, AtomicU32, Ordering},
         RwLock,
     },
     fmt,
@@ -97,6 +97,37 @@ impl fmt::Display for CryptoError {
 
 /// Реализация `Error` для совместимости со стандартным трейтом.
 impl std::error::Error for CryptoError {}
+
+// ============================================================================
+// Обнуление ключевого материала
+// ============================================================================
+
+/// Надёжно обнуляет буфер.
+///
+/// Обычный цикл `*byte = 0` над памятью, которая сразу после этого
+/// освобождается, компилятор вправе выкинуть как «мёртвую запись» (dead store
+/// elimination) — тогда ключ остаётся в куче нетронутым. `write_volatile`
+/// такую оптимизацию запрещает, а `compiler_fence` не даёт переставить
+/// последующий `drop`/`free` перед записями.
+#[inline(never)]
+fn wipe(buf: &mut [u8]) {
+    for byte in buf.iter_mut() {
+        // SAFETY: `byte` — валидная, выровненная `&mut u8`.
+        unsafe { core::ptr::write_volatile(byte, 0) };
+    }
+    compiler_fence(Ordering::SeqCst);
+}
+
+/// Владеющая обёртка над ключом: обнуляет содержимое при ЛЮБОМ выходе из
+/// `initialize` — успех, ранний `return Err(..)`, паника.
+struct WipeOnDrop(Vec<u8>);
+
+impl Drop for WipeOnDrop {
+    fn drop(&mut self) {
+        wipe(&mut self.0);
+    }
+}
+
 // ============================================================================
 // Внутренние параметры шифрования
 // ============================================================================
@@ -147,7 +178,7 @@ struct EncryptorState {
 /// изменения счётчиков — это важно: если сброс/установка счётчиков
 /// происходит не под тем же write-lock, что и запись `state`, конкурентные
 /// вызовы `initialize`/`destroy` могут переплестись и оставить свежий
-/// шифр с чужими (например, обнулёнными) счётчиками. `packet`/`packets`
+/// шифр с чужими (например, обнулёнными) счётчиками. `packet`
 /// берут read-lock.
 pub struct VoiceRTPSocket {
     /// Состояние шифра; `None`, пока не вызван `initialize`.
@@ -195,7 +226,8 @@ impl VoiceRTPSocket {
     ///
     /// # Аргументы
     /// * `ssrc` — 32-битный идентификатор источника синхронизации.
-    /// * `key` — 32-байтный ключ AES-256-GCM.
+    /// * `key` — 32-байтный ключ AES-256-GCM. Буфер забирается во владение
+    ///   и обнуляется при любом исходе (успех, ошибка, паника).
     ///
     /// При каждой инициализации RTP-счётчики получают новые
     /// случайные начальные значения — это защищает от повторного
@@ -207,30 +239,26 @@ impl VoiceRTPSocket {
     /// # Ошибки
     /// * `InvalidKeyLength` — ключ имеет неверную длину.
     /// * `EncryptionFailed` — не удалось создать AES-GCM cipher.
-    pub fn initialize(&self, ssrc: u32, mut key: Vec<u8>) -> Result<(), CryptoError> {
+    pub fn initialize(&self, ssrc: u32, key: Vec<u8>) -> Result<(), CryptoError> {
+        // Берём ключ под защиту СРАЗУ: любой дальнейший выход (в том числе
+        // ранний return с ошибкой длины) обнулит буфер.
+        let key = WipeOnDrop(key);
+
         // Проверяем длину ключа — AES-256 требует ровно 32 байта.
-        if key.len() != KEY_SIZE {
-            return Err(CryptoError::InvalidKeyLength(key.len()));
+        if key.0.len() != KEY_SIZE {
+            return Err(CryptoError::InvalidKeyLength(key.0.len()));
         }
 
-        // Копируем ключ в массив фиксированной длины.
-        let mut key_array = [0u8; KEY_SIZE];
-        key_array.copy_from_slice(&key);
-
-        // Создаём шифр AES-256-GCM из ключа.
-        let cipher = Aes256Gcm::new_from_slice(&key_array)
+        // Создаём шифр AES-256-GCM прямо из переданного буфера — без
+        // промежуточной копии ключа на стеке
+        let cipher = Aes256Gcm::new_from_slice(&key.0)
             .map_err(|_| {
                 CryptoError::EncryptionFailed("invalid AES-256 key".into())
             })?;
 
-        // Обнуляем ключевой материал в памяти сразу после того, как он
-        // скопирован в cipher — простая защита без зависимости от crate
-        for byte in key_array.iter_mut() {
-            *byte = 0;
-        }
-        for byte in key.iter_mut() {
-            *byte = 0;
-        }
+        // Ключ уже скопирован в cipher — обнуляем исходный буфер сразу,
+        // не дожидаясь конца функции (и до взятия write-lock).
+        drop(key);
 
         // Готовим генератор случайных чисел для сброса счётчиков.
         let mut rng = rng();
@@ -265,6 +293,14 @@ impl VoiceRTPSocket {
             .is_some()
     }
 
+    /// Размер готового RTP-пакета для Opus-фрейма длиной `frame_len` байт.
+    ///
+    /// Удобно для заранее выделяемых буферов под [`packet_into`].
+    #[inline]
+    pub const fn packet_len(frame_len: usize) -> usize {
+        RTP_HEADER_SIZE + frame_len + GCM_TAG_SIZE + NONCE_COUNTER_SIZE
+    }
+
     /// Шифрует один Opus-фрейм и возвращает полный RTP-пакет.
     ///
     /// Формат результата:
@@ -284,8 +320,9 @@ impl VoiceRTPSocket {
     /// * `EncryptionFailed` — ошибка AES-GCM.
     #[inline]
     pub fn packet(&self, frame: &[u8]) -> Result<Vec<u8>, CryptoError> {
-        // Вся логика — в create_packet_raw.
-        self.create_packet_raw(frame)
+        let mut out = Vec::with_capacity(Self::packet_len(frame.len()));
+        self.create_packet_raw(frame, &mut out)?;
+        Ok(out)
     }
 
     /// Генерирует 12-байтовый nonce для AES-GCM.
@@ -311,19 +348,24 @@ impl VoiceRTPSocket {
         nonce
     }
 
-    /// Формирует и шифрует полный RTP-пакет.
+    /// Формирует и шифрует полный RTP-пакет в `out`.
     ///
     /// # Аргументы
     /// * `frame` — незашифрованный Opus-фрейм.
-    ///
-    /// # Возвращаемое значение
-    /// Готовый к отправке RTP-пакет.
+    /// * `out` — буфер результата (очищается, затем заполняется).
     ///
     /// # Ошибки
     /// * `NotInitialized` — сокет не инициализирован.
     /// * `EncryptionFailed` — ошибка AES-GCM.
-    #[inline]
-    fn create_packet_raw(&self, frame: &[u8]) -> Result<Vec<u8>, CryptoError> {
+    ///
+    /// В обоих случаях `out` остаётся пустым.
+    fn create_packet_raw(&self, frame: &[u8], out: &mut Vec<u8>) -> Result<(), CryptoError> {
+        // Память под весь пакет готовим ДО взятия лока — критическая секция
+        // сжимается до самого шифрования. При переиспользовании буфера
+        // `reserve` ничего не делает.
+        out.clear();
+        out.reserve(Self::packet_len(frame.len()));
+
         // Держим read-lock на всё время шифрования.
         let guard = self.state.read().expect("RTP state lock poisoned");
 
@@ -339,44 +381,34 @@ impl VoiceRTPSocket {
         let nonce_bytes = self.generate_nonce();
         let nonce = Nonce::from(nonce_bytes);
 
-        // Выделяем память под весь пакет заранее.
-        let mut packet = Vec::with_capacity(
-            RTP_HEADER_SIZE
-                + frame.len()
-                + GCM_TAG_SIZE
-                + NONCE_COUNTER_SIZE,
-        );
-
         // RTP header остаётся открытым и используется как AAD.
-        packet.extend_from_slice(&header);
+        out.extend_from_slice(&header);
 
         // Добавляем исходный Opus payload.
-        packet.extend_from_slice(frame);
+        out.extend_from_slice(frame);
 
         // Шифруем payload непосредственно внутри итогового буфера.
-        let payload = &mut packet[RTP_HEADER_SIZE..];
-
-        let tag = state
-            .cipher
-            .encrypt_inout_detached(
-                &nonce,
-                &header,
-                InOutBuf::from(payload),
-            )
-            .map_err(|error| {
-                CryptoError::EncryptionFailed(error.to_string())
-            })?;
+        let tag = match state.cipher.encrypt_inout_detached(
+            &nonce,
+            &header,
+            InOutBuf::from(&mut out[RTP_HEADER_SIZE..]),
+        ) {
+            Ok(tag) => tag,
+            Err(error) => {
+                // Не оставляем в буфере незашифрованный payload.
+                out.clear();
+                return Err(CryptoError::EncryptionFailed(error.to_string()));
+            }
+        };
 
         // GCM authentication tag.
-        packet.extend_from_slice(tag.as_slice());
+        out.extend_from_slice(tag.as_slice());
 
         // Discord voice packet mode использует 4-байтовый
         // nonce suffix в конце пакета.
-        packet.extend_from_slice(
-            &nonce_bytes[..NONCE_COUNTER_SIZE],
-        );
+        out.extend_from_slice(&nonce_bytes[..NONCE_COUNTER_SIZE]);
 
-        Ok(packet)
+        Ok(())
     }
 
     /// Формирует 12-байтовый RTP-заголовок.
@@ -449,19 +481,13 @@ impl Default for VoiceRTPSocket {
     }
 }
 
-/// Деструктор: сбрасывает состояние шифра и счётчики.
+/// Деструктор: сбрасывает состояние шифра.
 ///
 /// В отладочной сборке выводит сообщение о вызове.
 impl Drop for VoiceRTPSocket {
     fn drop(&mut self) {
-        if let Ok(mut guard) = self.state.write() {
-            *guard = None;
-        }
-
-        // Сбрасываем счётчики.
-        self.sequence.store(0, Ordering::Relaxed);
-        self.timestamp.store(0, Ordering::Relaxed);
-        self.counter.store(0, Ordering::Relaxed);
+        let state = self.state.get_mut().unwrap_or_else(|e| e.into_inner());
+        *state = None;
 
         // Отладочный вывод.
         #[cfg(debug_assertions)]
