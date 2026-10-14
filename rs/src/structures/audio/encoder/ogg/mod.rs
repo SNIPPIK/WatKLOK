@@ -346,7 +346,7 @@ impl OggOpusDemuxer {
             }
 
             // Проверка на допустимый диапазон размера
-            if segment_len == 0 && serial <= 0 || (segment_len < 255 && !packet_carry.is_empty()) {
+            if segment_len == 0 && serial <= 0 || segment_len < 255 && !packet_carry.is_empty() {
                 // Получение типа пакета
                 let packet_type = PacketType::classify_static(packet_carry, serial, primary_serial);
 
