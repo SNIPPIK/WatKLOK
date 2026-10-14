@@ -59,6 +59,8 @@ const PLAYER_TIMEOUT_OFFSET = 3e3;
  * ```
  */
 export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
+    private _destroyed = false;
+
     /** Текущее состояние плеера (idle, playing, paused и т.д.) */
     protected _status: AudioPlayerState | null = AudioPlayerState.idle;
 
@@ -114,29 +116,49 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
     public get status() {
         return this._status;
     };
-
     /**
      * @description Смена статуса плеера, если не знаешь что делаешь, то лучше не трогай!
      * @param status - Статус плеера
      * @public
      */
     public set status(status: AudioPlayerState) {
-        // Если был введен новый статус
-        if (status !== this._status) {
-            // Записываем статус
-            this._status = status;
+        // Две отсечки:
+        // - _destroyed: плеер уже уничтожен, трогать его состояние нельзя
+        //   (все поля обнулены, emit может улететь в никуда);
+        // - status === _status: no-op без побочных эффектов — иначе
+        //   повторный set того же значения запускал бы _PlayerNextTrack.
+        if (this._destroyed || status === this._status) return;
 
-            // Запускаем событие
-            this.emit(status, this);
+        // Прямая запись поля ДО emit'а: обработчики, которые в ответ
+        // на событие полезут читать this._status, должны видеть уже
+        // новое значение, а не старое.
+        this._status = status;
 
-            // Если пришло событие ожидания
-            if (status === AudioPlayerState.idle) {
-                // Запускаем функцию, которая проверят что делать с позицией
-                this._PlayerNextTrack().catch(() => {});
-            }
+        // Событие называется по имени нового статуса (динамически:
+        // AudioPlayerState.idle / playing / paused / ...). Второй
+        // аргумент — сам плеер, чтобы слушатель знал источник.
+        this.emit(status, this);
+
+        // Переход к следующему треку нужен только для штатного
+        // завершения воспроизведения, а не для уничтожения плеера.
+        // Т.е. если трек закончился сам (idle) — запускаем следующий.
+        // При destroy/stop статус меняется в обход сеттера,
+        // поэтому автозапуск не сработает (см. комментарии в stop/cleanup).
+        if (status === AudioPlayerState.idle) {
+            // Void — намеренно "отвязываем" обещание: сеттер синхронный,
+            // ждать _PlayerNextTrack тут нельзя, иначе setter вернёт
+            // Promise и сломает контракт.
+            // .catch — не пробрасываем ошибку дальше (иначе unhandled
+            // rejection), а превращаем её в событие "player/error".
+            // Внутри catch снова проверяем _destroyed: пока обещание
+            // летел, плеер мог быть уничтожен, и emit в мёртвый объект
+            // не нужен.
+            void this._PlayerNextTrack().catch(error => {
+                if (!this._destroyed) {
+                    this.emit("player/error", this, error);
+                }
+            });
         }
-
-        return;
     };
 
     /**
@@ -427,9 +449,43 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @returns Promise<void> | void
      * @public
      */
-    public stop = (): Promise<void> | void => {
-        if (this._status === AudioPlayerState.idle) return;
-        this.status = AudioPlayerState.idle;
+    public stop = (): void => {
+        // Идемпотентность + защита от работы на уничтоженном плеере:
+        // - _destroyed: плеер уже destroy()-нут, все ресурсы освобождены;
+        // - idle: уже остановлен, повторный вызов не должен порождать
+        //   лишних emit'ов и сбросов состояния.
+        if (this._destroyed || this._status === AudioPlayerState.idle) {
+            return;
+        }
+
+        // Отменяем запланированный запуск.
+        // Таймер мог быть взведён на авто-старт следующего трека —
+        // обнуляем только задачу, сам объект _timer жив.
+        this._timer.timer = null;
+
+        // Отключаем отправку аудио.
+        // Если где-то в цикле стоит проверка cycle — после этого
+        // кадры перестанут уходить в поток.
+        this.cycle = false;
+
+        // Уничтожаем активный и предварительно загруженный ресурс.
+        // Опциональная цепочка: _audio может быть null до первого
+        // play() или после предыдущего stop()/cleanup().
+        this._audio?.destroy();
+
+        // Намеренно не используем setter:
+        // stop() не должен автоматически запускать следующий трек.
+        // Прямая запись поля в обход сеттера — единственный способ
+        // сменить статус без побочного эффекта "перейти к следующему".
+        this._status = AudioPlayerState.idle;
+        // Дублируем смену статуса событием — внешние слушатели подписаны
+        // на конкретное значение (AudioPlayerState.idle), а не на "status changed".
+        // Вторым аргументом передаём сам плеер, чтобы обработчик знал источник.
+        this.emit(AudioPlayerState.idle, this);
+
+        // Диагностический лог. Формат с id — чтобы различать события
+        // разных инстансов плеера в общем логе.
+        this.emit("player/log", `[AudioPlayer/${this.id}] stopped`);
     };
 
     /**
@@ -516,38 +572,92 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @returns void
      * @public
      */
-    public cleanup = () => {
+    public cleanup = (): void => {
+        // Идемпотентность: повторный cleanup/destroy после destroy —
+        // no-op. Защищает от двойного освобождения ресурсов и лишних emit'ов.
+        if (this._destroyed) return;
+
+        // Обнуляем только поле timer, сам объект _timer оставляем —
+        // cleanup не финализирует таймер, а лишь снимает текущую задачу.
+        // Полный destroy() делает _timer.destroy() ниже.
+        this._timer.timer = null;
+
+        // Диагностический emit. Формат с id — чтобы в общем логе
+        // различать события разных инстансов плеера.
         this.emit("player/log", `[AudioPlayer/${this.id}] has cleanup`);
-        // Переводим плеер в режим ожидания
+
+        // Прямая запись не запускает _PlayerNextTrack().
+        // Если бы статус менялся через публичный setter, тот бы триггернул
+        // переход к следующему треку — а нам нужно просто "сбросить в idle"
+        // без побочных эффектов автоматизации.
         this._status = AudioPlayerState.idle;
 
-        // Отключаем фильтры при очистке
-        if (this._filters.size > 0) this._filters.clear();
+        // clear() очищает Set/Map in-place; обнулять саму ссылку не нужно —
+        // _filters жив, просто пуст.
+        if (this._filters && this._filters.size > 0) {
+            this._filters.clear();
+        }
 
-        // Отключаем плеер от цикла
+        // Снимаем флаг цикла: следующий запуск не должен автоматически
+        // повторять трек.
         this.cycle = false;
 
-        // Удаляем текущий поток, поскольку он больше не нужен
-        this._audio.destroy();
+        // Опциональная цепочка: _audio мог уже быть null после
+        // предыдущего destroy или до первой инициализации.
+        this._audio?.destroy();
 
-        // Устанавливаем время паузы (Для предотвращения рассинхрона Jitter)
+        // Выдерживаем защитный интервал перед следующим запуском.
+        // Фиксируем момент cleanup в timestamp — по нему внешний код
+        // (или следующая попытка старта) решает, сколько прошло времени.
         this._timer.timeout = Date.now();
     };
+
 
     /**
      * @description Эта функция полностью удаляет плеер и все сопутствующие данные
      * @returns void
      * @public
      */
-    public destroy = () => {
+    /**
+     * @description Эта функция полностью удаляет плеер и все сопутствующие данные
+     * @returns void
+     * @public
+     */
+    public destroy = (): void => {
+        // Если уже уничтожен — выходим сразу.
+        // Проверка стоит ДО выставления флага, иначе второй вызов
+        // снова прошёл бы весь путь освобождения.
+        if (this._destroyed) return;
+
+        // Флаг выставляем СРАЗУ — до emit'ов и разрушений.
+        // Ниже emit может синхронно дёрнуть слушателя, а тот —
+        // снова вызвать destroy(). Второй вызов должен увидеть
+        // "уже уничтожен" и выйти, а не начать всё заново поверх
+        // первого прохода.
+        this._destroyed = true;
+
         this.emit("player/log", `[AudioPlayer/${this.id}] has destroyed`);
+
+        // Сначала останавливаем таймер и аудио, потом обнуляем ссылки —
+        // иначе потеряем доступ к объектам, которые надо прибрать.
+        this._timer?.destroy();
+        this._audio?.destroy();
+
+        // Снимаем флаг цикла до обнуления id.
+        // (Момент "до id = null" важен: emit выше ещё использует id.)
+        this.cycle = false;
+
+        // Родительский destroy: снимает слушателей EventEmitter'а,
+        // чистит базовое состояние.
         super.destroy();
 
+        // Обнуляем все ссылки, чтобы GC мог собрать связанные объекты
+        // и чтобы последующие обращения падали явно (null),
+        // а не тихо работали с полу-живым состоянием.
         this.id = null;
         this._audio = null;
         this._filters = null;
         this._status = null;
-        this._timer.destroy();
         this._timer = null;
     };
 }

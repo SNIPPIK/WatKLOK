@@ -29,49 +29,33 @@ class BaseQueueController<T extends Queue = Queue> extends Collection<T> {
      * @public
      */
     public create = (message: CommandInteraction) => {
-        let queue = this.get(message.guildId);
+        const guildId = message.guildId;
 
-        // Если нет очереди
+        let queue = this.get(guildId);
+
+        // Очереди ещё нет: создаём её и регистрируем в коллекции.
         if (!queue) {
             queue = new Queue(message) as T;
 
-            // Добавляем очередь непосредственно в Collection
-            this.set(message.guildId, queue);
+            this.set(guildId, queue);
+
+            return queue;
         }
 
-        // Обновляем данные в очереди
-        else {
-            // Если плеер не в цикле и не готовит трек
-            if (!this.cycles.players.has(queue.player) && !queue.player.audio.preloaded) {
-                setImmediate(() => {
-                    const player = queue.player;
-
-                    switch (db.queues.options.replay) {
-                        case 1: {
-                            queue.tracks.position = queue.tracks.total - 1;
-                            break;
-                        }
-
-                        default: {
-                            queue.tracks.position = 0;
-                            break;
-                        }
-                    }
-
-                    if (player.status === "player/pause") {
-                        player.resume();
-                    }
-
-                    void player.play().catch(error => {
-                        throw error;
-                    });
-
-                    if (queue.message.channel_id !== message.channelId) {
-                        queue.message = new QueueMessage(message);
-                    }
-                });
-            }
+        // Не вмешиваемся в плеер, если им уже управляет цикл
+        // либо аудиоресурс ещё находится в процессе предварительной загрузки.
+        if (
+            this.cycles.players.has(queue.player) ||
+            queue.player.audio.preloaded
+        ) {
+            return queue;
         }
+
+        // Отложенное восстановление позволяет сначала завершить
+        // обработку текущего взаимодействия.
+        setImmediate(() => {
+            void this.restorePlayback(queue, message);
+        });
 
         return queue;
     };
@@ -120,6 +104,62 @@ class BaseQueueController<T extends Queue = Queue> extends Collection<T> {
 
         return timeout;
     };
+
+    /**
+     * Восстанавливает воспроизведение существующей очереди.
+     *
+     * Перед запуском:
+     * - выбирает начальную позицию согласно настройкам повторения;
+     * - снимает паузу, если плеер приостановлен;
+     * - запускает воспроизведение;
+     * - при необходимости переносит сообщение очереди в новый канал.
+     *
+     * Метод намеренно отделён от create(), чтобы логика восстановления
+     * не смешивалась с созданием и поиском очереди.
+     *
+     * @param queue - Очередь, воспроизведение которой нужно восстановить.
+     * @param interaction - Взаимодействие, из которого получен новый канал.
+     * @returns Promise, завершающийся после выполнения операции.
+     * @internal
+     */
+    private restorePlayback = async (queue: T, interaction: CommandInteraction): Promise<void> => {
+        const player = queue.player;
+
+        // Защищаемся от ситуации, когда состояние плеера изменилось
+        // за время между вызовом create() и выполнением setImmediate().
+        if (this.cycles.players.has(player) || player.audio.preloaded) return;
+
+        // При replay = 1 выбираем последний элемент очереди.
+        // В остальных режимах начинаем с первого элемента.
+        switch (db.queues.options.replay) {
+            case 1: {
+                queue.tracks.position = queue.tracks.total - 1;
+                break;
+            }
+
+            default: {
+                queue.tracks.position = 0;
+                break;
+            }
+        }
+
+        // Сначала снимаем паузу, если она установлена.
+        if (player.status === "player/pause") player.resume();
+
+        // Ошибку воспроизведения необходимо обработать здесь,
+        // поскольку вызов запускается из отложенного callback.
+        try {
+            await player.play();
+        } catch (error) {
+            player.emit("player/error", player, `[QueueController] Failed to restore playback for guild ${interaction.guildId}: ${error}`, null);
+            console.error(`[QueueController] Failed to restore playback for guild ${interaction.guildId}:`, error);
+        }
+
+        // Обновляем привязку сообщения, только если канал изменился.
+        if (queue.message.channel_id !== interaction.channelId) {
+            queue.message = new QueueMessage(interaction);
+        }
+    };
 }
 
 /**
@@ -129,15 +169,58 @@ class BaseQueueController<T extends Queue = Queue> extends Collection<T> {
  * @class ControllerQueues
  * @public
  */
-export class ControllerQueues<T extends Queue> extends BaseQueueController<T> {
-    /** Здесь хранятся модификаторы аудио */
-    public options = {
-        optimization: parseInt(env.get("duration.optimization", "15")),
-        volume: parseInt(env.get("audio.volume", "70")),
-        swapFade: parseInt(env.get("audio.swap.fade", "5")),
-        fade: parseInt(env.get("audio.fade", "10")),
+export class ControllerQueues<T extends Queue = Queue>
+    extends BaseQueueController<T> {
+    /**
+     * Настройки обработки аудио и воспроизведения.
+     *
+     * Значения считываются из конфигурации при создании экземпляра.
+     * Изменение свойств во время работы контроллера влияет только
+     * на те операции, которые повторно обращаются к этим свойствам.
+     */
+    public readonly options = {
+        /**
+         * Длительность оптимизационного интервала.
+         */
+        optimization: parseInt(
+            env.get("duration.optimization", "15"),
+            10
+        ),
 
-        replay: parseInt(env.get("replay.type", "1"))
+        /**
+         * Громкость по умолчанию.
+         */
+        volume: parseInt(
+            env.get("audio.volume", "70"),
+            10
+        ),
+
+        /**
+         * Длительность перехода между треками.
+         */
+        swapFade: parseInt(
+            env.get("audio.swap.fade", "5"),
+            10
+        ),
+
+        /**
+         * Длительность затухания аудио.
+         */
+        fade: parseInt(
+            env.get("audio.fade", "10"),
+            10
+        ),
+
+        /**
+         * Режим повторного воспроизведения.
+         *
+         * Значение 1 используется контроллером для выбора
+         * последнего элемента очереди при восстановлении.
+         */
+        replay: parseInt(
+            env.get("replay.type", "1"),
+            10
+        )
     };
 }
 

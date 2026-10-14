@@ -346,19 +346,20 @@ impl OggOpusDemuxer {
             }
 
             // Проверка на допустимый диапазон размера
-            if segment_len == 0 || segment_len < 255 && !packet_carry.is_empty() {
+            if (segment_len == 0 && serial <= 0) || segment_len < 255  {
                 // Получение типа пакета
                 let packet_type = PacketType::classify_static(packet_carry, serial, primary_serial);
 
                 // Если код потока соответствует
                 if Some(serial) == *primary_serial {
                     on_packet(packet_type, packet_carry)?;
-                    packet_carry.clear();
                 }
                 // Если код был нарушен заполним пустотой для сглаживания
                 else {
                     on_packet(PacketType::PLC, &SILENT_FRAME)?;
                 }
+
+                packet_carry.clear();
 
                 // Сброс carry — всегда, независимо от should_emit:
                 // пакет собран, дальше пойдёт следующий.

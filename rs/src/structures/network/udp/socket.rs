@@ -22,6 +22,8 @@ use napi::{
 };
 use napi_derive::napi;
 
+static NEXT_SESSION_ID: AtomicU32 = AtomicU32::new(1);
+
 /// Бактеризованный UDP-сокет, доступный из JavaScript через N-API.
 #[napi(js_name = "UDPSocket")]
 #[derive(Clone)]
@@ -67,7 +69,7 @@ impl SocketBuffered {
         let inner = Arc::new(SocketInner {
             rtp: VoiceRTPSocket::new(),
             socket: Arc::new(socket),
-            buffer: RingBuffer::new(2048),
+            buffer: RingBuffer::new(1024),
             send_drops: AtomicUsize::new(0),
             last_send_ms: AtomicU64::new(0),
             keepalive_counter: AtomicU32::new(0),
@@ -76,7 +78,7 @@ impl SocketBuffered {
         });
 
         // Генерируем случайный идентификатор для этой сессии.
-        let id = rand::random::<u32>();
+        let id = NEXT_SESSION_ID.fetch_add(1, Ordering::Relaxed);
 
         let udp = SocketBuffered {
             inner,
@@ -160,7 +162,7 @@ impl SocketBuffered {
     #[napi]
     #[inline]
     pub fn push_packet(&self, packet: Buffer) {
-        if packet.is_empty() { return; }
+        if packet.is_empty() || self.destroyed.load(Ordering::Acquire) { return; }
         self.inner.push(packet.to_vec());
     }
 
@@ -176,7 +178,7 @@ impl SocketBuffered {
     #[napi]
     pub fn push_packets(&self, packets: Vec<Buffer>) {
         // Если пакеты пустые
-        if packets.is_empty() { return; }
+        if packets.is_empty() || self.destroyed.load(Ordering::Acquire) { return; }
 
         let packets = packets
             .into_iter()
@@ -230,7 +232,13 @@ impl SocketBuffered {
         }
 
         // Создаём потокобезопасную функцию для вызова JS из фонового потока.
-        let js_fn = callback.build_threadsafe_function().build()?;
+        let js_fn = match callback.build_threadsafe_function().build() {
+            Ok(f) => f,
+            Err(e) => {
+                self.listener_active.store(false, Ordering::Release);
+                return Err(e);
+            }
+        };
 
         // Клонируем сокет и флаг активности для передачи в поток.
         let socket = self.inner.socket.clone();

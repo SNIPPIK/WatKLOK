@@ -1,41 +1,39 @@
 //! Тело фонового потока чтения stdout FFmpeg.
 //!
 //! Функция полностью самодостаточна: не хранит ссылок на `AudioEngine`,
-//! получает только `Arc`-и на общие состояния. Это позволяет тестировать
+//! получает только `Arc`-ссылки на общие состояния. Это позволяет тестировать
 //! её отдельно и упрощает вынос в отдельный модуль.
 
-use super::constants::MAX_PARSER_PENDING;
+use super::constants::{AUDIO_FRAMES_CAPACITY, AUDIO_READ_CHUNK, MAX_PARSER_PENDING};
 use crate::structures::audio::{encoder::ogg::OggOpusDemuxer, ring_buffer::RingBuffer};
 use std::{
-    io::{BufReader, ErrorKind, Read},
+    io::{ErrorKind, Read},
     process::{Child, ChildStdout},
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Condvar, Mutex,
-    }
+    },
 };
 
 /// Проверяет, нужно ли остановить reader.
-#[inline(always)]
+///
+/// Оба флага читаются под Acquire: изменения состояния должны быть видны
+/// до того, как по ним принимается решение.
+#[inline]
 fn should_stop(active: &AtomicBool, destroyed: &AtomicBool) -> bool {
     !active.load(Ordering::Acquire) || destroyed.load(Ordering::Acquire)
 }
 
-/// Убивает и `wait()`-ит процесс FFmpeg, если он ещё не забран.
+/// Убивает процесс FFmpeg и дожидается его завершения, если он ещё не забран.
 ///
-/// `std::process::Child` при `Drop` НЕ делает ни `kill`, ни `wait`, поэтому
-/// без явного `wait()` завершившийся ffmpeg остаётся зомби. Вызывается в
-/// конце `reader_loop` — до сброса `active`, чтобы повторный `start()`
-/// (он проходит только после `active == false`) не мог столкнуться с
-/// чужим reap'ом своего нового процесса.
+/// `std::process::Child` при `Drop` не делает ни `kill`, ни `wait`, поэтому
+/// без явного `wait()` завершившийся FFmpeg остаётся зомби.
 ///
-/// `kill` на уже завершившемся процессе безвреден; `wait` после `kill`
-/// не блокируется. Сам `wait` выполняется вне мьютекса.
+/// `kill` на уже завершившемся процессе безвреден, `wait` после `kill`
+/// не блокируется. Сам `wait` выполняется вне мьютекса — не тормозим тех,
+/// кому ещё нужен доступ к `child`.
 fn reap_child(child: &Mutex<Option<Child>>) {
-    let process = {
-        let mut guard = child.lock().unwrap_or_else(|p| p.into_inner());
-        guard.take()
-    };
+    let process = child.lock().unwrap_or_else(|p| p.into_inner()).take();
 
     if let Some(mut process) = process {
         let _ = process.kill();
@@ -43,47 +41,85 @@ fn reap_child(child: &Mutex<Option<Child>>) {
     }
 }
 
-/// RAII-уведомление consumer'а: если за текущую пачку в буфер попал хотя бы
-/// один пакет, при выходе из блока (в том числе через ранний `break`) будет
-/// выполнен `notify_one()` ровно один раз.
+/// RAII-финализатор потока: срабатывает при любом выходе из `reader_loop`,
+/// включая панику (раскрутку стека).
 ///
-/// Без этого consumer, спящий на `buffer_cvar` в ожидании новых данных,
-/// может не проснуться сразу после того, как reader успешно наполнил
-/// буфер — либо ловится с задержкой на следующем чужом пробуждении, либо
-/// требует поллинга с тайм-аутом на стороне consumer'а, что и есть лишняя
-/// нагрузка, которую вы просили убрать.
+/// Порядок действий важен:
+/// 1. `reap_child` — FFmpeg не остаётся зомби;
+/// 2. `active = false` — последнее действие. Повторный `start()` проходит
+///    только после `active == false`, поэтому к этому моменту старый reader
+///    уже не может снять чужой, новый процесс.
+///
+/// А stdout к этому моменту уже закрыт (его владелец — `read_and_demux`,
+/// вернувшийся раньше), так что FFmpeg, пишущий в полный pipe, получит EPIPE
+/// и не будет зависать, даже если `kill` по какой-то причине не сработает.
+struct ReaderCleanup<'a> {
+    child: &'a Mutex<Option<Child>>,
+    active: &'a AtomicBool,
+}
+
+impl Drop for ReaderCleanup<'_> {
+    fn drop(&mut self) {
+        reap_child(self.child);
+        self.active.store(false, Ordering::Release);
+    }
+}
+
+/// RAII-уведомление consumer'а: если в буфер попал хотя бы один пакет,
+/// при освобождении (в том числе при раннем `return`) выполняется
+/// `notify_one()`.
+///
+/// Объявляется до guard'а мьютекса, поэтому освобождается после него:
+/// consumer просыпается уже без удерживаемого мьютекса и не упирается
+/// сразу в занятый.
 struct NotifyOnDrop<'a> {
     cvar: &'a Condvar,
-    should_notify: bool,
+    pending: bool,
+}
+
+impl NotifyOnDrop<'_> {
+    /// Будит consumer'а немедленно, если есть ещё не забранные им пакеты.
+    /// Нужно вызывать перед `wait` на полном буфере — иначе возможна
+    /// взаимная блокировка: reader ждёт места, consumer ждёт данных.
+    #[inline]
+    fn flush(&mut self) {
+        if self.pending {
+            self.cvar.notify_one();
+            self.pending = false;
+        }
+    }
 }
 
 impl Drop for NotifyOnDrop<'_> {
     #[inline]
     fn drop(&mut self) {
-        if self.should_notify {
-            self.cvar.notify_one();
-        }
+        self.flush();
     }
 }
 
-/// Читает stdout FFmpeg, демультиплексирует Ogg/Opus и складывает аудио-пакеты
-/// в кольцевой буфер.
+/// Читает stdout FFmpeg, разбирает Ogg/Opus на пакеты и складывает
+/// аудио-пакеты в кольцевой буфер.
 ///
 /// Завершается, когда:
 /// * `active` сброшен;
 /// * `destroyed` выставлен;
 /// * FFmpeg закрыл stdout (EOF) — после обязательного flush последнего пакета;
-/// * произошла ошибка чтения (кроме `Interrupted`, который ретраится) или
-///   ошибка парсинга;
-/// * парсер переполнен.
+/// * произошла ошибка чтения (кроме `Interrupted`, который повторяется) или
+///   ошибка разбора;
+/// * парсер переполнен;
+/// * кольцевой буфер отверг пакет или его мьютекс отравлен.
+///
+/// При выходе (в том числе при панике) процесс FFmpeg гарантированно
+/// убивается и дожидается его завершения, после чего сбрасывается `active`.
 ///
 /// # Аргументы
 /// * `stdout` — piped stdout процесса FFmpeg.
 /// * `active` — флаг активности reader'а.
 /// * `destroyed` — флаг уничтожения движка.
 /// * `pause_state` — состояние паузы (флаг + condvar).
-/// * `buffer_state` — кольцевой буфер + condvar для ожидания места.
-/// * `child` — процесс FFmpeg; reader убивает и reap-ит его при выходе.
+/// * `buffer_state` — кольцевой буфер + condvar для ожидания места и данных.
+/// * `child` — процесс FFmpeg; reader убивает его и дожидается завершения
+///   при выходе.
 pub(crate) fn reader_loop(
     stdout: ChildStdout,
     active: Arc<AtomicBool>,
@@ -92,223 +128,178 @@ pub(crate) fn reader_loop(
     buffer_state: Arc<(Mutex<RingBuffer>, Condvar)>,
     child: Arc<Mutex<Option<Child>>>,
 ) {
-    // Буферизованное чтение stdout — сглаживает мелкие чтения от ОС.
-    // read() блокируется в syscall, пока FFmpeg не запишет данные —
-    // поток не потребляет CPU в ожидании, никакого спина/поллинга.
-    let mut reader = BufReader::with_capacity(65536, stdout);
+    // Объявлен первым → освобождается последним: к моменту его срабатывания
+    // `read_and_demux` уже вернулся, а значит stdout закрыт, а парсер и
+    // буферы освобождены. Так FFmpeg получает EPIPE раньше, чем мы его
+    // убиваем, и не зависает на полном pipe.
+    let _cleanup = ReaderCleanup {
+        child: &*child,
+        active: &*active,
+    };
 
-    // Демультиплексор Ogg/Opus, собирает аудио-пакеты из байтового потока.
+    read_and_demux(stdout, &active, &destroyed, &pause_state, &buffer_state);
+}
+
+/// Основной цикл. Владеет stdout, парсером и временными буферами; при любом
+/// выходе (`return` или паника) всё это освобождается до срабатывания
+/// `ReaderCleanup`.
+fn read_and_demux(
+    mut stdout: ChildStdout,
+    active: &AtomicBool,
+    destroyed: &AtomicBool,
+    pause_state: &(Mutex<bool>, Condvar),
+    buffer_state: &(Mutex<RingBuffer>, Condvar),
+) {
+    // Разборщик Ogg/Opus, собирает аудио-пакеты из байтового потока.
     let mut parser = OggOpusDemuxer::new();
 
-    // Буфер для одного чтения из stdout.
-    let mut read_buf = [0u8; 16384];
+    // Буфер для одного чтения из stdout (на куче — не зависим от размера
+    // стека потока).
+    let mut read_buf = vec![0u8; AUDIO_READ_CHUNK];
 
-    // Переиспользуемый вектор для парсинга (избегаем аллокаций в цикле).
-    let mut frames = Vec::with_capacity(128);
+    // Повторно используемый вектор для разбора (избегаем выделений памяти
+    // в цикле).
+    let mut frames = Vec::with_capacity(AUDIO_FRAMES_CAPACITY);
 
-    'reader: loop {
+    loop {
         // Проверка остановки: один из флагов мог быть сброшен извне.
-        if should_stop(&active, &destroyed) {
-            break;
+        if should_stop(active, destroyed) {
+            return;
         }
 
-        // Обработка паузы.
+        // Обработка паузы. Мьютекс паузы удерживается только внутри блока —
+        // во время блокирующего read() он свободен.
         {
-            let (lock, cvar) = &*pause_state;
+            let (lock, cvar) = pause_state;
 
-            let mut paused = match lock.lock() {
-                Ok(g) => g,
-                Err(_) => break 'reader,
+            let Ok(guard) = lock.lock() else { return };
+
+            // Спим на condvar, пока стоит пауза и нет сигнала остановки.
+            // Проверка `should_stop` внутри предиката — чтобы снятие active
+            // или destroy тоже разбудило поток (иначе повиснем до внешнего
+            // notify от того, кто ставил паузу).
+            let Ok(_guard) = cvar.wait_while(guard, |paused| {
+                *paused && !should_stop(active, destroyed)
+            }) else {
+                return;
             };
-
-            while *paused && !should_stop(&active, &destroyed) {
-                paused = match cvar.wait(paused) {
-                    Ok(g) => g,
-                    Err(_) => break 'reader,
-                };
-            }
         }
 
         // Повторная проверка после паузы: флаги могли измениться,
-        // пока поток спал на condvar.
-        if should_stop(&active, &destroyed) {
-            break;
+        // пока поток спал на condvar (или пока он был заблокирован в read()).
+        if should_stop(active, destroyed) {
+            return;
         }
 
-        // Чтение из FFmpeg.
-        let eof = match reader.read(&mut read_buf) {
+        // Чтение из FFmpeg. read() блокируется в syscall, пока FFmpeg не
+        // запишет данные — поток не потребляет CPU в ожидании.
+        let eof = match stdout.read(&mut read_buf) {
             Ok(0) => true,
 
-            Ok(n) => {
-                if parser.parse_internal(&read_buf[..n], &mut frames).is_err() {
-                    // Уже накопленные валидные frames всё равно передадим
-                    // в буфер ниже, после чего reader завершится.
-                    true
-                } else {
-                    false
-                }
-            }
+            // Ошибка разбора: уже накопленные валидные frames всё равно
+            // передадим в буфер ниже, после чего reader завершится.
+            Ok(n) => parser
+                .parse_internal(&read_buf[..n], &mut frames)
+                .is_err(),
 
-            // EINTR — легитимная, не фатальная ситуация: сигналы в
-            // многопоточном процессе могут прерывать syscall. Ретраим
-            // чтение, а не завершаем поток из-за неё.
-            Err(e) if e.kind() == ErrorKind::Interrupted => continue 'reader,
+            // EINTR — допустимая, не фатальная ситуация: сигналы в
+            // многопоточном процессе могут прерывать системный вызов.
+            // Повторяем чтение, а не завершаем поток из-за неё.
+            Err(e) if e.kind() == ErrorKind::Interrupted => continue,
 
             Err(_) => true,
         };
 
+        // EOF: обязательная выдача последнего несобранного пакета.
+        //
+        // Без этого шага последний Opus-фрейм трека теряется всегда.
+        // Хвост добавляется в тот же вектор после основных frames, поэтому
+        // порядок пакетов сохраняется, а отправка в буфер идёт одним
+        // проходом и под одним мьютексом.
+        if eof && parser.pending_len() != 0 {
+            let mut tail = Vec::new();
+
+            // Хвост используем только если повторный разбор прошёл успешно.
+            // Если parse_internal вернул Err — лучше потерять хвост, чем
+            // подсунуть consumer'у повреждённый пакет.
+            if parser.parse_internal(&[], &mut tail).is_ok() {
+                frames.append(&mut tail);
+            }
+        }
+
         // Передача готовых пакетов в RingBuffer.
         if !frames.is_empty() {
-            let (buffer_lock, buffer_cvar) = &*buffer_state;
+            let (buffer_lock, buffer_cvar) = buffer_state;
 
-            let mut buffer = match buffer_lock.lock() {
-                Ok(g) => g,
-                Err(_) => break 'reader,
-            };
-
+            // ВАЖНО: объявлен до guard'а, чтобы уведомление происходило
+            // после снятия блокировки. Иначе consumer проснётся и сразу
+            // упрётся в занятый нами мьютекс.
             let mut notifier = NotifyOnDrop {
                 cvar: buffer_cvar,
-                should_notify: false,
+                pending: false,
             };
+
+            let Ok(mut buffer) = buffer_lock.lock() else { return };
 
             for (kind, packet) in frames.drain(..) {
                 // Пропускаем служебные пакеты (Head, Tags, OggPage).
+                // Это не аудиоданные, и они не должны доходить
+                // до кодера или отправителя.
                 if !kind.is_audio_frame() {
                     continue;
                 }
 
-                // Ждём свободное место в буфере, если он заполнен.
-                // Блокирующее ожидание на Condvar — никакого спина,
-                // поток разбудится сигналом от consumer'а.
-                while buffer.is_full() {
-                    if should_stop(&active, &destroyed) {
-                        break 'reader;
+                // Ждём свободное место. Проверка остановки стоит в начале
+                // каждой итерации, поэтому покрывает и случай «до ожидания»,
+                // и случай «после пробуждения».
+                loop {
+                    if should_stop(active, destroyed) {
+                        return;
                     }
+
+                    if !buffer.is_full() {
+                        break;
+                    }
+
+                    // Прежде чем уснуть на полном буфере, обязательно будим
+                    // consumer'а: он мог спать на этом же condvar в ожидании
+                    // данных и не знать о пакетах, уже положенных в этой
+                    // пачке. Иначе — взаимная блокировка (reader ждёт места,
+                    // consumer ждёт данных).
+                    notifier.flush();
 
                     buffer = match buffer_cvar.wait(buffer) {
                         Ok(b) => b,
-                        Err(_) => break 'reader,
+                        Err(_) => return,
                     };
                 }
 
-                if should_stop(&active, &destroyed) {
-                    break 'reader;
+                // Буфер отверг пакет — фатально. Флаг `active` сбросит
+                // ReaderCleanup уже после завершения процесса.
+                // (`RingBuffer.push` возвращает Err только если буфер полон,
+                // но мы только что проверили `!is_full()` — гонки нет,
+                // потому что producer здесь ровно один.)
+                if buffer.push(packet).is_err() {
+                    return;
                 }
 
-                match buffer.push(packet) {
-                    Ok(()) => {
-                        // Уведомляем consumer'а один раз после всей пачки —
-                        // сделает Drop, даже если ниже случится break.
-                        notifier.should_notify = true;
-                    }
-                    Err(_packet) => {
-                        active.store(false, Ordering::Release);
-                        break 'reader;
-                    }
-                }
+                notifier.pending = true;
             }
 
-            drop(notifier);
+            // Здесь: сначала освобождается guard (снятие блокировки), затем
+            // notifier (notify_one). Consumer видит все пакеты пачки одним
+            // пробуждением — это и даёт «пачку» на выходе, если она большая.
+            // При `AUDIO_READ_CHUNK = 8 КиБ` пачка маленькая, и старт звучит
+            // плавно.
         }
 
-        // EOF: обязательный flush последнего не собранного пакета.
+        // EOF обработан (включая хвост) — выходим из цикла чтения.
         //
-        // Без этого шага последний Opus-фрейм трека теряется ВСЕГДА —
-        // это систематическая, а не эпизодическая потеря хвоста.
-        if eof {
-            // На EOF парсер мог оставить незавершённые данные во внутреннем буфере.
-            // Если они есть — пробуем «до-разобрать» их, передав пустой входной срез,
-            // чтобы получить остаток уже готовых пакетов (tail).
-            if parser.pending_len() != 0  {
-                let mut tail = Vec::new();
-
-                // Всё, что может, из накопленного. Проверяем, что вызов успешен и
-                // что реально что-то получили.
-                if parser.parse_internal(&[], &mut tail).is_ok() && !tail.is_empty() {
-                    let (buffer_lock, buffer_cvar) = &*buffer_state;
-
-                    // Если мьютекс отравлен — просто ничего не делаем и выходим из eof-ветки.
-                    if let Ok(mut buffer) = buffer_lock.lock() {
-                        // Флаг «кто-то положен в буфер» — чтобы разбудить потребителя
-                        // ровно один раз в конце, а не дёргать notify на каждый пакет.
-                        let mut notified = false;
-
-                        // Метка tail нужна, чтобы из вложенного loop (ожидания места)
-                        // можно было выйти сразу из всего цикла по tail при остановке.
-                        'tail: for (kind, packet) in tail {
-                            // Нас интересуют только аудио-фреймы; прочие типы пропускаем.
-                            if !kind.is_audio_frame() {
-                                continue;
-                            }
-
-                            // Ждём освобождения места в буфере. На EOF тоже ждём —
-                            // иначе потеряем последние сэмплы. Но ждём с проверкой
-                            // флагов остановки, чтобы не зависнуть навсегда, если
-                            // потребитель больше не читает или поток останавливают.
-                            loop {
-                                // Если поток просят остановить/уничтожить — выходим
-                                // из цикла целиком, не тратя время на оставшиеся пакеты.
-                                if should_stop(&active, &destroyed) {
-                                    break 'tail;
-                                }
-
-                                // Есть место — можно класть пакет.
-                                if !buffer.is_full() {
-                                    break;
-                                }
-
-                                // Буфер полон — засыпаем на condvar до сигнала от
-                                // потребителя (pop/notify). Если мьютекс отравлен —
-                                // выходим, продолжать бессмысленно.
-                                buffer = match buffer_cvar.wait(buffer) {
-                                    Ok(guard) => guard,
-                                    Err(_) => break 'tail,
-                                };
-                            }
-
-                            // Перепроверяем остановку после пробуждения: пока мы спали
-                            // на condvar, флаги могли измениться.
-                            if should_stop(&active, &destroyed) {
-                                break;
-                            }
-
-                            // Пытаемся положить пакет. Если push не удался (например,
-                            // гонка с закрытием), просто пропускаем его.
-                            if buffer.push(packet).is_ok() {
-                                notified = true;
-                            }
-                        }
-
-                        // Будим потребителя, только если реально что-то положили —
-                        // иначе получится лишний спурьёзный wakeup.
-                        if notified {
-                            buffer_cvar.notify_one();
-                        }
-                    }
-                }
-            }
-
-            // EOF обработан — выходим из основного цикла чтения.
-            break;
-        }
-
-        // Защита от переполнения внутреннего буфера парсера — проверяется
-        // ПОСЛЕ обработки уже готовых frames, чтобы не терять валидные
+        // Защита от переполнения внутреннего буфера парсера проверяется
+        // после обработки уже готовых frames, чтобы не терять валидные
         // пакеты из-за последующего превышения лимита.
-        if parser.pending_len() > MAX_PARSER_PENDING {
-            break;
+        if eof || parser.pending_len() > MAX_PARSER_PENDING {
+            return;
         }
     }
-
-    // Закрываем stdout ДО reap'а: ffmpeg, пишущий в полный pipe, получит
-    // EPIPE и не будет зависать, даже если kill почему-то не сработал.
-    drop(reader);
-
-    // Естественное завершение (EOF, ошибка парсинга, переполнение) —
-    // без этого ffmpeg остаётся зомби до явного destroy().
-    reap_child(&child);
-
-    // Поток завершается — сбрасываем флаг активности, чтобы внешний код
-    // знал, что reader больше не работает. Это ПОСЛЕДНЕЕ действие потока.
-    active.store(false, Ordering::Release);
 }

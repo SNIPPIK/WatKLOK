@@ -100,7 +100,7 @@ impl PrecisionTimer {
             let remaining = deadline.duration_since(now);
 
             // Глубокий сон (OS Sleep).
-            if remaining > yield_threshold {
+            if remaining >= yield_threshold {
                 let timeout = remaining - yield_threshold;
                 Self::wait_with_timeout(&wake_state.0, &wake_state.1, timeout);
 
@@ -125,7 +125,7 @@ impl PrecisionTimer {
 
             // Активный спин (Spin-lock).
             let spin_start = Instant::now();
-            while Instant::now() < deadline {
+            while Instant::now() <= deadline {
                 if !running.load(Ordering::Acquire) {
                     spin_time += spin_start.elapsed();
                     return WaitOutcome {

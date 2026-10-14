@@ -143,6 +143,11 @@ impl SocketInner {
             // Отправляем накопленные пакеты (внутри также сбрасывается таймер keepalive).
             self.tick(now, budget);
         } else {
+            // Пакетов нет — timeline всё равно должна идти, даже если молчим
+            if self.rtp.is_initialized() {
+                self.rtp.advance_timestamp();
+            }
+
             // Если пакетов нет, проверяем время последней отправки.
             let last_ms = self.last_send_ms.load(Ordering::Relaxed);
 
@@ -186,28 +191,44 @@ impl SocketInner {
         // Поэтому scheduler не заставляет UDP отправлять несуществующие
         // или ещё не готовые данные.
         for _ in 0..budget {
-            // Резервируем пакет ДО pop().
+            // Помечаем пакет как "в полёте" ДО pop().
             //
             // Это важно: между удалением пакета из RingBuffer
-            // и socket.send() JS всё ещё должен видеть пакет как pending.
+            // и socket.send() снаружи (например, из JS) пакет
+            // всё ещё должен считаться pending — иначе метрики
+            // и логика backpressure разъедутся.
             self.in_flight.fetch_add(1, Ordering::Relaxed);
 
             let Some(frame) = self.buffer.pop() else {
-                // Пакета реально не оказалось.
+                // Очередь пуста — снимаем счётчик и выходим из цикла.
+                // Relaxed/Release тут асимметричны: добавление было
+                // Relaxed, снятие — Release, чтобы публикация "пакет
+                // обработан" была видна другим потокам.
                 self.in_flight.fetch_sub(1, Ordering::Release);
                 break;
             };
 
+            // bypass — это пакет, который не надо гонять через RTP
+            // (например, готовый discovery или уже зашифрованный).
+            // Определяем по длине: если это "сырой" пакет, шифровать
+            // его повторно нельзя.
             let bypass = is_raw_bypass(frame.len());
 
             if !bypass && !self.rtp.is_initialized() {
-                // RTP ещё не готов — возвращаем пакет обратно.
+                // RTP ещё не готов — возвращаем пакет обратно в начало
+                // очереди, чтобы не потерять. push_up сам решит, влезет
+                // или нет (в норме — влезет, мы его только что забрали).
                 let _ = self.buffer.push_up(frame);
 
                 self.in_flight.fetch_sub(1, Ordering::Release);
                 return;
             }
 
+            // Готовим пакет к отправке:
+            // - bypass идёт как есть;
+            // - обычный Opus-фрейм оборачивается в RTP (заголовок +
+            //   шифрование). На ошибке шифрования пакет не отправляем,
+            //   увеличиваем счётчики дропа и сбоев, выходим.
             let mut packet = if bypass {
                 frame
             } else {
@@ -230,35 +251,45 @@ impl SocketInner {
                 }
             };
 
+            // Отправка в сокет.
             match self.socket.send(&packet) {
                 Ok(_) => {
+                    // shrink_to_fit — возвращаем capacity буфера
+                    // к реальной длине пакета. Иначе после крупных
+                    // пакетов Vec будет тащить за собой лишнюю память.
                     packet.shrink_to_fit();
 
-                    self.consecutive_failures
-                        .store(0, Ordering::Relaxed);
+                    // Успешная отправка = цепочка сбоев прервана.
+                    // store(0) вместо fetch_add — нам не нужно
+                    // инкрементальное значение, только сброс.
+                    self.consecutive_failures.store(0, Ordering::Relaxed);
 
-                    self.last_send_ms
-                        .store(now, Ordering::Relaxed);
+                    // Фиксируем момент последней удачной отправки —
+                    // по нему потом считается, сколько прошло с
+                    // последнего "живого" пакета.
+                    self.last_send_ms.store(now, Ordering::Relaxed);
                 }
 
                 Err(_e) => {
                     packet.shrink_to_fit();
-
-                    self.send_drops
-                        .fetch_add(1, Ordering::Relaxed);
-
-                    self.consecutive_failures
-                        .fetch_add(1, Ordering::Relaxed);
+                    self.send_drops.fetch_add(1, Ordering::Relaxed);
+                    self.consecutive_failures.fetch_add(1, Ordering::Relaxed);
 
                     #[cfg(debug_assertions)]
                     println!("UDP send error: {}", _e);
 
+                    // На ошибке — сразу выходим из цикла.
+                    // Нет смысла долбить сокет в том же тике, если он
+                    // только что отвалился: следующий заход scheduler'а
+                    // попробует снова.
                     self.in_flight.fetch_sub(1, Ordering::Release);
                     return;
                 }
             }
 
-            // Пакет действительно закончил socket.send().
+            // Пакет реально прошёл socket.send() — снимаем счётчик.
+            // Release — чтобы внешние наблюдатели (метрики, JS)
+            // увидели "пакет обработан" после всех записей выше.
             self.in_flight.fetch_sub(1, Ordering::Release);
         }
     }

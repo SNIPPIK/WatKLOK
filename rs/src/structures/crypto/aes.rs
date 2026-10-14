@@ -153,13 +153,22 @@ pub struct VoiceRTPSocket {
     /// Состояние шифра; `None`, пока не вызван `initialize`.
     state: RwLock<Option<EncryptorState>>,
 
-    /// Порядковый номер RTP-пакета (16 бит, автоматически оборачивается).
+    /// Порядковый номер RTP-пакета (16 бит, оборачивается).
+    ///
+    /// Продвигается только при отправке реального RTP-пакета —
+    /// sequence нумерует именно отправленные пакеты.
+    /// При молчании и keepalive не двигается.
     sequence: AtomicU16,
 
-    /// Временная метка RTP (32 бит, увеличивается с каждым пакетом).
+    /// Временная метка RTP (32 бита).
+    ///
+    /// Продвигается на `TIMESTAMP_INC` (960 сэмплов = 20 мс) за каждый
+    /// Opus-фрейм. При молчании продолжает расти (см. `advance_timestamp`),
+    /// чтобы timeline на стороне получателя не «застыла» — это требование
+    /// заимствовано из songbird.
     timestamp: AtomicU32,
 
-    /// Счётчик nonce (32 бит, инкрементируется после каждого использования).
+    /// Счётчик nonce (32 бита, инкрементируется после каждого использования).
     counter: AtomicU32
 }
 
@@ -189,6 +198,38 @@ impl VoiceRTPSocket {
             // Случайное начальное значение nonce counter (32 бита).
             counter: AtomicU32::new(rng.random())
         }
+    }
+
+    /// Продвигает sequence (+1) и timestamp (+`TIMESTAMP_INC`) на один
+    /// Opus-фрейм.
+    ///
+    /// Вызывается ровно один раз на каждый **реально отправленный** RTP-пакет.
+    /// В steady state (один пакет за тик) это ровно `+1 / +960` на 20 мс —
+    /// идеальное соответствие реальному времени.
+    ///
+    /// При burst'е (несколько пакетов за один тик) каждый пакет получает
+    /// свою позицию в timeline: seq N, N+1, N+2 и ts T, T+960, T+1920.
+    /// Это семантически корректно — это три разных 20-мс Opus-фрейма,
+    /// которые будут проиграны последовательно, даже если пришли одновременно.
+    #[inline]
+    fn advance_counters(&self) {
+        self.sequence.fetch_add(1, Ordering::Relaxed);
+        self.timestamp.fetch_add(TIMESTAMP_INC, Ordering::Relaxed);
+    }
+
+    /// Продвигает только timestamp на `TIMESTAMP_INC`, **не трогая sequence**.
+    ///
+    /// Используется, когда за тик не отправлено ни одного RTP-пакета
+    /// (молчание, пауза трека, только keepalive). Sequence не двигается —
+    /// он нумерует отправленные пакеты, а их не было.
+    ///
+    /// Зачем двигать timestamp в тишине: получатель использует timestamp
+    /// для reorder и расчёта джиттера относительно своих часов. Если
+    /// timestamp «застынет», при возобновлении потока получится скачок
+    /// timeline, и Discord уйдёт в accelerated playback или в NACK-шторм.
+    #[inline]
+    pub(crate) fn advance_timestamp(&self) {
+        self.timestamp.fetch_add(TIMESTAMP_INC, Ordering::Relaxed);
     }
 
     /// Инициализирует RTP-сокет.
@@ -322,7 +363,6 @@ impl VoiceRTPSocket {
     /// # Ошибки
     /// * `NotInitialized` — сокет не инициализирован.
     /// * `EncryptionFailed` — ошибка AES-GCM.
-    #[inline]
     fn create_packet_raw(&self, frame: &[u8]) -> Result<Vec<u8>, CryptoError> {
         // Держим read-lock на всё время шифрования.
         let guard = self.state.read().expect("RTP state lock poisoned");
@@ -332,7 +372,7 @@ impl VoiceRTPSocket {
             .as_ref()
             .ok_or(CryptoError::NotInitialized)?;
 
-        // Формируем RTP-заголовок (обновляет sequence и timestamp).
+        // ✅ Заголовок собирается read-only, состояние не мутируется.
         let header = self.build_header(state.ssrc);
 
         // Генерируем nonce (инкрементирует counter).
@@ -369,33 +409,22 @@ impl VoiceRTPSocket {
 
         // GCM authentication tag.
         packet.extend_from_slice(tag.as_slice());
+        packet.extend_from_slice(&nonce_bytes[..NONCE_COUNTER_SIZE]);
 
-        // Discord voice packet mode использует 4-байтовый
-        // nonce suffix в конце пакета.
-        packet.extend_from_slice(
-            &nonce_bytes[..NONCE_COUNTER_SIZE],
-        );
-
+        // Пакет успешно собран — продвигаем RTP-счётчики.
+        self.advance_counters();
         Ok(packet)
     }
 
-    /// Формирует 12-байтовый RTP-заголовок.
+    /// Собирает 12-байтовый RTP-заголовок из ТЕКУЩИХ значений sequence/timestamp.
     ///
-    /// Формат:
+    /// Не мутирует состояние. Продвижение счётчиков выполняют
+    /// [`advance_counters`] (обычный пакет) и [`advance_timestamp`]
+    /// (холостой тик) — вызывающие обязаны дёрнуть один из них.
     ///
-    /// ```text
-    /// [0]      Version = 2
-    /// [1]      Payload Type = 120
-    /// [2..4]  Sequence
-    /// [4..8]  Timestamp
-    /// [8..12] SSRC
-    /// ```
-    ///
-    /// # Аргументы
-    /// * `ssrc` — идентификатор источника синхронизации.
-    ///
-    /// # Возвращаемое значение
-    /// Массив из 12 байт — готовый RTP-заголовок.
+    /// Модель заимствована из songbird (`driver/tasks/mixer`): заголовок —
+    /// чистая функция от текущего состояния, а продвижение — явная операция,
+    /// которую легко увидеть и легко не забыть.
     #[inline]
     fn build_header(&self, ssrc: u32) -> [u8; RTP_HEADER_SIZE] {
         // Инициализируем заголовок нулями.
@@ -406,23 +435,18 @@ impl VoiceRTPSocket {
         // Байт 1: Payload Type = 120 (Opus).
         header[1] = RTP_PAYLOAD_TYPE_OPUS;
 
-        // Атомарно получаем sequence и увеличиваем на 1.
-        let sequence = self.sequence.fetch_add(1, Ordering::Relaxed);
-
-        // Атомарно получаем timestamp и увеличиваем на TIMESTAMP_INC.
-        let timestamp = self.timestamp.fetch_add(TIMESTAMP_INC, Ordering::Relaxed);
+        // Читаем текущие значения. Никаких fetch_add — продвижение снаружи.
+        let sequence = self.sequence.load(Ordering::Relaxed);
+        let timestamp = self.timestamp.load(Ordering::Relaxed);
 
         // Записываем sequence в big-endian (2 байта).
-        header[RTP_SEQUENCE_OFFSET..RTP_TIMESTAMP_OFFSET]
-            .copy_from_slice(&sequence.to_be_bytes());
+        header[RTP_SEQUENCE_OFFSET..RTP_TIMESTAMP_OFFSET].copy_from_slice(&sequence.to_be_bytes());
 
         // Записываем timestamp в big-endian (4 байта).
-        header[RTP_TIMESTAMP_OFFSET..RTP_SSRC_OFFSET]
-            .copy_from_slice(&timestamp.to_be_bytes());
+        header[RTP_TIMESTAMP_OFFSET..RTP_SSRC_OFFSET].copy_from_slice(&timestamp.to_be_bytes());
 
         // Записываем SSRC (4 байта).
-        header[RTP_SSRC_OFFSET..RTP_HEADER_SIZE]
-            .copy_from_slice(&ssrc.to_be_bytes());
+        header[RTP_SSRC_OFFSET..RTP_HEADER_SIZE].copy_from_slice(&ssrc.to_be_bytes());
 
         header
     }

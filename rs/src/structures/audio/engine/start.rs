@@ -1,5 +1,4 @@
-//! Запуск FFmpeg и фонового потока чтения.
-
+use crate::structures::audio::engine::constants::{FFMPEG_TIME_CODER, OUTPUT_SUFFIX_HEAD, OUTPUT_SUFFIX_TAIL};
 use super::{
     constants::{FFMPEG_PREFIX, RECONNECT_FLAGS},
     reader::reader_loop,
@@ -8,13 +7,12 @@ use super::{
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use std::{
-    process::{Command, Stdio},
-    sync::{atomic::Ordering, Arc},
     thread,
+    process::{ Command, Stdio },
+    sync::{
+        atomic::Ordering, Arc
+    }
 };
-use std::sync::OnceLock;
-use crate::structures::audio::engine::constants::{OUTPUT_SUFFIX_HEAD, OUTPUT_SUFFIX_TAIL};
-use crate::structures::timers::scheduler::constants::TICK_INTERVAL_MS;
 
 #[napi]
 impl AudioEngine {
@@ -46,12 +44,15 @@ impl AudioEngine {
         }
 
         // Атомарно занимаем флаг активности — защита от повторного запуска.
+        // swap возвращает предыдущее значение: если оно уже было true,
+        // движок уже работает, и мы не начинаем второй запуск.
         if self.reading_active.swap(true, Ordering::AcqRel) {
             return Err(Error::from_reason("Engine already running"));
         }
 
-        // Ищем позицию `-i http...` — только туда вставляем reconnect-флаги.
-        // Filter отбрасывает случаи, где после `-i` идёт локальный путь или флаг.
+        // Ищем позицию `-i http...` — только туда вставляем флаги
+        // переподключения. Проверка отбрасывает случаи, где после `-i` идёт
+        // локальный путь или флаг.
         let reconnect_pos = args
             .iter()
             .position(|v| v == "-i")
@@ -68,20 +69,20 @@ impl AudioEngine {
             Some(pos) => {
                 // Аргументы до `-i`.
                 cmd.args(&args[..pos]);
-                // Reconnect-флаги ровно перед `-i`.
+                // Флаги переподключения ровно перед `-i`.
                 cmd.args(RECONNECT_FLAGS);
                 // Всё начиная с `-i`.
                 cmd.args(&args[pos..]);
             }
             None => {
-                // Обычный случай: локальный файл или источник без reconnect.
+                // Обычный случай: локальный файл или источник без переподключения.
                 cmd.args(&args);
             }
         }
 
         // Выходные флаги: Opus/Ogg/pipe:1 — всегда в самом конце команды.
         cmd.args(OUTPUT_SUFFIX_HEAD)
-            .arg(opus_frame_size_str())
+            .args(FFMPEG_TIME_CODER)
             .args(OUTPUT_SUFFIX_TAIL);
 
         // Запускаем ffmpeg с piped stdout и заглушённым stderr.
@@ -118,8 +119,8 @@ impl AudioEngine {
             }
 
             // Страховка от утечки при повторном start(): в норме reader уже
-            // сам reap-нул прошлый процесс, но если нет — присваивание ниже
-            // молча дропнуло бы `Child` без kill/wait (зомби / живой ffmpeg).
+            // сам снял прошлый процесс, но если нет — присваивание ниже
+            // молча освободило бы `Child` без kill/wait (зомби или живой ffmpeg).
             if let Some(mut old) = guard.take() {
                 let _ = old.kill();
                 let _ = old.wait();
@@ -135,8 +136,8 @@ impl AudioEngine {
         let buffer_state = Arc::clone(&self.buffer);
         let child_state = Arc::clone(&self.child);
 
-        // Создаём поток чтения: он читает stdout, парсит Ogg/Opus и
-        // складывает готовые пакеты в буфер.
+        // Создаём поток чтения: он читает stdout, разбирает Ogg/Opus на пакеты
+        // и складывает готовые в буфер.
         let handle = thread::Builder::new()
             .name("audio-reader".into())
             .spawn(move || reader_loop(stdout, active, destroyed, pause_state, buffer_state, child_state))
@@ -165,7 +166,8 @@ impl AudioEngine {
                 drop(guard);
 
                 // Будим возможные ожидания, чтобы поток завершился.
-                // Через мьютексы — иначе notify может потеряться (см. wake_reader).
+                // Через мьютексы — иначе уведомление может потеряться
+                // (см. wake_reader).
                 self.wake_reader();
 
                 // Убиваем ffmpeg.
@@ -176,7 +178,8 @@ impl AudioEngine {
                     }
                 }
 
-                // Дожидаемся завершения потока, чтобы не оставить висящий join-handle.
+                // Дожидаемся завершения потока, чтобы не оставить висящий
+                // join-handle.
                 let _ = handle.join();
 
                 return Err(Error::from_reason("AudioEngine destroyed during start"));
@@ -194,15 +197,4 @@ impl AudioEngine {
 
         Ok(())
     }
-}
-
-/// Возвращает строковое представление размера Opus-фрейма (в мс),
-/// равного интервалу тика планировщика.
-///
-/// Значение вычисляется один раз и кешируется через `OnceLock`,
-/// чтобы избежать повторных аллокаций при каждом `start`.
-fn opus_frame_size_str() -> &'static str {
-    // Кеш на весь процесс: преобразование числа в строку делается ровно один раз.
-    static VALUE: OnceLock<String> = OnceLock::new();
-    VALUE.get_or_init(|| TICK_INTERVAL_MS.to_string())
 }

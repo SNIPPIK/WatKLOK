@@ -254,18 +254,16 @@ fn cycle_thread(shared: Arc<WorkerShared>) {
     let mut next_deadline = Instant::now();
 
     while shared.running.load(Ordering::Acquire) {
-        // Фиксируем время начала итерации (для метрики process).
-        let tick_start = Instant::now();
-
-        // Ожидание следующего тика (сон → yield → спин).
         let outcome = PrecisionTimer::wait_until(
             next_deadline,
             &shared.running,
             &shared.wake_state,
             &shared.telemetry,
         );
-        // Если воркер остановили во время ожидания — выходим.
         if !outcome.reached_deadline { break; }
+
+        // Засекаем время ТОЛЬКО обработки, без времени ожидания дедлайна.
+        let tick_start = Instant::now();
 
         // Время сразу после пробуждения — используется для расчёта
         // джиттера (насколько опоздали относительно дедлайна).

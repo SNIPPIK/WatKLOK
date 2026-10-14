@@ -26,6 +26,35 @@ TODO BUGS FIXED | Test
 //
 //
 //===================================================================
+TODO Fixed | 14.10.26
+ - Crypto
+  - Изменено: build_header больше не мутирует состояние — только читает sequence/timestamp. Продвижение счётчиков вынесено в отдельные методы.
+  - Добавлено: advance_counters() — продвигает sequence +1 и timestamp + TIMESTAMP_INC (960). Вызывается на каждый успешно зашифрованный пакет.
+  - Добавлено: advance_timestamp() — продвигает только timestamp на +960. Используется в холостых тиках, чтобы timeline не «застывала» у получателя.
+  - Изменено: create_packet_raw вызывает advance_counters() после успешного шифрования.
+  - reinitializing сбрасывается после успешного recover_from_invalid_transition; execute_transition меняет self.version, вызывает reinit_internal для нативной davey::DaveSession.
+ - Network
+  - Добавлено: клампинг interval_ms в MIN_HEARTBEAT_MS..=MAX_HEARTBEAT_MS (1 с … 5 мин). Защита от паники tokio::time::interval при heartbeat_interval: 0 из HELLO-пакета (MITM / серверный баг).
+  - Добавлено: ticker.set_missed_tick_behavior(MissedTickBehavior::Skip). Без этого после GC-паузы interval с дефолтным Burst прокручивал пропущенные тики мгновенно, и второй heartbeat ловил hb_pending == true → ложный SESSION_TIMEOUT.
+  - Удалено: локальный fn now_ms() — используется общий crate::utils::duration::now_ms
+  - Добавлено: MAX_PENDING_MESSAGES = 256 для PacketSink::Buffering. При переполнении сбрасывается половина самых старых. Защита от утечки памяти, если connect() не завершится, а JS продолжит пушить packet
+  - Изменено: events: Mutex<HashMap<String, Vec<Arc<EventFn>>>>. ThreadsafeFunction не реализует Clone, поэтому колбэки обёрнуты в Arc.
+  - Изменено: emit теперь делает снапшот колбэков под локом, отпускает лок и вызывает cb.call(...) без удержания events.lock(). Устранён contention на горячих событиях и потенциальный дедлок, если JS-обработчик попытается зарегистрировать новый колбэк во время эмита.
+  - Добавлено: тест buffering_is_bounded.
+  - Изменено: в on() push в events теперь оборачивает колбэк в Arc::new(js_fn).
+  - Добавлено: явная обработка Message::Ping — отправляет Pong через enqueue_or_send, гарантированно пробуждая write_task для сброса внутреннего additional_send буфера. Без этого при тихом канале Pong не уходил и Discord рвал соединение через ~30 с.
+  - Изменено: graceful close write_task вместо мгновенного abort(). После mark_disconnected() канал закрывается, rx.recv() возвращает None, задача сама доходит до sink.close().await. Сверху — таймаут WRITE_TASK_CLOSE_TIMEOUT = 500 мс, после которого abort() как fallback.
+  - push_packet/push_packets проверяют destroyed; после destroy() пакеты более не копятся в буфере мёртвого сокета.
+  - start_listening сбрасывает listener_active = false при ошибке build_threadsafe_function
+ - Audio
+  - [0xF8, 0xFF, 0xFE] (реальный Opus silence) классифицируется как Silent, а [0xFC, 0xFF, 0xFE] (PLC) — как PLC
+  - handle_page_core для не-primary потока packet_carry не очищалась после эмита
+  - Ранее: push_many использует take(free) на входном итераторе: пустые пакеты «съедают» квоту и блокируют попадание валидных.
+ - Balancer
+  - Ранее: Реентерабельный дедлок: AutoBalancer::remove_session дропает Arc<SocketBuffered> → Drop::cleanup → remove_global_session → повторный лок GLOBAL_BALANCER.
+  - Ранее: process_ns считается от tick_start, взятого до wait_until. В метрику avg_process_ns попадает всё время ожидания. Перенести Instant::now() после wait_until.
+
+
 TODO Fixed | 3.10.26
  - Исправление EOF чтения FFmpeg, теперь умеет ждать FFmpeg
  - Исправление нахождение треков, добавлено доп условие если название полностью совпадает и время не более +-5 сек

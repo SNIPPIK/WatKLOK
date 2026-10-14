@@ -136,6 +136,28 @@ impl AutoBalancer {
         }
     }
 
+    fn remove_session_inner(
+        &mut self,
+        id: u32,
+        dropped: &mut Vec<Arc<SocketBuffered>>,
+    ) {
+        let Some(worker_index) = self.session_map.remove(&id) else {
+            return;
+        };
+        let Some(worker) = self.workers.get_mut(worker_index) else {
+            return;
+        };
+
+        worker.manager.remove_session(id);
+
+        if let Some(arc) = worker.sessions.remove(&id) {
+            dropped.push(arc); // ← не дропаем здесь
+        }
+
+        self.cleanup_empty_workers();
+        self.shrink_session_map();
+    }
+
     /// Добавляет или заменяет сессию.
     ///
     /// Если `id` уже существует, старая сессия сначала удаляется.
@@ -146,20 +168,14 @@ impl AutoBalancer {
         &mut self,
         id: u32,
         session: Arc<SocketBuffered>,
-    ) {
-        // ------------------------------------------------------------
-        // Защита от duplicate session ID.
-        //
-        // Без этого старая запись оставалась бы в старом worker,
-        // а session_map уже указывал бы на новый.
-        // ------------------------------------------------------------
+    ) -> Vec<Arc<SocketBuffered>> {
+        let mut dropped = Vec::new();
+
+        // Duplicate ID: старую сессию удаляем, но её Arc откладываем.
         if self.session_map.contains_key(&id) {
-            self.remove_session(id);
+            self.remove_session_inner(id, &mut dropped);
         }
 
-        // ------------------------------------------------------------
-        // Ищем действительно наименее загруженный worker.
-        // ------------------------------------------------------------
         let worker_index = self
             .workers
             .iter()
@@ -170,47 +186,20 @@ impl AutoBalancer {
             .unwrap_or_else(|| self.create_worker());
 
         let worker = &mut self.workers[worker_index];
-
-        // Держим собственную Arc-ссылку в worker.
-        worker
-            .sessions
-            .insert(id, session.clone());
-
-        // Scheduler получает вторую Arc-ссылку.
+        worker.sessions.insert(id, session.clone());
         worker.manager.add_session(id, session);
+        self.session_map.insert(id, worker_index);
 
-        // Регистрируем актуальное расположение.
-        self.session_map.insert(
-            id,
-            worker_index,
-        );
+        dropped
     }
 
     /// Удаляет сессию.
     ///
     /// После удаления очищает пустые worker'ы.
-    pub fn remove_session(&mut self, id: u32) {
-        let Some(worker_index) = self.session_map.remove(&id) else {
-            return;
-        };
-
-        // Если структура уже не синхронизирована, не паникуем.
-        let Some(worker) = self.workers.get_mut(worker_index) else {
-            return;
-        };
-
-        // Удаляем сессию из scheduler.
-        worker.manager.remove_session(id);
-
-        // И из локальной карты worker.
-        worker.sessions.remove(&id);
-
-        // Удаляем ставшие ненужными worker'ы.
-        self.cleanup_empty_workers();
-
-        // HashMap не возвращает память после удаления элементов: после
-        // пика в тысячи сессий `session_map` держал бы ёмкость вечно.
-        self.shrink_session_map();
+    pub fn remove_session(&mut self, id: u32) -> Vec<Arc<SocketBuffered>> {
+        let mut dropped = Vec::new();
+        self.remove_session_inner(id, &mut dropped);
+        dropped
     }
 
     /// Возвращает память `session_map`, если она заметно избыточна.
@@ -249,9 +238,11 @@ pub fn add_global_session(
 /// Удаляет сессию из глобального балансировщика.
 #[inline]
 pub fn remove_global_session(id: u32) {
-    let mut balancer = GLOBAL_BALANCER
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-
-    balancer.remove_session(id);
+    let dropped = {
+        let mut balancer = GLOBAL_BALANCER
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        balancer.remove_session(id)
+    };
+    drop(dropped);
 }

@@ -78,10 +78,10 @@ impl PacketType {
             [0xFF] => PacketType::End,
 
             // Discord PLC.
-            [0xFC, 0xFF, 0xFE] => PacketType::Silent,
+            [0xF8, 0xFF, 0xFE] => PacketType::Silent,
 
             // Discord silence.
-            [0xF8, 0xFF, 0xFE] => PacketType::PLC,
+            [0xFC, 0xFF, 0xFE] => PacketType::PLC,
 
             // Ogg page.
             _ if packet.starts_with(b"OggS") => PacketType::OggPage,

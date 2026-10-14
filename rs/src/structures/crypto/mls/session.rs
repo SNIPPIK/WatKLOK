@@ -269,7 +269,7 @@ impl MlsSession {
     // Reinit
     // ---------------------------------------------------------------------
 
-    /// Повторна инициализирует нативную сессию с текущей версией протокола.
+    /// Повторно инициализирует нативную сессию с текущей версией протокола.
     ///
     /// # Возвращаемое значение
     /// Новый key-package, если он был создан.
@@ -401,7 +401,7 @@ impl MlsSession {
         // Очищаем ожидающие переходы.
         self.clear_transitions();
 
-        // Обнуляем ссылки для помощи GC.
+        // Обнуляем ссылки для помощи сборщику мусора.
         self.inner = None;
         self.pending_external_sender = None;
 
@@ -417,7 +417,7 @@ impl MlsSession {
 
     /// Включает или выключает passthrough-режим.
     ///
-    /// В passthrough медиа-пакеты передаются без шифрования/расшифровки.
+    /// В passthrough медиа-пакеты передаются без шифрования и расшифровки.
     ///
     /// # Аргументы
     /// * `enabled` — `true` для включения.
@@ -511,11 +511,11 @@ impl MlsSession {
             };
 
         let result = inner.process_proposals(
-                operation,
-                proposals.as_ref(),
-                recognized_ids.as_deref(),
+            operation,
+            proposals.as_ref(),
+            recognized_ids.as_deref(),
         )
-        .map_err(Self::map_err)?;
+            .map_err(Self::map_err)?;
 
         Ok(match result {
             // Результат содержит commit (и, возможно, welcome).
@@ -709,7 +709,7 @@ impl MlsSession {
 
             Err(error) => {
                 if !self.reinitializing {
-                    // Первая ошибка — сигнал о необходимости повторно инициализации.
+                    // Первая ошибка — сигнал о необходимости повторной инициализации.
                     self.reinitializing = true;
                     self.clear_transitions();
 
@@ -802,7 +802,7 @@ impl MlsSession {
         // Удаляем устаревшие переходы.
         self.expire_transitions();
 
-        // Защита от reentry.
+        // Защита от повторного входа.
         if self.is_transitioning { return false; }
 
         // Переход должен быть зарегистрирован.
@@ -818,6 +818,11 @@ impl MlsSession {
 
         // Применяем новую версию.
         self.version = version;
+
+        if self.version > 0 {
+            // Новая версия — нативную сессию нужно пересоздать на неё.
+            let _ = self.reinit_internal();
+        }
 
         // Фиксируем понижение до версии 0.
         if old_version != 0 && self.version == 0 {
@@ -873,15 +878,11 @@ impl MlsSession {
 
         let mut output = Vec::with_capacity(packets.len());
         for packet in packets {
-            // Нативный encrypt может паниковать — перехватываем.
+            // Нативный encrypt_opus может паниковать — перехватываем.
             let encrypted = std::panic::catch_unwind(
                 std::panic::AssertUnwindSafe(
                     || {
-                        inner.encrypt(
-                            davey::MediaType::AUDIO,
-                            davey::Codec::OPUS,
-                            packet.as_ref(),
-                        )
+                        inner.encrypt_opus(packet.as_ref())
                     },
                 ),
             );
@@ -1006,5 +1007,499 @@ impl Drop for MlsSession {
         if let Some(inner) = self.inner.as_mut() {
             let _ = inner.reset();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Создаёт сессию с числовыми id-строками, которые заведомо парсятся.
+    /// version = 0 гарантирует, что `reinit_internal` не полезет
+    /// создавать реальный `davey::DaveSession`.
+    fn session_v0() -> MlsSession {
+        MlsSession::new(0, "123".to_string(), "456".to_string())
+    }
+
+    /// Аналог `session_v0`, но с версией 1 — для тестов, которым нужно
+    /// состояние «версия ненулевая», но без реальной нативной сессии.
+    fn session_v1() -> MlsSession {
+        MlsSession::new(1, "123".to_string(), "456".to_string())
+    }
+
+    // ---------------------------------------------------------------------
+    // Constructor / initial state
+    // ---------------------------------------------------------------------
+
+    #[test]
+    // Проверяет, что после `new` все поля находятся в исходном состоянии:
+    // флаги сброшены, нативной сессии нет, буферов нет, версия/ids сохранены.
+    // Проверка и через геттеры, и через прямые поля — чтобы не пропустить
+    // расхождение между ними.
+    fn new_session_initial_state() {
+        let s = session_v1();
+
+        assert!(!s.destroyed());
+        assert!(!s.reinitializing());
+        assert!(!s.is_transitioning());
+        assert!(!s.downgraded);
+        assert_eq!(s.last_transition_id(), None);
+        assert!(!s.ready());
+        assert_eq!(s.status(), None);
+        assert_eq!(s.protocol_version(), 0);
+
+        assert!(s.inner.is_none());
+        assert!(s.pending_external_sender.is_none());
+        assert!(s.pending_transitions.is_empty());
+        assert_eq!(s.version, 1);
+        assert_eq!(s.user_id, "123");
+        assert_eq!(s.channel_id, "456");
+    }
+
+    #[test]
+    // Отдельно проверяет все публичные геттеры в исходном состоянии.
+    // Дублирование с предыдущим тестом намеренное: если кто-то поменяет
+    // геттер, а поля останутся корректными (или наоборот), это будет
+    // видно по падению именно этого теста.
+    fn getters_reflect_initial_state() {
+        let s = session_v1();
+        assert_eq!(s.destroyed(), false);
+        assert_eq!(s.reinitializing(), false);
+        assert_eq!(s.is_transitioning(), false);
+        assert_eq!(s.last_transition_id(), None);
+        assert_eq!(s.ready(), false);
+        assert_eq!(s.status(), None);
+        assert_eq!(s.protocol_version(), 0);
+    }
+
+    // ---------------------------------------------------------------------
+    // Destroy
+    // ---------------------------------------------------------------------
+
+    #[test]
+    // `destroy()` должен не только выставить флаг, но и очистить всё
+    // состояние: ожидающие переходы, отложенный external sender, ссылки
+    // на нативную сессию, last_transition_id, вторичные флаги.
+    fn destroy_sets_destroyed_and_clears_state() {
+        let mut s = session_v1();
+        s.pending_transitions.insert(
+            1,
+            PendingTransition {
+                version: 1,
+                expires_at: Instant::now() + Duration::from_secs(60),
+            },
+        );
+        s.pending_external_sender = Some(vec![1, 2, 3]);
+        s.last_transition_id = Some(9);
+
+        s.destroy();
+
+        assert!(s.destroyed());
+        assert!(s.is_transitioning);
+        assert!(s.pending_transitions.is_empty());
+        assert!(s.inner.is_none());
+        assert!(s.pending_external_sender.is_none());
+        assert_eq!(s.last_transition_id(), None);
+        assert!(!s.reinitializing);
+        assert!(!s.downgraded);
+    }
+
+    #[test]
+    // Повторный `destroy()` не должен ничего ломать: второй вызов видит
+    // `destroyed == true` и сразу выходит.
+    fn destroy_is_idempotent() {
+        let mut s = session_v1();
+        s.destroy();
+        s.destroy();
+        assert!(s.destroyed());
+    }
+
+    #[test]
+    // Уничтоженная сессия не реагирует на `prepare_epoch`: возвращает
+    // None и не трогает поле `version`.
+    fn destroyed_short_circuits_prepare_epoch() {
+        let mut s = session_v1();
+        s.destroy();
+        assert!(s.prepare_epoch(1, 5).unwrap().is_none());
+        // version не должен был измениться.
+        assert_eq!(s.version, 1);
+    }
+
+    #[test]
+    // Уничтоженная сессия не запускает повторную инициализацию.
+    fn destroyed_short_circuits_reinit() {
+        let mut s = session_v1();
+        s.destroy();
+        assert!(s.reinit().unwrap().is_none());
+    }
+
+    #[test]
+    // Уничтоженная сессия не пытается восстанавливаться после
+    // невалидного перехода.
+    fn destroyed_short_circuits_recover() {
+        let mut s = session_v1();
+        s.destroy();
+        assert!(s.recover_from_invalid_transition(1).unwrap().is_none());
+    }
+
+    // ---------------------------------------------------------------------
+    // parse_id
+    // ---------------------------------------------------------------------
+
+    #[test]
+    // Идентификаторы — положительные числа вплоть до `u64::MAX`.
+    // Ноль допустим: это валидное значение для snowflake-подобных id.
+    fn parse_id_accepts_valid_numbers() {
+        assert_eq!(MlsSession::parse_id("123", "user id").unwrap(), 123);
+        assert_eq!(MlsSession::parse_id("0", "user id").unwrap(), 0);
+        assert_eq!(
+            MlsSession::parse_id("18446744073709551615", "user id").unwrap(),
+            u64::MAX,
+        );
+    }
+
+    #[test]
+    // Всё, что не является десятичным числом без знака, отвергается:
+    // буквы, пустая строка, отрицательное значение, дробное.
+    fn parse_id_rejects_invalid_input() {
+        assert!(MlsSession::parse_id("abc", "user id").is_err());
+        assert!(MlsSession::parse_id("", "user id").is_err());
+        assert!(MlsSession::parse_id("-1", "user id").is_err());
+        assert!(MlsSession::parse_id("1.5", "user id").is_err());
+    }
+
+    // ---------------------------------------------------------------------
+    // map_operation
+    // ---------------------------------------------------------------------
+
+    #[test]
+    // Протокол сейчас знает только два кода операций: 0 и 1.
+    // Оба должны отображаться в APPEND.
+    fn map_operation_accepts_0_and_1() {
+        assert!(MlsSession::map_operation(0).is_ok());
+        assert!(MlsSession::map_operation(1).is_ok());
+    }
+
+    #[test]
+    // Всё, что не 0 и не 1, считается неизвестной операцией и
+    // превращается в ошибку — не должно молча проходить дальше.
+    fn map_operation_rejects_unknown() {
+        assert!(MlsSession::map_operation(2).is_err());
+        assert!(MlsSession::map_operation(255).is_err());
+    }
+
+    // ---------------------------------------------------------------------
+    // map_err
+    // ---------------------------------------------------------------------
+
+    #[test]
+    // Проверяет, что `map_err` добавляет префикс `[MlsSession]` к тексту
+    // ошибки, но не теряет сам текст. Префикс нужен для поиска источника
+    // в логах.
+    fn map_err_adds_prefix() {
+        let err = MlsSession::map_err("boom");
+        let msg = format!("{}", err);
+        assert!(
+            msg.contains("[MlsSession]"),
+            "сообщение без префикса: {msg}"
+        );
+        assert!(msg.contains("boom"), "сообщение без текста ошибки: {msg}");
+    }
+
+    // ---------------------------------------------------------------------
+    // expire_transitions / clear_transitions
+    // ---------------------------------------------------------------------
+
+    #[test]
+    // Запись с `expires_at` в прошлом считается устаревшей и удаляется.
+    fn expire_transitions_removes_expired_entries() {
+        let mut s = session_v1();
+        s.pending_transitions.insert(
+            1,
+            PendingTransition {
+                version: 1,
+                expires_at: Instant::now() - Duration::from_secs(10),
+            },
+        );
+
+        s.expire_transitions();
+
+        assert!(s.pending_transitions.is_empty());
+    }
+
+    #[test]
+    // Свежая запись (срок в будущем) должна остаться.
+    fn expire_transitions_keeps_fresh_entries() {
+        let mut s = session_v1();
+        s.pending_transitions.insert(
+            1,
+            PendingTransition {
+                version: 1,
+                expires_at: Instant::now() + Duration::from_secs(60),
+            },
+        );
+
+        s.expire_transitions();
+
+        assert_eq!(s.pending_transitions.len(), 1);
+    }
+
+    #[test]
+    // Смешанный случай: одна запись истекла, другая — нет. Удаляется
+    // только истёкшая, по ключу проверяется, что осталась именно свежая.
+    fn expire_transitions_mixed() {
+        let mut s = session_v1();
+        s.pending_transitions.insert(
+            1,
+            PendingTransition {
+                version: 1,
+                expires_at: Instant::now() - Duration::from_secs(1),
+            },
+        );
+        s.pending_transitions.insert(
+            2,
+            PendingTransition {
+                version: 1,
+                expires_at: Instant::now() + Duration::from_secs(60),
+            },
+        );
+
+        s.expire_transitions();
+
+        assert_eq!(s.pending_transitions.len(), 1);
+        assert!(s.pending_transitions.contains_key(&2));
+    }
+
+    #[test]
+    // `clear_transitions` удаляет всё, что есть в мапе, независимо от сроков.
+    fn clear_transitions_empties_map() {
+        let mut s = session_v1();
+        s.pending_transitions.insert(
+            1,
+            PendingTransition {
+                version: 1,
+                expires_at: Instant::now() + Duration::from_secs(60),
+            },
+        );
+        assert_eq!(s.pending_transitions.len(), 1);
+        s.clear_transitions();
+        assert!(s.pending_transitions.is_empty());
+    }
+
+    // ---------------------------------------------------------------------
+    // prepare_transition / execute_transition
+    // ---------------------------------------------------------------------
+
+    #[test]
+    // Переход с ненулевым id только регистрируется: `is_transitioning`
+    // остаётся false, `last_transition_id` не выставляется, `version`
+    // не меняется. Всё это произойдёт только в `execute_transition`.
+    fn prepare_transition_with_nonzero_id_defers() {
+        let mut s = session_v0();
+        assert!(s.prepare_transition(5, 1));
+        assert_eq!(s.pending_transitions.len(), 1);
+        assert!(!s.is_transitioning);
+        assert_eq!(s.last_transition_id(), None);
+        // version ещё не поменялся — переход отложен.
+        assert_eq!(s.version, 0);
+    }
+
+    #[test]
+    // Переход с id == 0 выполняется сразу внутри `prepare_transition`.
+    // Возвращаемое значение — false, потому что вызывающему не нужно
+    // потом звать `execute_transition`.
+    fn prepare_transition_with_zero_id_executes_immediately() {
+        let mut s = session_v0();
+        // Для id == 0 возвращаемое значение — false.
+        assert!(!s.prepare_transition(0, 0));
+        assert_eq!(s.last_transition_id(), Some(0));
+        assert!(s.pending_transitions.is_empty());
+    }
+
+    #[test]
+    // `execute_transition` без предварительной регистрации ничего не делает:
+    // в мапе нет записи, значит и переходить некуда.
+    fn execute_transition_with_unknown_id_returns_false() {
+        let mut s = session_v1();
+        assert!(!s.execute_transition(42));
+        assert_eq!(s.last_transition_id(), None);
+    }
+
+    #[test]
+    // Обычный сценарий: зарегистрировали — выполнили. После выполнения
+    // запись удаляется, `last_transition_id` выставляется, флаг
+    // `is_transitioning` снимается.
+    fn execute_transition_with_registered_id_succeeds() {
+        let mut s = session_v0();
+        s.prepare_transition(7, 0);
+        assert!(s.execute_transition(7));
+        assert_eq!(s.last_transition_id(), Some(7));
+        assert!(s.pending_transitions.is_empty());
+        assert!(!s.is_transitioning);
+    }
+
+    #[test]
+    // Переход с ненулевой версии на нулевую выставляет флаг `downgraded`.
+    // Он используется позже: при возврате к ненулевой версии включается
+    // passthrough на короткое время.
+    fn execute_transition_downgrade_to_zero_sets_flag() {
+        let mut s = session_v1();
+        s.prepare_transition(3, 0);
+        assert!(s.execute_transition(3));
+        assert_eq!(s.version, 0);
+        assert!(s.downgraded);
+    }
+
+    #[test]
+    // Защита от повторного входа: если `is_transitioning` уже стоит,
+    // `execute_transition` обязан вернуть false и не начинать второй
+    // переход поверх первого.
+    fn execute_transition_reentry_blocked() {
+        let mut s = session_v0();
+        s.prepare_transition(1, 0);
+        s.is_transitioning = true;
+        assert!(!s.execute_transition(1));
+    }
+
+    // ---------------------------------------------------------------------
+    // prepare_epoch
+    // ---------------------------------------------------------------------
+
+    #[test]
+    // Эпоха 0 не считается началом: `prepare_epoch` её игнорирует.
+    fn prepare_epoch_ignores_epoch_zero() {
+        let mut s = session_v1();
+        assert!(s.prepare_epoch(0, 5).unwrap().is_none());
+        assert_eq!(s.version, 1);
+    }
+
+    #[test]
+    // Только эпоха 1 запускает инициализацию. Эпоха 2 и далее — игнор.
+    fn prepare_epoch_ignores_non_first_epoch() {
+        let mut s = session_v1();
+        assert!(s.prepare_epoch(2, 5).unwrap().is_none());
+        assert_eq!(s.version, 1);
+    }
+
+    #[test]
+    // Если уже идёт повторная инициализация — новый `prepare_epoch`
+    // не должен её прерывать или запускать параллельно.
+    fn prepare_epoch_skipped_while_reinitializing() {
+        let mut s = session_v1();
+        s.reinitializing = true;
+        assert!(s.prepare_epoch(1, 5).unwrap().is_none());
+        assert_eq!(s.version, 1);
+    }
+
+    // ---------------------------------------------------------------------
+    // recover_from_invalid_transition
+    // ---------------------------------------------------------------------
+
+    #[test]
+    // Если уже идёт повторная инициализация, повторное восстановление
+    // не запускается.
+    fn recover_skipped_when_already_reinitializing() {
+        let mut s = session_v1();
+        s.reinitializing = true;
+        assert!(s.recover_from_invalid_transition(5).unwrap().is_none());
+    }
+
+    #[test]
+    // Восстановление очищает все ожидающие переходы: они больше
+    // не актуальны, потому что версия протокола будет пересобрана заново.
+    // После восстановления выставляется флаг `reinitializing`.
+    fn recover_clears_pending_transitions() {
+        let mut s = session_v0();
+        s.prepare_transition(1, 0);
+        assert_eq!(s.pending_transitions.len(), 1);
+
+        let _ = s.recover_from_invalid_transition(1).unwrap();
+
+        assert!(s.pending_transitions.is_empty());
+        assert!(s.reinitializing);
+    }
+
+    // ---------------------------------------------------------------------
+    // reinit / reset
+    // ---------------------------------------------------------------------
+
+    #[test]
+    // Для версии 0 при отсутствии нативной сессии `reinit` ничего
+    // не создаёт и возвращает None.
+    fn reinit_version_zero_without_session_returns_none() {
+        let mut s = session_v0();
+        assert!(s.reinit().unwrap().is_none());
+        assert!(s.inner.is_none());
+    }
+
+    #[test]
+    // `reset` при отсутствии сессии — валидный no-op, а не ошибка.
+    // Упрощает вызывающему коду: не нужно проверять, создана ли сессия.
+    fn reset_without_session_is_ok() {
+        let mut s = session_v1();
+        assert!(s.reset().is_ok());
+    }
+
+    // ---------------------------------------------------------------------
+    // encrypt (без Buffer — только короткое замыкание)
+    // ---------------------------------------------------------------------
+
+    #[test]
+    // Версия 0 = passthrough, шифрование не выполняется.
+    fn encrypt_version_zero_returns_none() {
+        let mut s = session_v0();
+        assert!(s.encrypt(Vec::new()).is_none());
+    }
+
+    #[test]
+    // Нативной сессии нет — шифровать нечем.
+    fn encrypt_without_session_returns_none() {
+        let mut s = session_v1();
+        assert!(s.encrypt(Vec::new()).is_none());
+    }
+
+    #[test]
+    // Во время перехода шифрование запрещено: версия протокола ещё
+    // не устоялась, шифровать нечем и некуда.
+    fn encrypt_while_transitioning_returns_none() {
+        let mut s = session_v1();
+        s.is_transitioning = true;
+        assert!(s.encrypt(Vec::new()).is_none());
+    }
+
+    #[test]
+    // То же самое для повторной инициализации: пока состояние нестабильно,
+    // шифрование не запускается.
+    fn encrypt_while_reinitializing_returns_none() {
+        let mut s = session_v1();
+        s.reinitializing = true;
+        assert!(s.encrypt(Vec::new()).is_none());
+    }
+
+    // ---------------------------------------------------------------------
+    // set_passthrough_mode без сессии
+    // ---------------------------------------------------------------------
+
+    #[test]
+    // Установка passthrough без нативной сессии — no-op: нативная сессия
+    // не должна создаваться «побочным эффектом» сеттера.
+    fn set_passthrough_mode_without_session_is_noop() {
+        let mut s = session_v1();
+        s.set_passthrough_mode(true, Some(10));
+        // Нативной сессии нет — она не должна была создаться.
+        assert!(s.inner.is_none());
+    }
+
+    // ---------------------------------------------------------------------
+    // get_serialized_key_package без сессии
+    // ---------------------------------------------------------------------
+
+    #[test]
+    // Без нативной сессии key-package создать нельзя: метод обязан
+    // вернуть ошибку, а не панику и не пустой Buffer.
+    fn get_serialized_key_package_without_session_errors() {
+        let mut s = session_v1();
+        // Возвращаемый тип Result<Buffer>, но нам достаточно is_err().
+        assert!(s.get_serialized_key_package().is_err());
     }
 }
