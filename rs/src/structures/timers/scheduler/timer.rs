@@ -16,7 +16,7 @@ pub struct WaitOutcome {
     /// Суммарное время, проведённое в активном ожидании (спине).
     pub spin_time: Duration,
     /// Насколько фактическое пробуждение опоздало относительно дедлайна.
-    pub sleep_overshoot: Duration,
+    pub sleep_overshoot: Duration
 }
 
 /// Высокоточный таймер с гибридной стратегией ожидания.

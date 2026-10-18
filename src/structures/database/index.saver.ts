@@ -125,7 +125,7 @@ export class AudioSaver<T extends Track = Track> extends PromiseCycle<T> {
     /**
      * Опускаем приоритет задачи в самый низ очереди Event Loop
      */
-    private lowPriorityExecute = async(track: T): Promise<boolean> => this.download(track);
+    private lowPriorityExecute = async (track: T): Promise<boolean> => this.download(track);
 
     /**
      * Загружает аудиофайл, соответствующий треку, с использованием ffmpeg.

@@ -1,4 +1,5 @@
 import path from "node:path";
+import dotenv from "dotenv";
 
 /**
  * @author SNIPPIK
@@ -14,8 +15,7 @@ export class Environment {
      * @public
      */
     public constructor() {
-        if (!("loadEnvFile" in process))
-            throw new Error("Node.js >=22 required");
+        if (!("loadEnvFile" in process)) dotenv.config();
 
         try {
             if (typeof process.loadEnvFile === "function") {

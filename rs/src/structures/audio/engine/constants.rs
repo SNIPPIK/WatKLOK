@@ -39,6 +39,8 @@ pub(crate) const FFMPEG_PREFIX: &[&str] = &[
     "-vn",
     "-loglevel", "error",
     "-nostdin",
+    "-analyzeduration",     "200",
+    "-probesize",           "32",
     "-hide_banner",
 ];
 

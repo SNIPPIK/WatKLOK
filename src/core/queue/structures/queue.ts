@@ -226,13 +226,11 @@ export class Queue {
         Logger.log("LOG", `[Queue/${this.message.guild_id}] has destroyed`);
         this._message.client.events.runCustom("queue/destroy", this);
 
-        Promise.allSettled([
-            Promise.resolve(this._message?.destroy()),
-            Promise.resolve(this._buttons?.destroy()),
-            Promise.resolve(this._player?.destroy()),
-            Promise.resolve(this.voice?.connection?.disconnect()),
-            Promise.resolve(this.voice?.connection?.destroy()),
-        ]).catch(() => null);
+        this._message?.destroy();
+        this._buttons?.destroy();
+        this._player?.destroy();
+        this.voice?.connection?.disconnect();
+        this.voice?.connection?.destroy();
 
         this._message = null;
         this.timestamp = null;

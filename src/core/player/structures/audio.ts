@@ -4,7 +4,7 @@ import { db } from "#db";
 
 /**
  * Управляет жизненным циклом аудиопотоков в плеере: текущим воспроизведением,
- * пред загрузкой, таймаутами и индикацией громкости.
+ * пред загрузкой, тайм-аутами и индикацией громкости.
  *
  * Класс оптимизирован для частых обращений:
  * - индикатор громкости кэшируется в строковом виде и пересчитывается только при изменении громкости;
@@ -37,8 +37,10 @@ export class PlayerAudio<T extends AudioResource> {
      */
     private _volumeIndicator: string;
 
-    /** Таймер чтения аудио потока, для авто удаления */
-    private _timeout: NodeJS.Timeout | null;
+    /**
+     * Таймеры ожидания готовности — отдельный на КАЖДЫЙ поток.
+     */
+    private _timers = new Map<T, NodeJS.Timeout>();
 
     /**
      * Создаёт экземпляр менеджера аудио.
@@ -98,47 +100,43 @@ export class PlayerAudio<T extends AudioResource> {
      * - старый не будет уничтожен
      */
     public set preload(stream: T) {
-        // Если уже есть пред-загруженное аудио
+        // Если уже есть пред-загружаемый поток
         if (this._streams.length > 1) {
-            const old = this._streams.shift();
-            old?.destroy();
+            const pending = this._streams.pop();
+            if (pending) this._release(pending);
         }
 
         this._streams.push(stream);
 
         // Отслеживаем аудио поток на готовность к чтению
         stream.once("readable", () => {
-            // Удаляем таймер
-            clearTimeout(this._timeout);
+            this._clearTimer(stream);
 
             const index = this._streams.indexOf(stream);
-
-            // Если есть активный поток
             if (index === -1) return;
+
+            // Уничтожаем всё, что старше нового активного потока
             if (index > 0) {
-                const old = this._streams.shift();
-                old?.destroy();
+                for (const old of this._streams.splice(0, index)) this._release(old);
             }
         });
 
         // Отслеживаем аудио поток на ошибки
         stream.once("error", () => {
-            // Удаляем таймер
-            clearTimeout(this._timeout);
-
             const index = this._streams.indexOf(stream);
-            if (index !== -1) {
-                this._streams.splice(index, 1);
-            }
+            if (index !== -1) this._streams.splice(index, 1);
 
-            // Уничтожаем новый аудио поток
-            stream.destroy();
+            this._release(stream);
         });
 
-        // Установка таймера ожидания
-        this._timeout = setTimeout(() => {
+        // Таймер ожидания — свой у каждого потока
+        this._timers.set(stream, setTimeout(() => {
+            this._timers.delete(stream);
+
+            // Если поток уничтожен
+            if (!this._streams.includes(stream)) return;
             stream.emit("error", Error("Timeout: the stream has been exceeded!"));
-        }, TRACK_CHECK_WAIT);
+        }, TRACK_CHECK_WAIT));
     };
 
     /**
@@ -149,18 +147,29 @@ export class PlayerAudio<T extends AudioResource> {
      * будут утеряны.
      */
     public destroy = () => {
-        for (let stream of this._streams) {
-            try {
-                stream.destroy();
-                stream = null;
-            } catch {}
-        }
-
-        this._streams.length = 0;
+        const streams = this._streams;
         this._streams = [];
 
-        clearTimeout(this._timeout);
-        this._timeout = null;
+        for (const stream of streams) this._release(stream);
+
+        // На случай таймеров потоков, которых уже нет в массиве
+        for (const timer of this._timers.values()) clearTimeout(timer);
+        this._timers.clear();
+    };
+
+    /** Снимает таймер конкретного потока. */
+    private _clearTimer(stream: T): void {
+        const timer = this._timers.get(stream);
+        if (timer) {
+            clearTimeout(timer);
+            this._timers.delete(stream);
+        }
+    };
+
+    /** Снимает таймер и уничтожает поток (ошибки destroy не пробрасываются). */
+    private _release(stream: T): void {
+        this._clearTimer(stream);
+        try { stream.destroy(); } catch {}
     };
 
     /**

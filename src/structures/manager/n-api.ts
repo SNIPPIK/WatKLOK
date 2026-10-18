@@ -1,3 +1,5 @@
+import path from "node:path";
+
 /**
  * Загружаем нативный модуль один раз
  */
@@ -5,16 +7,11 @@ let Native: any;
 
 try {
     //@ts-ignore
-    Native = (await import('../../../build/native/index.mjs'));
+    Native = (await import(path.resolve("build/native/index.mjs")));
 } catch {
-    try {
-        //@ts-ignore
-        Native = (await import('../../../native/index.mjs'));
-    } catch {
-        throw Error("Native Rust build has not found!!!\n" +
-            " - Need download - https://github.com/SNIPPIK/UnTitles/actions/workflows/build.yml\n" +
-            " - Or build rust code your - npm run build:native");
-    }
+    throw Error("Native Rust build has not found!!!\n" +
+        " - Need download - https://github.com/SNIPPIK/UnTitles/actions/workflows/build.yml\n" +
+        " - Or build rust code your - npm run build:native");
 }
 
 /**

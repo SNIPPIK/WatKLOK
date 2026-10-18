@@ -1,9 +1,14 @@
-//! Уничтожение движка и `Drop`.
-
-use super::AudioEngine;
-use napi::bindgen_prelude::*;
-use napi_derive::napi;
+use crate::structures::audio::ring_buffer::RingBuffer;
 use std::sync::atomic::Ordering;
+use napi::bindgen_prelude::*;
+use super::AudioEngine;
+use napi_derive::napi;
+
+// glibc: возвращает ОС освобождённые страницы из ВСЕХ арен malloc
+#[cfg(all(target_os = "linux", target_env = "gnu"))]
+unsafe extern "C" {
+    fn malloc_trim(pad: usize) -> i32;
+}
 
 #[napi]
 impl AudioEngine {
@@ -156,7 +161,13 @@ impl AudioEngine {
                 .lock()
                 .unwrap_or_else(|p| p.into_inner());
 
-            buffer.clear();
+            *buffer = RingBuffer::new(1);
+        }
+
+        // Все пакеты и буферы reader'а освобождены — отдаём память ОС.
+        #[cfg(all(target_os = "linux", target_env = "gnu"))]
+        unsafe {
+            malloc_trim(0);
         }
     }
 }
