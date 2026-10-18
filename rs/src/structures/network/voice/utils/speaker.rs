@@ -7,7 +7,7 @@ use std::sync::{
 
 /// Значения `SpeakerType`: битовая маска поля `speaking` (op 5).
 ///
-/// В Discord это набор флагов (`1` микрофон, `2` soundshare, `4` приоритет),
+/// В Discord это набор флагов (`1` микрофон, `2` фейк, `4` приоритет),
 /// поэтому `self_speaker` может быть произвольной комбинацией. Известные
 /// значения выделены в именованные варианты, всё остальное — в `Other`.
 ///
@@ -23,7 +23,7 @@ pub enum SpeakerType {
     /// `1` — говорит (микрофон).
     Enable,
 
-    /// `2` — soundshare.
+    /// `2` — фейк.
     Fake,
 
     /// `4` — приоритетный.
@@ -44,7 +44,7 @@ impl SpeakerType {
             Self::Enable => 1,
             Self::Fake => 2,
             Self::Priority => 4,
-            Self::Other(v) => v,
+            Self::Other(v) => v
         }
     }
 
@@ -59,7 +59,7 @@ impl SpeakerType {
             1 => Self::Enable,
             2 => Self::Fake,
             4 => Self::Priority,
-            other => Self::Other(other),
+            other => Self::Other(other)
         }
     }
 }
@@ -180,19 +180,22 @@ impl VoiceSpeakerManager {
         // нужна замыканию тайм-аута, чтобы дотянуться до самого менеджера.
         Arc::new_cyclic(|me: &Weak<VoiceSpeakerManager>| {
             let weak_me = me.clone();
-
             let heartbeat = HeartbeatManager::new(HeartbeatHooks {
                 // Ничего не отправляем — только ждём.
                 send: None,
+
                 // По тайм-ауту принудительно выключаем спикер.
                 on_timeout: Box::new(move || {
                     if let Some(speaker) = weak_me.upgrade() {
                         speaker.set_speaking(SpeakerType::Disable);
                     }
                 }),
+
                 // Подтверждения не интересуют.
-                on_ack: None,
+                on_ack: None
             });
+
+            // Запускаем таймер
             heartbeat.start(Some(KEEP_SWITCH_SPEAKING_MS));
 
             VoiceSpeakerManager {
@@ -238,7 +241,7 @@ impl VoiceSpeakerManager {
     /// 1. Проверяем, что менеджер не уничтожен.
     /// 2. Подтверждаем пульс — он не должен сработать, пока мы активны.
     /// 3. Проверяем, что хост ещё доступен и у него есть WebSocket.
-    /// 4. Если тип не изменился — ничего не делаем (не спамим сервер).
+    /// 4. Если тип не изменился — ничего не делаем. (не спамим сервер).
     /// 5. Иначе обновляем тип и отправляем пакет.
     pub fn set_speaking(&self, speaking: SpeakerType) {
         if self.destroyed.load(Ordering::Acquire) { return; }
@@ -272,7 +275,7 @@ impl VoiceSpeakerManager {
         if self.destroyed.swap(true, Ordering::AcqRel) {
             return;
         }
-        // В TS это соответствует `this.type = null`.
+
         *self.ty.lock() = None;
         // Останавливаем пульс: если он сработает после уничтожения,
         // будет пытаться достучаться до уже освобождённого хоста.

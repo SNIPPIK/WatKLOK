@@ -55,8 +55,9 @@ const STATUS_CONNECTED: u8 = 2;
 pub struct Handshake {
     /// IPv4-адрес голосового сервера (в виде строки).
     pub address: String,
+
     /// UDP-порт для отправки пакетов.
-    pub port: u16,
+    pub port: u16
 }
 
 /// Результат discovery: рукопожатие или текст ошибки.

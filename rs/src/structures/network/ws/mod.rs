@@ -1,18 +1,12 @@
-pub mod connection;
-pub mod heartbeat;
-pub mod inner;
-pub mod opcodes;
-pub mod runtime;
-
-use std::sync::{
-    atomic::Ordering,
-    Arc
-};
-use tokio::sync::mpsc;
 use tokio_tungstenite::tungstenite::Message;
 use crate::structures::network::ws::{
     inner::{Inner, WsEvent},
     opcodes::ws_status
+};
+use tokio::sync::mpsc;
+use std::sync::{
+    atomic::Ordering,
+    Arc
 };
 
 /// Voice WebSocket Discord (чистый Rust, без napi).
@@ -189,3 +183,9 @@ impl Default for VoiceWebSocket {
         Self::new()
     }
 }
+
+pub mod connection;
+pub mod heartbeat;
+pub mod inner;
+pub mod opcodes;
+pub mod runtime;

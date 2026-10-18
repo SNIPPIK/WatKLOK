@@ -83,7 +83,7 @@ impl Inner {
     fn arm_timeout(this: &Arc<Inner>) {
         let mut slot = this.timeout_task.lock();
 
-        // Прерываем предыдущий таймер: каждый тик перевзводит ожидание
+        // Прерываем предыдущий таймер: каждый тик перезапускает ожидание
         // заново. Старый таймер при этом отменяется — он уже неактуален.
         if let Some(old) = slot.take() {
             old.abort();
@@ -103,7 +103,7 @@ impl Inner {
 
             // Клонируем `Arc`, чтобы не держать мьютекс во время вызова
             // хука. Хук может быть произвольным кодом и, теоретически,
-            // попытаться залочить тот же мьютекс.
+            // попытаться заблокировать тот же мьютекс.
             let hooks = inner.hooks.lock().clone();
             if let Some(hooks) = hooks {
                 (hooks.on_timeout)();
@@ -137,28 +137,6 @@ impl HeartbeatManager {
                 interval_ms: AtomicU64::new(0)
             }),
         }
-    }
-
-    /// Текущая задержка send -> ack (мс).
-    ///
-    /// `saturating_sub` нужен на случай, если `ack` пришёл раньше, чем
-    /// `send`: при нулевых значениях (никогда не было ни отправки,
-    /// ни ACK) это даёт 0, а не отрицательное число.
-    pub fn latency(&self) -> u64 {
-        self.inner
-            .last_ack
-            .load(Ordering::SeqCst)
-            .saturating_sub(self.inner.last_sent.load(Ordering::SeqCst))
-    }
-
-    /// Количество подряд пропущенных ACK.
-    ///
-    /// Сбрасывается в 0 при успешном `ack` и в `stop`. Если хук
-    /// `on_timeout` сам вызывает `ack`, счётчик обнуляется сразу после
-    /// срабатывания — то есть `missed()` вернёт 0 уже на следующем
-    /// чтении.
-    pub fn missed(&self) -> u32 {
-        self.inner.misses.load(Ordering::SeqCst)
     }
 
     /// Запускает heartbeat; предыдущий останавливается.

@@ -18,11 +18,13 @@ use parking_lot::Mutex;
 pub struct ServerPacket {
     /// Токен для аутентификации на голосовом сервере.
     pub token: String,
+    
     /// Идентификатор гильдии, к которой относится соединение.
     pub guild_id: String,
+    
     /// Адрес голосового сервера. `None`, если сервер ещё не прислал
     /// endpoint (в этом случае подключаться некуда).
-    pub endpoint: Option<String>,
+    pub endpoint: Option<String>
 }
 
 /// Пакет `VOICE_STATE_UPDATE`.
@@ -33,12 +35,15 @@ pub struct ServerPacket {
 pub struct StatePacket {
     /// Идентификатор гильдии. `None` для личных сообщений.
     pub guild_id: Option<String>,
+    
     /// Идентификатор пользователя.
     pub user_id: String,
+    
     /// Идентификатор сессии — нужен для аутентификации на голосовом сервере.
     pub session_id: String,
+    
     /// Идентификатор канала. `None`, если пользователь вышел из канала.
-    pub channel_id: Option<String>,
+    pub channel_id: Option<String>
 }
 
 /// Общее состояние адаптера, разделяемое `VoiceConnection` и `Transport`.
@@ -68,5 +73,5 @@ pub struct AdapterData {
     /// `SetArray` используется, чтобы быстро проверять наличие
     /// пользователя и не хранить дубликаты. Список нужен
     /// MLS-сессии для построения дерева ключей.
-    pub clients: Mutex<SetArray>,
+    pub clients: Mutex<SetArray>
 }

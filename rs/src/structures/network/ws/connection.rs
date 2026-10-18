@@ -1,11 +1,10 @@
-use futures_util::{SinkExt, StreamExt};
-use tokio::sync::mpsc;
-use tokio::time::{timeout, Duration};
-use serde_json::{json, Value};
-use std::sync::{
-    atomic::Ordering,
-    Arc, OnceLock
+use crate::structures::network::ws::{
+    opcodes::{is_dave, discord_opcode, ws_status },
+    inner::Inner,
+    heartbeat
 };
+use futures_util::{SinkExt, StreamExt};
+use serde_json::{json, Value};
 use tokio_tungstenite::{
     tungstenite::{
         client::IntoClientRequest,
@@ -14,13 +13,16 @@ use tokio_tungstenite::{
     },
     connect_async
 };
-use crate::structures::network::ws::{
-    opcodes::{ is_dave, op, ws_status },
-    inner::Inner,
-    heartbeat
+use std::sync::{
+    atomic::Ordering,
+    Arc, OnceLock
+};
+use tokio::{
+    time::{timeout, Duration},
+    sync::mpsc
 };
 
-/// Таймаут на аккуратное закрытие задачи записи.
+/// Тайм-аут на аккуратное закрытие задачи записи.
 ///
 /// После освобождения канала её `rx.recv()` вернёт `None`, цикл завершится,
 /// выполнится `sink.close().await` — Discord получит чистый кадр Close.
@@ -57,7 +59,7 @@ fn ensure_crypto_provider() {
 /// данных из канала отправки. Совмещать их в одном цикле значит
 /// задерживать одно другим.
 pub async fn run(inner: Arc<Inner>, url: String) {
-    // Криптопровайдер должен быть установлен до первого TLS-соединения.
+    // Крипто-провайдер должен быть установлен до первого TLS-соединения.
     ensure_crypto_provider();
 
     // Соединение ещё не установлено, но попытка уже начата.
@@ -249,7 +251,7 @@ fn handle_text(inner: &Arc<Inner>, text: &str) {
         }
     };
 
-    // seq (если есть) сохраняем: он нужен для Resume при переподключении.
+    // А seq (если есть) сохраняем: он нужен для Resume при переподключении.
     // Сохраняем ДО разбора `op`, потому что seq может прийти в любом пакете.
     if let Some(seq) = payload.get("seq").and_then(|v| v.as_i64()) {
         inner.sequence.store(seq, Ordering::SeqCst);
@@ -259,15 +261,15 @@ fn handle_text(inner: &Arc<Inner>, text: &str) {
     let Some(op_code) = payload.get("op").and_then(|v| v.as_u64()) else {
         return;
     };
-    let op_code = op_code as u8;
+    let op_code = op_code;
 
     // Диспетчеризация по коду операции: каждому — своё событие наружу.
     match op_code {
         // Пульс подтверждён — сбрасываем ожидание в heartbeat.
-        op::HEARTBEAT_ACK => heartbeat::ack(inner),
+        discord_opcode::HEARTBEAT_ACK => heartbeat::ack(inner),
 
         // Сервер представился: содержит интервал пульса. Запускаем heartbeat.
-        op::HELLO => {
+        discord_opcode::HELLO => {
             if let Some(interval) = payload
                 .get("d")
                 .and_then(|d| d.get("heartbeat_interval"))
@@ -280,19 +282,19 @@ fn handle_text(inner: &Arc<Inner>, text: &str) {
         }
 
         // Кто-то начал или закончил говорить. Полезно для индикации в UI.
-        op::SPEAKING => inner.emit_json("speaking", payload),
+        discord_opcode::SPEAKING => inner.emit_json("speaking", payload),
 
         // Кто-то подключился к голосовому каналу или отключился.
-        op::CLIENTS_CONNECT | op::CLIENT_DISCONNECT => inner.emit_json("Users", payload),
+        discord_opcode::CLIENTS_CONNECT | discord_opcode::CLIENT_DISCONNECT => inner.emit_json("Users", payload),
 
         // Соединение готово к работе: содержит SSRC, порты, режимы шифрования.
-        op::READY => inner.emit_json("ready", payload),
+        discord_opcode::READY => inner.emit_json("ready", payload),
 
         // Описание сессии: ключ шифрования для голоса.
-        op::SESSION_DESCRIPTION => inner.emit_json("sessionDescription", payload),
+        discord_opcode::SESSION_DESCRIPTION => inner.emit_json("sessionDescription", payload),
 
         // Сессия успешно восстановлена после переподключения.
-        op::RESUMED => inner.emit_json("resumed", payload),
+        discord_opcode::RESUMED => inner.emit_json("resumed", payload),
 
         // DAVE-протокол (новый механизм шифрования голоса Discord).
         _ if is_dave(op_code) => inner.emit_json("daveSession", payload),

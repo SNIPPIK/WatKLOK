@@ -1,6 +1,7 @@
 use crate::structures::{
     crypto::mls::{results::MlsError, session::MlsSession as Native},
     network::ws::VoiceWebSocket,
+    network::ws::opcodes::discord_opcode
 };
 use parking_lot::Mutex;
 use serde_json::json;
@@ -23,24 +24,6 @@ const TRANSITION_EXPIRY: u32 = 10;
 /// (в TS: `status === 3`).
 const STATUS_ACTIVE: u8 = 3;
 
-/// Префикс бинарного сообщения «MLS Commit + Welcome» (op 28).
-///
-/// Discord ожидает, что ответ на proposals будет начинаться с этого
-/// байта — иначе пакет не будет распознан.
-pub const OPCODE_DAVE_MLS_WELCOME: u8 = 28;
-
-/// Префикс бинарного сообщения «MLS Key Package» (op 26).
-///
-/// Key-package отправляется, когда сессия готова принять новых участников
-/// или после переинициализации.
-const OPCODE_DAVE_MLS_KEY: u8 = 26;
-
-/// Op-код «MLS invalid commit/welcome» (31).
-///
-/// Отправляется, когда нативная сессия обнаружила невалидный переход:
-/// это сигнал другим участникам, что нужно переинициализироваться.
-const OP_INVALID_COMMIT_WELCOME: u8 = 31;
-
 /// События обёртки (`ClientMLSEvents`: `key`, `invalidateTransition`).
 ///
 /// Обёртка не отправляет пакеты сама — она сообщает о том, что нужно
@@ -49,6 +32,7 @@ pub enum DaveEvent {
     /// Готов новый key-package; его нужно отправить как бинарный пакет
     /// с префиксом `OPCODE_DAVE_MLS_KEY`.
     Key(Vec<u8>),
+    
     /// Переход невалиден; нужно отправить JSON-пакет с op 31.
     InvalidateTransition(u16)
 }
@@ -60,6 +44,7 @@ pub type DaveSink = Arc<dyn Fn(DaveEvent) + Send + Sync>;
 fn err_str(e: MlsError) -> String {
     e.to_string()
 }
+
 
 /// Обёртка над нативной MLS-сессией (`MLSSession` из TS).
 ///
@@ -92,9 +77,8 @@ pub struct MlsWrapper {
     session: Option<Native>,
 
     /// Получатель событий (key-package, invalid transition).
-    sink: DaveSink,
+    sink: DaveSink
 }
-
 impl MlsWrapper {
     /// Создаёт обёртку без нативной сессии.
     ///
@@ -108,7 +92,7 @@ impl MlsWrapper {
             reinitializing_local: false,
             pending_external_sender: None,
             session: None,
-            sink,
+            sink
         }
     }
 
@@ -236,7 +220,7 @@ impl MlsWrapper {
         Ok(Some(out))
     }
 
-    /// transition_id из первых двух байт payload (big-endian).
+    /// А transition_id из первых двух байт payload (big-endian).
     ///
     /// Используется, когда нативной сессии ещё нет: мы не можем
     /// обработать commit, но transition_id извлечь можем.
@@ -376,6 +360,7 @@ impl MlsWrapper {
     }
 }
 
+
 /// Слой DAVE (MLS): сквозное шифрование голосовых пакетов (`DAVELayer`).
 ///
 /// Управляет жизненным циклом `MlsWrapper`: создаёт, уничтожает,
@@ -386,7 +371,6 @@ pub struct DaveLayer {
     /// уничтожена.
     client: Mutex<Option<MlsWrapper>>,
 }
-
 impl DaveLayer {
     /// Готовность: сессия есть, активна и не в переходе.
     ///
@@ -433,15 +417,18 @@ impl DaveLayer {
         // Sink: key-package уходит как бинарный пакет с префиксом 26;
         // invalid-transition — как JSON с op 31.
         let sink: DaveSink = Arc::new(move |event| match event {
+            // Выдача ключа
             DaveEvent::Key(key) => {
                 let mut packet = Vec::with_capacity(key.len() + 1);
-                packet.push(OPCODE_DAVE_MLS_KEY);
+                packet.push(discord_opcode::DAVE_MLS_KEY_PACKAGE as u8);
                 packet.extend_from_slice(&key);
                 let _ = ws.send_binary(packet);
             }
+            
+            // Если не удалось выдать ключ
             DaveEvent::InvalidateTransition(transition_id) => {
                 let payload = json!({
-                    "op": OP_INVALID_COMMIT_WELCOME,
+                    "op": discord_opcode::DAVE_MLS_INVALID_COMMIT_WELCOME,
                     "d": { "transition_id": transition_id }
                 });
                 let _ = ws.send_text(payload.to_string());

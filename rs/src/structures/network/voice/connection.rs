@@ -1,3 +1,4 @@
+use crate::structures::network::ws::opcodes::discord_opcode;
 use super::{
     adapter::{AdapterData, ServerPacket, StatePacket},
     utils::{
@@ -19,12 +20,6 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc, Weak,
 };
-
-/// Op-код `GatewayOpcodes.VoiceStateUpdate`.
-const GATEWAY_VOICE_STATE_UPDATE: u8 = 4;
-
-/// Op-код Speaking в голосовом протоколе.
-const OP_SPEAKING: u8 = 5;
 
 /// Параметры голосового подключения (`VoiceConnectionConfiguration`).
 ///
@@ -153,7 +148,7 @@ impl Config {
             d.insert("self_speaker".into(), Value::from(speaker));
         }
 
-        json!({ "op": GATEWAY_VOICE_STATE_UPDATE, "d": Value::Object(d) })
+        json!({ "op": discord_opcode::SESSION_DESCRIPTION, "d": Value::Object(d) })
     }
 }
 
@@ -207,7 +202,7 @@ impl Status {
     /// Строковое представление для JS-геттера `status`.
     ///
     /// Используется в `NativeVoiceConnection::status`, который
-    /// вызывается из JS. Возвращает `&'static str`, чтобы не выделять
+    /// вызывается из JS. Возвращает `&static str`, чтобы не выделять
     /// память на каждый вызов геттера — статус читается часто,
     /// в том числе из логики UI.
     ///
@@ -303,7 +298,7 @@ impl SpeakerHost for ConnectionInner {
         let Some(ws) = self.transport.ws() else { return };
 
         let packet = json!({
-            "op": OP_SPEAKING,
+            "op": discord_opcode::SPEAKING,
             "d": {
                 "speaking": speaking.bits(),
                 "delay": 0,
@@ -358,11 +353,6 @@ impl ConnectionInner {
                 speaker,
             }
         })
-    }
-
-    /// Возвращает `Arc` на менеджер говорящих.
-    fn speaker(&self) -> Arc<VoiceSpeakerManager> {
-        self.speaker.clone()
     }
 
     /// Устанавливает режим говорящего (микрофон).
@@ -556,7 +546,7 @@ impl ConnectionInner {
 
 /// Голосовое подключение к Discord, доступное из JavaScript.
 ///
-/// napi-обёртка над `ConnectionInner`: JS-сторона видит объект
+/// Napi-обёртка над `ConnectionInner`: JS-сторона видит объект
 /// `VoiceConnection` с методами `start`, `packet`, `disconnect`, `destroy`
 /// и геттерами `status`, `ready`, `ssrc` и т.д. Вся логика живёт
 /// в `ConnectionInner`; здесь только адаптация типов на границе
@@ -669,13 +659,13 @@ impl NativeVoiceConnection {
     pub fn on_event(&self, callback: Function<String, ()>) -> Result<()> {
         // Строим потокобезопасную функцию. Это дорогая операция,
         // но выполняется один раз при инициализации подключения.
-        let tsfn = callback.build_threadsafe_function().build()?;
+        let js_fn = callback.build_threadsafe_function().build()?;
 
         // Замыкание получает уже готовую JSON-строку и передаёт её
         // в JS. `Arc` нужен, потому что шина хранит получателя
         // в `Arc<dyn Fn>` и вызывает его из разных потоков.
         self.inner.bus.set_sink(Arc::new(move |text: String| {
-            let _ = tsfn.call(text, ThreadsafeFunctionCallMode::NonBlocking);
+            let _ = js_fn.call(text, ThreadsafeFunctionCallMode::NonBlocking);
         }));
         Ok(())
     }
@@ -736,13 +726,7 @@ impl NativeVoiceConnection {
     /// Внутри (`on_voice_state_update`) данные сохраняются в `adapter.state`.
     /// Если транспорт уже ждёт — рукопожатие продолжится.
     #[napi]
-    pub fn on_voice_state_update(
-        &self,
-        guild_id: Option<String>,
-        user_id: String,
-        session_id: String,
-        channel_id: Option<String>,
-    ) {
+    pub fn on_voice_state_update(&self, guild_id: Option<String>, user_id: String, session_id: String, channel_id: Option<String>) {
         self.inner.on_voice_state_update(guild_id, user_id, session_id, channel_id);
     }
 
@@ -770,8 +754,7 @@ impl NativeVoiceConnection {
     /// Если DAVE не готов (идёт переход) — пакеты отбрасываются.
     #[napi]
     pub fn packet(&self, frames: Vec<Buffer>) {
-        self.inner
-            .packet(frames.into_iter().map(|frame| frame.to_vec()).collect());
+        self.inner.packet(frames.into_iter().map(|frame| frame.to_vec()).collect());
     }
 
     /// Выходит из голосового канала.
@@ -975,7 +958,7 @@ impl NativeVoiceConnection {
     }
 }
 
-/// Гарантированное освобождение при сборке мусора: без JS-вызовов из финализатора.
+/// Гарантированное освобождение при сборке мусора
 impl Drop for NativeVoiceConnection {
     fn drop(&mut self) {
         self.inner.destroy();

@@ -1,11 +1,13 @@
 use super::{
-    dave::{DaveLayer, MAX_DAVE_PROTOCOL, OPCODE_DAVE_MLS_WELCOME},
+    dave::{DaveLayer, MAX_DAVE_PROTOCOL},
     udp_layer::{DiscoveryResult, UdpLayer}
 };
 use crate::{
-    utils::duration::close_code,
     structures::network::{
-        ws::{inner::WsEvent, runtime, VoiceWebSocket},
+        ws::{
+            inner::WsEvent, runtime, VoiceWebSocket,
+            opcodes::{close_codes, discord_opcode}
+        },
         voice::adapter::AdapterData
     }
 };
@@ -30,7 +32,7 @@ use tokio::{sync::mpsc::UnboundedReceiver, task::JoinHandle};
 ///
 /// * `DISCONNECTED` — пользователь намеренно отключился;
 /// * `NORMAL` — штатное закрытие без ошибки.
-const STOP_CODES: [u32; 2] = [close_code::DISCONNECTED, close_code::NORMAL];
+const STOP_CODES: [u32; 2] = [close_codes::DISCONNECTED, close_codes::NORMAL];
 
 /// После скольких подряд переподключений транспорт уничтожается.
 ///
@@ -40,67 +42,6 @@ const STOP_CODES: [u32; 2] = [close_code::DISCONNECTED, close_code::NORMAL];
 /// канал, блокировка на стороне Discord. Лучше сдаться и сообщить
 /// наверх, чем пытаться вечно и держать ресурсы занятыми.
 const MAX_RECONNECTS: u32 = 3;
-
-// ----------------------------------------------------------------------------
-// Op-коды голосового протокола, которые отправляет транспорт.
-// ----------------------------------------------------------------------------
-
-/// Identify — первое сообщение после открытия WebSocket.
-/// Содержит токен, session_id, user_id и максимальную версию DAVE.
-const OP_IDENTIFY: u8 = 0;
-
-/// Select Protocol — сообщает gateway, какой транспорт выбран (UDP)
-/// и данные для него (адрес, порт, режим шифрования).
-const OP_SELECT_PROTOCOL: u8 = 1;
-
-/// Resume — попытка восстановить сессию после обрыва, не начиная
-/// рукопожатие с нуля. Содержит seq последнего полученного пакета.
-const OP_RESUME: u8 = 7;
-
-/// Transition Ready — подтверждение готовности к переходу DAVE.
-/// Отправляется в ответ на PrepareTransition, если переход требует
-/// подтверждения от всех участников.
-const OP_DAVE_TRANSITION_READY: u8 = 23;
-
-// ----------------------------------------------------------------------------
-// Входящие op-коды.
-// ----------------------------------------------------------------------------
-//
-// `u64`, потому что JSON-числа парсятся как `u64`, а не `u8`.
-// Приведение к нужному типу делается уже после извлечения — так
-// избегаем ошибок с отрицательными значениями и переполнением при
-// невалидных данных от сервера.
-
-/// Кто-то подключился к каналу. Содержит список `user_ids`.
-/// Нужно DAVE для построения дерева ключей.
-const OP_CLIENTS_CONNECT: u64 = 11;
-
-/// Кто-то отключился от канала. Содержит `user_id`.
-const OP_CLIENT_DISCONNECT: u64 = 13;
-
-/// Подготовка перехода DAVE: сервер предлагает новую версию протокола.
-/// Может требовать подтверждения (transition_id != 0).
-const OP_DAVE_PREPARE_TRANSITION: u64 = 21;
-
-/// Выполнение подготовленного перехода DAVE. Ответа не требуется.
-const OP_DAVE_EXECUTE_TRANSITION: u64 = 22;
-
-/// Подготовка новой эпохи MLS. Только эпоха 1 запускает инициализацию.
-const OP_DAVE_PREPARE_EPOCH: u64 = 24;
-
-/// External sender — данные MLS-сессии, которые нужно применить до
-/// обработки proposals/commit.
-const OP_DAVE_MLS_EXTERNAL_SENDER: u64 = 25;
-
-/// Proposals — предложения от другого участника. В ответ нужно отправить
-/// commit (+ welcome), собранные MLS-сессией.
-const OP_DAVE_MLS_PROPOSALS: u64 = 27;
-
-/// Commit от другого участника. После применения нужно подтвердить переход.
-const OP_DAVE_MLS_ANNOUNCE_COMMIT_TRANSITION: u64 = 29;
-
-/// Welcome от другого участника (для нового участника MLS-группы).
-const OP_DAVE_MLS_WELCOME: u64 = 30;
 
 // ============================================================================
 // Структуры данных
@@ -328,7 +269,6 @@ struct TransportInner {
     /// её остановить в `destroy`.
     event_task: Mutex<Option<JoinHandle<()>>>,
 }
-
 impl TransportInner {
     // ---------------------------------------------------------------------
     // Вспомогательные методы
@@ -386,7 +326,7 @@ impl TransportInner {
     /// подтверждения переход не завершится у всех участников.
     fn send_transition_ready(&self, transition_id: u64) {
         self.send_json(json!({
-            "op": OP_DAVE_TRANSITION_READY,
+            "op": discord_opcode::DAVE_TRANSITION_READY,
             "d": { "transition_id": transition_id }
         }));
     }
@@ -435,7 +375,7 @@ impl TransportInner {
                 };
 
                 if !connected {
-                    self.emit(TransportEvent::Destroyed(close_code::VOICE_SERVER_CRASHED));
+                    self.emit(TransportEvent::Destroyed(close_codes::VOICE_SERVER_CRASHED));
                 }
             }
 
@@ -483,7 +423,7 @@ impl TransportInner {
                 // Payload уже собран в `on_open` — здесь только
                 // отправка. Обёртка `json!` нужна, чтобы соблюсти
                 // форму протокола: `{ op, d }`.
-                self.send_json(json!({ "op": OP_IDENTIFY, "d": payload }));
+                self.send_json(json!({ "op": discord_opcode::IDENTIFY, "d": payload }));
             }
 
             // -----------------------------------------------------------------
@@ -491,7 +431,7 @@ impl TransportInner {
             // -----------------------------------------------------------------
             TransportState::Resuming(payload) => {
                 // Аналогично Identify, но с op=7.
-                self.send_json(json!({ "op": OP_RESUME, "d": payload }));
+                self.send_json(json!({ "op": discord_opcode::RESUME, "d": payload }));
             }
 
             // -----------------------------------------------------------------
@@ -571,11 +511,11 @@ impl TransportInner {
     fn after_discovery(&self, result: DiscoveryResult) {
         let handshake = match result {
             // Ошибка при получении адреса — завершаем. Discovery мог
-            // провалиться по разным причинам: таймаут, невалидный
+            // провалиться по разным причинам: тайм-аут, невалидный
             // ответ, ошибка сокета. Код `SERVER_NOT_FOUND` — общий
             // для всех этих случаев.
             Err(e) => {
-                self.emit(TransportEvent::Close(close_code::SERVER_NOT_FOUND, format!("Error: {e}")));
+                self.emit(TransportEvent::Close(close_codes::SERVER_NOT_FOUND, format!("Error: {e}")));
                 self.destroy();
                 return;
             }
@@ -585,9 +525,7 @@ impl TransportInner {
         // Транспорт мог быть уничтожен во время ожидания discovery.
         // Проверяем это ДО того, как рапортовать об успехе: иначе
         // слушатель получит `Open` на уже мёртвом транспорте.
-        if self.destroyed.load(Ordering::Acquire) {
-            return;
-        }
+        if self.destroyed.load(Ordering::Acquire) { return; }
 
         // Discovery прошёл — транспорт считаем открытым.
         // Слушатель (`VoiceConnection`) переведёт статус в `Connected`.
@@ -597,7 +535,7 @@ impl TransportInner {
         // `aead_aes256_gcm_rtpsize` — обязательный режим шифрования
         // для Discord: другие режимы сервер не принимает.
         self.send_json(json!({
-            "op": OP_SELECT_PROTOCOL,
+            "op": discord_opcode::SELECT_PROTOCOL,
             "d": {
                 "protocol": "udp",
                 "data": {
@@ -675,9 +613,7 @@ impl TransportInner {
     /// Identify — первое сообщение в голосовом протоколе. Без него
     /// сервер не знает, кто мы и в какой канал хотим подключиться.
     fn on_open(self: &Arc<Self>) {
-        if self.destroyed.load(Ordering::Acquire) {
-            return;
-        }
+        if self.destroyed.load(Ordering::Acquire) { return; }
 
         // Для Identify нужны оба пакета: server (token) и state (session_id).
         // Если чего-то не хватает — идентифицироваться не получится,
@@ -716,14 +652,9 @@ impl TransportInner {
         // Коды, при которых переподключение запрещено (пользователь вышел,
         // штатное закрытие). Возвращаемся без событий: это нормальный
         // сценарий, обрабатывать нечего.
-        if STOP_CODES.contains(&code) {
-            return;
-        }
-        if self.destroyed.load(Ordering::Acquire) {
-            return;
-        }
+        if STOP_CODES.contains(&code) || self.destroyed.load(Ordering::Acquire) { return; }
 
-        // Счётчик попыток. fetch_add возвращает предыдущее значение,
+        // Счётчик попыток fetch_add возвращает предыдущее значение,
         // поэтому прибавляем 1, чтобы получить текущую попытку.
         // `AcqRel` — потому что счётчик читается в `ready()` из
         // других потоков, и нам нужна согласованность.
@@ -777,6 +708,7 @@ impl TransportInner {
             return;
         }
 
+        // Если удалось извлечь данные
         let Some(data) = packet.get("d").and_then(parse_ready) else {
             self.info("[Transport/UDP]: invalid ready packet");
             return;
@@ -803,8 +735,11 @@ impl TransportInner {
         }
 
         match packet.get("d").and_then(parse_session) {
+            // Если удалось извлечь данные
             Some(data) => self.set_state(TransportState::Session(data)),
-            None => self.info("[Transport/RTP]: invalid session description packet"),
+            
+            // Если не удалось извлечь данные
+            None => self.info("[Transport/RTP]: invalid session description packet")
         }
     }
 
@@ -829,7 +764,7 @@ impl TransportInner {
         let stack = payload.get("stack").and_then(|s| s.as_str()).unwrap_or(message);
 
         self.emit(TransportEvent::Close(
-            close_code::BAD_REQUEST,
+            close_codes::BAD_REQUEST,
             format!("[Voice/WS-Error]: \n{stack}"),
         ));
     }
@@ -849,7 +784,7 @@ impl TransportInner {
         let d = packet.get("d");
         match packet.get("op").and_then(|o| o.as_u64()) {
             // Кто-то зашёл: `d.user_ids` — массив строк.
-            Some(OP_CLIENTS_CONNECT) => {
+            Some(discord_opcode::CLIENTS_CONNECT) => {
                 if let Some(ids) = d.and_then(|d| d.get("user_ids")).and_then(|v| v.as_array()) {
                     let mut clients = self.adapter.clients.lock();
                     // `filter_map` отбрасывает не-строки. `add` сам
@@ -859,8 +794,9 @@ impl TransportInner {
                     }
                 }
             }
+            
             // Кто-то вышел: `d.user_id` — строка.
-            Some(OP_CLIENT_DISCONNECT) => {
+            Some(discord_opcode::CLIENT_DISCONNECT) => {
                 if let Some(id) = d.and_then(|d| d.get("user_id")).and_then(|v| v.as_str()) {
                     self.adapter.clients.lock().delete(id);
                 }
@@ -872,7 +808,7 @@ impl TransportInner {
     /// Сообщения DAVE в JSON: PrepareTransition / ExecuteTransition / PrepareEpoch.
     ///
     /// Эти сообщения приходят в текстовом виде (JSON), в отличие от
-    /// commit/welcome, которые приходят бинарём.
+    /// commit/welcome, которые приходят бинарными данными.
     fn on_dave_session(&self, packet: Value) {
         if self.destroyed.load(Ordering::Acquire) { return; }
 
@@ -885,7 +821,7 @@ impl TransportInner {
 
         match op {
             // Подготовка перехода: если нужно подтверждение — отвечаем Ready, иначе reinit.
-            OP_DAVE_PREPARE_TRANSITION => {
+            discord_opcode::DAVE_PREPARE_TRANSITION => {
                 // `with_live` вернёт `None`, если сессии нет или она
                 // уничтожена — тогда просто ничего не делаем.
                 let result = self
@@ -911,7 +847,7 @@ impl TransportInner {
             }
 
             // Выполнение подготовленного перехода (ответа не требуется).
-            OP_DAVE_EXECUTE_TRANSITION => {
+            discord_opcode::DAVE_EXECUTE_TRANSITION => {
                 self.dave.with_live(|c| c.execute_transition(transition_id as u16));
             }
 
@@ -919,7 +855,7 @@ impl TransportInner {
             // Только эпоха 1 запускает инициализацию — остальные
             // используются для ротации ключей внутри уже работающей
             // сессии.
-            OP_DAVE_PREPARE_EPOCH => {
+            discord_opcode::DAVE_PREPARE_EPOCH => {
                 let epoch = d.get("epoch").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
                 if let Some(Err(e)) = self.dave.with_live(|c| c.prepare_epoch(protocol_version, epoch)) {
                     self.info(format!("[Transport/E2EE]: {e}"));
@@ -941,7 +877,7 @@ impl TransportInner {
             // Внешний отправитель MLS-сессии. Приходит один раз,
             // до proposals/commit. Без него MLS не сможет проверять
             // подписи.
-            OP_DAVE_MLS_EXTERNAL_SENDER => {
+            discord_opcode::DAVE_MLS_EXTERNAL_SENDER => {
                 if let Some(Err(e)) = self.dave.with_live(|c| c.set_external_sender(payload)) {
                     self.info(format!("[Transport/E2EE]: {e}"));
                 }
@@ -951,7 +887,7 @@ impl TransportInner {
             //
             // Discord ждёт, что ответ на proposals будет с определённым
             // префиксом в первом байте. Здесь мы этот префикс и добавляем.
-            OP_DAVE_MLS_PROPOSALS => {
+            discord_opcode::DAVE_MLS_PROPOSALS => {
                 // Список клиентов нужен MLS, чтобы построить корректное
                 // дерево. `to_vec()` — потому что `array()` возвращает
                 // срез, а замыкание `with_live` требует владения.
@@ -960,7 +896,7 @@ impl TransportInner {
                     // Сессия вернула commit — отправляем его с префиксом.
                     Some(Ok(Some(proposal))) => {
                         let mut packet = Vec::with_capacity(proposal.len() + 1);
-                        packet.push(OPCODE_DAVE_MLS_WELCOME);
+                        packet.push(discord_opcode::DAVE_MLS_COMMIT_WELCOME as u8);
                         packet.extend_from_slice(&proposal);
                         self.send_binary(packet);
                     }
@@ -970,12 +906,12 @@ impl TransportInner {
             }
 
             // Commit: после успешного применения подтверждаем переход.
-            OP_DAVE_MLS_ANNOUNCE_COMMIT_TRANSITION => {
+            discord_opcode::DAVE_MLS_ANNOUNCE_COMMIT_TRANSITION => {
                 self.confirm_transition(self.dave.with_live(|c| c.process_commit(&payload)));
             }
 
             // Welcome: так же — применяем и подтверждаем переход.
-            OP_DAVE_MLS_WELCOME => {
+            discord_opcode::DAVE_MLS_WELCOME => {
                 self.confirm_transition(self.dave.with_live(|c| c.process_welcome(&payload)));
             }
 
@@ -991,9 +927,12 @@ impl TransportInner {
     /// слушатель сам разберётся по ошибке.
     fn confirm_transition(&self, result: Option<Result<(u16, bool), String>>) {
         match result {
+            // Если переход удался
             Some(Ok((transition_id, true))) if transition_id != 0 => {
                 self.send_transition_ready(transition_id as u64);
             }
+            
+            // Если переход завершился ошибкой
             Some(Err(e)) => self.info(format!("[Transport/E2EE]: {e}")),
             _ => {}
         }
@@ -1005,7 +944,7 @@ impl TransportInner {
     /// обработчики не начали новую работу), затем уведомляем наружу,
     /// затем останавливаем всё остальное.
     fn destroy(&self) {
-        // swap: если уже true — выходим, повторный вызов ничего не делает.
+        // Swap: если уже true — выходим, повторный вызов ничего не делает.
         // `AcqRel` — потому что флаг читается в других потоках, и нам
         // нужна согласованность с событиями, которые они отправляют.
         if self.destroyed.swap(true, Ordering::AcqRel) { return; }
@@ -1013,7 +952,7 @@ impl TransportInner {
         // Сообщаем наружу причину — `CALL_TERMINATED`. Слушатель
         // (`VoiceConnection`) удалит соединение из БД и очистит
         // состояние.
-        self.emit(TransportEvent::Destroyed(close_code::CALL_TERMINATED));
+        self.emit(TransportEvent::Destroyed(close_codes::CALL_TERMINATED));
         *self.state.lock() = TransportState::Closed;
 
         // Останавливаем задачу обработки событий WS. Это гарантирует,
@@ -1044,9 +983,8 @@ impl TransportInner {
 /// Публичный фасад над `TransportInner`. Все методы — либо делегаты,
 /// либо тонкие обёртки для удобства вызывающего.
 pub struct Transport {
-    inner: Arc<TransportInner>,
+    inner: Arc<TransportInner>
 }
-
 impl Transport {
     /// Создаёт транспорт, WebSocket и запускает цикл обработки событий.
     ///
@@ -1073,7 +1011,7 @@ impl Transport {
             ssrc: Mutex::new(None),
             reconnecting: AtomicU32::new(0),
             destroyed: AtomicBool::new(false),
-            event_task: Mutex::new(None),
+            event_task: Mutex::new(None)
         });
 
         // Обработчик событий WS: последовательно, как и в JS.
@@ -1172,13 +1110,6 @@ impl Transport {
     }
 
     /// Возвращает ссылку на UDP-слой.
-    ///
-    /// UDP-слой живёт всё время жизни транспорта (не в `Option`),
-    /// поэтому ссылка валидна, пока жив сам `Transport`. Внутри
-    /// `UdpLayer` состояние клиента — `Option`, так что «слой есть,
-    /// а сокета нет» — нормальная ситуация (до discovery или после
-    /// `destroy`).
-    ///
     /// Через эту ссылку вызывающий может:
     /// * проверить `ready()` / `status()` / `lost()` / `packets()`;
     /// * отправить пакеты через `packet(...)` (минуя DAVE — только

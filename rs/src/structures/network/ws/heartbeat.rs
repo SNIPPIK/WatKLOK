@@ -5,7 +5,7 @@ use std::sync::{
 };
 use tokio_tungstenite::tungstenite::Message;
 use crate::structures::network::ws::{
-    opcodes::{close_codes, op},
+    opcodes::{discord_opcode, close_codes},
     inner::Inner,
     runtime
 };
@@ -96,7 +96,7 @@ pub fn start(inner: Arc<Inner>, interval_ms: u64) {
             // полученный от сервера. По ним сервер понимает, какую
             // часть нашей истории мы видели.
             let packet = json!({
-                "op": op::HEARTBEAT,
+                "op": discord_opcode::HEARTBEAT,
                 "d": {
                     "t": now_ms(),
                     "seq_ack": inner_task.sequence.load(Ordering::SeqCst),

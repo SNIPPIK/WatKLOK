@@ -30,14 +30,17 @@ use std::sync::Arc;
 pub enum HostEvent {
     /// Лог. `transport` различает источник: транспорт или само подключение.
     Log { transport: bool, text: String },
+
     /// Готовый пакет для отправки через gateway-адаптер.
     Send(Value),
+
     /// Соединение уничтожено; `guild_id` — какое именно (если известен).
     /// `None` для личных сообщений: удалять из БД нечего.
     Destroyed(Option<String>),
+
     /// Адаптер уничтожен. **Всегда приходит последним**: после него
     /// `close()` освобождает колбэк, и других событий уже не будет.
-    AdapterDestroy,
+    AdapterDestroy
 }
 
 /// Тип получателя событий — потокобезопасная функция, построенная
@@ -53,7 +56,7 @@ pub struct HostBus {
     /// Получатель событий. `None`, пока JS не зарегистрировал колбэк,
     /// и после `close()`. `Mutex<Option<...>>` — потому что `set_sink`
     /// и `close` меняют его, а `emit` читает.
-    sink: Mutex<Option<Sink>>,
+    sink: Mutex<Option<Sink>>
 }
 
 impl HostBus {
@@ -83,7 +86,7 @@ impl HostBus {
     /// успел ли JS подписаться.
     pub fn emit(&self, event: HostEvent) {
         // Клонируем `Arc` под мьютексом, а вызываем без него.
-        // napi-вызов может быть дорогим или реентерабельным — держать
+        // Napi-вызов может быть дорогим или реентерабельным — держать
         // мьютекс на это время нельзя.
         let sink = self.sink.lock().clone();
         let Some(sink) = sink else { return };
@@ -94,6 +97,7 @@ impl HostBus {
         let value = match event {
             HostEvent::Log { transport, text } => json!({
                 "t": "log",
+
                 // Строка вместо bool: JS-стороне проще разбирать
                 // `src === "transport"`, чем проверять флаг
                 // в отдельном поле рядом с текстом.
@@ -101,6 +105,7 @@ impl HostBus {
                 "text": text
             }),
             HostEvent::Send(payload) => json!({ "t": "send", "payload": payload }),
+
             // `guild_id` передаётся как есть: `None` превращается
             // в `null` в JSON, что JS-сторона понимает.
             HostEvent::Destroyed(guild_id) => json!({ "t": "destroyed", "guild_id": guild_id }),
