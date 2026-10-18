@@ -41,12 +41,15 @@ export class AudioResource extends TypedEmitter<AudioResourceEvents> {
     /** Таймер для отслеживания данных от AudioEngine */
     protected _timeout: NodeJS.Timeout;
 
+    /** Первая (почти мгновенная) проверка готовности — её тоже надо уметь отменять */
+    protected _immediate: NodeJS.Immediate | null = null;
+
     /**
      * @description Геттер состояния чтения, можно ли читать аудио поток
      * @public
      */
     public get readable(): boolean {
-        return this.engine?.readable;
+        return this.engine?.readable ?? false;
     };
 
     /**
@@ -63,10 +66,12 @@ export class AudioResource extends TypedEmitter<AudioResourceEvents> {
      * @public
      */
     public get duration(): number {
+        if (this._destroyed) return 0;
+
         const currentPosition = this._played_frames
 
         const time = currentPosition * (OPUS_FRAME_SIZE * this._afade_modificator);
-        return time / 1e3 + this.options.seek;
+        return time / 1e3 + (this.options.seek ?? 0);
     };
 
     /**
@@ -149,6 +154,8 @@ export class AudioResource extends TypedEmitter<AudioResourceEvents> {
 
         if (!this.readable) {
             const check = () => {
+                if (this._destroyed) return;
+
                 if (this.readable) {
                     this.emit("readable");
                     return;
@@ -156,7 +163,7 @@ export class AudioResource extends TypedEmitter<AudioResourceEvents> {
 
                 this._timeout = setTimeout(check, 10);
             };
-            setImmediate(check); // первая проверка почти мгновенно
+            this._immediate = setImmediate(check); // первая проверка почти мгновенно
         }
 
         // Сообщаем о запуске потока
@@ -169,6 +176,8 @@ export class AudioResource extends TypedEmitter<AudioResourceEvents> {
      * @public
      */
     public packetAt = (size: number) => {
+        if (this._destroyed || !this.engine) return [];
+
         const frames = this.engine.getPackets(size);
         if (frames) this._played_frames += frames.length;
         return frames;
@@ -196,6 +205,11 @@ export class AudioResource extends TypedEmitter<AudioResourceEvents> {
         );
 
         // Останавливаем polling (если используется)
+        if (this._immediate) {
+            clearImmediate(this._immediate);
+            this._immediate = null;
+        }
+
         if (this._timeout) {
             clearTimeout(this._timeout);
             this._timeout = null;

@@ -1,15 +1,7 @@
-use napi::{
-    threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode},
-    bindgen_prelude::*
-};
-use napi_derive::napi;
 use parking_lot::Mutex;
-use std::{
-    collections::HashMap,
-    sync::{
-        atomic::{AtomicBool, AtomicI64, AtomicU8},
-        Arc
-    }
+use std::sync::{
+    atomic::{AtomicBool, AtomicI64, AtomicU8},
+    Arc
 };
 use tokio::{
     task::JoinHandle,
@@ -28,13 +20,13 @@ use tokio_tungstenite::tungstenite::Message;
 /// соединения всё равно уже неактуальны.
 const MAX_PENDING_MESSAGES: usize = 256;
 
-/// Данные одного события, передаваемые в JS-обработчик.
+/// Событие WebSocket для Rust-подписчика (`voice::Transport`).
 ///
-/// `event` — имя события (совпадает с тем, что передавалось в `on()`);
-/// `payload` — JSON-строка (то, что парсится на JS-стороне);
-/// `binary` — бинарные данные, если событие их несёт.
-#[napi(object)]
-pub struct EmitData {
+/// `event` — имя события (`open`, `close`, `ready`, `sessionDescription`,
+/// `error`, `Users`, `daveSession`, `binary`, `info`, ...);
+/// `payload` — JSON-строка; `binary` — бинарные данные, если событие их несёт.
+#[derive(Debug, Clone)]
+pub struct WsEvent {
     /// Имя события.
     pub event: String,
 
@@ -42,20 +34,8 @@ pub struct EmitData {
     pub payload: Option<String>,
 
     /// Бинарные данные, если событие бинарное.
-    pub binary: Option<Buffer>
+    pub binary: Option<Vec<u8>>,
 }
-
-/// Потокобезопасная функция, зарегистрированная JS-стороной на событие.
-///
-/// Последний параметр `false` — не блокирующая: вызовы выполняются
-/// в JS-потоке, а не в том, откуда дёргается `call()`.
-pub type EventFn = ThreadsafeFunction<
-    EmitData,
-    (),
-    Vec<serde_json::Value>,
-    Status,
-    false,
->;
 
 /// Состояние отправки сообщений: либо копим в буфере, либо пишем в канал.
 ///
@@ -106,9 +86,9 @@ pub struct Inner {
     /// Задача соединения. Хранится, чтобы уметь прервать её из `reset`.
     pub conn_task: Mutex<Option<JoinHandle<()>>>,
 
-    /// Зарегистрированные JS-обработчики, сгруппированные по имени события.
-    /// На одно событие может быть несколько функций — все вызываются.
-    pub events: Mutex<HashMap<String, Vec<Arc<EventFn>>>>
+    /// Подписчик на все события (см. `VoiceWebSocket::subscribe_native`).
+    /// Без подписчика события отбрасываются.
+    pub native_tx: Mutex<Option<mpsc::UnboundedSender<WsEvent>>>
 }
 
 impl Inner {
@@ -124,7 +104,7 @@ impl Inner {
             hb_pending: AtomicBool::new(false),
             hb_task: Mutex::new(None),
             conn_task: Mutex::new(None),
-            events: Mutex::new(HashMap::new())
+            native_tx: Mutex::new(None)
         })
     }
 
@@ -204,67 +184,25 @@ impl Inner {
     // Events
     // ========================================================================
 
-    /// Вызывает событие во все зарегистрированные JS-обработчики.
+    /// Отправляет событие подписчику (см. `VoiceWebSocket::subscribe_native`).
     ///
-    /// Обработчики клонируются под мьютексом и вызываются ПОСЛЕ его
-    /// освобождения. Раньше `self.events.lock()` удерживался во время
-    /// `cb.call()`, что давало два риска:
-    ///
-    /// 1. **Взаимная блокировка с JS-потоком.** Если JS-обработчик
-    ///    попытается подписаться на новое событие (`ws.on(...)`),
-    ///    `events.lock()` уже удерживается из потока runtime'а, а JS-поток
-    ///    будет ждать его освобождения.
-    /// 2. **Лишняя конкуренция.** На каждый `binary`-пакет (50 раз в
-    ///    секунду) любой другой поток, желающий работать с событиями,
-    ///    ждал бы окончания вызова napi.
-    ///
-    /// `EventFn` — это обёртка над `Arc` внутри napi, `clone()` — атомарный
-    /// инкремент счётчика ссылок, дешевле любой конкуренции за мьютекс.
-    ///
-    /// Для всех обработчиков, кроме последнего, `payload` и `binary`
-    /// клонируются. Последнему владение передаётся без копирования.
+    /// Без подписчика событие молча отбрасывается. Канал неограниченный, поэтому
+    /// отправка не блокирует ни задачу соединения, ни heartbeat.
     pub fn emit(&self, event: &str, payload_json: Option<String>, binary: Option<Vec<u8>>) {
-        // Снимок обработчиков под мьютексом. `Vec<Arc<_>>::clone` —
-        // это N инкрементов счётчика ссылок, дешевле удержания мьютекса
-        // на время napi-вызовов.
-        let callbacks: Vec<Arc<EventFn>> = {
-            let events = self.events.lock();
-            match events.get(event) {
-                Some(cbs) if !cbs.is_empty() => cbs.clone(),
-                // Нет обработчиков — событие просто некому доставить.
-                _ => return
-            }
-        };
-
-        // Мьютекс освобождён — работаем со снимком. Ни один другой поток
-        // не блокируется на `events.lock()` во время вызовов napi.
-        let Some((last, rest)) = callbacks.split_last() else { return; };
-
-        for cb in rest {
-            // Копируем данные для всех, кроме последнего. `cb: &Arc<EventFn>`
-            // автоматически разыменовывается до `&EventFn`, поэтому `call()`
-            // работает как обычно.
-            let data = EmitData {
+        let native = self.native_tx.lock();
+        if let Some(tx) = native.as_ref() {
+            let _ = tx.send(WsEvent {
                 event: event.to_string(),
-                payload: payload_json.clone(),
-                binary: binary.as_ref().map(|b| Buffer::from(b.clone())),
-            };
-            let _ = cb.call(data, ThreadsafeFunctionCallMode::NonBlocking);
+                payload: payload_json,
+                binary,
+            });
         }
-
-        // Последнему отдаём владение без копирования.
-        let data = EmitData {
-            event: event.to_string(),
-            payload: payload_json,
-            binary: binary.map(Buffer::from),
-        };
-        let _ = last.call(data, ThreadsafeFunctionCallMode::NonBlocking);
     }
 
     /// Сериализует значение в JSON и вызывает его как событие.
     ///
     /// Если сериализация провалилась — отправляем строку `"null"`, чтобы
-    /// JS-сторона получила что-то осмысленное, а не мусор.
+    /// подписчик получил что-то осмысленное, а не мусор.
     pub fn emit_json<T: serde::Serialize>(&self, event: &str, payload: T) {
         let s = serde_json::to_string(&payload).unwrap_or_else(|_| "null".into());
         self.emit(event, Some(s), None);

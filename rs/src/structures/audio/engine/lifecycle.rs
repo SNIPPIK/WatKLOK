@@ -1,10 +1,12 @@
-use crate::structures::audio::ring_buffer::RingBuffer;
-use std::sync::atomic::Ordering;
-use napi::bindgen_prelude::*;
-use super::AudioEngine;
-use napi_derive::napi;
+//! Уничтожение движка и `Drop`.
 
-// glibc: возвращает ОС освобождённые страницы из ВСЕХ арен malloc
+use super::AudioEngine;
+use crate::structures::audio::ring_buffer::RingBuffer;
+use napi::bindgen_prelude::*;
+use napi_derive::napi;
+use std::sync::atomic::Ordering;
+
+// glibc: возвращает ОС освобождённые страницы из ВСЕХ арен malloc.
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 unsafe extern "C" {
     fn malloc_trim(pad: usize) -> i32;

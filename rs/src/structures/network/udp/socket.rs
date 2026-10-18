@@ -161,9 +161,9 @@ impl SocketBuffered {
     /// * `packet` — данные для отправки.
     #[napi]
     #[inline]
-    pub fn push_packet(&self, packet: Buffer) {
+    pub fn push_packet(&self, packet: Vec<u8>) {
         if packet.is_empty() || self.destroyed.load(Ordering::Acquire) { return; }
-        self.inner.push(packet.to_vec());
+        self.inner.push(packet);
     }
 
     /// Добавляет несколько пакетов в очередь.
@@ -176,14 +176,14 @@ impl SocketBuffered {
     /// # Аргументы
     /// * `packets` — массив Buffer с данными для отправки.
     #[napi]
-    pub fn push_packets(&self, packets: Vec<Buffer>) {
+    pub fn push_packets(&self, packets: Vec<Vec<u8>>) {
         // Если пакеты пустые
         if packets.is_empty() || self.destroyed.load(Ordering::Acquire) { return; }
 
         let packets = packets
             .into_iter()
             .filter(|packet| !packet.is_empty())
-            .map(|packet| packet.to_vec())
+            .map(|packet| packet)
             .collect::<Vec<_>>();
 
         self.inner.push_many(packets);
@@ -392,6 +392,74 @@ impl Drop for SocketBuffered {
         // Это освобождает накопленные, но ещё не отправленные пакеты.
         if let Some(inner) = Arc::get_mut(&mut self.inner) {
             inner.buffer.clear();
+        }
+    }
+}
+
+/// Rust-API (не экспортируется в JS).
+impl SocketBuffered {
+    /// Rust-версия `push_packets`: принимает обычные `Vec<u8>` без napi-типов.
+    ///
+    /// Пустые пакеты отбрасываются; переполнение очереди считается drop.
+    pub fn push_packets_native(&self, packets: Vec<Vec<u8>>) {
+        if packets.is_empty() || self.destroyed.load(Ordering::Acquire) {
+            return;
+        }
+
+        let packets = packets
+            .into_iter()
+            .filter(|packet| !packet.is_empty())
+            .collect::<Vec<_>>();
+
+        self.inner.push_many(packets);
+    }
+
+    /// Rust-версия `start_listening`: каждый принятый пакет передаётся в `on_packet`
+    /// прямо в потоке приёма, без прохода через JS.
+    ///
+    /// Если прослушивание уже активно, вызов игнорируется. Останавливается
+    /// через `stop_listening()` / `destroy()`.
+    pub fn start_listening_native<F>(&self, on_packet: F)
+    where
+        F: Fn(&[u8]) + Send + 'static,
+    {
+        // Флаг уже true — поток работает.
+        if self.listener_active.swap(true, Ordering::SeqCst) {
+            return;
+        }
+
+        let socket = self.inner.socket.clone();
+        let active = self.listener_active.clone();
+
+        let handle = thread::spawn(move || {
+            let mut buf = [0u8; 2048];
+
+            while active.load(Ordering::Acquire) {
+                match socket.recv(&mut buf) {
+                    Ok(size) if size > 0 => {
+                        if !active.load(Ordering::Acquire) {
+                            break;
+                        }
+                        on_packet(&buf[..size]);
+                    }
+
+                    Err(ref e)
+                    if e.kind() == ErrorKind::WouldBlock
+                        || e.kind() == ErrorKind::TimedOut =>
+                        {
+                            continue;
+                        }
+
+                    Err(_) => break,
+
+                    _ => {}
+                }
+            }
+        });
+
+        match self.listener_handle.lock() {
+            Ok(mut lock) => *lock = Some(handle),
+            Err(poisoned) => *poisoned.into_inner() = Some(handle),
         }
     }
 }

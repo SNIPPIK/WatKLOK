@@ -1,28 +1,54 @@
-use std::time::Instant;
-use napi::bindgen_prelude::Buffer;
-use napi_derive::napi;
+use std::{fmt, time::Instant};
+
+/// Ошибка MLS-сессии (текстовая причина, как раньше у napi-ошибки).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MlsError {
+  reason: String,
+}
+
+impl MlsError {
+  /// Создаёт ошибку из текста.
+  pub fn from_reason(reason: impl Into<String>) -> Self {
+    Self { reason: reason.into() }
+  }
+
+  /// Текст ошибки.
+  pub fn reason(&self) -> &str {
+    &self.reason
+  }
+}
+
+impl fmt::Display for MlsError {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    f.write_str(&self.reason)
+  }
+}
+
+impl std::error::Error for MlsError {}
+
+/// Результат операций MLS-сессии.
+pub type Result<T> = std::result::Result<T, MlsError>;
 
 /// Результат обработки proposals: commit и опциональный welcome.
 ///
 /// Возвращается из `process_proposals`. Поле `commit` присутствует, если
 /// нативная сессия сформировала новый commit для группы; `welcome` — только
 /// если в группу добавляются новые участники и им нужно приглашение.
-#[napi(object)]
+#[derive(Debug, Clone, Default)]
 pub struct ProposalsResult {
   /// Данные commit. `None`, если commit не требуется.
-  pub commit: Option<Buffer>,
+  pub commit: Option<Vec<u8>>,
 
   /// Данные welcome. `None`, если новых участников нет.
-  pub welcome: Option<Buffer>,
+  pub welcome: Option<Vec<u8>>,
 }
 
 /// Результат обработки commit или welcome.
 ///
 /// Возвращается из `process_commit` и `process_welcome`.
-#[napi(object)]
+#[derive(Debug, Clone, Copy)]
 pub struct TransitionResult {
   /// Идентификатор перехода (первые 2 байта payload).
-  #[napi(js_name = "transition_id")]
   pub transition_id: u16,
 
   /// `true`, если обработка завершилась успешно.
@@ -31,7 +57,6 @@ pub struct TransitionResult {
   /// `true`, если переход признан невалидным и требует повторной инициализации.
   /// Устанавливается только при первой ошибке; повторные ошибки во время
   /// уже начатой повторной инициализации сигнал не выставляют.
-  #[napi(js_name = "invalidated")]
   pub invalidated: bool,
 }
 

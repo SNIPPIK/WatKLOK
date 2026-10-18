@@ -1,8 +1,6 @@
 use crate::structures::crypto::mls::results::{
-    PendingTransition, ProposalsResult, TransitionResult
+    MlsError, PendingTransition, ProposalsResult, Result, TransitionResult
 };
-use napi::bindgen_prelude::{Buffer, Error, Result};
-use napi_derive::napi;
 use std::{
     collections::HashMap,
     num::NonZeroU16,
@@ -21,12 +19,11 @@ const TRANSITION_EXPIRY_PENDING_DOWNGRADE: u32 = 24;
 /// за это время, запись о нём удаляется.
 const TRANSITION_TIMEOUT: Duration = Duration::from_secs(5);
 
-/// Обёртка над `davey::DaveSession` для работы из JavaScript.
+/// Обёртка над `davey::DaveSession`: состояние E2EE-сессии и переходов.
 ///
 /// Управляет E2EE-состоянием голосового канала: обмен ключами, переходы
 /// между версиями протокола, обработка proposals/commit/welcome, шифрование
 /// Opus-пакетов. Нативная сессия создаётся лениво при первой инициализации.
-#[napi(js_name = "MLSSession")]
 pub struct MlsSession {
     /// Текущая версия протокола.
     version: u16,
@@ -62,7 +59,6 @@ pub struct MlsSession {
     pending_external_sender: Option<Vec<u8>>
 }
 
-#[napi]
 impl MlsSession {
     /// Создаёт обёртку без нативной сессии.
     ///
@@ -70,7 +66,6 @@ impl MlsSession {
     /// * `version` — начальная версия протокола.
     /// * `user_id` — идентификатор пользователя.
     /// * `channel_id` — идентификатор канала.
-    #[napi(constructor)]
     pub fn new(version: u16, user_id: String, channel_id: String) -> Self {
         Self {
             version,
@@ -98,7 +93,6 @@ impl MlsSession {
     /// `true`, если сессия уничтожена.
     ///
     /// Устанавливается в `destroy()` и остаётся `true` до конца жизни объекта.
-    #[napi(getter)]
     #[inline]
     pub fn destroyed(&self) -> bool {
         self.destroyed
@@ -109,7 +103,6 @@ impl MlsSession {
     /// Устанавливается при `recoverFromInvalidTransition` или первой ошибке
     /// обработки commit/welcome. Сбрасывается после успешного завершения
     /// перехода с `transition_id == 0`.
-    #[napi(getter)]
     #[inline]
     pub fn reinitializing(&self) -> bool {
         self.reinitializing
@@ -119,7 +112,6 @@ impl MlsSession {
     ///
     /// Используется как защита от повторного входа в `execute_transition`
     /// и от параллельного шифрования во время смены версии протокола.
-    #[napi(getter, js_name = "isTransitioning")]
     #[inline]
     pub fn is_transitioning(&self) -> bool {
         self.is_transitioning
@@ -128,7 +120,6 @@ impl MlsSession {
     /// Идентификатор последнего успешно выполненного перехода.
     ///
     /// `None`, если переходов ещё не было или сессия была уничтожена.
-    #[napi(getter, js_name = "lastTransitionId")]
     #[inline]
     pub fn last_transition_id(&self) -> Option<u16> {
         self.last_transition_id
@@ -137,7 +128,6 @@ impl MlsSession {
     /// `true`, если нативная сессия готова к шифрованию.
     ///
     /// `false`, если нативная сессия ещё не создана или не завершила обмен ключами.
-    #[napi(getter)]
     #[inline]
     pub fn ready(&self) -> bool {
         self.inner
@@ -150,7 +140,6 @@ impl MlsSession {
     ///
     /// `None`, если нативная сессия ещё не создана. Значения соответствуют
     /// внутреннему перечислению `davey::Status`.
-    #[napi(getter)]
     #[inline]
     pub fn status(&self) -> Option<u8> {
         self.inner
@@ -163,7 +152,6 @@ impl MlsSession {
     /// Возвращает 0, если нативная сессия ещё не создана. Не путать
     /// с полем `self.version`, которое хранит запрошенную версию и может
     /// отличаться от фактической версии нативной сессии.
-    #[napi(getter, js_name = "protocolVersion")]
     #[inline]
     pub fn protocol_version(&self) -> u16 {
         self.inner
@@ -180,13 +168,12 @@ impl MlsSession {
     ///
     /// Если нативная сессия уже создана — передаёт значение напрямую,
     /// иначе откладывает до момента инициализации.
-    #[napi(setter, js_name = "externalSender")]
     #[inline]
-    pub fn set_external_sender(&mut self, data: Buffer) -> Result<()> {
+    pub fn set_external_sender(&mut self, data: &[u8]) -> Result<()> {
         match self.inner.as_mut() {
             // Сессия есть — применяем сразу.
             Some(inner) => inner
-                .set_external_sender(data.as_ref())
+                .set_external_sender(data)
                 .map_err(Self::map_err),
 
             // Сессия ещё не создана — сохраняем до reinit.
@@ -214,9 +201,8 @@ impl MlsSession {
     ///
     /// # Возвращаемое значение
     /// Новый key-package, если он был создан.
-    #[napi(js_name = "prepareEpoch")]
     #[inline]
-    pub fn prepare_epoch(&mut self, epoch: u32, protocol_version: u16) -> Result<Option<Buffer>> {
+    pub fn prepare_epoch(&mut self, epoch: u32, protocol_version: u16) -> Result<Option<Vec<u8>>> {
         // Уничтоженная сессия не обрабатывает данные.
         if self.destroyed { return Ok(None); }
 
@@ -244,9 +230,8 @@ impl MlsSession {
     ///
     /// # Возвращаемое значение
     /// Новый key-package, если он был создан.
-    #[napi(js_name = "recoverFromInvalidTransition")]
     #[inline]
-    pub fn recover_from_invalid_transition(&mut self, transition_id: u16) -> Result<Option<Buffer>> {
+    pub fn recover_from_invalid_transition(&mut self, transition_id: u16) -> Result<Option<Vec<u8>>> {
         // Уничтоженная сессия не восстанавливается.
         if self.destroyed { return Ok(None); }
 
@@ -273,9 +258,8 @@ impl MlsSession {
     ///
     /// # Возвращаемое значение
     /// Новый key-package, если он был создан.
-    #[napi]
     #[inline]
-    pub fn reinit(&mut self) -> Result<Option<Buffer>> {
+    pub fn reinit(&mut self) -> Result<Option<Vec<u8>>> {
         self.reinit_internal()
     }
 
@@ -285,7 +269,7 @@ impl MlsSession {
     /// применяет отложенный external sender и возвращает key-package.
     /// Для версии 0 сбрасывает сессию и включает passthrough.
     #[inline]
-    fn reinit_internal(&mut self) -> Result<Option<Buffer>> {
+    fn reinit_internal(&mut self) -> Result<Option<Vec<u8>>> {
         // Уничтоженная сессия повторно не инициализируется.
         if self.destroyed { return Ok(None); }
 
@@ -293,7 +277,7 @@ impl MlsSession {
             // Версия должна быть ненулевой для NonZeroU16.
             let version = NonZeroU16::new(self.version)
                 .ok_or_else(|| {
-                    Error::from_reason(
+                    MlsError::from_reason(
                         "Protocol version must be non-zero",
                     )
                 })?;
@@ -348,7 +332,7 @@ impl MlsSession {
                 .create_key_package()
                 .map_err(Self::map_err)?;
 
-            return Ok(Some(Buffer::from(key_package)));
+            return Ok(Some(Vec::from(key_package)));
         }
 
         // Версия 0: сбрасываем сессию и включаем passthrough.
@@ -365,7 +349,6 @@ impl MlsSession {
     // ---------------------------------------------------------------------
 
     /// Сбрасывает состояние нативной сессии без её уничтожения.
-    #[napi]
     #[inline]
     pub fn reset(&mut self) -> Result<()> {
         match self.inner.as_mut() {
@@ -384,7 +367,6 @@ impl MlsSession {
 
     /// Полностью уничтожает сессию и освобождает ресурсы.
     /// Идемпотентен: повторный вызов не выполняет действий.
-    #[napi]
     #[inline]
     pub fn destroy(&mut self) {
         // Защита от повторного вызова.
@@ -422,7 +404,6 @@ impl MlsSession {
     /// # Аргументы
     /// * `enabled` — `true` для включения.
     /// * `expiry` — время жизни режима в секундах (опционально).
-    #[napi(js_name = "setPassthroughMode")]
     #[inline]
     pub fn set_passthrough_mode(&mut self, enabled: bool, expiry: Option<u32>) {
         // Если сессии нет — операция игнорируется.
@@ -442,21 +423,20 @@ impl MlsSession {
     ///
     /// # Ошибки
     /// Возвращает ошибку, если нативная сессия ещё не создана.
-    #[napi(js_name = "getSerializedKeyPackage")]
     #[inline]
-    pub fn get_serialized_key_package(&mut self) -> Result<Buffer> {
+    pub fn get_serialized_key_package(&mut self) -> Result<Vec<u8>> {
         // Без активной сессии key-package создать нельзя.
         let inner = self
             .inner
             .as_mut()
             .ok_or_else(|| {
-                Error::from_reason(
+                MlsError::from_reason(
                     "Session not initialized",
                 )
             })?;
 
         let key_package = inner.create_key_package().map_err(Self::map_err)?;
-        Ok(Buffer::from(key_package))
+        Ok(Vec::from(key_package))
     }
 
     // ---------------------------------------------------------------------
@@ -472,9 +452,8 @@ impl MlsSession {
     ///
     /// # Возвращаемое значение
     /// `ProposalsResult` с commit и welcome (если есть).
-    #[napi(js_name = "processProposals")]
     #[inline]
-    pub fn process_proposals(&mut self, operation_type: u8, proposals: Buffer, recognized_user_ids: Option<Vec<String>>) -> Result<ProposalsResult> {
+    pub fn process_proposals(&mut self, operation_type: u8, proposals: &[u8], recognized_user_ids: Option<Vec<String>>) -> Result<ProposalsResult> {
         // Удаляем устаревшие переходы.
         self.expire_transitions();
 
@@ -512,7 +491,7 @@ impl MlsSession {
 
         let result = inner.process_proposals(
             operation,
-            proposals.as_ref(),
+            proposals,
             recognized_ids.as_deref(),
         )
             .map_err(Self::map_err)?;
@@ -521,14 +500,8 @@ impl MlsSession {
             // Результат содержит commit (и, возможно, welcome).
             Some(commit_welcome) => {
                 ProposalsResult {
-                    commit: Some(
-                        Buffer::from(
-                            commit_welcome.commit,
-                        ),
-                    ),
-                    welcome: commit_welcome
-                        .welcome
-                        .map(Buffer::from),
+                    commit: Some(Vec::from(commit_welcome.commit)),
+                    welcome: commit_welcome.welcome.map(Vec::from),
                 }
             }
 
@@ -554,15 +527,14 @@ impl MlsSession {
     /// # Возвращаемое значение
     /// `TransitionResult` с `transition_id`, флагом успеха и признаком
     /// невалидности (для инициирования повторной инициализации).
-    #[napi(js_name = "processCommit")]
     #[inline]
-    pub fn process_commit(&mut self, payload: Buffer) -> Result<TransitionResult> {
+    pub fn process_commit(&mut self, payload: &[u8]) -> Result<TransitionResult> {
         // Удаляем устаревшие переходы.
         self.expire_transitions();
 
         // Минимум 2 байта под transition_id.
         if payload.len() < 2 {
-            return Err(Error::from_reason(
+            return Err(MlsError::from_reason(
                 "Commit payload too short",
             ));
         }
@@ -648,15 +620,14 @@ impl MlsSession {
     ///
     /// # Аргументы
     /// * `payload` — сериализованные данные welcome.
-    #[napi(js_name = "processWelcome")]
     #[inline]
-    pub fn process_welcome(&mut self, payload: Buffer) -> Result<TransitionResult> {
+    pub fn process_welcome(&mut self, payload: &[u8]) -> Result<TransitionResult> {
         // Удаляем устаревшие переходы.
         self.expire_transitions();
 
         // Минимум 2 байта под transition_id.
         if payload.len() < 2 {
-            return Err(Error::from_reason(
+            return Err(MlsError::from_reason(
                 "Welcome payload too short",
             ));
         }
@@ -748,7 +719,6 @@ impl MlsSession {
     ///
     /// # Возвращаемое значение
     /// `true`, если переход требует вызова `execute_transition`.
-    #[napi(js_name = "prepareTransition")]
     #[inline]
     pub fn prepare_transition(&mut self, transition_id: u16, protocol_version: u16) -> bool {
         // Удаляем устаревшие переходы.
@@ -796,7 +766,6 @@ impl MlsSession {
     /// # Возвращаемое значение
     /// `true`, если переход выполнен; `false`, если запись отсутствует
     /// или уже выполняется другой переход.
-    #[napi(js_name = "executeTransition")]
     #[inline]
     pub fn execute_transition(&mut self, transition_id: u16) -> bool {
         // Удаляем устаревшие переходы.
@@ -865,9 +834,8 @@ impl MlsSession {
     ///
     /// # Возвращаемое значение
     /// Вектор зашифрованных пакетов или `None`.
-    #[napi]
     #[inline]
-    pub fn encrypt(&mut self, packets: Vec<Buffer>) -> Option<Vec<Buffer>> {
+    pub fn encrypt(&mut self, packets: Vec<Vec<u8>>) -> Option<Vec<Vec<u8>>> {
         // Passthrough-режим или нестабильное состояние — не шифруем.
         if self.version == 0 || self.is_transitioning || self.reinitializing { return None; }
 
@@ -882,18 +850,14 @@ impl MlsSession {
             let encrypted = std::panic::catch_unwind(
                 std::panic::AssertUnwindSafe(
                     || {
-                        inner.encrypt_opus(packet.as_ref())
+                        inner.encrypt_opus(&packet)
                     },
                 ),
             );
 
             match encrypted {
                 Ok(Ok(buffer)) => {
-                    output.push(
-                        Buffer::from(
-                            buffer.as_ref(),
-                        ),
-                    );
+                    output.push(buffer.to_vec());
                 }
 
                 // Batch считается неуспешным целиком.
@@ -932,13 +896,13 @@ impl MlsSession {
         self.pending_transitions.clear();
     }
 
-    /// Преобразует ошибку `davey` в napi-ошибку с префиксом `[MlsSession]`.
+    /// Преобразует ошибку `davey` в `MlsError` с префиксом `[MlsSession]`.
     ///
-    /// Единая точка для прохождения ошибок нативного слоя в JavaScript —
+    /// Единая точка для прохождения ошибок нативного слоя наверх —
     /// упрощает поиск источника по префиксу в логах.
     #[inline]
-    fn map_err<E: std::fmt::Display>(error: E) -> Error {
-        Error::from_reason(format!(
+    fn map_err<E: std::fmt::Display>(error: E) -> MlsError {
+        MlsError::from_reason(format!(
             "[MlsSession] {}",
             error
         ))
@@ -960,7 +924,7 @@ impl MlsSession {
     fn parse_id(id: &str, name: &str) -> Result<u64> {
         // Пытаемся распарсить строку; при ошибке подставляем имя поля.
         id.parse().map_err(|_| {
-            Error::from_reason(format!(
+            MlsError::from_reason(format!(
                 "Invalid {}: {}",
                 name,
                 id
@@ -993,7 +957,7 @@ impl MlsSession {
             ),
 
             // Любой другой код — ошибка.
-            _ => Err(Error::from_reason(format!(
+            _ => Err(MlsError::from_reason(format!(
                 "Invalid operation: {operation}"
             ))),
         }
@@ -1441,7 +1405,7 @@ mod tests {
     }
 
     // ---------------------------------------------------------------------
-    // encrypt (без Buffer — только короткое замыкание)
+    // encrypt (без данных — только короткое замыкание)
     // ---------------------------------------------------------------------
 
     #[test]
@@ -1496,10 +1460,10 @@ mod tests {
 
     #[test]
     // Без нативной сессии key-package создать нельзя: метод обязан
-    // вернуть ошибку, а не панику и не пустой Buffer.
+    // вернуть ошибку, а не панику и не пустой вектор.
     fn get_serialized_key_package_without_session_errors() {
         let mut s = session_v1();
-        // Возвращаемый тип Result<Buffer>, но нам достаточно is_err().
+        // Возвращаемый тип Result<Vec<u8>>, но нам достаточно is_err().
         assert!(s.get_serialized_key_package().is_err());
     }
 }

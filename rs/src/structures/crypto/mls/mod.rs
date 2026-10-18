@@ -1,2 +1,2 @@
-mod session;
-mod results;
+pub mod session;
+pub mod results;

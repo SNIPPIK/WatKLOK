@@ -1,7 +1,6 @@
 import type { GatewayVoiceServerUpdateDispatchData, GatewayVoiceStateUpdateDispatchData } from "discord-api-types/v10";
-import type { VoiceConnectionConfiguration } from "#core/voice/index.js";
 import { GatewayOpcodes } from "discord-api-types/v10";
-import { SetArray } from "#structures";
+import { VoiceConnectionConfig } from "#native";
 
 /**
  * @author SNIPPIK
@@ -101,59 +100,6 @@ export abstract class VoiceAdapters<T extends any> {
 }
 
 /**
- * @author SNIPPIK
- * @description Класс адаптер, нужен для общения с голосовым подключением
- * @class VoiceAdapter
- * @public
- */
-export class VoiceAdapter {
-    /** Внутренний интерфейс адаптера */
-    public adapter: DiscordGatewayAdapterImplementerMethods;
-
-    /** Список пользователей в голосовом канале, для работы E2EE */
-    public clients = new SetArray<string>();
-
-    /** Пакеты для работы с голосовым подключением */
-    public packet: {
-        /** Пакет состояния на сервере */
-        server: GatewayVoiceServerUpdateDispatchData,
-
-        /** Пакет текущего голосового состояния */
-        state: GatewayVoiceStateUpdateDispatchData
-    } = { server: null, state: null };
-
-    /**
-     * @description Отправка данных о голосовом состоянии в Discord
-     * @param config - Данные для подключения
-     * @returns boolean
-     * @public
-     */
-    public send = (config: VoiceConnectionConfiguration) => {
-        if (!this.adapter) return false;
-
-        try {
-            // Если удается отправить данные через адаптер
-            return this.adapter.send({
-                op: GatewayOpcodes.VoiceStateUpdate,
-                d: config
-            });
-        } catch {
-            // Если не удалось отправить данные через адаптер
-            return false;
-        }
-    };
-
-    /**
-     * @description Удаление адаптера, с очисткой
-     * @public
-     */
-    public destroy = () => {
-        this.adapter?.destroy();
-        this.adapter = null;
-    };
-}
-
-/**
  * @description Шлюз Discord Адаптер, шлюза Discord.
  * @interface DiscordGatewayAdapterLibraryMethods
  * @public
@@ -222,7 +168,7 @@ interface DiscordVoiceUpdate {
     op: GatewayOpcodes.VoiceStateUpdate;
 
     /** Данные подключения */
-    d: VoiceConnectionConfiguration;
+    d: VoiceConnectionConfig;
 }
 
 /**
