@@ -1,9 +1,14 @@
-use super::heartbeat::{HeartbeatHooks, HeartbeatManager};
+use crate::structures::network::ws::runtime;
+use crate::utils::duration::now_ms;
 use parking_lot::Mutex;
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc, Weak,
+use std::{
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc, Weak,
+    },
+    time::Duration,
 };
+use tokio::{sync::Notify, task::JoinHandle};
 
 /// Значения `SpeakerType`: битовая маска поля `speaking` (op 5).
 ///
@@ -11,11 +16,10 @@ use std::sync::{
 /// поэтому `self_speaker` может быть произвольной комбинацией. Известные
 /// значения выделены в именованные варианты, всё остальное — в `Other`.
 ///
-/// Тип — не «чистый» enum, а обёртка над `u8`: `Other(v)` хранит маску,
-/// которая не сводится к одному известному флагу. Благодаря этому
-/// значения вроде `5` (микрофон + приоритет) проходят через систему,
-/// не теряя информацию.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// Равенство определяется **по битам**, а не по варианту: `Other(1)`
+/// равен `Enable`, `Other(0)` равен `Disable`. Иначе дедупликация
+/// в `set_speaking` пропускала бы лишние пакеты.
+#[derive(Clone, Copy, Debug)]
 pub enum SpeakerType {
     /// `0` — не говорит.
     Disable,
@@ -23,7 +27,7 @@ pub enum SpeakerType {
     /// `1` — говорит (микрофон).
     Enable,
 
-    /// `2` — фейк.
+    /// `2` — фейк (soundshare).
     Fake,
 
     /// `4` — приоритетный.
@@ -32,6 +36,23 @@ pub enum SpeakerType {
     /// Произвольная маска (комбинации битов).
     Other(u8)
 }
+
+/// Сравнение по значению битовой маски, а не по варианту.
+///
+/// Это принципиально для `set_speaking`: там сравнивается текущий тип
+/// с новым, чтобы не отправлять лишний пакет. Если бы `Other(1)` не был
+/// равен `Enable`, мы бы отправляли Speaking каждый раз при смене
+/// представления одного и того же значения.
+impl PartialEq for SpeakerType {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.bits() == other.bits()
+    }
+}
+
+// `Eq` — потому что `bits()` возвращает `u8`, а `u8` — `Eq`.
+// Без этого `SpeakerType` нельзя использовать в `HashSet` и т.п.
+impl Eq for SpeakerType {}
 
 impl SpeakerType {
     /// Числовое значение маски.
@@ -124,16 +145,18 @@ impl From<SpeakerType> for u8 {
 /// Время (мс), по истечении которого статус сбрасывается в `Disable`,
 /// если не было вызовов `set_speaking`.
 ///
-/// Используется как интервал пульса: каждый `set_speaking` продлевает
-/// ожидание, а если пакеты не отправлялись дольше этого времени, значит
-/// бот перестал передавать — и статус нужно сбросить, чтобы другие
+/// Используется как дедлайн: каждый `set_speaking` продлевает ожидание,
+/// а если пакеты не отправлялись дольше этого времени, значит бот
+/// перестал передавать — и статус нужно сбросить, чтобы другие
 /// участники не считали его говорящим.
 const KEEP_SWITCH_SPEAKING_MS: u64 = 10_000;
 
 /// То, что спикеру нужно от голосового подключения (`this.voice` в TS).
 ///
-/// Отдельный трейт нужен, чтобы менеджер не зависел от конкретного
-/// подключения: всё, что ему требуется, — три метода.
+/// **Важно:** `send_speaking` вызывается под внутренним мьютексом
+/// менеджера (это гарантирует порядок пакетов). Реализация не должна
+/// вызывать методы `VoiceSpeakerManager` синхронно — будет взаимная
+/// блокировка. Метод должен быть быстрым (например, класть пакет в очередь).
 pub trait SpeakerHost: Send + Sync {
     /// Тип по умолчанию — `voice.configuration.self_speaker` или `Enable`.
     /// Используется, когда бот начинает передавать без явно заданного типа.
@@ -150,68 +173,129 @@ pub trait SpeakerHost: Send + Sync {
 
 /// Менеджер статуса «говорит / молчит».
 ///
-/// Живёт в `Arc`, потому что на него ссылаются и голосовое подключение,
-/// и пульс (для сброса статуса по тайм-ауту).
+/// Вместо heartbeat используется один «сторож» с ленивым дедлайном:
+/// `set_speaking` только пишет одно атомарное значение (без локов и
+/// аллокаций), а сторож спит до дедлайна и полностью засыпает, пока
+/// статус `Disable`.
 pub struct VoiceSpeakerManager {
-    /// Текущий тип. `None` после `destroy()` (в TS это `null`).
-    /// `Mutex` нужен, потому что менять тип может любой поток.
+    /// Текущий тип. `None` — менеджер уничтожен (это же признак
+    /// уничтожения: проверка и изменение идут под одним локом).
     ty: Mutex<Option<SpeakerType>>,
 
-    /// Пульс, который сбрасывает статус, если долго не было обновлений.
-    heartbeat: HeartbeatManager,
+    /// Время последнего `set_speaking` (мс от эпохи).
+    /// Атомарное поле, чтобы `set_speaking` мог продлевать дедлайн
+    /// без захвата мьютекса `ty` на каждом вызове.
+    last_set: AtomicU64,
 
-    /// Слабая ссылка на хост: менеджер не владеет подключением и не должен
-    /// продлевать его жизнь.
-    host: Weak<dyn SpeakerHost>,
+    /// Будит сторожа, когда статус стал не-`Disable`.
+    /// Без этого сторож спал бы до дедлайна, даже если статус
+    /// только что сменился на «говорит» и нужно пересчитать время.
+    wake: Arc<Notify>,
 
-    /// Флаг уничтожения: после него все методы — no-op.
-    destroyed: AtomicBool
+    /// Задача-сторож. Хранится, чтобы прервать её в `destroy`/`Drop`.
+    watchdog: Mutex<Option<JoinHandle<()>>>,
+
+    /// Слабая ссылка на хост: менеджер не владеет подключением.
+    /// Иначе получился бы цикл владения: менеджер → хост → менеджер.
+    host: Weak<dyn SpeakerHost>
 }
 
 impl VoiceSpeakerManager {
-    /// Создаёт менеджер и запускает пульс.
+    /// Создаёт менеджер и запускает сторожа.
     ///
-    /// Пульс не отправляет пакетов (`send: None`) — он используется только
-    /// как таймер: если `set_speaking` не вызывался дольше
-    /// `KEEP_SWITCH_SPEAKING_MS`, срабатывает `on_timeout` и статус
-    /// принудительно сбрасывается в `Disable`.
+    /// Должен вызываться из контекста, где работает `runtime::spawn`
+    /// (иначе паника при запуске задачи).
     pub fn new(host: Weak<dyn SpeakerHost>) -> Arc<Self> {
-        // `new_cyclic` даёт слабую ссылку на создаваемый объект — она
-        // нужна замыканию тайм-аута, чтобы дотянуться до самого менеджера.
-        Arc::new_cyclic(|me: &Weak<VoiceSpeakerManager>| {
-            let weak_me = me.clone();
-            let heartbeat = HeartbeatManager::new(HeartbeatHooks {
-                // Ничего не отправляем — только ждём.
-                send: None,
+        let this = Arc::new(Self {
+            // Изначально бот молчит.
+            ty: Mutex::new(Some(SpeakerType::Disable)),
+            last_set: AtomicU64::new(now_ms()),
+            wake: Arc::new(Notify::new()),
+            watchdog: Mutex::new(None),
+            host
+        });
 
-                // По тайм-ауту принудительно выключаем спикер.
-                on_timeout: Box::new(move || {
-                    if let Some(speaker) = weak_me.upgrade() {
-                        speaker.set_speaking(SpeakerType::Disable);
+        // Задачу запускаем ПОСЛЕ создания `Arc`: внутри `new_cyclic`
+        // `Weak::upgrade` ещё возвращает `None`, и сторож завершился бы сразу.
+        // `Arc::downgrade(&this)` — слабая ссылка для сторожа, чтобы он
+        // не продлевал жизнь менеджеру.
+        let handle = runtime::spawn(Self::watchdog(Arc::downgrade(&this), this.wake.clone()));
+        *this.watchdog.lock() = Some(handle);
+        this
+    }
+
+    /// Сторож: сбрасывает статус в `Disable` через `KEEP_SWITCH_SPEAKING_MS`
+    /// после последнего `set_speaking`. Пока статус `Disable` — не просыпается.
+    ///
+    /// # Логика
+    ///
+    /// 1. Если менеджер уничтожен — выходим.
+    /// 2. Если статус `Disable` — спим на `wake.notified()`, пока нас
+    ///    не разбудят. Никаких таймеров, пока бот молчит.
+    /// 3. Если статус не-`Disable` — считаем дедлайн:
+    ///    * дедлайн прошёл — сбрасываем в `Disable`, перечитываем
+    ///      состояние (могли уничтожить);
+    ///    * дедлайн не прошёл — спим до него.
+    async fn watchdog(weak: Weak<Self>, wake: Arc<Notify>) {
+        loop {
+            // Сильную ссылку держим только внутри блока — не через `await`,
+            // иначе сторож продлевал бы жизнь менеджеру.
+            let sleep_ms = {
+                let Some(this) = weak.upgrade() else { break };
+                match this.get_type() {
+                    // Уничтожен — выходим.
+                    None => break,
+
+                    // Молчит — ждём пробуждения, без таймера.
+                    Some(SpeakerType::Disable) => None,
+
+                    // Говорит — считаем дедлайн.
+                    Some(_) => {
+                        let deadline = this
+                            .last_set
+                            .load(Ordering::Relaxed)
+                            .saturating_add(KEEP_SWITCH_SPEAKING_MS);
+                        let now = now_ms();
+
+                        if now >= deadline {
+                            // Дедлайн прошёл — пытаемся сбросить в `Disable`.
+                            // `apply` может не сработать, если нет WS или
+                            // если уже `Disable` (например, гонка с
+                            // другим `set_speaking`).
+                            this.apply(SpeakerType::Disable);
+                            match this.get_type() {
+                                // Сбросили (или уничтожены) — перечитаем
+                                // состояние в начале следующей итерации.
+                                None | Some(SpeakerType::Disable) => continue,
+
+                                // Не вышло (например, нет WS) — повторим
+                                // через полный интервал. Не спамим попытками.
+                                Some(_) => Some(KEEP_SWITCH_SPEAKING_MS),
+                            }
+                        } else {
+                            // Дедлайн ещё не прошёл — спим до него.
+                            Some(deadline - now)
+                        }
                     }
-                }),
+                }
+            };
 
-                // Подтверждения не интересуют.
-                on_ack: None
-            });
+            match sleep_ms {
+                // Спим до пробуждения: нас разбудят, когда статус
+                // сменится с `Disable` на что-то другое.
+                None => wake.notified().await,
 
-            // Запускаем таймер
-            heartbeat.start(Some(KEEP_SWITCH_SPEAKING_MS));
-
-            VoiceSpeakerManager {
-                // Изначально бот молчит.
-                ty: Mutex::new(Some(SpeakerType::Disable)),
-                heartbeat,
-                host,
-                destroyed: AtomicBool::new(false),
+                // Спим до дедлайна. После пробуждения пересчитаем
+                // состояние (могло измениться).
+                Some(ms) => tokio::time::sleep(Duration::from_millis(ms)).await,
             }
-        })
+        }
     }
 
     /// Тип по умолчанию (из конфигурации подключения).
     ///
-    /// Если хост недоступен (например, подключение уже разорвано),
-    /// возвращает `Enable` — безопасное значение, которое Discord примет.
+    /// Если хост недоступен, возвращает `Enable` — безопасное значение,
+    /// которое Discord примет.
     pub fn default_type(&self) -> SpeakerType {
         self.host
             .upgrade()
@@ -219,66 +303,110 @@ impl VoiceSpeakerManager {
             .unwrap_or(SpeakerType::Enable)
     }
 
-    /// Текущий тип спикера.
-    ///
-    /// `None`, если менеджер уничтожен.
+    /// Текущий тип спикера. `None`, если менеджер уничтожен.
     pub fn get_type(&self) -> Option<SpeakerType> {
         *self.ty.lock()
     }
 
     /// Задаёт тип без отправки пакета (`speaker.type = x`).
     ///
-    /// Используется, когда нужно сохранить тип, но не уведомлять сервер
-    /// (например, перед следующим `set_speaking`).
+    /// На уничтоженном менеджере — no-op (иначе `destroy` «воскресал» бы).
+    /// Проверка `slot.is_some()` — это и есть проверка «не уничтожен»:
+    /// `destroy` выставляет `None`.
     pub fn set_type(&self, ty: SpeakerType) {
-        *self.ty.lock() = Some(ty);
+        let mut slot = self.ty.lock();
+        if slot.is_some() {
+            *slot = Some(ty);
+        }
     }
 
-    /// `speaker.speaking = x`: подтверждает пульс и, если статус
+    /// `speaker.speaking = x`: продлевает дедлайн и, если статус
     /// изменился и WebSocket есть, отправляет пакет Speaking.
     ///
     /// Порядок действий:
-    /// 1. Проверяем, что менеджер не уничтожен.
+    /// 1. Проверяем, что менеджер не уничтожен (внутри `apply`).
     /// 2. Подтверждаем пульс — он не должен сработать, пока мы активны.
     /// 3. Проверяем, что хост ещё доступен и у него есть WebSocket.
-    /// 4. Если тип не изменился — ничего не делаем. (не спамим сервер).
+    /// 4. Если тип не изменился — ничего не делаем (не спамим сервер).
     /// 5. Иначе обновляем тип и отправляем пакет.
     pub fn set_speaking(&self, speaking: SpeakerType) {
-        if self.destroyed.load(Ordering::Acquire) { return; }
+        // Продлеваем дедлайн: один атомарный store, без локов.
+        // Это самая горячая часть — никаких мьютексов.
+        self.last_set.store(now_ms(), Ordering::Relaxed);
 
-        // Продлеваем пульс: пока мы обновляем статус, тайм-аут не нужен.
-        self.heartbeat.ack();
-
-        let Some(host) = self.host.upgrade() else { return };
-
-        {
-            let mut ty = self.ty.lock();
-            // Тип не изменился или нет соединения — отправлять нечего.
-            // Сравнение по значению варианта: `Other(5) != Other(6)`,
-            // `Enable != Disable` — как и ожидается.
-            if *ty == Some(speaking) || !host.has_ws() {
-                return;
-            }
-            *ty = Some(speaking);
-        }
-
-        // Отправляем пакет вне мьютекса — не блокируем других, кто мог бы
-        // читать тип в этот момент.
-        host.send_speaking(speaking);
-    }
-
-    /// Уничтожает менеджер: сбрасывает тип в `None`, останавливает пульс.
-    ///
-    /// Идемпотентно: повторный вызов ничего не делает.
-    pub fn destroy(&self) {
-        // swap: если уже true — выходим, второй вызов ничего не делает.
-        if self.destroyed.swap(true, Ordering::AcqRel) {
+        if !self.apply(speaking) {
             return;
         }
 
-        *self.ty.lock() = None;
-        // Останавливаем пульс: если он сработает после уничтожения,
-        // будет пытаться достучаться до уже освобождённого хоста.
-        self.heartbeat.destroy();
+        // Будим сторожа ПОСЛЕ применения: иначе он мог бы проснуться,
+        // увидеть ещё `Disable` и уснуть, потеряв пробуждение.
+        // Будим только при переходе в «говорит»: при переходе в `Disable`
+        // сторож и так знает, что делать (он спит на `notified()`
+        // и не будет разбужен, что правильно).
+        if speaking.bits() != 0 {
+            self.wake.notify_one();
+        }
+    }
+
+    /// Применяет тип: проверка «уничтожен», дедупликация, смена типа и
+    /// отправка пакета выполняются под ОДНИМ локом — так пакеты уходят
+    /// в том же порядке, в каком менялся тип, и после `destroy` ничего
+    /// не отправляется.
+    ///
+    /// Возвращает `false`, если менеджер уничтожен.
+    fn apply(&self, speaking: SpeakerType) -> bool {
+        let mut ty = self.ty.lock();
+        // Менеджер уничтожен — выходим. `None` выставляется в `destroy`
+        // и проверяется здесь.
+        let Some(current) = *ty else { return false };
+
+        // Хост недоступен (подключение уже разорвано) — считаем,
+        // что «применено», чтобы `set_speaking` не пытался будить сторожа.
+        let Some(host) = self.host.upgrade() else { return true };
+
+        // Тип не изменился или нет соединения — отправлять нечего.
+        // Сравнение по битам (см. `PartialEq`): `Other(1) == Enable`.
+        if current == speaking || !host.has_ws() {
+            return true;
+        }
+
+        // Обновляем тип и отправляем пакет под одним локом:
+        // гарантирует, что пакеты уходят в том же порядке, в каком
+        // менялся тип. `send_speaking` должен быть быстрым —
+        // см. doc-комментарий к `SpeakerHost`.
+        *ty = Some(speaking);
+        host.send_speaking(speaking);
+        true
+    }
+
+    /// Уничтожает менеджер: сбрасывает тип в `None`, останавливает сторожа.
+    ///
+    /// Идемпотентно.
+    pub fn destroy(&self) {
+        {
+            let mut ty = self.ty.lock();
+            // Уже уничтожен — выходим.
+            if ty.is_none() {
+                return;
+            }
+            *ty = None;
+        }
+
+        // Останавливаем сторожа. `abort` не блокирует — просто помечает
+        // задачу как отменённую; следующая точка ожидания завершит её.
+        if let Some(task) = self.watchdog.lock().take() {
+            task.abort();
+        }
+    }
+}
+
+impl Drop for VoiceSpeakerManager {
+    fn drop(&mut self) {
+        // Сторож может спать на `notified()` бесконечно — прерываем явно.
+        // `get_mut()` вместо `lock()` — потому что в `Drop` нет других
+        // владельцев, и мьютекс не нужен.
+        if let Some(task) = self.watchdog.get_mut().take() {
+            task.abort();
+        }
     }
 }
