@@ -29,25 +29,34 @@ use std::{
 /// при заполнении очереди: все операции возвращают не доставленные данные
 /// вызывающему коду (`Err(value)`), а не дропают их молча.
 pub struct RingBuffer {
-    // Массив слотов. `UnsafeCell<MaybeUninit<Vec<u8>>>` — классическая
-    // схема "сырой слот без инициализации": запись/чтение/дроп вручную,
-    // никакой автоматической инициализации/деструктора у массива нет.
+    /// Массив слотов. `UnsafeCell<MaybeUninit<Vec<u8>>>` — классическая
+    /// схема "сырой слот без инициализации": запись/чтение/дроп вручную,
+    /// никакой автоматической инициализации/деструктора у массива нет.
     buffer: Box<[UnsafeCell<MaybeUninit<Vec<u8>>>]>,
 
-    // Ёмкость (число слотов). Не меняется после `new`.
+    /// Ёмкость (число слотов). Не меняется после `new`.
     capacity: usize,
 
-    // `capacity - 1`, если capacity — степень двойки; иначе `None`.
-    // Позволяет заменить `%` на `&` в `index()` — заметно дешевле в hot path.
+    /// `capacity - 1`, если capacity — степень двойки; иначе `None`.
+    /// Позволяет заменить `%` на `&` в `index()` — заметно дешевле в hot path.
     mask: Option<usize>,
 
-    // Позиция producer. Меняется ТОЛЬКО producer'ом.
-    // CachePadded — разносит head/tail по разным кэш-линиям,
-    // иначе они будут "драться" за одну линию между двумя ядрами.
+    /// Позиция producer. Меняется ТОЛЬКО producer'ом.
+    /// CachePadded — разносит head/tail по разным кэш-линиям,
+    /// иначе они будут "драться" за одну линию между двумя ядрами.
     head: CachePadded<AtomicUsize>,
 
-    // Позиция consumer. Меняется ТОЛЬКО consumer'ом.
+    /// Позиция consumer. Меняется ТОЛЬКО consumer'ом.
     tail: CachePadded<AtomicUsize>,
+
+    /// Сериализует producer-сторону (`push`, `push_many`).
+    ///
+    /// Очередь SPSC, но `SocketBuffered::push_packet*` и `discovery` могут
+    /// вызываться из разных потоков (JS-поток и tokio). Без блокировки два
+    /// producer'а писали бы в один слот: пакет терялся, а `Vec` утекал
+    /// (`MaybeUninit::write` не вызывает drop). Незанятый мьютекс стоит
+    /// ~20 нс, а пакеты идут ~50 раз/с на сессию.
+    producer: parking_lot::Mutex<()>
 }
 
 // SAFETY: буфер спроектирован под SPSC. Producer работает только со своим
@@ -87,15 +96,10 @@ impl RingBuffer {
             mask,
             head: CachePadded::new(AtomicUsize::new(0)),
             tail: CachePadded::new(AtomicUsize::new(0)),
+            producer: parking_lot::Mutex::new(())
         }
     }
-
-    /// Ёмкость буфера (в слотах).
-    /*#[inline(always)]
-    pub fn capacity(&self) -> usize {
-        self.capacity
-    }*/
-
+    
     // ========================================================================
     // Internal
     // ========================================================================
@@ -135,6 +139,8 @@ impl RingBuffer {
         if value.is_empty() {
             return Err(value);
         }
+
+        let _producer = self.producer.lock();
 
         // head принадлежит producer'у — можно Relaxed.
         let head = self.head.load(Ordering::Relaxed);
@@ -182,7 +188,10 @@ impl RingBuffer {
         let head = self.head.load(Ordering::Acquire);
         let tail = self.tail.load(Ordering::Relaxed);
 
-        if head.wrapping_sub(tail) >= self.capacity {
+        // Оставляем один слот запаса: `push_up` пишет в слот `tail - 1`, а
+        // producer, видя устаревший `tail`, мог бы писать ровно в него же
+        // (при `used == capacity - 1`) — гонка, потеря пакета и утечка `Vec`.
+        if head.wrapping_sub(tail) >= self.capacity.saturating_sub(1).max(1) {
             return Err(value);
         }
 
@@ -226,6 +235,8 @@ impl RingBuffer {
     where
         I: IntoIterator<Item = Vec<u8>>,
     {
+        let _producer = self.producer.lock();
+
         // head принадлежит producer'у — Relaxed достаточно.
         let head = self.head.load(Ordering::Relaxed);
 
@@ -370,8 +381,12 @@ impl RingBuffer {
         // публикаций и освобождений слотов.
         // NB: это не атомарный snapshot — параллельные push/pop могут
         // случиться между двумя load. Для метрик — приемлемо.
-        let head = self.head.load(Ordering::Acquire);
+        // `tail` читаем ПЕРВЫМ: он только растёт и никогда не обгоняет `head`.
+        // При обратном порядке consumer мог успеть сдвинуть `tail` между
+        // двумя load, разность уходила в wrap-around и `min(capacity)`
+        // давал ложное «очередь полна».
         let tail = self.tail.load(Ordering::Acquire);
+        let head = self.head.load(Ordering::Acquire);
         head.wrapping_sub(tail).min(self.capacity)
     }
 

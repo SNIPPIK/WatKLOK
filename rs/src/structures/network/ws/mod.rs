@@ -178,6 +178,14 @@ impl VoiceWebSocket {
     }
 }
 
+impl Drop for VoiceWebSocket {
+    /// Задачи подключения и heartbeat держат `Arc<Inner>`, поэтому без явной
+    /// остановки они жили бы после потери владельца (утечка сокета и задач).
+    fn drop(&mut self) {
+        self.destroy();
+    }
+}
+
 impl Default for VoiceWebSocket {
     fn default() -> Self {
         Self::new()

@@ -26,6 +26,100 @@ TODO BUGS FIXED | Test
 //
 //
 //===================================================================
+TODO Fixed | 22.10.26
+ - Переход scheduler на Tokio...
+ Рукопожатие (handshake)
+ - Identify больше не теряется: если WS открылся раньше VOICE_SERVER_UPDATE/VOICE_STATE_UPDATE, он откладывается и уходит из `retry_identify`
+ - Тайм-аут каждого этапа (15 с): ws-connect, ready, udp-discovery, session-description, resume. По истечении обычный путь on_close (переподключение, затем destroy)
+ - Тайм-аут connect_async в WS (10 с)
+ - Дедлайн подключения (30 с): если gateway не прислал server/state, подключение уничтожается, JS получает `destroyed`
+ - Счётчик переподключений сбрасывается на SessionDescription (и Resumed), а не на Ready: нет бесконечного цикла «Ready есть, Session нет»
+ - after_discovery не шлёт Close/Open после destroy
+ Память и утечки
+ - aes-gcm: feature `zeroize` в Cargo.toml, иначе развёрнутый ключ остаётся в памяти после destroy
+ - RingBuffer: мьютекс на producer (два потока не пишут в один слот, нет потери пакета и утечки Vec)
+ - RingBuffer::push_up: один слот запаса, гонка с producer исключена
+ - RingBuffer::len(): порядок чтения tail/head, нет ложного «очередь полна»
+ - SocketBuffered: единственный владелец (не Clone), планировщик держит только Arc<SocketInner>
+ - SocketBuffered::Drop теперь вызывает destroy (раньше ключ RTP не занулялся)
+ - stop_listening не делает join самого себя
+ - UdpLayer::create: параллельный create не теряет прежний сокет и поток приёма (teardown)
+ - VoiceWebSocket: Drop вызывает destroy (задачи WS и heartbeat не живут после потери владельца)
+ - Ключ шифрования переезжает в RTP без копии; в TransportState хранится только фаза, без токена и ключа
+ Надёжность
+ - Планировщик: catch_unwind на каждую сессию, паника одной не убивает поток на 50 сессий
+ - Планировщик: сбой запуска потока возвращается ошибкой (io::Result), а не eprintln
+ - Scheduler::new() без фиктивного Result, убраны expect
+ - Монотонные часы (mono_ms) для тика планировщика и дедлайна спикера
+ - Статус подключения: поздний Open не воскрешает Connected после destroy (set_status_alive)
+ - DAVE: при выключенном E2EE (версия 0) звук не отбрасывается (passthrough); при ошибке создания сессии кадры по-прежнему не уходят открытым текстом
+ - MLS: флаг `reinitializing` сбрасывается при ошибке reinit (раньше звук пропадал навсегда)
+ - Спикер: отправка под одним локом (порядок пакетов), destroyed через ty == None, сравнение SpeakerType по битам, ленивый сторож вместо heartbeat, Drop
+ - HostBus: строгий порядок событий, adapter_destroy всегда последний, нет аллокаций без sink
+ - self_speaker: try_from вместо `as u8` (256 больше не превращается в 0)
+ - Разбор Ready/SessionDescription: try_from вместо `as`, обрезанный байт не портит ключ
+ Безопасность
+ - Debug у ServerPacket, StatePacket, SessionData, TransportState скрывает token, session_id, secret_key
+ - ffmpeg: -protocol_whitelist (file,pipe,http,https,tcp,tls,crypto,data)
+ Производительность
+ - OGG CRC: табличный алгоритм вместо побитового (примерно в 5-8 раз быстрее на каждой странице)
+ - WsEvent.payload теперь serde_json::Value: сообщение не сериализуется в строку и не парсится заново
+ - Лишние проверки в has_pending_packets, SocketInner
+ Рефакторинг и чистка
+ - udp/socket.rs без napi, ошибки через SocketError (VoiceConnection и AudioEngine остаются на napi)
+ - OggError вместо ошибки napi в демуксере
+ - Убран неиспользуемый voice HeartbeatManager
+ - Комментарии про JS/napi приведены в соответствие с кодом
+ Demuxer OGG
+ - Усечённый хвост потока при EOF отбрасывается (flush не выдаёт неполный пакет)
+ - Пакеты чужого serial отбрасываются (PLC отключён). Тест обновлён
+
+
+
+TODO FIXED | VOICE System
+ - Добавление теста ogg_crc_check_value_and_roundtrip
+ - Убраны napi из socket (SocketBuffered)
+ - Сброс переподключений при Resumed
+ - Добавление опкода VOICE_STATE_UPDATE в discord_opcode
+ - Объединение 2 SocketBuffered в 1, ранее были хуки для нативных вызовов
+ - speaker.rs
+  - Проверка «уничтожен», дедупликация, смена типа и send_speaking теперь выполняются под одним локом. Пакеты уходят в порядке смены типа, а после destroy не уходит ничего. Флаг destroyed убран, признаком уничтожения служит ty == None. set_type тоже не «воскрешает» уничтоженный менеджер.
+  - PartialEq и Eq реализованы вручную по bits(), так что Other(1) == Enable.
+  - Heartbeat заменён на ленивого сторожа. set_speaking делает один атомарный store, без локов и аллокаций. Сторож спит до дедлайна и полностью засыпает, пока статус Disable. Сброс происходит ровно через 10 с, а не через 10–20.
+  - Сторож запускается после создания Arc. Внутри new_cyclic Weak::upgrade ещё возвращает None, и задача завершилась бы сразу.
+  - Drop и destroy прерывают сторожа, иначе он мог бы вечно ждать на notified().
+ - heartbeat.rs
+  - Добавлен Drop.
+  - start() держит лок interval_task на всём протяжении, поэтому два параллельных запуска не создадут два цикла. Порядок локов везде interval_task -> timeout_task.
+  - SeqCst заменён на Relaxed. Добавлены геттеры misses(), last_ack_ms() и latency(), поэтому поля больше не мёртвые, а комментарии не врут.
+ - bus.rs
+  - adapter_destroy забирает sink через take(), а вызовы sink сериализуются отдельным мьютексом order. Событие не может прийти в JS после adapter_destroy.
+  - emit и log не сериализуют и не аллоцируют строки, если sink не установлен.
+ - adapter.rs
+  - Debug для ServerPacket и StatePacket написан вручную, token и session_id выводятся как <redacted>.
+
+//===================================================================
+
+
+TODO FIXED | 18.10.26
+ Перенос Voice системы на Rust, так же исправление костылей при переносе
+ - Перенос исходной логики в Rust, connection остается пока связующим звеном
+ - Drop теперь сначала destroy(), потом bus.close() (события успевают уйти)
+ - on_dave_session/on_binary защищены от гонки с destroy()
+ - MlsWrapper::encrypt для version == 0 — passthrough, не drop
+ - udp_layer::handle_message правильно ограничивает адрес (без байта порта)
+ - Transport::has_ws() — без клонирования Arc<VoiceWebSocket>
+ - DaveLayer::create — один lock вместо двух (устранена мини-гонка)
+ - DaveLayer::ready согласован с encrypt по reinitializing
+ - Убраны napi в WS, MLS
+ Улучшение OggDemuxer
+ - Добавление валидации CRC
+ - Исправление функции flush
+ -
+ Voice
+ - Перенос Close кодов в Ws -> opcodes
+ - Оптимизация op кодов discord
+
 TODO Fixed | 18.10.26
  - Добавление коллекции таймеров для аудио, теперь аудио потоки умеют ждать!
  - Возврат аргументов "-analyzeduration", "-probesize"

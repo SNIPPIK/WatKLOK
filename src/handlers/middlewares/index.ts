@@ -230,7 +230,7 @@ const checkPlayerWaitStream = createMiddleware<void>(async ({ context, stop, nex
 const checkAnotherVoice = createMiddleware<void>(async ({ context, stop, next }) => {
     const VoiceChannel = context.member?.voice("cache")?.channel("cache");
     const state = context.client.cache.voiceStates!.get(context.author.id, context.interaction.guildId);
-    const VoiceChannelMe = state?.channel("cache");
+    const VoiceChannelMe = await state?.channel("flow");
 
     // Если бот в голосовом канале и пользователь
     if (VoiceChannelMe && VoiceChannel) {

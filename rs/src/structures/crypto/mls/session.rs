@@ -242,7 +242,15 @@ impl MlsSession {
 
         // Все ожидающие переходы больше не актуальны.
         self.clear_transitions();
-        let key = self.reinit_internal()?;
+        let key = match self.reinit_internal() {
+            Ok(key) => key,
+            Err(error) => {
+                // Иначе флаг остался бы true навсегда: `encrypt` возвращал бы
+                // `None` (звук пропадает), а повторные восстановления были бы no-op.
+                self.reinitializing = false;
+                return Err(error);
+            }
+        };
 
         // transition_id не используется в восстановлении — принимается для совместимости API.
         let _ = transition_id;

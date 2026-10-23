@@ -5,7 +5,10 @@ use crate::structures::{
 };
 use parking_lot::Mutex;
 use serde_json::json;
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 
 /// Максимальная поддерживаемая версия протокола DAVE.
 ///
@@ -32,7 +35,7 @@ pub enum DaveEvent {
     /// Готов новый key-package; его нужно отправить как бинарный пакет
     /// с префиксом `OPCODE_DAVE_MLS_KEY`.
     Key(Vec<u8>),
-    
+
     /// Переход невалиден; нужно отправить JSON-пакет с op 31.
     InvalidateTransition(u16)
 }
@@ -212,7 +215,8 @@ impl MlsWrapper {
         let Some(commit) = result.commit else { return Ok(None) };
 
         // Склеиваем commit и welcome в один пакет: Discord ожидает
-        // их вместе с префиксом `OPCODE_DAVE_MLS_WELCOME`.
+        // их вместе с префиксом `DAVE_MLS_COMMIT_WELCOME` (его добавляет
+        // транспорт).
         let mut out = commit;
         if let Some(welcome) = result.welcome {
             out.extend_from_slice(&welcome);
@@ -370,6 +374,14 @@ pub struct DaveLayer {
     /// Текущая обёртка. `None`, если сессия ещё не создана или уже
     /// уничтожена.
     client: Mutex<Option<MlsWrapper>>,
+
+    /// Явный режим «E2EE выключен» (сервер выбрал версию 0 или не прислал её).
+    ///
+    /// Без этого флага отсутствие сессии означало бы «пакеты отбрасываются»
+    /// и при выключенном E2EE звук не уходил бы вообще. Флаг выставляется
+    /// ТОЛЬКО явным `set_passthrough(true)`: если сессия просто не создалась
+    /// (ошибка), кадры по-прежнему отбрасываются, а не уходят открытым текстом.
+    passthrough: AtomicBool,
 }
 impl DaveLayer {
     /// Готовность: сессия есть, активна и не в переходе.
@@ -377,6 +389,9 @@ impl DaveLayer {
     /// Все три условия должны выполняться одновременно: иначе шифровать
     /// нельзя — получится либо мусор, либо устаревший ключ.
     pub fn ready(&self) -> bool {
+        if self.passthrough.load(Ordering::Acquire) {
+            return true;
+        }
         self.client
             .lock()
             .as_ref()
@@ -386,7 +401,21 @@ impl DaveLayer {
 
     /// Шифрует кадры; `None`, если сессии нет или шифровать нельзя.
     pub fn packet(&self, frames: Vec<Vec<u8>>) -> Option<Vec<Vec<u8>>> {
+        if self.passthrough.load(Ordering::Acquire) {
+            return Some(frames);
+        }
         self.client.lock().as_mut()?.encrypt(frames)
+    }
+
+    /// Включает/выключает режим без шифрования (E2EE не используется).
+    ///
+    /// При включении существующая сессия уничтожается: двух режимов
+    /// одновременно быть не должно.
+    pub fn set_passthrough(&self, enabled: bool) {
+        if enabled {
+            self.destroy();
+        }
+        self.passthrough.store(enabled, Ordering::Release);
     }
 
     /// Выполняет `f` над живой (не уничтоженной) сессией.
@@ -406,13 +435,8 @@ impl DaveLayer {
     /// Настраивает `sink`, который будет отправлять key-package
     /// и invalid-transition пакеты в WebSocket.
     pub fn create(&self, version: u16, user_id: String, channel_id: String, ws: Arc<VoiceWebSocket>) -> Result<(), String> {
-        // Уничтожаем старую сессию, если была. Делаем это под тем же
-        // мьютексом, что и создание новой, чтобы не было окна, когда
-        // слой пуст.
-        let old = self.client.lock().take();
-        if let Some(mut old) = old {
-            old.destroy();
-        }
+        // Появляется настоящая сессия — режим passthrough больше не нужен.
+        self.passthrough.store(false, Ordering::Release);
 
         // Sink: key-package уходит как бинарный пакет с префиксом 26;
         // invalid-transition — как JSON с op 31.
@@ -424,7 +448,7 @@ impl DaveLayer {
                 packet.extend_from_slice(&key);
                 let _ = ws.send_binary(packet);
             }
-            
+
             // Если не удалось выдать ключ
             DaveEvent::InvalidateTransition(transition_id) => {
                 let payload = json!({
@@ -435,8 +459,8 @@ impl DaveLayer {
             }
         });
 
-        // Один захват мьютекса: уничтожаем старую (ещё раз, на случай
-        // гонки) и сразу кладём новую.
+        // Один захват мьютекса: уничтожаем старую и сразу кладём новую,
+        // окна, в котором слой пуст, нет.
         let mut guard = self.client.lock();
         if let Some(mut old) = guard.take() {
             old.destroy();
@@ -449,6 +473,7 @@ impl DaveLayer {
 
     /// Уничтожает сессию, если она есть.
     pub fn destroy(&self) {
+        self.passthrough.store(false, Ordering::Release);
         let client = self.client.lock().take();
         if let Some(mut client) = client {
             client.destroy();

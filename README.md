@@ -64,7 +64,7 @@ If you find a bug, encounter unexpected behavior, or have an idea for an improve
 
 The core voice traffic processing logic is implemented as a native **Rust** module (`rs`). Critical operations run independently of the main Node.js event loop, allowing the voice engine to continue operating even under heavy main-thread load.
 
-* **Voice Engine** — custom implementation of Discord Voice processing: `WS` + `UDP` + `SRTP` + `Opus`.
+* **Voice Engine** — custom implementation of Discord Voice processing: `WS` + `UDP` + `SRTP` + `Opus` (Transport).
 * **Security** — support for **End-to-End Encryption (E2EE 🔐)** through the **Discord DAVE** protocol.
 * **Timing & Scheduler** — a native cyclic system with precise timing and automatic workload distribution across active voice sessions.
 * **Opus** — processing and transmission of Opus frames without requiring an external Opus encoder during the sending stage.
@@ -172,63 +172,38 @@ for (let i = 0; i < 4; i++) {
 ---
 
 ## 🚀 Getting Started
-
 ### Requirements
-
 The following are required to run the project:
-
-* **Node.js**
-* **FFmpeg**
-* **Rust** — only if you need to build the native components yourself
+- **Node.js 24+** or **Bun 1.4+**
+- **FFmpeg**
 
 > Building the Rust components yourself is **not required**. Pre-built native binaries are available through [GitHub Actions](https://github.com/SNIPPIK/UnTitles/actions/workflows/build.yml).
 
 ### Installation
+> Building Rust components and installing FFmpeg system-wide is **not required**.  
+> Simply download the pre-built binaries and place them in `build/native`.
 
 ```shell
-# Clone the repository
+# 1. Clone the repository
 git clone https://github.com/SNIPPIK/UnTitles
 cd UnTitles
 
-# Install dependencies
+# 2. Install dependencies
 npm install
 
-# Configure the environment
+# 3. Prepare native components
+# Download the native module for your OS from GitHub Actions (workflow "build")
+# and place it into build/native. (https://github.com/SNIPPIK/WatKLOK/actions/workflows/build.yml)
+# Optionally, you can also place an FFmpeg binary there.
+mkdir -p build/native
+# build/native/
+# ├── bindings-<your-platform>.node
+# └── ffmpeg (optional, if FFmpeg is not installed system-wide)
+
+# 4. Configure the environment
 cp .env.custom .env
-```
+# Open .env and set token.discord (the only required parameter)
 
-> All required parameters should already be present in `.env.custom`. Before starting the project, simply copy it to `.env` and provide your token. Other values can be changed if necessary.
-
-### Building Native Components
-
-If Rust is installed and you want to build the native components yourself:
-
-```shell
-npm run build:native
-```
-
-If you do not need to build the Rust components yourself, you can use the pre-built binaries from [GitHub Actions](https://github.com/SNIPPIK/UnTitles/actions/workflows/build.yml).
-
-The resulting native modules should be placed in:
-
-```text
-build/native
-```
-
-### Build & Run
-
-After installing the dependencies and preparing the native components:
-
-```shell
-# Build TypeScript
-npm run build
-
-# Start
-npm run start
-```
-
-Or with a single command:
-
-```shell
+# 5. Build and run
 npm run build && npm run start
 ```

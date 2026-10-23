@@ -30,6 +30,11 @@ use tokio::{
 /// прерываем её принудительно.
 const WRITE_TASK_CLOSE_TIMEOUT: Duration = Duration::from_millis(500);
 
+/// Максимум на установку TCP + TLS + WebSocket-рукопожатия. Без него
+/// заблокированный или «чёрная дыра» хост держал бы подключение до
+/// системного тайм-аута TCP (минуты).
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+
 /// Однократная инициализация криптографического провайдера.
 ///
 /// `OnceLock` гарантирует, что установка произойдёт ровно один раз,
@@ -84,11 +89,14 @@ pub async fn run(inner: Arc<Inner>, url: String) {
 
     // Устанавливаем соединение. Ошибка здесь — тоже не паника: сообщаем
     // наверх и выходим, чтобы вызывающий мог решить, что делать.
-    let (ws, _) = match connect_async(request).await {
+    let connected = match timeout(CONNECT_TIMEOUT, connect_async(request)).await {
+        Ok(result) => result.map_err(|e| e.to_string()),
+        Err(_) => Err(format!("connect timeout ({}s)", CONNECT_TIMEOUT.as_secs())),
+    };
+    let (ws, _) = match connected {
         Ok(v) => v,
-        Err(e) => {
+        Err(msg) => {
             // Не удалось подключиться — вызываем ошибку и close.
-            let msg = e.to_string();
             inner.emit_json("error", json!({ "message": msg.clone() }));
             inner.emit_json("close", json!({ "code": 4006, "reason": msg }));
             inner.status.store(ws_status::CLOSED, Ordering::SeqCst);
@@ -330,7 +338,7 @@ fn handle_binary(inner: &Arc<Inner>, data: &[u8]) {
     // это задача JS-стороны.
     inner.emit(
         "binary",
-        Some(json!({ "op": op_code }).to_string()),
+        Some(json!({ "op": op_code })),
         Some(payload.to_vec()),
     );
 }

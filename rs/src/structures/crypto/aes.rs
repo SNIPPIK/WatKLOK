@@ -81,7 +81,7 @@ pub enum CryptoError {
     EncryptionFailed(String),
 
     /// Сокет ещё не создан - (ssrc/key не заданы).
-    NotInitialized,
+    NotInitialized
 }
 
 /// Реализация `Display` для преобразования ошибки в строку.
@@ -90,7 +90,7 @@ impl fmt::Display for CryptoError {
         match self {
             CryptoError::InvalidKeyLength(len) => write!(f, "Invalid key length: {}", len),
             CryptoError::EncryptionFailed(msg) => write!(f, "Encryption failed: {}", msg),
-            CryptoError::NotInitialized => write!(f, "VoiceRTPSocket is not initialized"),
+            CryptoError::NotInitialized => write!(f, "VoiceRTPSocket is not initialized")
         }
     }
 }
@@ -107,7 +107,7 @@ struct EncryptorState {
     ssrc: u32,
 
     /// Экземпляр шифра AES-256-GCM.
-    cipher: Aes256Gcm,
+    cipher: Aes256Gcm
 }
 
 // ============================================================================

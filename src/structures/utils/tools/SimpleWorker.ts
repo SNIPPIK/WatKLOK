@@ -64,19 +64,11 @@ export class SimpleWorker<TInput = any, TOutput = any> extends TypedEmitter<Work
      * @param logger      - Объект с методом `log(level, ...args)` для логирования ошибок
      *                      (по умолчанию `console`).
      */
-    public constructor(
-        file: string,
-        private options: WorkerOptions = {},
-        autoDestroy = false,
-        private logger: { log: (level: any, ...args: any[]) => void } = console
-    ) {
+    public constructor(file: string, private options: WorkerOptions = {}, autoDestroy = false, private logger: { log: (level: any, ...args: any[]) => void } = console) {
         super();
 
         // Приводим путь к абсолютному, если он ещё не абсолютный.
-        this.workerPath = path.isAbsolute(file)
-            ? file
-            : path.resolve(file);
-
+        this.workerPath = path.isAbsolute(file) ? file : path.resolve(file);
         this.autoDestroy = autoDestroy;
     };
 

@@ -1,4 +1,4 @@
-use crate::structures::network::ws::opcodes::discord_opcode;
+use crate::structures::network::ws::{opcodes::discord_opcode, runtime};
 use super::{
     adapter::{AdapterData, ServerPacket, StatePacket},
     utils::{
@@ -16,10 +16,21 @@ use napi::{
 use napi_derive::napi;
 use parking_lot::Mutex;
 use serde_json::{json, Map, Value};
+use tokio::task::JoinHandle;
+use std::time::Duration;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc, Weak,
 };
+
+/// Сколько подключение может оставаться в `Connecting` до уничтожения.
+///
+/// Покрывает этап, который транспорт не видит: gateway не прислал
+/// `VOICE_SERVER_UPDATE` / `VOICE_STATE_UPDATE` (нет прав на канал,
+/// канал удалён, gateway потерял пакет). Этапы самого рукопожатия
+/// (WS, Ready, discovery, SessionDescription) контролирует транспорт
+/// своими таймерами и переподключениями.
+const CONNECT_DEADLINE: Duration = Duration::from_secs(30);
 
 /// Параметры голосового подключения (`VoiceConnectionConfiguration`).
 ///
@@ -148,7 +159,7 @@ impl Config {
             d.insert("self_speaker".into(), Value::from(speaker));
         }
 
-        json!({ "op": discord_opcode::SESSION_DESCRIPTION, "d": Value::Object(d) })
+        json!({ "op": discord_opcode::VOICE_STATE_UPDATE, "d": Value::Object(d) })
     }
 }
 
@@ -195,7 +206,7 @@ enum Status {
     /// Выставляется из `on_transport_event` при `TransportEvent::Open`
     /// (discovery прошёл успешно, UDP готов). Именно в этом состоянии
     /// `ready()` может вернуть `true`.
-    Connected,
+    Connected
 }
 
 impl Status {
@@ -215,7 +226,7 @@ impl Status {
             Status::Disconnected => "disconnected",
             Status::Reconnecting => "reconnecting",
             Status::Connecting => "connecting",
-            Status::Connected => "connected",
+            Status::Connected => "connected"
         }
     }
 
@@ -240,7 +251,7 @@ impl Status {
             "reconnecting" => Some(Status::Reconnecting),
             "connecting" => Some(Status::Connecting),
             "connected" => Some(Status::Connected),
-            _ => None,
+            _ => None
         }
     }
 }
@@ -255,6 +266,13 @@ struct ConnectionInner {
 
     /// Текущий статус подключения.
     status: Mutex<Status>,
+
+    /// Слабая ссылка на себя: нужна таймеру, который не должен продлевать
+    /// жизнь подключению.
+    me: Weak<ConnectionInner>,
+
+    /// Таймер `CONNECT_DEADLINE`.
+    connect_timer: Mutex<Option<JoinHandle<()>>>,
 
     /// Флаг полного уничтожения подключения.
     /// После установки все публичные методы становятся no-op.
@@ -283,7 +301,10 @@ impl SpeakerHost for ConnectionInner {
         self.config
             .lock()
             .self_speaker
-            .map(|v| SpeakerType::from_bits(v as u8))
+            .and_then(|v| u8::try_from(v).ok())
+            .map(SpeakerType::from_bits)
+            // Значение вне `u8` — мусор из JS; `as u8` обрезал бы его
+            // (256 стало бы 0 = «не говорит»), поэтому берём `Enable`.
             .unwrap_or(SpeakerType::Enable)
     }
 
@@ -328,7 +349,7 @@ impl ConnectionInner {
                     if let Some(connection) = listener_weak.upgrade() {
                         connection.on_transport_event(event);
                     }
-                }),
+                })
             );
 
             // Менеджер говорящих получает слабую ссылку на хост,
@@ -345,12 +366,11 @@ impl ConnectionInner {
                     self_speaker: config.self_speaker,
                 }),
                 status: Mutex::new(Status::Disconnected),
+                me: weak.clone(),
+                connect_timer: Mutex::new(None),
                 destroyed: AtomicBool::new(false),
                 adapter_alive: AtomicBool::new(true),
-                adapter,
-                bus,
-                transport,
-                speaker,
+                adapter, bus, transport, speaker
             }
         })
     }
@@ -368,41 +388,100 @@ impl ConnectionInner {
         self.bus.emit(HostEvent::Send(payload));
     }
 
+    /// Выставляет статус, только если подключение не уничтожено.
+    ///
+    /// Проверка `destroyed` идёт ПОД локом статуса, а `destroy` выставляет
+    /// флаг до записи `Disconnected`: поздний `Open` из другого потока
+    /// не может «воскресить» статус `Connected` после уничтожения.
+    fn set_status_alive(&self, status: Status) -> bool {
+        let mut slot = self.status.lock();
+        if self.destroyed.load(Ordering::Acquire) { return false; }
+        *slot = status;
+
+        // Дедлайн живёт ровно пока идёт подключение. Порядок локов:
+        // `status` -> `connect_timer`; таймер при срабатывании берёт
+        // только `status`, поэтому инверсии нет.
+        match status {
+            Status::Connecting => self.arm_connect_deadline(),
+            Status::Connected | Status::Disconnected => self.disarm_connect_deadline(),
+            Status::Reconnecting => {}
+        }
+        true
+    }
+
+    /// Взводит дедлайн подключения (предыдущий отменяется).
+    fn arm_connect_deadline(&self) {
+        let weak = self.me.clone();
+        let mut slot = self.connect_timer.lock();
+        if let Some(old) = slot.take() {
+            old.abort();
+        }
+        *slot = Some(runtime::spawn(async move {
+            tokio::time::sleep(CONNECT_DEADLINE).await;
+            let Some(this) = weak.upgrade() else { return };
+            this.on_connect_deadline();
+        }));
+    }
+
+    /// Снимает дедлайн подключения.
+    fn disarm_connect_deadline(&self) {
+        if let Some(task) = self.connect_timer.lock().take() {
+            task.abort();
+        }
+    }
+
+    /// Подключение не установилось за `CONNECT_DEADLINE`: уничтожаем его,
+    /// чтобы не оставлять «зомби» в `Connecting`, и сообщаем JS-стороне
+    /// (событие `destroyed`).
+    fn on_connect_deadline(&self) {
+        if self.destroyed.load(Ordering::Acquire) { return; }
+
+        let status = *self.status.lock();
+        if matches!(status, Status::Connected | Status::Disconnected) { return; }
+
+        self.bus.log(
+            false,
+            format!(
+                "[Voice]: connection timeout ({}s) in status `{}`",
+                CONNECT_DEADLINE.as_secs(),
+                status.as_str()
+            ),
+        );
+        self.destroy();
+    }
+
     /// Обрабатывает события транспорта.
     fn on_transport_event(&self, event: TransportEvent) {
         match event {
             // Переподключаемся.
             TransportEvent::Reconnect(_) => {
-                if self.destroyed.load(Ordering::Acquire) {
-                    return;
-                }
+                // Если подключение уже уничтожено
+                if self.destroyed.load(Ordering::Acquire) { return; }
                 self.send_config();
                 self.set_speaking(SpeakerType::Disable);
             }
 
             // Транспортный шлюз открыт.
             TransportEvent::Open => {
-                if self.destroyed.load(Ordering::Acquire) {
-                    return;
-                }
-                *self.status.lock() = Status::Connected;
+                // Если подключение уже уничтожено
+                if self.destroyed.load(Ordering::Acquire) { return; }
+                self.set_status_alive(Status::Connected);
             }
 
             // Информационное сообщение от транспорта.
             TransportEvent::Info(text) => {
-                if self.destroyed.load(Ordering::Acquire) {
-                    return;
-                }
+                // Если подключение уже уничтожено
+                if self.destroyed.load(Ordering::Acquire) { return; }
                 self.bus.log(true, text);
             }
 
             // Транспортный шлюз закрывается.
             TransportEvent::Close(code, reason) => {
-                if self.destroyed.load(Ordering::Acquire) {
-                    return;
-                }
+                // Если подключение уже уничтожено
+                if self.destroyed.load(Ordering::Acquire) { return; }
+
                 self.set_speaking(SpeakerType::Disable);
-                *self.status.lock() = Status::Disconnected;
+                self.set_status_alive(Status::Disconnected);
                 self.bus.log(true, format!("{code}: {reason}"));
             }
 
@@ -418,15 +497,17 @@ impl ConnectionInner {
         }
 
         // Нельзя перейти в `connecting`, если адаптер уже уничтожен.
-        if status == Status::Connecting && !self.adapter_alive.load(Ordering::Acquire) {
+        else if status == Status::Connecting && !self.adapter_alive.load(Ordering::Acquire) {
             return Err("Adapter has not found".to_string());
         }
 
         // Всегда выставляем статус — включая Connecting.
-        *self.status.lock() = status;
+        else if !self.set_status_alive(status) {
+            return Ok(());
+        }
 
         // При переходе в Connecting отправляем конфигурацию в gateway.
-        if status == Status::Connecting {
+        else if status == Status::Connecting {
             self.send_config();
         }
         Ok(())
@@ -434,21 +515,19 @@ impl ConnectionInner {
 
     /// Выход из канала: статус — Disconnected, `channel_id = None`.
     fn disconnect(&self) {
-        if self.destroyed.load(Ordering::Acquire) || !self.adapter_alive.load(Ordering::Acquire) {
-            return;
-        }
+        if self.destroyed.load(Ordering::Acquire) || !self.adapter_alive.load(Ordering::Acquire) { return; }
         // Намеренно не идём через set_status(Connecting): статус должен
         // остаться Disconnected (мы выходим из канала), а конфиг — уйти.
-        *self.status.lock() = Status::Disconnected;
+        if !self.set_status_alive(Status::Disconnected) { return; }
+
         self.config.lock().channel_id = None;
         self.send_config();
     }
 
     /// Переход в указанный канал: сохраняет `channel_id` и инициирует подключение.
     fn set_channel(&self, id: String) {
-        if self.destroyed.load(Ordering::Acquire) || !self.adapter_alive.load(Ordering::Acquire) {
-            return;
-        }
+        if self.destroyed.load(Ordering::Acquire) || !self.adapter_alive.load(Ordering::Acquire) { return; }
+
         self.config.lock().channel_id = Some(id);
         let _ = self.set_status(Status::Connecting);
     }
@@ -458,9 +537,7 @@ impl ConnectionInner {
     /// Если endpoint пуст или отсутствует — пакет игнорируется: подключаться некуда.
     fn on_voice_server_update(&self, token: String, guild_id: String, endpoint: Option<String>) {
         let endpoint = endpoint.filter(|e| !e.is_empty());
-        if self.destroyed.load(Ordering::Acquire) || endpoint.is_none() {
-            return;
-        }
+        if self.destroyed.load(Ordering::Acquire) || endpoint.is_none() { return; }
 
         self.bus.log(false, "[Voice]: server update applied");
 
@@ -470,20 +547,15 @@ impl ConnectionInner {
     }
 
     /// Регистрирует пакет VOICE_STATE_UPDATE.
-    fn on_voice_state_update(
-        &self,
-        guild_id: Option<String>,
-        user_id: String,
-        session_id: String,
-        channel_id: Option<String>,
-    ) {
-        if self.destroyed.load(Ordering::Acquire) {
-            return;
-        }
+    fn on_voice_state_update(&self, guild_id: Option<String>, user_id: String, session_id: String, channel_id: Option<String>) {
+        if self.destroyed.load(Ordering::Acquire) { return; }
 
         self.bus.log(false, "[Voice]: client update applied");
 
         *self.adapter.state.lock() = Some(StatePacket { guild_id, user_id, session_id, channel_id });
+
+        // Если WS открылся раньше этого пакета, Identify был отложен.
+        self.transport.retry_identify();
     }
 
     /// Подготавливает аудио-пакеты и отправляет их.
@@ -522,6 +594,7 @@ impl ConnectionInner {
             .or_else(|| self.config.lock().guild_id.clone());
 
         *self.status.lock() = Status::Disconnected;
+        self.disarm_connect_deadline();
         self.bus.log(false, "[Voice/Cleaner] has destroyed");
 
         if guild_id.is_some() {

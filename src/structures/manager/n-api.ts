@@ -212,6 +212,7 @@ export interface iVoiceConnection {
      * и решить, когда его запускать.
      */
     constructor(config: VoiceConnectionConfig): void;
+
     /**
      * Регистрирует единственный обработчик событий Rust -> JS.
      *
@@ -242,7 +243,8 @@ export interface iVoiceConnection {
      * Возвращает ошибку, если не удалось построить `ThreadsafeFunction`
      * (например, callback уже освобождён на стороне JS).
      */
-    onEvent(callback: (arg: string) => void): void
+    onEvent(callback: (arg: string) => void): void;
+
     /**
      * Подключается к голосовому каналу.
      *
@@ -261,7 +263,8 @@ export interface iVoiceConnection {
      * Уже уничтоженное подключение (`destroyed == true`) ошибкой
      * не считается: `set_status` тихо выходит, и `start()` вернёт `Ok(())`.
      */
-    start(): void
+    start(): void;
+
     /**
      * Обрабатывает пакет `VOICE_SERVER_UPDATE` от gateway.
      *
@@ -278,7 +281,8 @@ export interface iVoiceConnection {
      * Это нормальная ситуация: Discord иногда присылает пакет без
      * endpoint, и ждать нужно следующего.
      */
-    onVoiceServerUpdate(token: string, guildId: string, endpoint?: string | undefined | null): void
+    onVoiceServerUpdate(token: string, guildId: string, endpoint?: string | undefined | null): void;
+
     /**
      * Обрабатывает пакет `VOICE_STATE_UPDATE` от gateway.
      *
@@ -294,7 +298,8 @@ export interface iVoiceConnection {
      * Внутри (`on_voice_state_update`) данные сохраняются в `adapter.state`.
      * Если транспорт уже ждёт — рукопожатие продолжится.
      */
-    onVoiceStateUpdate(guildId: string | undefined | null, userId: string, sessionId: string, channelId?: string | undefined | null): void
+    onVoiceStateUpdate(guildId: string | undefined | null, userId: string, sessionId: string, channelId?: string | undefined | null): void;
+
     /**
      * Отправляет аудио-пакеты (Opus).
      *
@@ -319,7 +324,8 @@ export interface iVoiceConnection {
      *
      * Если DAVE не готов (идёт переход) — пакеты отбрасываются.
      */
-    packet(frames: Array<Buffer>): void
+    packet(frames: Array<Buffer>): void;
+
     /**
      * Выходит из голосового канала.
      *
@@ -333,7 +339,8 @@ export interface iVoiceConnection {
      * Если бы шли через `set_status`, статус перезаписался бы
      * на `Connecting`, что неверно.
      */
-    disconnect(): void
+    disconnect(): void;
+
     /**
      * Переключается в указанный канал.
      *
@@ -347,7 +354,8 @@ export interface iVoiceConnection {
      * а состояние гонки, которое лучше проигнорировать, чем валить
      * в JS.
      */
-    setChannel(id: string): void
+    setChannel(id: string): void;
+
     /**
      * Устанавливает статус подключения по строковому имени.
      *
@@ -361,7 +369,8 @@ export interface iVoiceConnection {
      * вернёт ошибку. Такая ошибка проходит через `map_err` и тоже
      * попадает в JS.
      */
-    setStatus(status: string): void
+    setStatus(status: string): void;
+
     /**
      * Полностью уничтожает подключение.
      *
@@ -374,7 +383,8 @@ export interface iVoiceConnection {
      * Явный вызов полезен, когда JS-сторона хочет освободить ресурсы
      * немедленно, не дожидаясь сборщика мусора.
      */
-    destroy(): void
+    destroy(): void;
+
     /**
      * Текущий статус подключения строкой.
      *
@@ -384,7 +394,8 @@ export interface iVoiceConnection {
      * `&'static str`. Аллокация на каждый вызов неизбежна,
      * но это геттер, а не горячий путь.
      */
-    get status(): string
+    get status(): string;
+
     /**
      * `true`, если подключение готово к отправке и приёму аудио.
      *
@@ -397,7 +408,8 @@ export interface iVoiceConnection {
      * читать. Внутри `ConnectionInner::ready` — обычная проверка
      * атомиков, так что читать дёшево.
      */
-    get ready(): boolean
+    get ready(): boolean;
+
     /**
      * `channel_id` из последнего `VOICE_STATE_UPDATE`.
      *
@@ -408,7 +420,8 @@ export interface iVoiceConnection {
      * `Option<String>` — `None`, если state-пакета ещё не было
      * или пользователь вышел из канала.
      */
-    get stateChannelId(): string | null
+    get stateChannelId(): string | null;
+
     /**
      * `true`, если транспорт полностью готов (WebSocket + UDP).
      *
@@ -416,7 +429,8 @@ export interface iVoiceConnection {
      * без учёта статуса подключения. Полезно для диагностики —
      * понять, на каком этапе рукопожатия мы застряли.
      */
-    get transportReady(): boolean
+    get transportReady(): boolean;
+
     /**
      * SSRC текущей голосовой сессии.
      *
@@ -427,7 +441,8 @@ export interface iVoiceConnection {
      * указать SSRC, чтобы сервер знал, к какому потоку относится
      * «говорит/молчит».
      */
-    get ssrc(): number | null
+    get ssrc(): number | null;
+
     /**
      * `true`, если WebSocket-соединение активно.
      *
@@ -435,7 +450,8 @@ export interface iVoiceConnection {
      * (после `destroy`), считаем, что не готов. Это безопаснее, чем
      * возвращать `true` или паниковать.
      */
-    get wsReady(): boolean
+    get wsReady(): boolean;
+
     /**
      * Последний полученный seq по WebSocket.
      *
@@ -443,7 +459,8 @@ export interface iVoiceConnection {
      * нужно для Resume: при переподключении мы сообщаем серверу,
      * откуда продолжать, чтобы не терять пакеты.
      */
-    get wsSequence(): number
+    get wsSequence(): number;
+
     /**
      * `true`, если UDP-соединение готово.
      *
@@ -451,7 +468,8 @@ export interface iVoiceConnection {
      * и можно отправлять пакеты. До discovery или после `destroy` —
      * `false`.
      */
-    get udpReady(): boolean
+    get udpReady(): boolean;
+
     /**
      * Текущий статус UDP-соединения строкой.
      *
@@ -459,7 +477,8 @@ export interface iVoiceConnection {
      * `"connected"`. Полезно для диагностики: если `transport_ready`
      * `false`, можно посмотреть, на каком этапе застряло UDP.
      */
-    get udpStatus(): string
+    get udpStatus(): string;
+
     /**
      * Количество отправленных UDP-пакетов.
      *
@@ -467,7 +486,8 @@ export interface iVoiceConnection {
      * нет — проблема на стороне получателя. Если не отправляются —
      * проблема у нас.
      */
-    get udpPackets(): number
+    get udpPackets(): number;
+
     /**
      * Количество потерянных UDP-пакетов.
      *
@@ -475,7 +495,7 @@ export interface iVoiceConnection {
      * на стороне клиента (не ушли в сокет или отброшены в очереди),
      * а не на стороне получателя.
      */
-    get udpDrops(): number
+    get udpDrops(): number;
 }
 
 /**
@@ -486,15 +506,19 @@ export interface iVoiceConnection {
  */
 export interface VoiceConnectionConfig {
     /** Идентификатор гильдии. `None` для личных сообщений. */
-    guild_id?: string
+    guild_id?: string;
+
     /** Идентификатор канала. `None` означает «не подключаться». */
-    channel_id?: string
+    channel_id?: string;
+
     /** Отключить звук от других участников. */
-    self_deaf: boolean
+    self_deaf: boolean;
+
     /** Отключить свой микрофон. */
-    self_mute: boolean
+    self_mute: boolean;
+
     /** Предпочитаемый динамик (для клиентов с несколькими выходами). */
-    self_speaker?: number
+    self_speaker?: number;
 }
 
 /**

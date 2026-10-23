@@ -65,6 +65,9 @@ pub mod discord_opcode {
     /// После него транспорт готов к отправке/приёму аудио.
     pub const SESSION_DESCRIPTION: u64 = 4;
 
+    /// Gateway-опкод Voice State Update (запрос входа/выхода из канала).
+    pub const VOICE_STATE_UPDATE: u64 = 4;
+
     /// Уведомление о состоянии говорящего (start/stop).
     ///
     /// Отправляется, когда бот начинает или заканчивает передачу.

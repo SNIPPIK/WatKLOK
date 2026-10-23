@@ -19,7 +19,7 @@ use tokio::{
 /// Максимальное количество отправок discovery.
 ///
 /// 5 попыток с паузой 75 мс дают окно ~300 мс на отправку, после чего
-/// ждём ответ до общего таймаута. Это компромисс: больше попыток —
+/// ждём ответ до общего тайм-аута. Это компромисс: больше попыток —
 /// дольше ждать при полной недоступности сервера; меньше — выше шанс
 /// не пробиться при кратковременных потерях.
 const MAX_RETRIES: u32 = 5;
@@ -29,10 +29,10 @@ const MAX_RETRIES: u32 = 5;
 /// 75 мс — достаточно, чтобы дать сети доставить пакет, но не настолько
 /// много, чтобы растянуть попытки на секунды. Значение подобрано так,
 /// чтобы 5 попыток укладывались в ~300 мс — заметно меньше общего
-/// таймаута в 2 с.
+/// тайм-аута в 2 с.
 const RETRY_DELAY: Duration = Duration::from_millis(75);
 
-/// Общий таймаут ожидания ответа discovery.
+/// Общий тайм-аут ожидания ответа discovery.
 ///
 /// Отсчитывается с момента запуска задачи, а не с последней попытки:
 /// даже если все попытки ушли за 300 мс, ждём ответ до конца окна.
@@ -42,8 +42,10 @@ const DISCOVERY_TIMEOUT: Duration = Duration::from_millis(2_000);
 
 /// Статус UDP: не подключён.
 const STATUS_DISCONNECTED: u8 = 0;
+
 /// Статус UDP: идёт discovery или установка соединения.
 const STATUS_CONNECTING: u8 = 1;
+
 /// Статус UDP: соединение установлено, можно отправлять пакеты.
 const STATUS_CONNECTED: u8 = 2;
 
@@ -70,24 +72,24 @@ pub type DiscoveryResult = Result<Handshake, String>;
 struct Shared {
     /// Нативный сокет. `Option`, чтобы забрать его при уничтожении.
     ///
-    /// ВАЖНО: `SocketBuffered` нельзя клонировать «на время» — `Drop`
-    /// клона уничтожит общую сессию, поэтому все обращения идут через
-    /// этот мьютекс.
+    /// `SocketBuffered` — единственный владелец сессии (не `Clone`): его
+    /// `Drop` освобождает сокет, поток приёма и запись в планировщике.
+    /// Обращения идут через этот мьютекс.
     socket: Mutex<Option<SocketBuffered>>,
 
     /// Текущий статус: `DISCONNECTED`, `CONNECTING` или `CONNECTED`.
-    /// Читается из JS-геттеров, пишется при переходе состояний.
+    /// Читается геттерами, пишется при переходе состояний.
     status: AtomicU8,
 
     /// Канал для отправки результата discovery во внешний `oneshot`.
     ///
     /// `Option`, потому что забрать его можно только один раз:
-    /// либо discovery завершился успехом, либо ошибкой, либо таймаутом.
+    /// либо discovery завершился успехом, либо ошибкой, либо тайм-аутом.
     tx: Mutex<Option<oneshot::Sender<DiscoveryResult>>>,
 
-    /// `true`, если discovery уже завершён (успех, ошибка или таймаут).
+    /// `true`, если discovery уже завершён (успех, ошибка или тайм-аут).
     /// Повторные отправки после этого не имеют смысла.
-    done: AtomicBool,
+    done: AtomicBool
 }
 
 impl Shared {
@@ -98,9 +100,12 @@ impl Shared {
     fn handle_message(&self, msg: &[u8]) {
         // Пакет discovery имеет фиксированную длину 74 байта
         // и начинается с типа 2 (big-endian u16).
-        if msg.len() != 74 || u16::from_be_bytes([msg[0], msg[1]]) != 2 {
-            return;
-        }
+        if msg.len() != 74 || u16::from_be_bytes([msg[0], msg[1]]) != 2 { return; }
+
+        // Discovery отправляется несколько раз, поэтому ответов может быть
+        // больше одного. Первый валидный пакет побеждает, остальные
+        // игнорируются (и не трогают статус после уничтожения/таймаута).
+        if self.done.swap(true, Ordering::AcqRel) { return; }
 
         // Адрес — с 8-го байта до первого нуля (`indexOf(0, 8)`,
         // при отсутствии — до len-1).
@@ -109,8 +114,13 @@ impl Shared {
             .iter()
             .position(|&b| b == 0)
             .map(|p| p + 8)
-            .unwrap_or(msg.len() - 2);
+            .unwrap_or(msg.len() - 2)
+            // Адрес не должен залезать в два байта порта.
+            .min(msg.len() - 2);
+
+        // IP адрес UDP сервера
         let address = String::from_utf8_lossy(&msg[8..end]).to_string();
+
         // Порт — последние два байта, big-endian.
         let port = u16::from_be_bytes([msg[msg.len() - 2], msg[msg.len() - 1]]);
 
@@ -123,9 +133,7 @@ impl Shared {
             Err("Not found IPv4 address".to_string())
         };
 
-        // Фиксируем завершение discovery и отправляем результат наружу.
-        // `take()` гарантирует, что отправим ровно один раз.
-        self.done.store(true, Ordering::Release);
+        // Отправляем результат наружу. `take()` гарантирует ровно одну отправку.
         if let Some(tx) = self.tx.lock().take() {
             let _ = tx.send(result);
         }
@@ -133,11 +141,31 @@ impl Shared {
 }
 
 /// Клиент UDP: общее состояние плюс handle задачи discovery.
+///
+/// Отдельная структура от `UdpLayer`, чтобы `destroy` мог забрать
+/// клиента целиком (`Option::take`) и дальше работать с ним без
+/// удержания мьютекса `UdpLayer`. Если бы `shared` и `task` лежали
+/// прямо в `UdpLayer` как отдельные поля, `destroy` пришлось бы
+/// синхронизировать их вручную, а в промежутке между «взяли одно»
+/// и «взяли другое» слой мог бы оказаться в несогласованном
+/// состоянии.
 struct Client {
+    /// Общее состояние: сокет, статус, канал результата, флаг `done`.
     shared: Arc<Shared>,
+
     /// Handle задачи discovery. `None`, если задача уже завершилась
     /// (или её ещё не запускали).
-    task: Option<JoinHandle<()>>,
+    ///
+    /// `Option` — потому что `JoinHandle` забирается в `destroy` перед
+    /// `abort` + `join`. После этого поле остаётся `None`, и повторный
+    /// `destroy` не пытается прервать уже прерванное.
+    ///
+    /// `JoinHandle<()>` — задача ничего не возвращает: результат
+    /// discovery уходит через `oneshot`-канал (`shared.tx`), а не
+    /// через возвращаемое значение задачи. Это правильно: вызывающий
+    /// ждёт результат через `Receiver`, а задача в это время может
+    /// быть уже завершена.
+    task: Option<JoinHandle<()>>
 }
 
 /// UDP-слой транспорта.
@@ -147,7 +175,13 @@ struct Client {
 /// потому что клиент может быть уничтожен и создан заново.
 #[derive(Default)]
 pub struct UdpLayer {
-    client: Mutex<Option<Client>>,
+    /// Текущий клиент. `None` до `create` или после `destroy`.
+    ///
+    /// Методы читают это поле под мьютексом; `create` и `destroy`
+    /// заменяют его целиком (`take` + `Some(...)`), а не мутируют
+    /// внутренности клиента. Это упрощает рассуждение о состоянии:
+    /// клиент либо есть целиком, либо его нет.
+    client: Mutex<Option<Client>>
 }
 
 impl UdpLayer {
@@ -192,7 +226,7 @@ impl UdpLayer {
     /// Реальная отправка идёт в планировщике, поэтому метод не
     /// блокирует вызывающего.
     pub fn packet(&self, frames: Vec<Vec<u8>>) {
-        self.with_socket(|s| s.push_packets_native(frames));
+        self.with_socket(|s| s.push_packets(frames));
     }
 
     /// Инициализация RTP (SSRC + ключ).
@@ -219,9 +253,8 @@ impl UdpLayer {
 
     /// Создаёт UDP-подключение и запускает discovery.
     ///
-    /// Возвращает приёмник результата (в TS — `Promise<Error | handshake>`).
-    /// Ошибка создания сокета тоже приходит как `Err` (в JS такой промис
-    /// никогда не завершался).
+    /// Возвращает приёмник результата. Ошибка создания сокета тоже
+    /// приходит как `Err`.
     pub fn create(&self, ssrc: u32, ip: &str, port: u16) -> oneshot::Receiver<DiscoveryResult> {
         // Если UDP был поднят ранее — уничтожаем. Новый клиент заменяет
         // предыдущий: одновременно поддерживать два нет смысла.
@@ -244,7 +277,7 @@ impl UdpLayer {
             socket: Mutex::new(Some(socket)),
             status: AtomicU8::new(STATUS_CONNECTING),
             tx: Mutex::new(Some(tx)),
-            done: AtomicBool::new(false),
+            done: AtomicBool::new(false)
         });
 
         // Поток приёма: ловит discovery-ответ.
@@ -256,7 +289,7 @@ impl UdpLayer {
             let listener = shared.clone();
             let guard = shared.socket.lock();
             if let Some(socket) = guard.as_ref() {
-                socket.start_listening_native(move |msg| listener.handle_message(msg));
+                socket.start_listening(move |msg| listener.handle_message(msg));
             }
         }
 
@@ -269,9 +302,7 @@ impl UdpLayer {
             for attempt in 1..=MAX_RETRIES {
                 // Если discovery уже завершился (ответ пришёл раньше,
                 // чем мы успели отправить следующую попытку) — выходим.
-                if worker.done.load(Ordering::Acquire) {
-                    return;
-                }
+                if worker.done.load(Ordering::Acquire) { return; }
 
                 // Отправляем discovery. Если сокета уже нет — выходим:
                 // уничтожение клиента прерывает и задачу.
@@ -308,7 +339,14 @@ impl UdpLayer {
             }
         });
 
-        *self.client.lock() = Some(Client { shared, task: Some(task) });
+        // Если параллельный `create` успел поставить клиента раньше, прежний
+        // нельзя просто затереть: его сокет и поток приёма утекли бы.
+        let previous = self.client.lock().replace(Client { shared, task: Some(task) });
+        if let Some(previous) = previous {
+            Self::teardown(previous);
+        }
+
+        // Передаем данные о подключение (удачно/не удачно)
         rx
     }
 
@@ -326,8 +364,13 @@ impl UdpLayer {
     ///    потока приёма, а держать мьютекс на это время нельзя.
     pub fn destroy(&self) {
         let client = self.client.lock().take();
-        let Some(mut client) = client else { return };
+        if let Some(client) = client {
+            Self::teardown(client);
+        }
+    }
 
+    /// Освобождает уже изъятого из мьютекса клиента (шаги 2-5 из `destroy`).
+    fn teardown(mut client: Client) {
         if let Some(task) = client.task.take() {
             task.abort();
         }
@@ -340,7 +383,7 @@ impl UdpLayer {
         // Сокет забираем из мьютекса и уничтожаем уже без блокировки
         // (`destroy` дожидается потока приёма).
         let socket = client.shared.socket.lock().take();
-        if let Some(mut socket) = socket {
+        if let Some(socket) = socket {
             socket.destroy();
         }
     }

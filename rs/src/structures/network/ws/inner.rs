@@ -1,3 +1,4 @@
+use serde_json::Value;
 use parking_lot::Mutex;
 use std::sync::{
     atomic::{AtomicBool, AtomicI64, AtomicU8},
@@ -24,17 +25,18 @@ const MAX_PENDING_MESSAGES: usize = 256;
 ///
 /// `event` — имя события (`open`, `close`, `ready`, `sessionDescription`,
 /// `error`, `Users`, `daveSession`, `binary`, `info`, ...);
-/// `payload` — JSON-строка; `binary` — бинарные данные, если событие их несёт.
+/// `payload` — разобранный JSON; `binary` — бинарные данные, если событие их несёт.
 #[derive(Debug, Clone)]
 pub struct WsEvent {
     /// Имя события.
     pub event: String,
 
-    /// Сериализованный JSON payload, если событие текстовое.
-    pub payload: Option<String>,
+    /// JSON payload, если событие текстовое. Передаётся как `Value`: так
+    /// сообщение не сериализуется в строку и не парсится заново подписчиком.
+    pub payload: Option<Value>,
 
     /// Бинарные данные, если событие бинарное.
-    pub binary: Option<Vec<u8>>,
+    pub binary: Option<Vec<u8>>
 }
 
 /// Состояние отправки сообщений: либо копим в буфере, либо пишем в канал.
@@ -45,9 +47,10 @@ pub struct WsEvent {
 pub enum PacketSink {
     /// Соединение ещё не установлено — сообщения копятся здесь.
     Buffering(Vec<Message>),
+    
     /// Соединение активно — сообщения уходят в неограниченный канал,
     /// который читает задача записи.
-    Connected(mpsc::UnboundedSender<Message>),
+    Connected(mpsc::UnboundedSender<Message>)
 }
 
 /// Общее состояние WebSocket-клиента.
@@ -188,24 +191,20 @@ impl Inner {
     ///
     /// Без подписчика событие молча отбрасывается. Канал неограниченный, поэтому
     /// отправка не блокирует ни задачу соединения, ни heartbeat.
-    pub fn emit(&self, event: &str, payload_json: Option<String>, binary: Option<Vec<u8>>) {
+    pub fn emit(&self, event: &str, payload: Option<Value>, binary: Option<Vec<u8>>) {
         let native = self.native_tx.lock();
         if let Some(tx) = native.as_ref() {
             let _ = tx.send(WsEvent {
                 event: event.to_string(),
-                payload: payload_json,
+                payload,
                 binary,
             });
         }
     }
 
-    /// Сериализует значение в JSON и вызывает его как событие.
-    ///
-    /// Если сериализация провалилась — отправляем строку `"null"`, чтобы
-    /// подписчик получил что-то осмысленное, а не мусор.
-    pub fn emit_json<T: serde::Serialize>(&self, event: &str, payload: T) {
-        let s = serde_json::to_string(&payload).unwrap_or_else(|_| "null".into());
-        self.emit(event, Some(s), None);
+    /// Отправляет событие с JSON-значением (без промежуточной строки).
+    pub fn emit_json(&self, event: &str, payload: impl Into<Value>) {
+        self.emit(event, Some(payload.into()), None);
     }
 }
 

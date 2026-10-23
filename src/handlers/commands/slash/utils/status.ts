@@ -54,7 +54,8 @@ export default class StatusCommand extends Command {
                     value: [
                         `Shard: **${ctx.shardId}**`,
                         `Uptime: **${Math.floor(process.uptime())} sec**`,
-                        `Node.js: **${process.version}**`,
+                        //`Framework: **${__}**`,
+                        `Framework Version: **${process.version}**`,
                     ].join('\n'),
                     inline: true,
                 },

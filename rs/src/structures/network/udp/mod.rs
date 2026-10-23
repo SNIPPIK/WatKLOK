@@ -1,2 +1,2 @@
 pub mod socket;
-mod inner_socket;
+pub(crate) mod inner_socket;

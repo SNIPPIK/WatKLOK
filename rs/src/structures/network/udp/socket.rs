@@ -2,208 +2,236 @@ use crate::structures::{
     audio::ring_buffer::RingBuffer,
     crypto::aes::VoiceRTPSocket,
     network::udp::inner_socket::SocketInner,
-    timers::scheduler::{
-        balancer::{ add_global_session, remove_global_session }
-    }
+    timers::scheduler::balancer::{add_global_session, remove_global_session},
 };
+use parking_lot::Mutex;
 use std::{
+    fmt,
     io::ErrorKind,
     net::UdpSocket,
     sync::{
         atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicUsize, Ordering},
-        Arc, Mutex,
+        Arc,
     },
     thread,
-    time::{ Duration }
+    time::Duration,
 };
-use napi::{
-    bindgen_prelude::{Buffer, Function, Error, Result},
-    threadsafe_function::ThreadsafeFunctionCallMode
-};
-use napi_derive::napi;
 
+/// Счётчик идентификаторов сессий в глобальном планировщике.
+///
+/// Начинается с 1: `0` — удобное «нулевое» значение для отладки
+/// (например, «сессия не зарегистрирована»). Переполнение через
+/// `fetch_add` — не проблема: к моменту оборота старые id давно
+/// не используются.
 static NEXT_SESSION_ID: AtomicU32 = AtomicU32::new(1);
 
-/// Бактеризованный UDP-сокет, доступный из JavaScript через N-API.
-#[napi(js_name = "UDPSocket")]
-#[derive(Clone)]
+/// Ошибка UDP-сокета (создание сокета, инициализация RTP, запуск планировщика).
+///
+/// Хранит только текст: источники ошибок разнородны (`io::Error`, AES),
+/// а вызывающему нужно лишь сообщение для лога или `Close`-события.
+#[derive(Debug, Clone)]
+pub struct SocketError(String);
+
+impl SocketError {
+    // Приватный: снаружи ошибку создают только методы этого модуля.
+    // `impl Into<String>` — чтобы принимать и `&str`, и `String`.
+    fn new(reason: impl Into<String>) -> Self {
+        Self(reason.into())
+    }
+}
+
+// `Display` — просто текст. `write_str` дешевле `write!`, форматирования нет.
+impl fmt::Display for SocketError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+// `Error` — пустая реализация. Даёт `?` и совместимость с `Box<dyn Error>`.
+impl std::error::Error for SocketError {}
+
+/// Владелец UDP-сессии: сокет, поток приёма и регистрация в планировщике.
+///
+/// # Разделение ответственности
+///
+/// * `SocketBuffered` — **единственный владелец**. Он **не `Clone`**:
+///   это гарантирует, что освобождение ресурсов (поток приёма, запись
+///   в планировщике, ключ RTP) произойдёт ровно один раз, в одном
+///   месте. Клонирование владельца означало бы разделение
+///   ответственности за `destroy`, и рано или поздно кто-то забыл бы
+///   вызвать `join` или снять регистрацию.
+///
+/// * `SocketInner` — общее состояние (буфер, RTP, сокет). Планировщик
+///   держит только `Arc<SocketInner>` и тикает его. Это разрывает
+///   потенциальный цикл: планировщик → `SocketInner` → ... → планировщик.
+///   А главное — потеря последней ссылки в потоке тика **не может**
+///   ни уничтожить сессию, ни заблокировать поток (если бы планировщик
+///   держал `Arc<SocketBuffered>` и `SocketBuffered::Drop` дёргал бы
+///   `remove_global_session`, мы бы ждали `join` сами себя).
 pub struct SocketBuffered {
-    /// Внутренние данные, разделяемые между клонами (например, для менеджера).
     inner: Arc<SocketInner>,
 
-    /// Флаг активности потока, слушающего входящие пакеты.
+    /// Флаг активности потока приёма. Общий с самим потоком.
+    ///
+    /// `AtomicBool` — потому что `stop_listening` выставляет `false`
+    /// из другого потока, а поток приёма проверяет его в цикле.
+    /// `SeqCst` при `swap(true)` в `start_listening` исключает гонку
+    /// двух параллельных запусков: только один увидит `false` и
+    /// создаст поток.
     listener_active: Arc<AtomicBool>,
 
-    /// Дескриптор потока для прослушивания входящих пакетов.
-    listener_handle: Arc<Mutex<Option<thread::JoinHandle<()>>>>,
+    /// Handle потока приёма.
+    ///
+    /// `Mutex`, чтобы `destroy`/`stop_listening` могли работать через
+    /// `&self` (методы `Drop` и публичного API используют `&self`).
+    /// `Option` — потому что `JoinHandle` можно забрать (`take`) ровно
+    /// один раз; после `join` поле остаётся `None`, и повторный `join`
+    /// не пытается присоединиться к уже присоединённому.
+    listener_handle: Mutex<Option<thread::JoinHandle<()>>>,
 
-    /// Флаг, указывающий, что объект был уничтожен (чтобы избежать повторного удаления).
-    destroyed: Arc<AtomicBool>,
+    /// `true` после `destroy`: освобождение выполняется ровно один раз.
+    ///
+    /// `swap(true)` гарантирует идемпотентность даже при вызове из
+    /// нескольких потоков. `Drop` вызывает `destroy` повторно — второй
+    /// вызов увидит `true` и сразу выйдет.
+    destroyed: AtomicBool,
 
-    /// Уникальный идентификатор сессии, используемый для регистрации в глобальном балансировщике
+    /// Идентификатор в глобальном планировщике.
+    ///
+    /// Нужен, чтобы снять регистрацию при `destroy`. Присваивается
+    /// из `NEXT_SESSION_ID` и не меняется до конца жизни сессии.
     id: u32
 }
 
-#[napi]
 impl SocketBuffered {
-    /// Создаёт новый UDP-сокет, подключается к указанному удалённому адресу и
-    /// регистрируется в глобальном балансировщике.
+    /// Создаёт UDP-сокет, подключённый к `remote_addr`, и регистрирует
+    /// сессию в планировщике.
     ///
-    /// # Аргументы
-    /// * `remote_addr` - адрес удалённого хоста в формате "ip:port" (например, "127.0.0.1:12345").
-    ///
-    /// Сокет создаётся с неблокирующим режимом (set_nonblocking(true)), чтобы операции
-    /// send/recv не блокировали поток.
-    #[napi(constructor)]
-    pub fn new(remote_addr: String) -> Result<Self> {
-        // Привязываемся к любому свободному порту на всех интерфейсах.
+    /// # Ошибки
+    /// Не удалось создать/подключить сокет или запустить поток планировщика.
+    pub fn new(remote_addr: String) -> Result<Self, SocketError> {
+        // `bind("0.0.0.0:0")` — эфемерный локальный порт. `connect`
+        // фиксирует удалённый адрес: дальнейшие `send`/`recv` работают
+        // только с ним, и ядро не требует передавать адрес каждый раз.
         let socket = UdpSocket::bind("0.0.0.0:0")
-            .map_err(|e| Error::from_reason(format!("Bind error: {}", e)))?;
+            .map_err(|e| SocketError::new(format!("Bind error: {}", e)))?;
+        socket
+            .connect(&remote_addr)
+            .map_err(|e| SocketError::new(format!("Connect error: {}", e)))?;
 
-        socket.connect(&remote_addr)
-            .map_err(|e| Error::from_reason(format!("Connect error: {}", e)))?;
-
-        socket.set_read_timeout(Some(Duration::from_millis(20)))
-            .map_err(|e| Error::from_reason(format!("Read timeout error: {}", e)))?;
+        // Таймаут чтения нужен, чтобы поток приёма просыпался и видел
+        // флаг остановки. Без него `recv` висел бы вечно, и `stop_listening`
+        // не смог бы дождаться завершения. 20 мс — компромисс: не жжёт CPU
+        // и не задерживает остановку надолго.
+        socket
+            .set_read_timeout(Some(Duration::from_millis(20)))
+            .map_err(|e| SocketError::new(format!("Read timeout error: {}", e)))?;
 
         let inner = Arc::new(SocketInner {
             rtp: VoiceRTPSocket::new(),
             socket: Arc::new(socket),
+            // 1024 слота — достаточно для сглаживания отправки.
+            // Степень двойки: `RingBuffer` использует маску вместо `%`.
             buffer: RingBuffer::new(1024),
             send_drops: AtomicUsize::new(0),
             last_send_ms: AtomicU64::new(0),
             keepalive_counter: AtomicU32::new(0),
             consecutive_failures: AtomicU32::new(0),
-            in_flight: AtomicUsize::new(0),
+            in_flight: AtomicUsize::new(0)
         });
 
-        // Генерируем случайный идентификатор для этой сессии.
         let id = NEXT_SESSION_ID.fetch_add(1, Ordering::Relaxed);
 
-        let udp = SocketBuffered {
+        // Регистрируем только `Arc<SocketInner>`; если планировщик не
+        // запустился, владелец не создаётся, и ничего не остаётся висеть:
+        // `inner` будет дропнут на выходе из функции, а вместе с ним
+        // и сокет, и буфер.
+        //
+        // Порядок важен: `id` берётся ДО регистрации, чтобы `destroy`
+        // мог снять правильную запись. Если бы регистрировали с одним id,
+        // а хранили другой — `remove_global_session` промахнулся бы.
+        add_global_session(id, Arc::clone(&inner))
+            .map_err(|e| SocketError::new(format!("Scheduler error: {}", e)))?;
+
+        Ok(Self {
             inner,
             listener_active: Arc::new(AtomicBool::new(false)),
-            listener_handle: Arc::new(Mutex::new(None)),
-            destroyed: Arc::new(AtomicBool::new(false)),
-            id
-        };
-
-        // Регистрируем сессию в глобальном балансировщике.
-        // Передаём клон, специально подготовленный для менеджера (без listener_handle).
-        add_global_session(id, udp.clone());
-        Ok(udp)
+            listener_handle: Mutex::new(None),
+            destroyed: AtomicBool::new(false),
+            id,
+        })
     }
 
-    /// Основной обработчик одного тика отправки UDP.
+    /// Ставит пакеты в очередь отправки. Пустые пакеты отбрасываются.
     ///
-    /// Делегирует работу `auto_tick`, передавая текущее время и разрешённый
-    /// бюджет отправки (число пакетов, которые можно отправить в этом тике).
+    /// Не блокирует вызывающий поток: при переполнении очереди лишние
+    /// пакеты считаются потерянными (`drops`).
     ///
-    /// # Аргументы
-    /// * `now` — текущее время в миллисекундах (используется для keepalive и статистики).
-    /// * `budget` — максимальное количество пакетов к отправке за тик.
-    #[inline]
-    pub fn tick(&self, now: u64, budget: u8) {
-        self.inner.auto_tick(now, budget);
+    /// Фильтрация пустых — на этой стороне, до `push_many`. Причина:
+    /// `RingBuffer::push_many` пропускает пустые пакеты, но не считает
+    /// их в возвращаемом `written`. В `SocketInner::push_many`
+    /// `expected - pushed` попал бы в `send_drops` как «потеря»,
+    /// хотя фактически ничего не потеряно. Отфильтровав здесь, мы
+    /// получаем корректную метрику.
+    pub fn push_packets(&self, packets: Vec<Vec<u8>>) {
+        if packets.is_empty() || self.destroyed.load(Ordering::Acquire) {
+            return;
+        }
+
+        let packets = packets
+            .into_iter()
+            .filter(|packet| !packet.is_empty())
+            .collect::<Vec<_>>();
+
+        // После фильтрации `packets` может оказаться пустым — `push_many`
+        // в `SocketInner` это обработает (ранний выход).
+        self.inner.push_many(packets);
     }
 
-    /// Инициализирует RTP-шифр с новым SSRC и ключом.
-    /// Безопасен для повторного вызова при подключении.
-    ///
-    /// # Аргументы
-    /// * `ssrc` — идентификатор источника синхронизации.
-    /// * `key` — 32-байтовый ключ AES-256-GCM.
+    /// Инициализирует RTP (SSRC и ключ AES-GCM). Ключ зануляется внутри.
     ///
     /// # Ошибки
-    /// Возвращает napi-ошибку при неверной длине ключа или ошибке AES-GCM.
-    #[napi(js_name = "initialize_rtp")]
+    /// Неверная длина ключа или ошибка AES-GCM.
     #[inline]
-    pub fn initialize_rtp(&self, ssrc: u32, key: Vec<u8>) -> Result<()> {
-        // Прокидываем ошибку AES в napi-ошибку.
-        self.inner.rtp.initialize(ssrc, key)
-            .map_err(|e| Error::from_reason(e.to_string()))
+    pub fn initialize_rtp(&self, ssrc: u32, key: Vec<u8>) -> Result<(), SocketError> {
+        self.inner
+            .rtp
+            .initialize(ssrc, key)
+            .map_err(|e| SocketError::new(e.to_string()))
     }
 
-    /// Текущее количество пакетов в очереди на отправку.
-    #[napi(getter)]
+    /// Пакеты, ещё не ушедшие в сокет: в очереди и «в полёте».
+    ///
+    /// `in_flight` — пакеты, извлечённые из `RingBuffer`, но ещё не
+    /// завершившие `socket.send()`. Без них счётчик мог бы показать
+    /// 0, пока последний пакет реально в полёте: `RingBuffer` опустел,
+    /// но `send` ещё не вернулся.
+    ///
+    /// `saturating_add` и `.min(u32::MAX)` — защита от переполнения
+    /// при преобразовании в `u32` для JS. `usize` может быть больше
+    /// `u32::MAX`, но на практике очередь ограничена `capacity`,
+    /// а `in_flight` — `budget` на тик. Так что в реальности до
+    /// потолка не доходит, но это дешёвая страховка.
     #[inline]
     pub fn packets(&self) -> u32 {
         let queued = self.inner.buffer.len();
-
-        let in_flight = self
-            .inner
-            .in_flight
-            .load(Ordering::Acquire);
-
-        queued
-            .saturating_add(in_flight)
-            .min(u32::MAX as usize) as u32
+        let in_flight = self.inner.in_flight.load(Ordering::Acquire);
+        queued.saturating_add(in_flight).min(u32::MAX as usize) as u32
     }
 
-    /// Количество пакетов, сброшенных из-за переполнения очереди или временных ошибок.
-    #[napi(getter)]
+    /// Количество потерянных пакетов (не отправлены или отброшены очередью).
+    ///
+    /// Накапливается в `send_drops`, обнуляется в `destroy`.
     #[inline]
     pub fn drops(&self) -> u32 {
         self.inner.send_drops.load(Ordering::Relaxed) as u32
     }
 
-    /// Добавляет пакет в очередь на отправку.
+    /// Ставит в очередь discovery-пакет Discord (74 байта: тип 1, длина 70, SSRC).
     ///
-    /// Пустые пакеты игнорируются и не занимают слот очереди.
-    ///
-    /// Метод не блокирует JS/N-API поток:
-    /// если очередь заполнена, пакет учитывается как drop.
-    ///
-    /// Для внутреннего native producer'а, где допустимо backpressure,
-    /// используется `push_blocking`.
-    ///
-    /// # Аргументы
-    /// * `packet` — данные для отправки.
-    #[napi]
-    #[inline]
-    pub fn push_packet(&self, packet: Vec<u8>) {
-        if packet.is_empty() || self.destroyed.load(Ordering::Acquire) { return; }
-        self.inner.push(packet);
-    }
-
-    /// Добавляет несколько пакетов в очередь.
-    ///
-    /// Пустые буферы отбрасываются до передачи в Rust-очередь,
-    /// чтобы не занимать слоты.
-    ///
-    /// Метод не блокирует JS/N-API поток.
-    ///
-    /// # Аргументы
-    /// * `packets` — массив Buffer с данными для отправки.
-    #[napi]
-    pub fn push_packets(&self, packets: Vec<Vec<u8>>) {
-        // Если пакеты пустые
-        if packets.is_empty() || self.destroyed.load(Ordering::Acquire) { return; }
-
-        let packets = packets
-            .into_iter()
-            .filter(|packet| !packet.is_empty())
-            .map(|packet| packet)
-            .collect::<Vec<_>>();
-
-        self.inner.push_many(packets);
-    }
-
-    /// Формирует discovery-пакет для голосового соединения Discord и возвращает его
-    /// в виде массива из одного элемента (`Buffer[]`).
-    ///
-    /// Discovery-пакет используется на начальном этапе установки голосового UDP-соединения
-    /// и имеет фиксированный размер 74 байта. Структура пакета:
-    ///
-    /// # Аргументы
-    /// - `ssrc` — 32-битный идентификатор источника синхронизации, уникальный для данного
-    ///   голосового потока.
-    ///
-    /// # Возвращаемое значение
-    /// `Vec<Buffer>` длины 1, содержащий сформированный discovery-пакет.
-    /// Возврат вектора (а не одиночного `Buffer`) обеспечивает единообразие API
-    /// с другими методами, возвращающими массивы пакетов (например, `packets`).
-    #[napi]
+    /// Формат: 2 байта BE — тип (1), 2 байта BE — длина (70),
+    /// 4 байта BE — SSRC. Итого 8 байт заголовка + 66 байт тела.
+    /// Идёт через `push` и попадает в общий поток отправки.
     pub fn discovery(&self, ssrc: u32) {
         // Создаём буфер фиксированного размера (74 байта), заполненный нулями.
         let mut packet = vec![0u8; 74];
@@ -221,119 +249,115 @@ impl SocketBuffered {
         self.inner.push(packet);
     }
 
-    /// Запускает фоновый поток для приёма входящих UDP-пакетов.
-    /// Каждый принятый пакет передаётся в JavaScript через `callback`.
-    /// Если прослушивание уже активно, вызов игнорируется.
-    #[napi]
-    pub fn start_listening(&self, callback: Function<Buffer, ()>) -> Result<()> {
-        // Устанавливаем флаг активности. Если он уже был true, значит поток уже работает — выходим.
-        if self.listener_active.swap(true, Ordering::SeqCst) {
-            return Ok(());
-        }
-
-        // Создаём потокобезопасную функцию для вызова JS из фонового потока.
-        let js_fn = match callback.build_threadsafe_function().build() {
-            Ok(f) => f,
-            Err(e) => {
-                self.listener_active.store(false, Ordering::Release);
-                return Err(e);
-            }
-        };
+    /// Запускает поток приёма: каждый принятый пакет передаётся в `on_packet`
+    /// прямо в этом потоке. Повторный вызов при активном потоке — no-op.
+    ///
+    /// `on_packet` не должен вызывать `destroy`/`stop_listening` этой же
+    /// сессии синхронно (поток ждал бы сам себя; такой вызов безопасно
+    /// пропускает `join`, но поток закончит работу только после возврата).
+    ///
+    /// `swap(true)` на `listener_active` — защита от параллельного
+    /// `start_listening` из двух потоков: только один увидит `false`
+    /// и создаст поток. Второй сразу выйдет.
+    pub fn start_listening<F>(&self, on_packet: F) where
+        F: Fn(&[u8]) + Send + 'static,
+    {
+        // Если сокет был уничтожен
+        if self.destroyed.load(Ordering::Acquire) { return; }
+        
+        // Если слушатель подключения не активен
+        if self.listener_active.swap(true, Ordering::SeqCst) { return; }
 
         // Клонируем сокет и флаг активности для передачи в поток.
         let socket = self.inner.socket.clone();
         let active = self.listener_active.clone();
 
-        // Запускаем рабочий поток.
-        let handle = thread::spawn(move || {
-            // Буфер для приёма одного пакета.
-            let mut buf = [0u8; 2048];
+        let handle = thread::Builder::new()
+            .name("UDPReceive".into())
+            .spawn(move || {
+                // 2048 байт — с запасом больше максимального UDP-пакета
+                // в голосовом канале Discord (опус ~1275 + RTP-заголовок,
+                // так что 1500 хватило бы, но 2048 — привычное «с запасом»).
+                let mut buf = [0u8; 2048];
 
-            // Основной цикл чтения, пока флаг активности установлен.
-            while active.load(Ordering::Acquire) {
-                match socket.recv(&mut buf) {
-                    // Успешно получен пакет ненулевой длины.
-                    Ok(size) if size > 0 => {
-                        // Повторная проверка флага после блокирующего чтения.
-                        if !active.load(Ordering::Acquire) {
-                            break;
+                // Проверка `active` дважды: до `recv` (чтобы не блокироваться
+                // после `stop_listening`) и после получения пакета
+                // (чтобы не вызвать `on_packet` после остановки).
+                while active.load(Ordering::Acquire) {
+                    match socket.recv(&mut buf) {
+                        Ok(size) if size > 0 => {
+                            if !active.load(Ordering::Acquire) {
+                                break;
+                            }
+                            on_packet(&buf[..size]);
                         }
-
-                        // Копируем данные в Buffer (владеющий) для передачи в JS.
-                        let js_buffer = Buffer::from(buf[..size].to_vec());
-
-                        // Не блокируя отправляем пакет в JS.
-                        let _ = js_fn.call(
-                            js_buffer,
-                            ThreadsafeFunctionCallMode::NonBlocking,
-                        );
+                        // `WouldBlock` в блокирующем сокете не появится,
+                        // но `TimedOut` — это штатный выход из `recv`
+                        // при чтении с таймаутом. Оба означают «пока
+                        // ничего не пришло» — проверяем флаг и продолжаем.
+                        Err(ref e)
+                        if e.kind() == ErrorKind::WouldBlock
+                            || e.kind() == ErrorKind::TimedOut =>
+                            {
+                                continue;
+                            }
+                        // Прочие ошибки — фатальны для потока: сокет
+                        // сломан или закрыт. Выходим; `destroy` и так
+                        // выставит `active=false`.
+                        Err(_) => break,
+                        _ => {}
                     }
-
-                    // Ошибки "не готов" (неблокирующий сокет) — просто продолжаем цикл.
-                    Err(ref e)
-                    if e.kind() == ErrorKind::WouldBlock
-                        || e.kind() == ErrorKind::TimedOut =>
-                        {
-                            continue;
-                        }
-
-                    // Любая другая ошибка — завершаем поток.
-                    Err(_) => {
-                        break;
-                    }
-
-                    // Пустой пакет — игнорируем.
-                    _ => {}
                 }
-            }
+            });
 
-            // Явно освобождаем threadsafe-функцию.
-            drop(js_fn);
-        });
-
-        // Сохраняем JoinHandle для последующего join при остановке.
-        match self.listener_handle.lock() {
-            Ok(mut lock) => {
-                *lock = Some(handle);
-            }
-            Err(poisoned) => {
-                // Если мьютекс отравлен, всё равно сохраняем handle, используя into_inner.
-                let mut lock = poisoned.into_inner();
-                *lock = Some(handle);
-            }
+        match handle {
+            Ok(handle) => *self.listener_handle.lock() = Some(handle),
+            // Не удалось запустить поток — снимаем флаг, чтобы следующий
+            // вызов мог попробовать снова. Состояние «активен, но потока
+            // нет» было бы хуже.
+            Err(_) => self.listener_active.store(false, Ordering::Release),
         }
-
-        Ok(())
     }
 
-    /// Останавливает прослушивание входящих пакетов и дожидается завершения потока.
-    #[napi]
+    /// Останавливает поток приёма и дожидается его завершения.
+    ///
+    /// `join` пропускается, если вызов идёт из самого потока приёма:
+    /// иначе был бы дедлок (поток ждал бы сам себя). В этом случае
+    /// поток сам выйдет из цикла, как только вернётся из `on_packet`.
     pub fn stop_listening(&self) {
         // Сбрасываем флаг активности, чтобы поток вышел из цикла.
         self.listener_active.store(false, Ordering::Release);
 
-        // Забираем JoinHandle из мьютекса, обрабатывая возможное отравление.
-        let handle = match self.listener_handle.lock() {
-            Ok(mut lock) => lock.take(),
-            Err(poisoned) => {
-                poisoned.into_inner().take()
-            }
-        };
-
-        // Если поток был запущен, ждём его завершения.
+        let handle = self.listener_handle.lock().take();
         if let Some(handle) = handle {
-            let _ = handle.join();
+            // Сравнение id потоков — единственный надёжный способ
+            // проверить «я в этом потоке?». `Handle` из `std::thread`
+            // не реализует сравнение на равенство.
+            if handle.thread().id() != thread::current().id() {
+                let _ = handle.join();
+            }
         }
     }
 
-    /// Полная очистка ресурсов UDP-сессии.
+    /// Освобождает сессию (идемпотентно): останавливает поток приёма,
+    /// снимает регистрацию в планировщике и зануляет ключ RTP.
     ///
-    /// Метод идемпотентен: повторный вызов не выполняет действий.
-    /// Останавливает прослушивание, очищает буфер, сбрасывает счётчик потерянных пакетов
-    /// и удаляет сессию из глобального реестра.
-    fn cleanup(&mut self) {
-        // Атомарно устанавливаем флаг destroyed в true.
-        // Если он уже был true, значит cleanup уже выполнялся — выходим.
+    /// # Порядок действий
+    ///
+    /// 1. `swap(true)` — защита от повторного вызова. Устанавливаем
+    ///    флаг **до** `stop_listening`, чтобы поток приёма,
+    ///    если он сейчас в `on_packet`, увидел «уже уничтожен»
+    ///    при следующей итерации.
+    /// 2. `stop_listening` — дожидаемся завершения потока. После
+    ///    этого никто не дёрнет `on_packet` и не будет читать из сокета.
+    /// 3. Обнуляем `send_drops` — сессия мертва, статистика
+    ///    больше не нужна.
+    /// 4. `remove_global_session` — снимаем регистрацию. Планировщик
+    ///    больше не тикает сессию.
+    /// 5. `rtp.destroy()` — зануляем ключ AES-GCM. Даже если `Arc<SocketInner>`
+    ///    ещё где-то жив (например, планировщик уже взял снимок), ключ
+    ///    уничтожен, и шифровать/расшифровывать этим RTP больше нельзя.
+    pub fn destroy(&self) {
         if self.destroyed.swap(true, Ordering::AcqRel) {
             return;
         }
@@ -341,125 +365,20 @@ impl SocketBuffered {
         // Останавливаем фоновый поток приёма пакетов (если он был запущен).
         self.stop_listening();
 
-        // Очищаем внутренний кольцевой буфер отправки.
-        if let Some(inner) = Arc::get_mut(&mut self.inner) {
-            inner.buffer.clear();
-        }
-
         // Сбрасываем счётчик отброшенных пакетов (для статистики).
         self.inner.send_drops.store(0, Ordering::Relaxed);
 
-        // Удаляем сессию из глобального менеджера циклов (больше не будет обрабатываться).
+        // После этого планировщик не получает новых снимков с сессией; уже
+        // взятый снимок доживёт до конца своего тика, а буфер освободится
+        // вместе с последним `Arc<SocketInner>` (`Drop` у `RingBuffer`).
         remove_global_session(self.id);
-    }
 
-    /// Уничтожает сессию, вызывая `cleanup`.
-    /// Метод доступен из JavaScript через N-API.
-    #[napi]
-    pub fn destroy(&mut self) {
-        self.cleanup();
         self.inner.rtp.destroy();
     }
 }
 
-
-/// Деструктор для `UdpBuffered`.
-///
-/// Выполняет корректную остановку фонового потока приёма пакетов
-/// и очистку буфера отправки. Гарантирует, что после уничтожения объекта
-/// не останется активных потоков, удерживающих ссылки на ресурсы.
 impl Drop for SocketBuffered {
     fn drop(&mut self) {
-        self.cleanup();
-
-        // Останавливаем поток приёма: атомарно снимаем флаг активности.
-        // Поток, находящийся в блокирующем `recv`, проснётся и выйдет из цикла.
-        self.listener_active.store(false, Ordering::Release);
-
-        // Забираем JoinHandle из мьютекса, обрабатывая возможное отравление.
-        let handle = match self.listener_handle.lock() {
-            Ok(mut lock) => lock.take(),
-            Err(poisoned) => poisoned.into_inner().take(),
-        };
-
-        // Если поток был запущен, дожидаемся его завершения, чтобы
-        // избежать утечки ресурсов и гонок при освобождении памяти.
-        if let Some(handle) = handle {
-            let _ = handle.join();
-        }
-
-        // Очищаем внутренний кольцевой буфер отправки.
-        // Это освобождает накопленные, но ещё не отправленные пакеты.
-        if let Some(inner) = Arc::get_mut(&mut self.inner) {
-            inner.buffer.clear();
-        }
-    }
-}
-
-/// Rust-API (не экспортируется в JS).
-impl SocketBuffered {
-    /// Rust-версия `push_packets`: принимает обычные `Vec<u8>` без napi-типов.
-    ///
-    /// Пустые пакеты отбрасываются; переполнение очереди считается drop.
-    pub fn push_packets_native(&self, packets: Vec<Vec<u8>>) {
-        if packets.is_empty() || self.destroyed.load(Ordering::Acquire) {
-            return;
-        }
-
-        let packets = packets
-            .into_iter()
-            .filter(|packet| !packet.is_empty())
-            .collect::<Vec<_>>();
-
-        self.inner.push_many(packets);
-    }
-
-    /// Rust-версия `start_listening`: каждый принятый пакет передаётся в `on_packet`
-    /// прямо в потоке приёма, без прохода через JS.
-    ///
-    /// Если прослушивание уже активно, вызов игнорируется. Останавливается
-    /// через `stop_listening()` / `destroy()`.
-    pub fn start_listening_native<F>(&self, on_packet: F)
-    where
-        F: Fn(&[u8]) + Send + 'static,
-    {
-        // Флаг уже true — поток работает.
-        if self.listener_active.swap(true, Ordering::SeqCst) {
-            return;
-        }
-
-        let socket = self.inner.socket.clone();
-        let active = self.listener_active.clone();
-
-        let handle = thread::spawn(move || {
-            let mut buf = [0u8; 2048];
-
-            while active.load(Ordering::Acquire) {
-                match socket.recv(&mut buf) {
-                    Ok(size) if size > 0 => {
-                        if !active.load(Ordering::Acquire) {
-                            break;
-                        }
-                        on_packet(&buf[..size]);
-                    }
-
-                    Err(ref e)
-                    if e.kind() == ErrorKind::WouldBlock
-                        || e.kind() == ErrorKind::TimedOut =>
-                        {
-                            continue;
-                        }
-
-                    Err(_) => break,
-
-                    _ => {}
-                }
-            }
-        });
-
-        match self.listener_handle.lock() {
-            Ok(mut lock) => *lock = Some(handle),
-            Err(poisoned) => *poisoned.into_inner() = Some(handle),
-        }
+        self.destroy();
     }
 }

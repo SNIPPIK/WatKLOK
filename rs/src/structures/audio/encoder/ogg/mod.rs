@@ -2,12 +2,50 @@ mod packet_type;
 mod opus_specification;
 
 use bytes::{Buf, BufMut, BytesMut};
-use napi::bindgen_prelude::*;
+use std::fmt;
 use memchr::memmem;
 use crate::structures::audio::{
-    encoder::ogg::packet_type::{PacketType, ParsedPacket}
+    encoder::ogg::{
+        packet_type::{PacketType, ParsedPacket},
+        opus_specification::validate_ogg_crc
+    },
 };
-use crate::structures::audio::opus::SILENT_FRAME;
+
+/// Ошибка разбора Ogg (текстовая причина).
+///
+/// Свой тип вместо ошибки napi: парсер не должен зависеть от JS-слоя,
+/// а сравнивать причины в тестах удобнее по тексту.
+///
+/// `PartialEq`/`Eq` — ровно для тестов: `assert_eq!(err, OggError::new("..."))`
+/// работает без ручного сравнения `to_string()`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OggError(String);
+
+impl OggError {
+    // Приватный конструктор: снаружи ошибку создают только функции
+    // этого модуля. `impl Into<String>` — чтобы принимать и `&str`,
+    // и `String`, и результаты `format!`.
+    fn new(reason: impl Into<String>) -> Self {
+        Self(reason.into())
+    }
+}
+
+// Печатает сохранённый текст как есть. `write_str` вместо `write!` —
+// потому что дополнительного форматирования нет.
+impl fmt::Display for OggError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+// Пустая реализация: `source()` и `description()` не нужны —
+// причина уже в тексте. Нужна, чтобы `OggError` вёл себя как
+// полноценный `std::error::Error` (работал с `?` и `Box<dyn Error>`).
+impl std::error::Error for OggError {}
+
+// Локальный алиас, чтобы в этом модуле не писать
+// `std::result::Result<T, OggError>` на каждой сигнатуре.
+type Result<T> = std::result::Result<T, OggError>;
 // ============================================================================
 // LIMITS
 // ============================================================================
@@ -102,7 +140,8 @@ impl OggOpusDemuxer {
 
     /// Точка входа для разбора фрагмента данных.
     ///
-    /// Если `chunk` пуст — ничего не делает (в текущей реализации flush)
+    /// Если `chunk` пуст — трактуется как конец потока: незавершённые данные
+    /// сбрасываются (см. `flush_internal`), `output` не меняется.
     /// Иначе запускает основной парсер с возвратом, который склеивает
     /// переданные части в один непрерывный `Vec<u8>` и добавляет
     /// в `output` вместе с типом пакета.
@@ -114,10 +153,10 @@ impl OggOpusDemuxer {
     /// # Возвращаемое значение
     /// `Ok(())` при успешном разборе; `Err` при ошибке из возврата.
     pub fn parse_internal(&mut self, chunk: &[u8], output: &mut Vec<ParsedPacket>) -> Result<()> {
-        // Пустой chunk трактуется как "конец потока" — до-выдаём то,
-        // что осталось в packet_carry, не дожидаясь следующей страницы.
+        // Пустой chunk трактуется как "конец потока": усечённый хвост
+        // сбрасывается (выдавать неполный пакет нельзя).
         if chunk.is_empty() {
-            return self.flush_internal(output);
+            return self.flush_internal();
         }
 
         // Замыкание копирует данные в Vec — сам парсер владеет только
@@ -128,17 +167,20 @@ impl OggOpusDemuxer {
         })
     }
 
-    /// Выдаёт последний собранный, но ещё не завершённый пакет (EOF).
+    /// Конец потока (EOF): отбрасывает незавершённые данные.
     ///
-    /// Тип определяется через `classify`, с учётом текущего
-    /// `bitstream_serial` — так же, как и для пакетов, завершённых внутри
-    /// обычного потока разбора.
-    fn flush_internal(&mut self, output: &mut Vec<ParsedPacket>) -> Result<()> {
-        if !self.packet_carry.is_empty() {
-            let packet = std::mem::take(&mut self.packet_carry);
-            let packet_type = self.classify(&packet, self.bitstream_serial);
-            output.push((packet_type, packet));
-        }
+    /// Пакет Ogg заканчивается lacing-байтом < 255. Если поток оборвался на
+    /// сегменте 255, пакет усечён: выдавать его нельзя (декодер получил бы
+    /// битый Opus-кадр), поэтому он вместе с остатком неполной страницы
+    /// просто сбрасывается. Вызывающий может не отличать EOF от пустого
+    /// чанка: `parse_internal(&[], ..)` ничего не добавляет в `output`.
+    fn flush_internal(&mut self) -> Result<()> {
+        // Незавершённый Opus-пакет нельзя считать полноценным:
+        // Ogg определяет конец пакета по lacing-байту < 255.
+        self.packet_carry.clear();
+
+        // Остаток неполной Ogg-страницы также нельзя выдавать.
+        self.remainder.clear();
         Ok(())
     }
 
@@ -165,7 +207,7 @@ impl OggOpusDemuxer {
         if self.remainder.len() > MAX_REMAINDER_SIZE {
             self.remainder.clear();
             self.packet_carry.clear();
-            return Err(Error::from_reason("Ogg parser remainder overflow"));
+            return Err(OggError::new("Ogg parser remainder overflow"));
         }
 
         // Минимальный размер Ogg-страницы = 27 байт (fixed header).
@@ -214,21 +256,32 @@ impl OggOpusDemuxer {
 
             let full_page = &self.remainder[..page_end];
 
+            // Проверяем валидность OGG страницы
+            if !validate_ogg_crc(full_page) {
+                // Страница повреждена: не используем её содержимое.
+                self.packet_carry.clear();
+
+                // Ищем следующую потенциальную Ogg-страницу.
+                self.remainder.advance(1);
+                continue;
+            }
+
             // Handle_page_core может вернуть Err — это НЕ фатально:
             // например, если внутри одной "страницы" встретился пакет
-            // с overflow. В этом случае сдвигаемся на минимум 4 байта
+            // с overflow. В этом случае сдвигаемся на начало
             // и пробуем снова найти "OggS" — так мы не зациклимся.
-            if Self::handle_page_core(
+            if let Err(error) = Self::handle_page_core(
                 full_page,
                 &mut self.packet_carry,
                 &mut self.bitstream_serial,
                 &mut self.primary_serial,
                 &mut on_packet,
-            )
-                .is_err()
-            {
-                self.remainder.advance(header_size.min(4));
-                continue;
+            ) {
+                self.packet_carry.clear();
+
+                // Не оставляем повреждённый контекст пакета.
+                self.remainder.advance(1);
+                return Err(error);
             }
 
             self.remainder.advance(page_end);
@@ -259,15 +312,14 @@ impl OggOpusDemuxer {
     ///   не склеивать через границу чужие друг другу данные.
     /// - `primary_serial` — serial "основного" потока. Заполняется лениво:
     ///   первый же `Head`, увиденный в `classify_static`, защёлкивает здесь
-    ///   свой serial. Пока `None`, любой не-Head отдаётся как `Unclassified`.
+    ///   свой serial. Пока `None`, пакеты не отдаются (кроме самого `Head`).
     ///
     /// # Фильтрация потоков
     ///
-    /// Пакеты из потока `serial == *primary_serial` вызова как есть.
+    /// Пакеты из потока `serial == *primary_serial` отдаются как есть.
     /// Пакеты из любого другого потока (а также всё до первого `Head`)
-    /// подменяются на `PacketType::PLC` с содержимым `SILENT_FRAME` —
-    /// это сохраняет тайминги у потребителя, но не пропускает в основной
-    /// поток данные чужого источника.
+    /// отбрасываются: данные чужого источника не попадают в основной
+    /// поток, а подмена тишиной (PLC) исказила бы тайминги.
     ///
     /// # Поведение `on_packet`
     ///
@@ -295,7 +347,7 @@ impl OggOpusDemuxer {
         F: FnMut(PacketType, &[u8]) -> Result<()>,
     {
         if page.len() < 27 {
-            return Err(Error::from_reason("Invalid OGG page"));
+            return Err(OggError::new("Invalid OGG page"));
         }
 
         // Флаги заголовка Ogg:
@@ -309,7 +361,6 @@ impl OggOpusDemuxer {
         // При смене serial сбрасываем незавершённый пакет: он принадлежит
         // другому логическому потоку, склеивать его с новым нельзя.
         if *bitstream_serial != Some(serial) {
-            packet_carry.clear();
             *bitstream_serial = Some(serial);
         }
 
@@ -335,29 +386,30 @@ impl OggOpusDemuxer {
                 packet_carry.clear();
                 packet_carry.shrink_to(CARRY_BASE_CAPACITY);
 
-                return Err(Error::from_reason("Opus packet overflow"));
+                return Err(OggError::new("Opus packet overflow"));
             }
 
             {
                 // Выделяем размер под новый пакет данных
-                let data = page.get(offset..end).ok_or_else(|| Error::from_reason("Segment out of bounds"))?;
+                let data = page.get(offset..end).ok_or_else(|| OggError::new("Segment out of bounds"))?;
                 packet_carry.extend_from_slice(data);
                 offset = end;
             }
 
             // Проверка на допустимый диапазон размера
-            if segment_len == 0 && serial <= 0 || segment_len < 255 && !packet_carry.is_empty() {
-                // Получение типа пакета
+            if segment_len < 255 {
+                // Пустой пакет не передаём как Opus.
+                if packet_carry.is_empty() { continue; }
+
+                // Тип пакета
                 let packet_type = PacketType::classify_static(packet_carry, serial, primary_serial);
 
                 // Если код потока соответствует
                 if Some(serial) == *primary_serial {
                     on_packet(packet_type, packet_carry)?;
                 }
-                // Если код был нарушен заполним пустотой для сглаживания
-                else {
-                    on_packet(PacketType::PLC, &SILENT_FRAME)?;
-                }
+                // Пакеты чужих потоков (другой serial) отбрасываются: подмена
+                // их тишиной (PLC) исказила бы тайминг основного потока.
 
                 packet_carry.clear();
 
@@ -370,28 +422,6 @@ impl OggOpusDemuxer {
         }
 
         Ok(())
-    }
-
-
-    /// Версия для `flush_internal`, где нет доступа к `&mut self` полям
-    /// напрямую в замыкании — использует уже известный `bitstream_serial`.
-    #[inline]
-    pub fn classify(&self, packet: &[u8], serial: Option<u32>) -> PacketType {
-        let detected = PacketType::detect_packet_type(packet);
-        match (detected, serial, self.primary_serial) {
-            // Head всегда Head, независимо от потока — вызывающий сам
-            // решает, что с ним делать.
-            (PacketType::Head, _, _) => PacketType::Head,
-
-            // Пакет из основного потока — отдаём как есть.
-            (_, Some(s), Some(p)) if s == p => detected,
-
-            // primary_serial ещё не найден — всё непонятное в Unclassified.
-            (_, _, None) => PacketType::Unclassified,
-
-            // Всё прочее (в т.ч. чужой поток) — Unclassified.
-            _ => PacketType::Unclassified,
-        }
     }
 
     // Полный сброс состояния парсера. Используется в Drop и может
@@ -481,8 +511,7 @@ mod tests {
     }
 
     // Проверяет, что результат — Err, и что текст ошибки содержит needle.
-    // В tests ожидание Err — норма, но napi::Error не реализует PartialEq,
-    // поэтому сравниваем через строковое представление.
+    // Ожидание Err в тестах — норма; проверяем текст причины.
     fn assert_err_contains(res: Result<()>, needle: &str) {
         match res {
             Ok(()) => panic!("expected Err containing {needle:?}, got Ok(())"),
@@ -514,7 +543,7 @@ mod tests {
     }
 
     // ===============================================================
-    // Группа 1. parse_internal: end-to-end поведение
+    // parse_internal: end-to-end поведение
     // ===============================================================
 
     #[test]
@@ -536,10 +565,9 @@ mod tests {
     }
 
     #[test]
-    // Пакет из чужого потока после установки primary_serial превращается
-    // в PLC с содержимым SILENT_FRAME — потребитель получает "тишину"
-    // вместо данных другого потока.
-    fn packets_from_non_primary_serial_become_plc() {
+    // Пакет из чужого потока после установки primary_serial отбрасывается:
+    // ни данных другого потока, ни подмены тишиной потребитель не видит.
+    fn packets_from_non_primary_serial_are_dropped() {
         let mut d = demuxer_with_primary_head(); // primary = 1
 
         let frame = opus_frame(20);
@@ -547,9 +575,7 @@ mod tests {
         let (res, out) = parse(&mut d, &page);
 
         assert!(res.is_ok());
-        assert_eq!(out.len(), 1);
-        assert_eq!(out[0].0, PacketType::PLC);
-        assert_eq!(&out[0].1[..], &SILENT_FRAME[..]);
+        assert!(out.is_empty());
     }
 
     #[test]
@@ -661,7 +687,7 @@ mod tests {
     }
 
     // ===============================================================
-    // Группа 2. flush_internal (через пустой chunk)
+    // flush_internal (через пустой chunk)
     // ===============================================================
 
     #[test]
@@ -675,10 +701,9 @@ mod tests {
     }
 
     #[test]
-    // Незавершённый пакет (lacing=255 без продолжения) должен быть
-    // выдан через flush при EOF. Тип определяется через classify,
-    // с использованием актуального bitstream_serial.
-    fn empty_chunk_flushes_pending_partial_packet() {
+    // Незавершённый пакет (lacing=255 без продолжения) при EOF усечён:
+    // он сбрасывается и в `output` не попадает.
+    fn empty_chunk_discards_pending_partial_packet() {
         let mut d = OggOpusDemuxer::new();
 
         // Прогреваем primary_serial Head-пакетом.
@@ -695,21 +720,18 @@ mod tests {
         assert!(out.is_empty());
         assert_eq!(d.packet_carry.len(), 255);
 
-        // Пустой chunk = EOF => должен выдать накопленное.
+        // Пустой chunk = EOF => усечённый хвост сброшен, ничего не выдано.
         d.parse_internal(&[], &mut out).unwrap();
-        assert_eq!(out.len(), 1);
-        assert_eq!(out[0].0, PacketType::Frame);
-        assert_eq!(out[0].1, part);
+        assert!(out.is_empty());
         assert!(d.packet_carry.is_empty());
+        assert_eq!(d.pending_len(), 0);
     }
 
     #[test]
     // Редкий сценарий: OpusHead не закрылся на странице (lacing=255),
-    // т.е. целиком лежит в carry. flush обязан распознать его как Head
-    // и защёлкнуть primary_serial (через classify_static в flush_internal).
-    // NB: тест проверяет только выдачу; защёлкивание primary_serial
-    // отдельно не ассертится.
-    fn flush_classifies_head_when_carry_holds_whole_head() {
+    // т.е. целиком лежит в carry. Пакет усечён, поэтому flush его сбрасывает
+    // и primary_serial не защёлкивается.
+    fn flush_discards_head_left_in_carry() {
         let mut d = OggOpusDemuxer::new();
         let mut out = Vec::new();
 
@@ -721,18 +743,16 @@ mod tests {
             .unwrap();
         assert!(out.is_empty());
 
-        // flush => тип должен определиться как Head.
         d.parse_internal(&[], &mut out).unwrap();
-        assert_eq!(out.len(), 1);
-        assert_eq!(out[0].0, PacketType::Head);
-        assert_eq!(out[0].1, payload);
+        assert!(out.is_empty());
+        assert!(d.primary_serial.is_none());
+        assert_eq!(d.pending_len(), 0);
     }
 
     #[test]
     // Симметричный кейс: в carry лежат нераспознаваемые байты и
-    // primary_serial ещё нет. flush не может классифицировать пакет —
-    // возвращает Unclassified, но не теряет данные.
-    fn flush_of_unknown_bytes_without_primary_yields_unclassified() {
+    // primary_serial ещё нет — flush тоже сбрасывает их без выдачи.
+    fn flush_discards_unknown_bytes_without_primary() {
         let mut d = OggOpusDemuxer::new();
         let mut out = Vec::new();
 
@@ -741,13 +761,12 @@ mod tests {
             .unwrap();
 
         d.parse_internal(&[], &mut out).unwrap();
-        assert_eq!(out.len(), 1);
-        assert_eq!(out[0].0, PacketType::Unclassified);
-        assert_eq!(out[0].1, junk);
+        assert!(out.is_empty());
+        assert_eq!(d.pending_len(), 0);
     }
 
     // ===============================================================
-    // Группа 3. pending_len и cleanup
+    // pending_len и cleanup
     // ===============================================================
 
     #[test]
@@ -813,66 +832,7 @@ mod tests {
     }
 
     // ===============================================================
-    // Группа 4. classify
-    // ===============================================================
-
-    // classify — публичный метод, но по сути чистая функция:
-    // (packet, serial) x self.primary_serial -> PacketType.
-    // Тесты фиксируют контракт всех веток match.
-
-    #[test]
-    // Head всегда классифицируется как Head независимо от serial и
-    // от того, установлен ли primary_serial. Это важно: второй Head
-    // (из чужого потока) тоже пройдёт как Head, и вызывающий сам
-    // должен решать, что с ним делать.
-    fn classify_head_is_head_regardless_of_serial() {
-        let d = OggOpusDemuxer::new();
-        let head = opus_head_payload();
-        // Ни primary, ни serial — всё равно Head.
-        assert_eq!(d.classify(&head, None), PacketType::Head);
-        assert_eq!(d.classify(&head, Some(123)), PacketType::Head);
-    }
-
-    #[test]
-    // primary_serial ещё не установлен -> всё, кроме Head, в Unclassified.
-    // Соответствует поведению до первого OpusHead: тип определить нельзя.
-    fn classify_unclassified_when_primary_unknown() {
-        let d = OggOpusDemuxer::new();
-        let frame = opus_frame(20);
-        assert_eq!(d.classify(&frame, Some(1)), PacketType::Unclassified);
-    }
-
-    #[test]
-    // Пакет из основного потока — отдаётся как есть, с реальным типом
-    // от детектора (здесь Frame).
-    fn classify_detected_for_matching_serial() {
-        let d = demuxer_with_primary_head(); // primary = 1
-        let frame = opus_frame(20);
-        assert_eq!(d.classify(&frame, Some(1)), PacketType::Frame);
-    }
-
-    #[test]
-    // Пакет из чужого потока (не primary) — Unclassified.
-    // Так вызывающий (handle_page_core) узнаёт, что это надо
-    // подменить на PLC, а не пускать как данные.
-    fn classify_unclassified_for_other_serial() {
-        let d = demuxer_with_primary_head();
-        let frame = opus_frame(20);
-        assert_eq!(d.classify(&frame, Some(2)), PacketType::Unclassified);
-    }
-
-    #[test]
-    // serial == None -> нельзя сверить с primary -> Unclassified.
-    // Актуально для flush: если по какой-то причине bitstream_serial
-    // ещё не зафиксирован, пакет не полетит как валидный Frame.
-    fn classify_none_serial_is_unclassified() {
-        let d = demuxer_with_primary_head();
-        let frame = opus_frame(20);
-        assert_eq!(d.classify(&frame, None), PacketType::Unclassified);
-    }
-
-    // ===============================================================
-    // Группа 5. Особые случаи handle_page_core через parse_internal
+    // Особые случаи handle_page_core через parse_internal
     // ===============================================================
 
     // handle_page_core — приватный, но все его ветки достижимы через
@@ -933,7 +893,7 @@ mod tests {
     #[test]
     // Смена serial на лету: незавершённый carry от предыдущего потока
     // должен быть отброшен (нельзя склеивать через границу потоков).
-    // Новый пакет из чужого (не primary) потока уходит как PLC.
+    // Новый пакет из чужого (не primary) потока отбрасывается.
     fn serial_change_discards_pending_carry() {
         let mut d = demuxer_with_primary_head(); // primary = 1
         let mut out = Vec::new();
@@ -944,14 +904,12 @@ mod tests {
         assert_eq!(d.packet_carry.len(), 255);
 
         // Приходит stream #2 — carry должен очиститься,
-        // а пакет из чужого потока отдаётся как PLC.
+        // а пакет из чужого потока отбрасывается.
         let frame = opus_frame(8);
         d.parse_internal(&build_page(2, 0x00, &[8], &frame), &mut out)
             .unwrap();
 
-        assert_eq!(out.len(), 1);
-        assert_eq!(out[0].0, PacketType::PLC);
-        assert_eq!(&out[0].1[..], &SILENT_FRAME[..]);
+        assert!(out.is_empty());
         assert_eq!(d.bitstream_serial, Some(2));
     }
 

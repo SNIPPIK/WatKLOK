@@ -6,214 +6,250 @@ mod budget;
 pub mod balancer;
 
 use std::io;
-use std::sync::{Arc, Mutex, Condvar, atomic::{AtomicBool, Ordering}};
-use std::thread::{self, JoinHandle};
+use std::sync::{Arc, Mutex, atomic::{AtomicU64, Ordering}};
 use std::time::{Duration, Instant};
 
-// Импортируем ваши внешние структуры (пути должны соответствовать вашему проекту)
-use crate::structures::timers::scheduler::{budget::SendBudget};
-use crate::utils::duration::now_ms;
+use std::thread;
 
+use tokio::sync::Notify;
+
+use crate::structures::timers::scheduler::budget::SendBudget;
+use crate::utils::duration::mono_ms;
+use std::panic::{catch_unwind, AssertUnwindSafe};
+
+use crate::structures::network::udp::inner_socket::SocketInner;
 use self::registry::SessionRegistry;
 use self::telemetry::{SchedulerTelemetry, update_ema};
-use self::timer::{PrecisionTimer};
+use self::timer::PrecisionTimer;
 use self::constants::*;
 
-/// Всё состояние, которое нужно фоновому потоку воркера.
+/// Всё состояние, которое нужно async-воркеру.
 ///
-/// Раньше в поток пробрасывалось четыре отдельных `Arc` (`registry`,
-/// `running`, `wake_state`, `telemetry`). Здесь они объединены в одну
-/// структуру и заворачиваются в единственный `Arc`, что даёт:
-/// - один клон вместо четырёх при спавне потока;
-/// - одну косвенность до `registry` вместо двух (раньше был
-///   `Arc<SessionRegistry>` внутри уже общего состояния).
+/// Живёт в `Arc`: на него смотрит задача цикла, а через `Scheduler` —
+/// методы `add_session`/`remove_session`. Прямые ссылки между
+/// `Scheduler` и задачей создали бы цикл: задача → `WorkerShared` →
+/// `Scheduler` → `WorkerHandle` → задача.
 struct WorkerShared {
-    /// Реестр активных сессий (lock-free чтение через `ArcSwap`).
+    /// Реестр сессий (lock-free чтение через `ArcSwap`).
+    ///
+    /// Чтение — горячий путь (каждый тик обходит все сессии), запись —
+    /// редкая (add/remove). `ArcSwap` даёт читателям снимок без блокировок;
+    /// ценой copy-on-write при обновлении.
     registry: SessionRegistry,
 
-    /// Флаг активности воркер-потока. Проверяется в горячем пути
-    /// (`cycle_thread`, `PrecisionTimer::wait_until`) без блокировок.
-    /// Единственный источник истины о его согласованности с реальным
-    /// потоком — `Scheduler::worker` (см. ниже).
-    running: AtomicBool,
+    /// Текущее поколение воркера. `0` — воркер не запущен. Каждый `spawn`
+    /// увеличивает счётчик; задача помнит своё поколение и завершается,
+    /// если оно перестало быть текущим. Это защищает от гонки «старый
+    /// воркер просыпается уже после старта нового и продолжает работать».
+    ///
+    /// Почему не `AtomicBool`: `bool` не различает «старая задача
+    /// проснулась после abort» и «новая ещё не стартовала». Поколение
+    /// решает это одним сравнением: `my_generation != current` = «я больше
+    /// не текущий».
+    current_generation: AtomicU64,
 
-    /// Пара (флаг пробуждения, condvar) для досрочного выхода из ожидания.
-    wake_state: (Mutex<bool>, Condvar),
+    /// Сериализует обработку тиков.
+    ///
+    /// Старый воркер, уже получивший сигнал остановки, может ещё доделывать
+    /// свой последний тик, пока новый воркер стартует. Без этого лока обе
+    /// задачи отправляли бы пакеты одной сессии одновременно (двойная скорость
+    /// и сбитые RTP-метки). Под локом поколение перепроверяется: устаревший
+    /// воркер тик не выполняет.
+    tick_lock: Mutex<()>,
 
-    /// Метрики планировщика, разделяемые с воркером.
-    telemetry: SchedulerTelemetry,
+    /// Notify для досрочного пробуждения воркера (изменение реестра).
+    /// Без него тик ждал бы весь `TICK_INTERVAL`, даже если сессии
+    /// появились только что.
+    wake: Notify,
+
+    /// Метрики.
+    telemetry: SchedulerTelemetry
 }
 
-/// Дескриптор фонового потока. `Some` означает "поток запущен (или ещё не
-/// успел выйти)", `None` — "поток не запущен".
+/// Дескриптор воркера. `Some` = поток запущен, `None` = не запущен.
 ///
-/// Вынесен в отдельный тип, чтобы решения "запустить" (`add_session`) и
-/// "остановить, потому что реестр опустел" (`remove_session`) принимались
-/// строго под одним и тем же `Mutex`. Раньше это были две независимые
-/// операции (`AtomicBool::compare_exchange` в `start_if_needed` и
-/// отдельная проверка `registry.is_empty()` в `remove_session`), из-за чего
-/// был возможен следующий сценарий:
-///
-/// 1. Поток A вызывает `remove_session`, реестр становится пустым.
-/// 2. Поток B вызывает `add_session`, кладёт новую сессию в реестр и
-///    видит `running == true` — решает, что воркер уже работает, и ничего
-///    не запускает.
-/// 3. Поток A видит, что реестр пуст (шаг 1 уже произошёл до шага 2 с его
-///    точки зрения), и останавливает воркер.
-///
-/// В итоге сессия из шага 2 остаётся в реестре, а воркера, который бы её
-/// обработал, больше нет — до следующего вызова `add_session` с другим id.
-/// Поскольку и старт, и проверка пустоты реестра перед остановкой теперь
-/// выполняются под одним `worker`-локом, такие сценарии линеаризуются:
-/// какой бы поток ни захватил лок первым, второй увидит уже актуальное
-/// состояние (либо реестр не пуст — останавливать нельзя, либо воркер уже
-/// остановлен — надо запускать заново).
+/// Все переходы «запущен ↔ остановлен» проходят через `Scheduler::worker`
+/// (`Mutex`), что линеаризует add/remove/shutdown и исключает классическую
+/// гонку «remove_session опустошил реестр, а add_session уже видит
+/// `running=true`».
 #[derive(Default)]
 struct WorkerHandle {
-    handle: Option<JoinHandle<()>>,
+    thread: Option<thread::JoinHandle<()>>
 }
 
-/// Планировщик циклической обработки UDP-сессий.
+/// Планировщик циклической обработки UDP-сессий (Tokio).
 ///
-/// Запускает фоновый поток, который с интервалом `TICK_INTERVAL` вызывает
-/// `tick()` у всех активных сессий. Использует `SessionRegistry` для
-/// lock-free чтения снимка сессий, `PrecisionTimer` — для точного ожидания
-/// дедлайна, `SchedulerTelemetry` — для сбора метрик и адаптации параметров.
+/// Запускает цикл, который с интервалом `TICK_INTERVAL` вызывает
+/// `auto_tick()` у всех активных сессий. Использует `SessionRegistry` для
+/// lock-free чтения снимка, `PrecisionTimer` — для точного ожидания
+/// дедлайна, `SchedulerTelemetry` — для метрик.
 ///
-/// Поток запускается лениво при первом вызове `add_session` и автоматически
-/// останавливается, когда реестр становится пустым.
+/// ## Где выполняется цикл
+///
+/// На выделенном потоке `voice-timer` с собственным однопоточным tokio-рантаймом
+/// (только time-драйвер). Вызывающему не нужен tokio-контекст: `add_session` и
+/// `remove_session` можно вызывать из любого потока. Цикл изолирован от общего
+/// рантайма `voice-ws`, поэтому тяжёлая работа WebSocket/TLS/MLS не задерживает
+/// отправку аудио, а спин (до ~1.5 мс на тик) не блокирует чужие задачи.
 pub struct Scheduler {
     /// Общее состояние, доступное и `Scheduler`, и фоновому потоку.
     shared: Arc<WorkerShared>,
 
     /// Дескриптор воркера. Все переходы "запущен ↔ остановлен" проходят
     /// через этот `Mutex` — см. документацию `WorkerHandle`.
-    worker: Mutex<WorkerHandle>,
+    worker: Mutex<WorkerHandle>
 }
 
 impl Scheduler {
     /// Создаёт планировщик в остановленном состоянии.
     /// Воркер не запускается до первого `add_session`.
-    pub fn new() -> io::Result<Self> {
-        Ok(Self {
+    pub fn new() -> Self {
+        Self {
             shared: Arc::new(WorkerShared {
                 registry: SessionRegistry::new(),
-                running: AtomicBool::new(false),
-                wake_state: (Mutex::new(false), Condvar::new()),
+                current_generation: AtomicU64::new(0),
+                tick_lock: Mutex::new(()),
+                wake: Notify::new(),
                 telemetry: SchedulerTelemetry::default(),
             }),
-            worker: Mutex::new(WorkerHandle::default()),
-        })
+            worker: Mutex::new(WorkerHandle::default())
+        }
     }
 
     /// Добавляет сессию в реестр, запускает воркер (если не запущен)
-    /// и будит его для немедленной обработки.
+    /// и будит его.
     ///
-    /// # Аргументы
-    /// * `id` — идентификатор сессии.
-    /// * `session` — обёртка UDP-сессии.
-    #[inline]
-    pub fn add_session(&self, id: u32, session: Arc<crate::structures::network::udp::socket::SocketBuffered>) {
-        // Добавляем в реестр до захвата worker-лока
+    /// # Ошибки
+    /// Если не удалось собрать рантайм или запустить поток воркера — сессия
+    /// убирается из реестра и возвращается ошибка.
+    pub fn add_session(&self, id: u32, session: Arc<SocketInner>) -> io::Result<()> {
+        // Сначала кладём в реестр — задача, если уже запущена, увидит
+        // её на следующем тике. Если не запущена — увидит сразу после
+        // `spawn_worker` (задача стартует с пустым `next_deadline`).
         self.shared.registry.add(id, session);
 
         {
             let mut worker = self.worker.lock().unwrap_or_else(|e| e.into_inner());
 
-            // Воркер мог умереть сам (например, panic внутри `session.tick`):
-            // handle остаётся `Some`, но поток уже завершён. Без этой
-            // проверки планировщик навсегда оставался «мёртвым»: сессии
-            // висели в реестре и никогда не тикали, а их Arc/сокеты
-            // не освобождались. Завершённый поток join-им (reap) и
-            // запускаем заново.
-            if worker.handle.as_ref().is_some_and(JoinHandle::is_finished) {
-                if let Some(h) = worker.handle.take() {
-                    let _ = h.join();
+            // Задача могла завершиться сама (например, паника в auto_tick).
+            // `is_finished()` возвращает true и для паники. Отцепляем handle —
+            // результат паники нам не нужен, важно перезапустить воркер.
+            //
+            // Если не отцепить, `worker.handle.is_none()` будет false,
+            // и новый воркер не запустится — сессии останутся в реестре
+            // без обработчика.
+            if worker
+                .thread
+                .as_ref()
+                .is_some_and(thread::JoinHandle::is_finished)
+            {
+                worker.thread.take();
+            }
+
+            if worker.thread.is_none() {
+                if let Err(error) = self.spawn_worker(&mut worker) {
+                    // Откат: если runtime недоступен, сессия не должна
+                    // остаться в реестре — иначе следующая попытка
+                    // `add_session` увидит её как «уже добавленную»
+                    // и попытается перезаписать. Плюс это утечка
+                    // `Arc<SocketInner>`.
+                    drop(worker);
+                    self.shared.registry.remove(id);
+                    return Err(error);
                 }
             }
-
-            if worker.handle.is_none() {
-                self.spawn_worker(&mut worker);
-            }
-            // Лок отпускается здесь — незачем держать его во время wake_thread.
         }
 
-        // Будим воркер, чтобы он не ждал следующего тика.
+        // Будим воркер: он мог спать до конца `TICK_INTERVAL`, а новая
+        // сессия должна быть обработана уже на ближайшем тике.
         self.wake_thread();
+        Ok(())
     }
 
-    /// Удаляет сессию из реестра.
-    /// Если реестр опустел — останавливает воркер.
-    ///
-    /// # Аргументы
-    /// * `id` — идентификатор удаляемой сессии.
+    /// Удаляет сессию. Если реестр опустел — инициирует остановку воркера
+    /// (best-effort: abort, без ожидания — синхронный API).
     #[inline]
     pub fn remove_session(&self, id: u32) {
         self.shared.registry.remove(id);
 
         let mut worker = self.worker.lock().unwrap_or_else(|e| e.into_inner());
         if self.shared.registry.is_empty() {
-            // Проверка пустоты и остановка выполняются под тем же локом,
-            // что и старт в add_session — гонка, описанная в документации
-            // WorkerHandle, невозможна.
+            // Пустой реестр = нечего тикать. Останавливаем воркер, чтобы
+            // не жечь CPU вхолостую. `shutdown_locked` снимает handle;
+            // следующий `add_session` его пересоздаст.
             self.shutdown_locked(&mut worker);
         } else {
+            // Остальные сессии живы — просто будим воркер, чтобы
+            // удаление вступило в силу на ближайшем тике. Без `notify`
+            // задача могла бы проснуться с устаревшим снимком реестра
+            // (хотя `ArcSwap` даёт консистентность, но не гарантирует,
+            // что `snapshot()` увидит изменения без явного пробуждения).
             drop(worker);
-            // Иначе будим воркер, чтобы он увидел изменения реестра.
             self.wake_thread();
         }
     }
 
-    /// Запускает воркер-поток. Вызывающий обязан держать `worker`-лок и
-    /// убедиться, что `worker.handle.is_none()`.
-    fn spawn_worker(&self, worker: &mut WorkerHandle) {
-        self.shared.running.store(true, Ordering::Release);
+    /// Запускает async-воркер. Вызывающий держит `worker`-лок и убедился,
+    /// что `worker.handle.is_none()`.
+    fn spawn_worker(&self, worker: &mut WorkerHandle) -> io::Result<()> {
+        // Цикл тиков живёт на ВЫДЕЛЕННОМ потоке со своим однопоточным
+        // tokio-рантаймом (нужен только time-драйвер), а не на общем рантайме
+        // `voice-ws`. Причины:
+        //
+        // * на общем рантайме тик делит воркер-потоки с WebSocket, TLS и
+        //   тяжёлыми задачами MLS/DAVE: рукопожатие (оно как раз в начале
+        //   сессии) задерживало тики на десятки миллисекунд, а где окажется
+        //   задача, зависело от везения при старте;
+        // * цикл намеренно блокирует поток спином до ~1.5 мс на тик, чужие
+        //   задачи на этом воркере в это время стоят;
+        // * `add_session` не зависит от того, из какого потока его вызвали.
+        //
+        // Рантайм собираем ДО запуска потока, чтобы ошибка вернулась
+        // вызывающему, а не потерялась внутри потока.
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_time()
+            .build()?;
 
+        // Поколение строго монотонно и НИКОГДА не обнуляется (см.
+        // `shutdown_locked`): иначе номер переиспользовался бы, и остановленный
+        // воркер, не успевший заметить остановку, снова считал бы себя текущим.
+        let my_generation = self.shared.current_generation.fetch_add(1, Ordering::AcqRel) + 1;
         let shared = Arc::clone(&self.shared);
 
-        let spawn = thread::Builder::new()
-            .name("UDPCycleSystem".into())
-            .spawn(move || cycle_thread(shared));
+        let thread = thread::Builder::new()
+            .name("voice-timer".into())
+            .spawn(move || {
+                runtime.block_on(cycle_task(shared, my_generation));
+            })?;
 
-        match spawn {
-            Ok(h) => worker.handle = Some(h),
-            Err(e) => {
-                // При ошибке спавна откатываем флаг активности, чтобы
-                // следующий add_session мог попробовать снова.
-                self.shared.running.store(false, Ordering::Release);
-                eprintln!("[Scheduler] failed to spawn worker thread: {e}");
-            }
-        }
+        worker.thread = Some(thread);
+        Ok(())
     }
 
-    /// Устанавливает флаг пробуждения и уведомляет condvar.
-    /// Игнорирует отравление мьютекса, чтобы пробуждение работало всегда.
+    /// Уведомляет воркер о досрочном пробуждении.
     #[inline]
     fn wake_thread(&self) {
-        let (lock, cvar) = &self.shared.wake_state;
-        if let Ok(mut wake) = lock.lock() {
-            *wake = true;
-            cvar.notify_one();
-        } else {
-            // При отравлении всё равно уведомляем.
-            cvar.notify_one();
-        }
+        // `notify_one`, а не `notify_waiters`: воркер один, и `notify_one`
+        // дешевле — не перебирает всех ожидающих. Если бы воркеров
+        // было несколько, понадобился бы `notify_waiters`.
+        self.shared.wake.notify_one();
     }
 
-    /// Останавливает воркер и дожидается его завершения.
-    /// Вызывающий обязан держать `worker`-лок. Идемпотентна: если поток
-    /// уже остановлен (`handle.is_none()`), просто ничего не делает с ним.
+    /// Останавливает воркер (best-effort, sync). Идемпотентна.
+    ///
+    /// * `fetch_add(1)` — новое поколение: воркер с прежним номером при ближайшей
+    ///   проверке видит несовпадение и завершается. Поколение не обнуляется,
+    ///   иначе следующий `spawn_worker` выдал бы тот же номер.
+    /// * `notify_waiters()` — будит воркер, если он спит в `select!`.
+    /// * Поток не `join`-им (API синхронный): он выходит сам не позднее чем
+    ///   через один шаг ожидания. `JoinHandle` отпускается.
     fn shutdown_locked(&self, worker: &mut WorkerHandle) {
-        self.shared.running.store(false, Ordering::Release);
-        self.wake_thread();
-
-        if let Some(h) = worker.handle.take() {
-            let _ = h.join();
-        }
+        self.shared.current_generation.fetch_add(1, Ordering::AcqRel);
+        self.shared.wake.notify_waiters();
+        worker.thread.take();
     }
 
-    /// Останавливает воркер и дожидается его завершения.
-    /// Идемпотентен: повторный вызов безопасен.
+    /// Останавливает воркер (best-effort, sync). Идемпотентен.
     #[inline]
     pub fn shutdown(&self) {
         let mut worker = self.worker.lock().unwrap_or_else(|e| e.into_inner());
@@ -221,150 +257,261 @@ impl Scheduler {
     }
 }
 
-/// Останавливаем воркер при уничтожении планировщика.
 impl Drop for Scheduler {
     fn drop(&mut self) {
+        // Явный shutdown: `JoinHandle` при `Drop` не останавливает задачу,
+        // только отцепляет её. Без этого задача жила бы до конца runtime.
         self.shutdown();
     }
 }
 
-/// Основной цикл воркера планировщика.
+/// Основной async-цикл воркера.
 ///
-/// Фазы одной итерации:
-/// 1. Ожидание дедлайна через `PrecisionTimer` (сон → yield → спин).
-/// 2. Расчёт джиттера и обновление метрик.
-/// 3. Обработка снимка сессий с рассчитанным `SendBudget`.
-/// 4. Сбор метрик обработки, сна и спина.
-/// 5. Периодическая адаптация `spin_margin` каждые `ADAPT_INTERVAL` тиков.
-/// 6. Планирование следующего дедлайна с защитой от дрейфа.
+/// Отличие от thread-версии — только точки `.await`:
+/// * `wait_until` — async;
+/// * `measure_sleep_granularity` — async (через `tokio::time::sleep`).
 ///
-/// # Аргументы
-/// * `shared` — общее состояние воркера (реестр, флаг активности,
-///   состояние пробуждения, телеметрия).
-fn cycle_thread(shared: Arc<WorkerShared>) {
-    // Медианный overshoot коротких снов даёт оценку минимального шага.
-    let granularity = measure_sleep_granularity();
-    shared.telemetry.sleep_granularity_ns.store(granularity.as_nanos() as u64, Ordering::Relaxed);
+/// Проверка поколения (`current_generation.load() == my_generation`)
+/// заменяет `AtomicBool::running` и защищает от гонки «старый воркер
+/// проснулся после старта нового».
+async fn cycle_task(shared: Arc<WorkerShared>, my_generation: u64) {
+    // Гранулярность сна измеряется один раз при старте: она нужна
+    // для `PrecisionTimer` (минимальный `spin_margin`) и в `adapt_margin`.
+    // Измерение занимает несколько десятков миллисекунд — один раз
+    // на воркер это приемлемо.
+    let granularity = measure_sleep_granularity().await;
+    shared
+        .telemetry
+        .sleep_granularity_ns
+        .store(granularity.as_nanos() as u64, Ordering::Relaxed);
 
-    // Установка начального запаса для спина: 2 × гранулярность в пределах MIN/MAX.
-    let initial_margin = granularity.saturating_mul(2).max(MIN_SPIN_MARGIN).min(MAX_SPIN_MARGIN);
-    shared.telemetry.spin_margin_ns.store(initial_margin.as_nanos() as u64, Ordering::Relaxed);
+    // Начальный `spin_margin`: не меньше удвоенной гранулярности сна,
+    // но в пределах `[MIN_SPIN_MARGIN, MAX_SPIN_MARGIN]`. Нижняя граница
+    // гарантирует, что спин «накроет» промах сна; верхняя — что
+    // спин не съест слишком много CPU.
+    //
+    // Стартуем с МАКСИМАЛЬНОГО запаса, а не со значения, выведенного из
+    // 10 замеров: замер зависит от загрузки в момент старта и от фазы
+    // 1-мс колеса таймеров tokio, а адаптация меняет запас не быстрее 10%
+    // за `ADAPT_INTERVAL` тиков. Неудачный замер оставлял воркер минутами
+    // с неточными тиками. Теперь запас только уменьшается (экономия CPU),
+    // а точность держит порог ухода со `sleep` (`TIMER_RESOLUTION`).
+    let initial_margin = MAX_SPIN_MARGIN;
+    shared
+        .telemetry
+        .spin_margin_ns
+        .store(initial_margin.as_nanos() as u64, Ordering::Relaxed);
 
-    // Первый тик выполняется сразу (дедлайн = now).
+    // `next_deadline` — момент следующего тика. Изначально `now`: первый
+    // тик должен произойти как можно скорее (особенно если `add_session`
+    // уже положил сессию в реестр до старта задачи).
     let mut next_deadline = Instant::now();
 
-    while shared.running.load(Ordering::Acquire) {
+    while shared.current_generation.load(Ordering::Acquire) == my_generation {
         let outcome = PrecisionTimer::wait_until(
             next_deadline,
-            &shared.running,
-            &shared.wake_state,
+            &shared.current_generation,
+            my_generation,
+            &shared.wake,
             &shared.telemetry,
-        );
-        if !outcome.reached_deadline { break; }
+        )
+            .await;
 
-        // Засекаем время ТОЛЬКО обработки, без времени ожидания дедлайна.
+        // `reached_deadline = false` = отмена (поколение сменилось или
+        // воркер остановлен). Задача завершается, не дожидаясь следующего
+        // тика.
+        if !outcome.reached_deadline {
+            break;
+        }
+
+        // Один обработчик тиков за раз. Устаревший воркер (его уже сменили)
+        // мог дойти досюда, пока новый стартует; под локом поколение
+        // перепроверяется, и он тик не выполняет. Гард живёт до конца
+        // итерации и не пересекает `.await`: все ожидания выше.
+        let _tick_guard = shared.tick_lock.lock().unwrap_or_else(|e| e.into_inner());
+        if shared.current_generation.load(Ordering::Acquire) != my_generation {
+            break;
+        }
+
         let tick_start = Instant::now();
-
-        // Время сразу после пробуждения — используется для расчёта
-        // джиттера (насколько опоздали относительно дедлайна).
         let wait_now = Instant::now();
 
-        // Расчёт опоздания (джиттер).
+        // Опоздание тика: `wait_now - next_deadline`. Если положительное —
+        // мы проспали, и `SendBudget` уменьшит `budget`, чтобы не отправлять
+        // «догоняющий» залп. Метрики (`avg_jitter_ns`, `max_jitter_ns`)
+        // нужны для диагностики: постоянный jitter — сигнал, что воркеров
+        // не хватает или `TICK_INTERVAL` слишком мал.
         let late = if wait_now > next_deadline {
             let diff = wait_now.duration_since(next_deadline);
             let jitter_ns = diff.as_nanos() as u64;
+
             // EMA + максимум.
             update_ema(&shared.telemetry.avg_jitter_ns, jitter_ns, ALPHA_SHIFT);
-            shared.telemetry.max_jitter_ns.fetch_max(jitter_ns, Ordering::Relaxed);
+            shared
+                .telemetry
+                .max_jitter_ns
+                .fetch_max(jitter_ns, Ordering::Relaxed);
             diff
         } else {
             Duration::ZERO
         };
 
-        // Обработка сессий.
+        // `snapshot()` — lock-free снимок реестра через `ArcSwap`.
+        // Пока мы тикаем, `add_session`/`remove_session` могут менять
+        // реестр; снимок даёт консистентный набор на момент `load()`.
+        // Изменения, пришедшие после снимка, увидят следующий тик —
+        // это допустимо (add/remove в любом случае асинхронны).
         let snapshot = shared.registry.snapshot();
         if !snapshot.is_empty() {
-            // Определяем бюджет отправки по величине опоздания.
+            // `budget` зависит от `late`: если мы опоздали, бюджет
+            // уменьшается, чтобы не отправлять «залп» пакетов разом
+            // и не переполнять сеть. Это защита от «наверстать упущенное»
+            // на каждом тике.
             let budget = SendBudget::calculate_send_budget(late);
+            let timestamp = mono_ms();
 
-            // Один timestamp на все сессии — обход снимка быстрый.
-            let timestamp = now_ms();
             for session in snapshot.values() {
-                session.tick(timestamp, budget.packets());
+                // `catch_unwind`: паника в `auto_tick` одной сессии
+                // не должна валить весь воркер и все остальные сессии.
+                // Без этого одна сломанная сессия заблокировала бы тик
+                // для всех остальных — и UDP для них бы «замер».
+                //
+                // `AssertUnwindSafe` — потому что `auto_tick` работает
+                // с `&self` и атомиками; паника в одном поле не оставит
+                // структуру в «полуразобранном» состоянии, безопасно
+                // продолжать.
+                let _ = catch_unwind(AssertUnwindSafe(|| {
+                    session.auto_tick(timestamp, budget.packets());
+                }));
             }
         }
 
-        // Сбор метрик выполнения.
+        // Метрики времени обработки — для диагностики «тик слишком
+        // долгий» и для `adapt_margin` (если обработка занимает много
+        // времени, `next_deadline` быстро отстаёт, и это видно по `late`).
         let process_ns = tick_start.elapsed().as_nanos() as u64;
         update_ema(&shared.telemetry.avg_process_ns, process_ns, ALPHA_SHIFT);
-        shared.telemetry.max_process_ns.fetch_max(process_ns, Ordering::Relaxed);
+        shared
+            .telemetry
+            .max_process_ns
+            .fetch_max(process_ns, Ordering::Relaxed);
 
+        // Overshoot сна — метрика для `adapt_margin`: если сон регулярно
+        // просыпается позже дедлайна, нужно увеличить `spin_margin`,
+        // чтобы спин «накрывал» промах.
         let sleep_overshoot_ns = outcome.sleep_overshoot.as_nanos() as u64;
-        update_ema(&shared.telemetry.avg_sleep_overshoot_ns, sleep_overshoot_ns, ALPHA_SHIFT);
-        shared.telemetry.max_sleep_overshoot_ns.fetch_max(sleep_overshoot_ns, Ordering::Relaxed);
+        update_ema(
+            &shared.telemetry.avg_sleep_overshoot_ns,
+            sleep_overshoot_ns,
+            ALPHA_SHIFT,
+        );
+        shared
+            .telemetry
+            .max_sleep_overshoot_ns
+            .fetch_max(sleep_overshoot_ns, Ordering::Relaxed);
 
+        // Сколько времени провели в спине — метрика для `adapt_margin`:
+        // слишком долгий спин жжёт CPU, слишком короткий — теряет точность.
         let spin_ns = outcome.spin_time.as_nanos() as u64;
         update_ema(&shared.telemetry.avg_spin_time_ns, spin_ns, ALPHA_SHIFT);
 
-        // Адаптация spin_margin каждые N циклов.
+        // Адаптация `spin_margin` раз в `ADAPT_INTERVAL` тиков, а не
+        // на каждом: одно измерение — шум, и реагировать на него
+        // значит раскачивать `spin_margin` из стороны в сторону.
         let cycle_id = shared.telemetry.ticks.fetch_add(1, Ordering::Relaxed) + 1;
         if cycle_id % ADAPT_INTERVAL == 0 {
-            let avg_spin = Duration::from_nanos(shared.telemetry.avg_spin_time_ns.load(Ordering::Relaxed));
-            let avg_overshoot = Duration::from_nanos(shared.telemetry.avg_sleep_overshoot_ns.load(Ordering::Relaxed));
+            let avg_spin = Duration::from_nanos(
+                shared.telemetry.avg_spin_time_ns.load(Ordering::Relaxed),
+            );
+            let avg_overshoot = Duration::from_nanos(
+                shared
+                    .telemetry
+                    .avg_sleep_overshoot_ns
+                    .load(Ordering::Relaxed),
+            );
             PrecisionTimer::adapt_margin(&shared.telemetry, avg_spin, avg_overshoot);
         }
 
-        // Расчёт следующего дедлайна (строго +20 мс для исключения дрейфа).
+        // Следующий дедлайн — ровно через `TICK_INTERVAL`. `+=` вместо
+        // `now + TICK_INTERVAL`: если обработка была быстрой и мы
+        // уложились в интервал, дедлайны идут равномерно (без дрейфа).
         next_deadline += TICK_INTERVAL;
 
-        // Если катастрофически отстали — сбрасываем дедлайн на now + интервал.
-        // Иначе можно было бы накопить серию «догоняющих» тиков.
-        //
-        // Важно: время для этой проверки берём заново, ПОСЛЕ обработки
-        // сессий и метрик, а не переиспользуем `wait_now`. Если сама
-        // обработка (или адаптация spin_margin) заняла заметное время,
-        // `wait_now` уже устарел и мог бы скрыть реальное отставание,
-        // накопленное уже после пробуждения.
+        // Если обработка заняла больше `TICK_INTERVAL`, `next_deadline`
+        // уже в прошлом — следующий `wait_until` вернётся сразу и
+        // «догонит» тик. Но если мы отстали на несколько тиков,
+        // догонять их все подряд бессмысленно: пропущенные пакеты
+        // всё равно устарели. Сбрасываем дедлайн на «сейчас + интервал»,
+        // чтобы не было лавины догоняющих тиков.
         let post_process_now = Instant::now();
         if next_deadline <= post_process_now {
             next_deadline = post_process_now + TICK_INTERVAL;
         }
     }
-
-    // По завершении цикла сбрасываем флаг активности.
-    shared.running.store(false, Ordering::Release);
 }
 
-/// Измеряет гранулярность системного сна.
-///
-/// Делает `SAMPLES` коротких снов длительностью `REQUESTED_SLEEP`,
-/// собирает превышения фактического времени над запрошенным и возвращает
-/// медианный overshoot, ограниченный `MAX_GRANULARITY`.
-///
-/// # Возвращаемое значение
-/// Медианный overshoot сна; `ZERO`, если замеры не удались.
-#[inline]
-fn measure_sleep_granularity() -> Duration {
-    // Сюда собираем все превышения.
+/// Измеряет гранулярность `tokio::time::sleep`. Та же логика, что и раньше,
+/// но через async sleep. Возвращает медианный overshoot, ограниченный
+/// `MAX_GRANULARITY`.
+async fn measure_sleep_granularity() -> Duration {
     let mut overshoots = Vec::with_capacity(SAMPLES);
 
     for _ in 0..SAMPLES {
         // Засекаем время до сна.
         let start = Instant::now();
-        thread::sleep(REQUESTED_SLEEP);
-        // Фактическая длительность.
-        let elapsed = start.elapsed();
 
-        // Записываем только промахи.
+        tokio::time::sleep(REQUESTED_SLEEP).await;
+        let elapsed = start.elapsed();
+        // Считаем только положительный overshoot: если sleep проснулся
+        // раньше запрошенного (бывает на некоторых платформах), это
+        // не «гранулярность», а шум — игнорируем.
         if elapsed > REQUESTED_SLEEP {
             overshoots.push(elapsed - REQUESTED_SLEEP);
         }
     }
 
-    // Если ни одного промаха не зафиксировано — гранулярность нулевая.
-    if overshoots.is_empty() { return Duration::ZERO; }
+    if overshoots.is_empty() {
+        return Duration::ZERO;
+    }
 
-    // Сортируем и берём медиану (устойчива к одиночным выбросам).
+    // Медиана, а не среднее: одно выбросное измерение (например, из-за
+    // планировщика ОС) не должно раздувать `granularity` и через неё
+    // минимальный `spin_margin`. Медиана устойчивее.
     overshoots.sort_unstable();
     overshoots[overshoots.len() / 2].min(MAX_GRANULARITY)
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Поколение воркера растёт монотонно и не повторяется после остановки:
+    /// именно повтор номера позволял «старому» воркеру считать себя текущим.
+    #[test]
+    fn generation_is_monotonic_across_shutdown_and_respawn() {
+        let scheduler = Scheduler::new();
+        let mut worker = scheduler.worker.lock().unwrap();
+
+        scheduler.spawn_worker(&mut worker).unwrap();
+        let first = scheduler.shared.current_generation.load(Ordering::Acquire);
+
+        scheduler.shutdown_locked(&mut worker);
+        let stopped = scheduler.shared.current_generation.load(Ordering::Acquire);
+        assert!(stopped > first, "остановка должна менять поколение, а не обнулять его");
+
+        scheduler.spawn_worker(&mut worker).unwrap();
+        let second = scheduler.shared.current_generation.load(Ordering::Acquire);
+        assert!(second > stopped);
+        assert_ne!(first, second);
+
+        scheduler.shutdown_locked(&mut worker);
+    }
+
+    /// `add_session`/`spawn_worker` не требуют tokio-контекста у вызывающего.
+    #[test]
+    fn spawn_worker_works_without_caller_runtime() {
+        let scheduler = Scheduler::new();
+        let mut worker = scheduler.worker.lock().unwrap();
+        assert!(scheduler.spawn_worker(&mut worker).is_ok());
+        scheduler.shutdown_locked(&mut worker);
+    }
 }

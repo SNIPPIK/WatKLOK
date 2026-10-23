@@ -34,8 +34,13 @@ pub(crate) const MAX_PARSER_PENDING: usize = 8 * 1024 * 1024;
 /// - `-vn` — отключить видео;
 /// - `-loglevel error` — выводить только ошибки;
 /// - `-nostdin` — не читать stdin;
-/// - `-hide_banner` — скрыть баннер FFmpeg.
+/// - `-hide_banner` — скрыть баннер FFmpeg;
+/// - `-protocol_whitelist` — разрешённые протоколы входа. Без него ffmpeg
+///   откроет и `concat:`, `subfile:`, внутренние адреса и прочее, что
+///   может прийти в `-i` из пользовательских данных (чтение локальных файлов,
+///   SSRF). Нужен ещё протокол (например, `rtmp`) — добавьте его сюда.
 pub(crate) const FFMPEG_PREFIX: &[&str] = &[
+    "-protocol_whitelist",  "file,pipe,http,https,tcp,tls,crypto,data",
     "-vn",
     "-loglevel", "error",
     "-nostdin",

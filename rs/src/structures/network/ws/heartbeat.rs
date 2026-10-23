@@ -4,14 +4,14 @@ use std::sync::{
     atomic::Ordering, Arc
 };
 use tokio_tungstenite::tungstenite::Message;
-use crate::structures::network::ws::{
-    opcodes::{discord_opcode, close_codes},
-    inner::Inner,
-    runtime
+use crate::{
+    utils::duration::{mono_ms},
+    structures::network::ws::{
+        opcodes::{discord_opcode, close_codes},
+        inner::Inner,
+        runtime
+    }
 };
-
-// Общая функция времени — своя копия не нужна.
-use crate::utils::duration::now_ms;
 
 /// Допустимый диапазон heartbeat-интервала.
 ///
@@ -87,7 +87,7 @@ pub fn start(inner: Arc<Inner>, interval_ms: u64) {
                     json!({
                         "code": close_codes::SESSION_TIMEOUT,
                         "reason": "HEARTBEAT_ACK timeout"
-                    }),
+                    })
                 );
                 return;
             }
@@ -98,8 +98,8 @@ pub fn start(inner: Arc<Inner>, interval_ms: u64) {
             let packet = json!({
                 "op": discord_opcode::HEARTBEAT,
                 "d": {
-                    "t": now_ms(),
-                    "seq_ack": inner_task.sequence.load(Ordering::SeqCst),
+                    "t": mono_ms(),
+                    "seq_ack": inner_task.sequence.load(Ordering::SeqCst)
                 }
             });
 

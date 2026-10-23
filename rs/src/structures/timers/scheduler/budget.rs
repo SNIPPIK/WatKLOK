@@ -19,7 +19,7 @@ const MAX_SEND_BURST: u8 = 3;
 ///
 /// Пороги подбираются здесь же: если burst срабатывает слишком часто,
 /// увеличьте значения этих двух констант.
-const BURST_THRESHOLD_1: Duration = Duration::from_millis(1);
+const BURST_THRESHOLD_1: Duration = Duration::from_millis(5);
 
 /// Второй порог отставания: при его превышении разрешается максимальный
 /// burst (`MAX_SEND_BURST`).

@@ -1,19 +1,26 @@
-use crate::structures::network::udp::socket::SocketBuffered;
+use crate::structures::network::udp::inner_socket::SocketInner;
 use arc_swap::ArcSwap;
 use std::collections::HashMap;
 use std::sync::Arc;
 
 /// Реестр активных UDP-сессий.
 ///
-/// Хранит карту `id → Arc<SocketBuffered>` и обеспечивает lock-free
+/// Хранит карту `id → Arc<SocketInner>` и обеспечивает lock-free
 /// чтение снимка через `ArcSwap`. Обновления выполняются копированием
 /// карты и атомарной заменой, что позволяет читателям получать
 /// согласованный снимок без блокировок.
 pub struct SessionRegistry {
     /// Карта сессий, обёрнутая в `ArcSwap` для lock-free снимков.
-    sessions: ArcSwap<HashMap<u32, Arc<SocketBuffered>>>,
+    ///
+    /// `ArcSwap<HashMap<...>>` — это `Arc<HashMap<...>>` с атомарной
+    /// заменой. `load()` возвращает `Guard`, который ведёт себя как
+    /// `&HashMap`; `swap()` заменяет указатель.
+    sessions: ArcSwap<HashMap<u32, Arc<SocketInner>>>
 }
 
+/// `Default` — чтобы реестр можно было использовать в `static`/`OnceLock`
+/// без ручной инициализации, и чтобы `SessionRegistry::default()`
+/// работал как `SessionRegistry::new()`.
 impl Default for SessionRegistry {
     fn default() -> Self {
         Self::new()
@@ -25,7 +32,7 @@ impl SessionRegistry {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            sessions: ArcSwap::from_pointee(HashMap::new()),
+            sessions: ArcSwap::from_pointee(HashMap::new())
         }
     }
 
@@ -35,7 +42,7 @@ impl SessionRegistry {
     /// * `id` — идентификатор сессии.
     /// * `session` — обёртка UDP-сессии.
     #[inline]
-    pub fn add(&self, id: u32, session: Arc<SocketBuffered>) {
+    pub fn add(&self, id: u32, session: Arc<SocketInner>) {
         self.update(|map| {
             // FnMut (rcu может перезапустить замыкание) — владение
             // сессией отдавать нельзя, клонируем Arc.
@@ -63,13 +70,6 @@ impl SessionRegistry {
         self.sessions.load().is_empty()
     }
 
-    /// Количество зарегистрированных сессий (snapshot; может устареть сразу
-    /// после возврата при конкурентных обновлениях).
-    #[must_use]
-    #[inline]
-    pub fn len(&self) -> usize {
-        self.sessions.load().len()
-    }
 
     /// Возвращает снимок карты сессий.
     ///
@@ -77,7 +77,7 @@ impl SessionRegistry {
     /// при последующих обновлениях реестра.
     #[must_use]
     #[inline]
-    pub fn snapshot(&self) -> Arc<HashMap<u32, Arc<SocketBuffered>>> {
+    pub fn snapshot(&self) -> Arc<HashMap<u32, Arc<SocketInner>>> {
         self.sessions.load_full()
     }
 
@@ -87,7 +87,7 @@ impl SessionRegistry {
     /// поток успел обновить реестр, замыкание применяется заново к свежей
     /// карте. Прежняя схема `load_full` + `store` теряла конкурентные
     /// обновления: потерянный `remove` оставлял сессию в реестре навсегда
-    /// (её `Arc<SocketBuffered>` держался и тикал до конца процесса).
+    /// (её `Arc<SocketInner>` держался и тикал до конца процесса).
     ///
     /// Карта копируется на каждое обновление всегда: `ArcSwap` сам держит
     /// ссылку на текущую версию, поэтому `Arc::make_mut` из прежнего кода
@@ -96,11 +96,9 @@ impl SessionRegistry {
     /// # Аргументы
     /// * `update_fn` — замыкание, изменяющее карту (может вызываться повторно).
     #[inline]
-    fn update<F>(&self, mut update_fn: F) where
-        F: FnMut(&mut HashMap<u32, Arc<SocketBuffered>>),
-    {
+    fn update<F>(&self, mut update_fn: F) where F: FnMut(&mut HashMap<u32, Arc<SocketInner>>) {
         self.sessions.rcu(|current| {
-            let mut map: HashMap<u32, Arc<SocketBuffered>> = (**current).clone();
+            let mut map: HashMap<u32, Arc<SocketInner>> = (**current).clone();
             update_fn(&mut map);
             Arc::new(map)
         });

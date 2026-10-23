@@ -1,5 +1,5 @@
 use crate::structures::network::ws::runtime;
-use crate::utils::duration::now_ms;
+use crate::utils::duration::mono_ms;
 use parking_lot::Mutex;
 use std::{
     sync::{
@@ -209,7 +209,7 @@ impl VoiceSpeakerManager {
         let this = Arc::new(Self {
             // Изначально бот молчит.
             ty: Mutex::new(Some(SpeakerType::Disable)),
-            last_set: AtomicU64::new(now_ms()),
+            last_set: AtomicU64::new(mono_ms()),
             wake: Arc::new(Notify::new()),
             watchdog: Mutex::new(None),
             host
@@ -255,7 +255,7 @@ impl VoiceSpeakerManager {
                             .last_set
                             .load(Ordering::Relaxed)
                             .saturating_add(KEEP_SWITCH_SPEAKING_MS);
-                        let now = now_ms();
+                        let now = mono_ms();
 
                         if now >= deadline {
                             // Дедлайн прошёл — пытаемся сбросить в `Disable`.
@@ -332,7 +332,7 @@ impl VoiceSpeakerManager {
     pub fn set_speaking(&self, speaking: SpeakerType) {
         // Продлеваем дедлайн: один атомарный store, без локов.
         // Это самая горячая часть — никаких мьютексов.
-        self.last_set.store(now_ms(), Ordering::Relaxed);
+        self.last_set.store(mono_ms(), Ordering::Relaxed);
 
         if !self.apply(speaking) {
             return;

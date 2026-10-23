@@ -13,10 +13,10 @@ use crate::{
 };
 use parking_lot::Mutex;
 use serde_json::{json, Value};
-use std::sync::{
-    atomic::{AtomicBool, AtomicU32, Ordering},
+use std::{fmt, sync::{
+    atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering},
     Arc,
-};
+}, time::Duration};
 use tokio::{sync::mpsc::UnboundedReceiver, task::JoinHandle};
 
 // ============================================================================
@@ -34,7 +34,22 @@ use tokio::{sync::mpsc::UnboundedReceiver, task::JoinHandle};
 /// * `NORMAL` — штатное закрытие без ошибки.
 const STOP_CODES: [u32; 2] = [close_codes::DISCONNECTED, close_codes::NORMAL];
 
-/// После скольких подряд переподключений транспорт уничтожается.
+/// Сколько ждать каждый этап рукопожатия, прежде чем считать его зависшим.
+///
+/// Этапы: открытие WS (`ws-connect`), ответ на Identify (`ready`), UDP
+/// discovery (`udp-discovery`), ответ на SelectProtocol
+/// (`session-description`), ответ на Resume (`resume`). Таймер каждого
+/// этапа заменяет предыдущий, поэтому суммарное время рукопожатия не
+/// ограничено числом этапов, но ни один этап не может висеть вечно.
+/// По истечении срабатывает обычный путь потери соединения (`on_close`):
+/// переподключение до `MAX_RECONNECTS`, затем уничтожение.
+const HANDSHAKE_STAGE_TIMEOUT: Duration = Duration::from_secs(15);
+
+/// Сколько подряд закрытий WS допускается до уничтожения транспорта.
+///
+/// Счётчик увеличивается до сравнения, поэтому транспорт уничтожается на
+/// `MAX_RECONNECTS`-м закрытии подряд: реально выполняется
+/// `MAX_RECONNECTS - 1` переподключений (при 3 — две попытки).
 ///
 /// Счётчик сбрасывается при успешном `Ready` (соединение установилось).
 /// Если же соединение рвётся снова и снова, где-то есть проблема,
@@ -68,7 +83,9 @@ pub struct ReadyData {
 ///
 /// Содержит секретный ключ для шифрования RTP и версию DAVE-протокола
 /// (если E2EE включён). Приходит последним в цепочке рукопожатия.
-#[derive(Clone, Debug)]
+///
+/// `Debug` реализован вручную: ключ не должен попадать в логи.
+#[derive(Clone)]
 pub struct SessionData {
     /// Ключ для AEAD-шифрования RTP-пакетов. Передаётся как массив
     /// чисел в JSON — внутри превращается в `Vec<u8>`.
@@ -77,6 +94,15 @@ pub struct SessionData {
     /// Версия DAVE-протокола, предложенная сервером. `None` или `Some(0)`
     /// означают, что E2EE выключен и DAVE не нужен.
     pub dave_protocol_version: Option<u16>,
+}
+
+impl fmt::Debug for SessionData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SessionData")
+            .field("secret_key", &format_args!("<redacted, {} bytes>", self.secret_key.len()))
+            .field("dave_protocol_version", &self.dave_protocol_version)
+            .finish()
+    }
 }
 
 // ============================================================================
@@ -92,7 +118,9 @@ pub struct SessionData {
 /// сделано». Например, `Identifying` хранит payload Identify, чтобы
 /// при необходимости отправить его повторно, а `Ready` хранит данные
 /// для discovery.
-#[derive(Clone, Debug)]
+///
+/// `Debug` реализован вручную: payload Identify/Resume содержит токен.
+#[derive(Clone)]
 pub enum TransportState {
     /// Соединение закрыто, ничего не происходит. Исходное состояние
     /// и конечное после `destroy`.
@@ -118,6 +146,19 @@ pub enum TransportState {
     /// Получили SessionDescription, инициализируем шифрование.
     /// Хранит secret_key и версию DAVE.
     Session(SessionData),
+}
+
+impl fmt::Debug for TransportState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Closed => f.write_str("Closed"),
+            Self::OpeningWs => f.write_str("OpeningWs"),
+            Self::Identifying(_) => f.write_str("Identifying(<redacted>)"),
+            Self::Resuming(_) => f.write_str("Resuming(<redacted>)"),
+            Self::Ready(data) => f.debug_tuple("Ready").field(data).finish(),
+            Self::Session(data) => f.debug_tuple("Session").field(data).finish(),
+        }
+    }
 }
 
 /// События транспорта (`TransportEvents`).
@@ -172,13 +213,13 @@ fn parse_ready(d: &Value) -> Option<ReadyData> {
     Some(ReadyData {
         // SSRC приходит как JSON-число; `as_u64` даёт `None` для
         // отрицательных и не-чисел.
-        ssrc: d.get("ssrc")?.as_u64()? as u32,
+        ssrc: u32::try_from(d.get("ssrc")?.as_u64()?).ok()?,
 
         // IP — строка. `as_str` даёт `None`, если это не строка.
         ip: d.get("ip")?.as_str()?.to_string(),
 
         // Порт — число; `as u16` обрежет всё, что не влезает в u16.
-        port: d.get("port")?.as_u64()? as u16,
+        port: u16::try_from(d.get("port")?.as_u64()?).ok()?,
     })
 }
 
@@ -193,7 +234,8 @@ fn parse_session(d: &Value) -> Option<SessionData> {
         .get("secret_key")?
         .as_array()?
         .iter()
-        .map(|v| v.as_u64().map(|n| n as u8))
+        // `try_from` вместо `as u8`: молча обрезанный байт испортил бы ключ.
+        .map(|v| v.as_u64().and_then(|n| u8::try_from(n).ok()))
         .collect::<Option<Vec<u8>>>()?;
 
     Some(SessionData {
@@ -203,22 +245,18 @@ fn parse_session(d: &Value) -> Option<SessionData> {
         dave_protocol_version: d
             .get("dave_protocol_version")
             .and_then(|v| v.as_u64())
-            .map(|v| v as u16),
+            .and_then(|v| u16::try_from(v).ok()),
     })
 }
 
-/// Извлекает JSON-payload из события WebSocket.
+/// Забирает JSON-payload из события WebSocket (без копирования).
 ///
-/// Если payload отсутствует или не парсится — возвращает `Null`.
+/// Если payload отсутствует — возвращает `Null`.
 /// Это позволяет вызывающим не проверять `Option` на каждом шаге:
-/// `parse_payload(...).get("op")` работает и для `Null` (возвращает
+/// `take_payload(...).get("op")` работает и для `Null` (возвращает
 /// `None`), и для валидного объекта.
-fn parse_payload(event: &WsEvent) -> Value {
-    event
-        .payload
-        .as_deref()
-        .and_then(|s| serde_json::from_str(s).ok())
-        .unwrap_or(Value::Null)
+fn take_payload(slot: &mut Option<Value>) -> Value {
+    slot.take().unwrap_or(Value::Null)
 }
 
 // ============================================================================
@@ -268,6 +306,18 @@ struct TransportInner {
     /// Handle задачи обработки событий WS. Хранится, чтобы можно было
     /// её остановить в `destroy`.
     event_task: Mutex<Option<JoinHandle<()>>>,
+
+    /// Таймер текущего этапа рукопожатия (см. `HANDSHAKE_STAGE_TIMEOUT`).
+    handshake_task: Mutex<Option<JoinHandle<()>>>,
+
+    /// Поколение таймера: устаревший таймер, успевший проснуться в момент
+    /// перехода на следующий этап, видит чужое поколение и ничего не делает.
+    handshake_gen: AtomicU64,
+
+    /// `true`, пока Identify отложен: WS открылся раньше, чем пришли
+    /// `VOICE_SERVER_UPDATE` / `VOICE_STATE_UPDATE`. Как только данные
+    /// появляются, `retry_identify` отправляет Identify.
+    identify_pending: AtomicBool,
 }
 impl TransportInner {
     // ---------------------------------------------------------------------
@@ -303,6 +353,51 @@ impl TransportInner {
     ///
     /// Ошибки отправки игнорируются: WebSocket сам сообщит о разрыве
     /// через события, и мы обработаем это в `on_close`.
+    /// Взводит таймер этапа рукопожатия (предыдущий отменяется).
+    ///
+    /// Без него любой потерянный ответ сервера (нет Hello/Ready/
+    /// SessionDescription, подвисший TCP/TLS) оставлял бы подключение
+    /// в состоянии `Connecting` навсегда.
+    fn arm_handshake(self: &Arc<Self>, stage: &'static str) {
+        let generation = self.handshake_gen.fetch_add(1, Ordering::AcqRel) + 1;
+        let weak = Arc::downgrade(self);
+
+        let mut slot = self.handshake_task.lock();
+        if let Some(old) = slot.take() {
+            old.abort();
+        }
+        *slot = Some(runtime::spawn(async move {
+            tokio::time::sleep(HANDSHAKE_STAGE_TIMEOUT).await;
+
+            let Some(me) = weak.upgrade() else { return };
+            if me.handshake_gen.load(Ordering::Acquire) != generation { return; }
+
+            me.on_handshake_timeout(stage);
+        }));
+    }
+
+    /// Снимает таймер рукопожатия (оно завершено или транспорт уничтожен).
+    fn disarm_handshake(&self) {
+        self.handshake_gen.fetch_add(1, Ordering::AcqRel);
+        if let Some(task) = self.handshake_task.lock().take() {
+            task.abort();
+        }
+    }
+
+    /// Этап рукопожатия не завершился вовремя: считаем соединение потерянным.
+    fn on_handshake_timeout(self: &Arc<Self>, stage: &'static str) {
+        if self.destroyed.load(Ordering::Acquire) { return; }
+
+        self.info(format!(
+            "[Transport]: handshake timeout at stage `{stage}` ({}s)",
+            HANDSHAKE_STAGE_TIMEOUT.as_secs()
+        ));
+        self.on_close(
+            close_codes::SESSION_TIMEOUT,
+            format!("handshake timeout at stage `{stage}`"),
+        );
+    }
+
     fn send_json(&self, value: Value) {
         if let Some(ws) = self.ws() {
             let _ = ws.send_text(value.to_string());
@@ -346,13 +441,28 @@ impl TransportInner {
         // вызовет ошибку и захочет откатиться — например, вызвать
         // `destroy` — состояние уже будет актуальным, и повторный
         // `set_state` от `on_close` увидит корректное значение.
-        *self.state.lock() = state.clone();
+        //
+        // В `state` секреты (токен из Identify/Resume, ключ из Session)
+        // не кладём: сохраняется только фаза, никто другой payload не читает.
+        let stored = match &state {
+            TransportState::Identifying(_) => TransportState::Identifying(Value::Null),
+            TransportState::Resuming(_) => TransportState::Resuming(Value::Null),
+            TransportState::Session(data) => TransportState::Session(SessionData {
+                secret_key: Vec::new(),
+                dave_protocol_version: data.dave_protocol_version,
+            }),
+            other => other.clone(),
+        };
+        *self.state.lock() = stored;
 
         match state {
             // -----------------------------------------------------------------
             // OpeningWs: поднимаем WebSocket.
             // -----------------------------------------------------------------
             TransportState::OpeningWs => {
+                // Включая сам `connect_async`: без таймера завис бы и он.
+                self.arm_handshake("ws-connect");
+
                 // Endpoint берём из server-пакета (приходит от
                 // VOICE_SERVER_UPDATE в `VoiceConnection`).
                 let endpoint = self
@@ -387,7 +497,14 @@ impl TransportInner {
             // -----------------------------------------------------------------
             // Session: инициализируем шифрование.
             // -----------------------------------------------------------------
-            TransportState::Session(data) => {
+            TransportState::Session(mut data) => {
+                // Рукопожатие завершено: таймер больше не нужен, а серия
+                // неудачных переподключений прерывается именно здесь, а не
+                // на `Ready`. Иначе цикл «Ready пришёл, SessionDescription
+                // нет» обнулял бы счётчик и переподключался бесконечно.
+                self.disarm_handshake();
+                self.reconnecting.store(0, Ordering::Release);
+
                 self.info("[Transport/RTP]: has created");
 
                 // RTP инициализируется только если известен SSRC.
@@ -399,20 +516,27 @@ impl TransportInner {
                 let ssrc = *self.ssrc.lock();
                 match ssrc {
                     Some(ssrc) => {
-                        if let Err(e) = self.udp.initialize_rtp(ssrc, data.secret_key.clone()) {
+                        // Ключ переезжает в RTP без копии: единственный
+                        // экземпляр зануляется внутри `initialize_rtp`.
+                        let key = std::mem::take(&mut data.secret_key);
+                        if let Err(e) = self.udp.initialize_rtp(ssrc, key) {
                             self.info(format!("[Transport/RTP]: {e}"));
                         }
                     }
-                    None => self.info("[Transport/RTP]: ssrc is not set"),
+                    None => {
+                        data.secret_key.fill(0);
+                        self.info("[Transport/RTP]: ssrc is not set");
+                    }
                 }
 
                 // Если версия DAVE не нулевая — инициализируем MLS.
                 // Нулевая версия означает, что E2EE выключен, и DAVE
                 // не нужен: пакеты пойдут без шифрования.
-                if let Some(version) = data.dave_protocol_version {
-                    if version != 0 {
-                        self.create_dave(version);
-                    }
+                match data.dave_protocol_version {
+                    Some(version) if version != 0 => self.create_dave(version),
+                    // E2EE выключен: явно разрешаем отправку без шифрования.
+                    // Иначе `dave.packet` отбрасывал бы все кадры.
+                    _ => self.dave.set_passthrough(true),
                 }
             }
 
@@ -430,6 +554,7 @@ impl TransportInner {
             // Resuming: отправляем Resume.
             // -----------------------------------------------------------------
             TransportState::Resuming(payload) => {
+                self.arm_handshake("resume");
                 // Аналогично Identify, но с op=7.
                 self.send_json(json!({ "op": discord_opcode::RESUME, "d": payload }));
             }
@@ -437,7 +562,7 @@ impl TransportInner {
             // -----------------------------------------------------------------
             // Closed: ничего не делаем.
             // -----------------------------------------------------------------
-            TransportState::Closed => {}
+            TransportState::Closed => self.disarm_handshake(),
         }
     }
 
@@ -484,6 +609,7 @@ impl TransportInner {
     /// Без этого мы не знаем, куда отправлять аудио.
     fn prepare_udp(self: &Arc<Self>, data: ReadyData) {
         self.info("[Transport/UDP]: Waiting discovery response");
+        self.arm_handshake("udp-discovery");
 
         // `create` возвращает приёмник результата. Сама задача discovery
         // работает в фоне, а мы ждём её результат асинхронно.
@@ -508,7 +634,11 @@ impl TransportInner {
     }
 
     /// Обрабатывает результат discovery: успех -> Select Protocol, ошибка -> закрытие.
-    fn after_discovery(&self, result: DiscoveryResult) {
+    fn after_discovery(self: &Arc<Self>, result: DiscoveryResult) {
+        // Транспорт мог быть уничтожен, пока шёл discovery: тогда не шлём
+        // ни `Close` (при ошибке), ни `Open` (при успехе).
+        if self.destroyed.load(Ordering::Acquire) { return; }
+
         let handshake = match result {
             // Ошибка при получении адреса — завершаем. Discovery мог
             // провалиться по разным причинам: тайм-аут, невалидный
@@ -522,14 +652,10 @@ impl TransportInner {
             Ok(handshake) => handshake,
         };
 
-        // Транспорт мог быть уничтожен во время ожидания discovery.
-        // Проверяем это ДО того, как рапортовать об успехе: иначе
-        // слушатель получит `Open` на уже мёртвом транспорте.
-        if self.destroyed.load(Ordering::Acquire) { return; }
-
         // Discovery прошёл — транспорт считаем открытым.
         // Слушатель (`VoiceConnection`) переведёт статус в `Connected`.
         self.emit(TransportEvent::Open);
+        self.arm_handshake("session-description");
 
         // Сообщаем шлюзу выбранный протокол и данные для UDP.
         // `aead_aes256_gcm_rtpsize` — обязательный режим шифрования
@@ -555,14 +681,14 @@ impl TransportInner {
     ///
     /// Диспетчеризация по имени события. Строки (`"open"`, `"close"`...)
     /// совпадают с именами, которые `VoiceWebSocket` передаёт в канал.
-    fn handle_ws_event(self: &Arc<Self>, event: WsEvent) {
+    fn handle_ws_event(self: &Arc<Self>, mut event: WsEvent) {
         match event.event.as_str() {
             // WebSocket открыт. Отправляем Identify.
             "open" => self.on_open(),
 
             // WebSocket закрыт. Пытаемся переподключиться или сдаёмся.
             "close" => {
-                let v = parse_payload(&event);
+                let v = take_payload(&mut event.payload);
                 // Код по умолчанию 1006 (abnormal closure) — если
                 // сервер не прислал код, это единственный корректный
                 // выбор.
@@ -579,24 +705,24 @@ impl TransportInner {
             "resumed" => self.on_resumed(),
 
             // Ready: сервер прислал параметры для UDP.
-            "ready" => self.on_ready(parse_payload(&event)),
+            "ready" => self.on_ready(take_payload(&mut event.payload)),
 
             // SessionDescription: секретный ключ для RTP.
-            "sessionDescription" => self.on_session_description(parse_payload(&event)),
+            "sessionDescription" => self.on_session_description(take_payload(&mut event.payload)),
 
             // Ошибка WebSocket. Не пытаемся переподключиться.
-            "error" => self.on_error(parse_payload(&event)),
+            "error" => self.on_error(take_payload(&mut event.payload)),
 
             // Изменение списка клиентов канала.
-            "Users" => self.on_users(parse_payload(&event)),
+            "Users" => self.on_users(take_payload(&mut event.payload)),
 
             // DAVE-сообщение в JSON (PrepareTransition и т.п.).
-            "daveSession" => self.on_dave_session(parse_payload(&event)),
+            "daveSession" => self.on_dave_session(take_payload(&mut event.payload)),
 
             // Бинарное DAVE-сообщение.
             "binary" => {
                 // Op-код из JSON-обёртки (`{ op, payload: number[] }`).
-                let op = parse_payload(&event)
+                let op = take_payload(&mut event.payload)
                     .get("op")
                     .and_then(|o| o.as_u64())
                     .unwrap_or(0);
@@ -615,23 +741,44 @@ impl TransportInner {
     fn on_open(self: &Arc<Self>) {
         if self.destroyed.load(Ordering::Acquire) { return; }
 
+        // WS открыт: теперь ждём Ready в ответ на Identify.
+        self.arm_handshake("ready");
+
         // Для Identify нужны оба пакета: server (token) и state (session_id).
-        // Если чего-то не хватает — идентифицироваться не получится,
-        // логируем и выходим. Такое возможно, если WS открылся раньше,
-        // чем пришли VOICE_SERVER_UPDATE / VOICE_STATE_UPDATE.
+        // Если WS открылся раньше, чем пришли `VOICE_SERVER_UPDATE` /
+        // `VOICE_STATE_UPDATE`, Identify откладывается и уходит из
+        // `retry_identify`, когда данные появятся. Раньше здесь был просто
+        // `return`: Identify не уходил никогда, и рукопожатие зависало.
+        //
+        // Флаг ставится ДО попытки: `retry_identify` забирает его через
+        // `swap`, поэтому Identify не уйдёт дважды, а пакет, пришедший между
+        // проверкой и записью флага, не потеряется.
+        self.identify_pending.store(true, Ordering::Release);
+        self.retry_identify();
+
+        if self.identify_pending.load(Ordering::Acquire) {
+            self.info("[Transport/WS]: voice server/state packet is missing, Identify deferred");
+        }
+    }
+
+    /// Отправляет отложенный Identify, если данные для него уже есть.
+    ///
+    /// Вызывается при открытии WS и при каждом `VOICE_SERVER_UPDATE` /
+    /// `VOICE_STATE_UPDATE`. Без отложенного Identify — no-op.
+    fn retry_identify(self: &Arc<Self>) {
+        if self.destroyed.load(Ordering::Acquire) { return; }
+        if !self.identify_pending.swap(false, Ordering::AcqRel) { return; }
+
         let server = self.adapter.server.lock().clone();
         let state = self.adapter.state.lock().clone();
         let (Some(server), Some(state)) = (server, state) else {
-            self.info("[Transport/WS]: voice server/state packet is missing");
+            // Данных всё ещё нет: возвращаем флаг, дождёмся следующего пакета.
+            self.identify_pending.store(true, Ordering::Release);
             return;
         };
 
-        // Собираем payload и переводим состояние в Identifying.
-        // Дальше `set_state` сам отправит пакет.
-        //
-        // `max_dave_protocol_version` — обязательное поле, даже если
-        // DAVE не будем использовать. Сервер по нему решает, какую
-        // версию протокола предлагать.
+        // `max_dave_protocol_version` — обязательное поле, даже если DAVE
+        // не будем использовать: по нему сервер решает, какую версию предлагать.
         self.set_state(TransportState::Identifying(json!({
             "server_id": state.guild_id,
             "session_id": state.session_id,
@@ -646,7 +793,8 @@ impl TransportInner {
     /// Логика:
     /// 1. Если код в `STOP_CODES` — переподключаться не надо.
     /// 2. Если уже уничтожены — тоже не надо.
-    /// 3. Если попыток >= `MAX_RECONNECTS` — уничтожаем транспорт.
+    /// 3. Если закрытий подряд >= `MAX_RECONNECTS` — уничтожаем транспорт
+    ///    (то есть переподключений будет `MAX_RECONNECTS - 1`).
     /// 4. Иначе — инкрементируем счётчик и перезапускаем WS.
     fn on_close(self: &Arc<Self>, code: u32, reason: String) {
         // Коды, при которых переподключение запрещено (пользователь вышел,
@@ -689,6 +837,11 @@ impl TransportInner {
             return;
         };
 
+        // Resume — тоже успешное восстановление соединения: сбрасываем
+        // счётчик, как и в `on_ready`, иначе `ready()` (требует
+        // `reconnecting == 0`) остался бы `false` навсегда.
+        self.reconnecting.store(0, Ordering::Release);
+
         // `seq_ack` из WebSocket: у нас есть геттер `sequence()`,
         // который возвращает последний полученный seq (или -1).
         self.set_state(TransportState::Resuming(json!({
@@ -714,9 +867,9 @@ impl TransportInner {
             return;
         };
 
-        // Сброс счётчика попыток (соединение успешно) и сохранение SSRC.
-        // SSRC нужен для RTP-шифрования и отправки пакетов.
-        self.reconnecting.store(0, Ordering::Release);
+        // Сохраняем SSRC (нужен для RTP-шифрования и отправки пакетов).
+        // Счётчик попыток здесь НЕ сбрасывается: Ready ещё не значит, что
+        // рукопожатие завершено — сброс происходит на SessionDescription.
         *self.ssrc.lock() = Some(data.ssrc);
 
         // Переход в Ready — `set_state` сам вызовет prepare_udp.
@@ -737,7 +890,7 @@ impl TransportInner {
         match packet.get("d").and_then(parse_session) {
             // Если удалось извлечь данные
             Some(data) => self.set_state(TransportState::Session(data)),
-            
+
             // Если не удалось извлечь данные
             None => self.info("[Transport/RTP]: invalid session description packet")
         }
@@ -754,7 +907,7 @@ impl TransportInner {
             return;
         }
 
-        // `message` и `stack` приходят из ошибки napi. Если чего-то
+        // `message` и `stack` приходят из события ошибки WebSocket. Если чего-то
         // нет — используем дефолты, чтобы не потерять информацию
         // полностью.
         let message = payload
@@ -794,7 +947,7 @@ impl TransportInner {
                     }
                 }
             }
-            
+
             // Кто-то вышел: `d.user_id` — строка.
             Some(discord_opcode::CLIENT_DISCONNECT) => {
                 if let Some(id) = d.and_then(|d| d.get("user_id")).and_then(|v| v.as_str()) {
@@ -931,7 +1084,7 @@ impl TransportInner {
             Some(Ok((transition_id, true))) if transition_id != 0 => {
                 self.send_transition_ready(transition_id as u64);
             }
-            
+
             // Если переход завершился ошибкой
             Some(Err(e)) => self.info(format!("[Transport/E2EE]: {e}")),
             _ => {}
@@ -954,6 +1107,7 @@ impl TransportInner {
         // состояние.
         self.emit(TransportEvent::Destroyed(close_codes::CALL_TERMINATED));
         *self.state.lock() = TransportState::Closed;
+        self.disarm_handshake();
 
         // Останавливаем задачу обработки событий WS. Это гарантирует,
         // что после `destroy` никакие новые события не будут обработаны.
@@ -997,8 +1151,7 @@ impl Transport {
         let ws = Arc::new(VoiceWebSocket::new());
 
         // `subscribe_native` отдаёт канал событий напрямую из Rust,
-        // без прохода через JS. Это позволяет обрабатывать события
-        // в своём темпе и не зависеть от JS-цикла.
+        // события обрабатываются в своём темпе.
         let receiver: UnboundedReceiver<WsEvent> = ws.subscribe_native();
 
         let inner = Arc::new(TransportInner {
@@ -1011,10 +1164,13 @@ impl Transport {
             ssrc: Mutex::new(None),
             reconnecting: AtomicU32::new(0),
             destroyed: AtomicBool::new(false),
-            event_task: Mutex::new(None)
+            event_task: Mutex::new(None),
+            handshake_task: Mutex::new(None),
+            handshake_gen: AtomicU64::new(0),
+            identify_pending: AtomicBool::new(false)
         });
 
-        // Обработчик событий WS: последовательно, как и в JS.
+        // Обработчик событий WS: последовательно.
         // Один цикл на все события — так гарантируется порядок
         // обработки, как будто это происходит в одном потоке.
         //
@@ -1173,5 +1329,11 @@ impl Transport {
     /// выполнять какую-либо работу.
     pub fn destroy(&self) {
         self.inner.destroy();
+    }
+
+    /// Сообщает транспорту, что пришли новые `VOICE_SERVER_UPDATE` /
+    /// `VOICE_STATE_UPDATE`: если Identify был отложен, он отправляется.
+    pub fn retry_identify(&self) {
+        self.inner.retry_identify();
     }
 }
