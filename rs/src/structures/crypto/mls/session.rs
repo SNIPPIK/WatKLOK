@@ -783,9 +783,7 @@ impl MlsSession {
         if self.is_transitioning { return false; }
 
         // Переход должен быть зарегистрирован.
-        let version = match self.pending_transitions.get(
-            &transition_id,
-        ) {
+        let version = match self.pending_transitions.get(&transition_id) {
             Some(pending) => pending.version,
             None => return false,
         };
@@ -796,8 +794,8 @@ impl MlsSession {
         // Применяем новую версию.
         self.version = version;
 
-        if self.version > 0 {
-            // Новая версия — нативную сессию нужно пересоздать на неё.
+        // ТОЛЬКО при реальной смене версии reinit
+        if self.version > 0 && self.version != old_version {
             let _ = self.reinit_internal();
         }
 
