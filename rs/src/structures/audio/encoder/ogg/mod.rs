@@ -1,14 +1,16 @@
 mod packet_type;
 mod opus_specification;
 
-use bytes::{Buf, BufMut, BytesMut};
-use std::fmt;
-use memchr::memmem;
 use crate::structures::audio::{
     encoder::ogg::{
         packet_type::{PacketType, ParsedPacket},
         opus_specification::validate_ogg_crc
     },
+};
+use {
+    bytes::{Buf, BufMut, BytesMut},
+    memchr::memmem,
+    std::fmt
 };
 
 /// Ошибка разбора Ogg (текстовая причина).
@@ -234,6 +236,13 @@ impl OggOpusDemuxer {
                 debug_assert_eq!(&self.remainder[..4], b"OggS");
             }
 
+            // После сдвига от страницы может остаться меньше фиксированного
+            // заголовка (сигнатура нашлась в самом хвосте буфера): ждём
+            // следующий chunk, не читая байт счётчика сегментов [26].
+            if self.remainder.len() < 27 {
+                break;
+            }
+
             // 27 байт фикс. Заголовка + N байт lacing-таблицы.
             // N хранится в байте 26 (счётчик сегментов).
             let header_size = 27 + self.remainder[26] as usize;
@@ -452,6 +461,7 @@ impl Drop for OggOpusDemuxer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::opus_specification::compute_ogg_crc;
 
     // ---------------------------------------------------------------
     // Хелперы
@@ -460,7 +470,10 @@ mod tests {
     // Собирает Ogg-страницу из сегментов и payload.
     // Ассерты ловят ошибки в самих тестах: несовпадение lacing-таблицы
     // с payload или переполнение однобайтового счётчика сегментов.
-    // Поля granule/seq/crc не заполняются — парсер их не читает.
+    // Поля granule/seq не заполняются — парсер их не читает. CRC заполняется:
+    // парсер проверяет его у каждой страницы (`validate_ogg_crc`) и отбрасывает
+    // страницы с неверной суммой, так что страница с нулевым CRC была бы
+    // принята за мусор и тест проверял бы не то, что задумано.
     fn build_page(serial: u32, header_type: u8, segments: &[u8], payload: &[u8]) -> Vec<u8> {
         assert!(segments.len() <= 255, "lacing-таблица не влезет в один байт");
         // Сумма длин сегментов в lacing-таблице должна совпасть с payload —
@@ -479,7 +492,38 @@ mod tests {
         page.push(segments.len() as u8);
         page.extend_from_slice(segments);
         page.extend_from_slice(payload);
+
+        // CRC считается по всей странице с обнулённым полем checksum
+        // (`compute_ogg_crc` сам игнорирует байты 22..26).
+        let crc = compute_ogg_crc(&page);
+        page[22..26].copy_from_slice(&crc.to_le_bytes());
         page
+    }
+
+    // Страница, собранная хелпером, проходит проверку CRC; порча любого байта
+    // (в том числе payload) её ломает.
+    #[test]
+    fn built_pages_have_valid_crc_and_corruption_is_detected() {
+        let head = opus_head_payload();
+        let mut page = build_page(1, 0x02, &[head.len() as u8], &head);
+        assert!(validate_ogg_crc(&page));
+
+        let last = page.len() - 1;
+        page[last] ^= 0xFF;
+        assert!(!validate_ogg_crc(&page));
+    }
+
+    // Страница с неверным CRC не даёт пакетов: парсер её отбрасывает.
+    #[test]
+    fn page_with_bad_crc_yields_no_packets() {
+        let mut d = OggOpusDemuxer::new();
+        let head = opus_head_payload();
+        let mut page = build_page(1, 0x02, &[head.len() as u8], &head);
+        let last = page.len() - 1;
+        page[last] ^= 0xFF;
+
+        let (_, out) = parse(&mut d, &page);
+        assert!(out.is_empty());
     }
 
     /// OpusHead — минимальная сигнатура (остальное парсер не читает).
@@ -914,18 +958,48 @@ mod tests {
     }
 
     #[test]
-    // Нулевой сегмент (lacing=0) без накопленного carry. По спеке Ogg
-    // это означает "пакет нулевой длины завершён". Парсер должен
-    // эмитить пакет, а не молча пропустить сегмент.
-    // Проверяем и факт эмита, и то, что тип — Broken (пустой пакет
-    // не может быть валидным Opus-пакетом, детектор так и решает).
-    fn zero_length_segment_emits_empty_frame() {
+    // Нулевой сегмент (lacing=0) — пустой пакет. Он не может быть Opus-кадром
+    // (минимум 1 байт TOC), а в очередь пакетов пустые не принимаются, поэтому
+    // парсер его пропускает. Сегмент не должен портить соседние пакеты.
+    fn zero_length_segment_is_skipped() {
         let mut d = demuxer_with_primary_head();
-        let page = build_page(1, 0x00, &[0], &[]);
-        let (res, out) = parse(&mut d, &page);
+
+        // Одна пустая страница: ничего не эмитится.
+        let (res, out) = parse(&mut d, &build_page(1, 0x00, &[0], &[]));
+        assert!(res.is_ok());
+        assert!(out.is_empty());
+
+        // Пустой сегмент перед настоящим пакетом: эмитится только пакет.
+        let frame = opus_frame(8);
+        let (res, out) = parse(&mut d, &build_page(1, 0x00, &[0, 8], &frame));
         assert!(res.is_ok());
         assert_eq!(out.len(), 1);
-        assert_eq!(out[0].0, PacketType::Broken);
-        assert!(out[0].1.is_empty());
+        assert_eq!(out[0].1, frame);
+    }
+
+    #[test]
+    // Мусор перед "OggS", сигнатура которой лежит в самом хвосте буфера:
+    // после ресинхронизации остаётся меньше 27 байт заголовка. Парсер должен
+    // дождаться продолжения, а не паниковать на чтении счётчика сегментов.
+    fn signature_near_buffer_end_waits_for_more_data() {
+        let mut d = demuxer_with_primary_head();
+        let frame = opus_frame(8);
+        let page = build_page(1, 0x00, &[8], &frame);
+        assert_eq!(page.len(), 27 + 1 + 8);
+
+        // 10 байт мусора + первые 20 байт страницы = 30 байт (>= 27),
+        // но после `advance(10)` остаётся только 20.
+        let mut first = vec![0u8; 10];
+        first.extend_from_slice(&page[..20]);
+
+        let (res, out) = parse(&mut d, &first);
+        assert!(res.is_ok());
+        assert!(out.is_empty());
+
+        // Остаток страницы приходит позже: пакет должен собраться.
+        let (res, out) = parse(&mut d, &page[20..]);
+        assert!(res.is_ok());
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].1, frame);
     }
 }

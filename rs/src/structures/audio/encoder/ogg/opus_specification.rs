@@ -473,3 +473,77 @@ pub fn validate_ogg_crc(page: &[u8]) -> bool {
     // поэтому передаём страницу как есть.
     compute_ogg_crc(page) == expected
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Эталон: прежняя побитовая реализация (8 сдвигов на байт). Табличный
+    /// алгоритм обязан давать ровно тот же результат на любых входных данных.
+    fn bitwise_reference(page: &[u8]) -> u32 {
+        let mut crc = 0u32;
+        for (index, &byte) in page.iter().enumerate() {
+            let value = if (22..26).contains(&index) { 0 } else { byte };
+            crc ^= (value as u32) << 24;
+            for _ in 0..8 {
+                crc = if crc & 0x8000_0000 != 0 {
+                    (crc << 1) ^ 0x04C1_1DB7
+                } else {
+                    crc << 1
+                };
+            }
+        }
+        crc
+    }
+
+    /// Детерминированный псевдослучайный генератор (LCG): тест воспроизводим.
+    fn pseudo_random_bytes(len: usize, mut seed: u64) -> Vec<u8> {
+        (0..len)
+            .map(|_| {
+                seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+                (seed >> 56) as u8
+            })
+            .collect()
+    }
+
+    #[test]
+    fn table_crc_matches_bitwise_reference_for_all_lengths() {
+        // Длины на границах checksum-поля (22..26) и обычные страницы.
+        for len in [0usize, 1, 5, 21, 22, 23, 24, 25, 26, 27, 28, 100, 255, 4096] {
+            let data = pseudo_random_bytes(len, len as u64 + 7);
+            assert_eq!(
+                compute_ogg_crc(&data),
+                bitwise_reference(&data),
+                "расхождение на длине {len}"
+            );
+        }
+    }
+
+    #[test]
+    fn crc_ignores_checksum_field_content() {
+        let mut page = pseudo_random_bytes(200, 42);
+        page[..4].copy_from_slice(b"OggS");
+
+        let a = compute_ogg_crc(&page);
+        page[22..26].copy_from_slice(&[0xDE, 0xAD, 0xBE, 0xEF]);
+        assert_eq!(a, compute_ogg_crc(&page));
+    }
+
+    #[test]
+    fn validate_accepts_page_with_correct_crc_and_rejects_wrong() {
+        let mut page = pseudo_random_bytes(120, 99);
+        page[..4].copy_from_slice(b"OggS");
+
+        let crc = compute_ogg_crc(&page);
+        page[22..26].copy_from_slice(&crc.to_le_bytes());
+        assert!(validate_ogg_crc(&page));
+
+        page[50] ^= 1;
+        assert!(!validate_ogg_crc(&page));
+    }
+
+    #[test]
+    fn validate_rejects_short_or_unsigned_data() {
+        assert!(!validate_ogg_crc(&[0u8; 26]));
+        assert!(!validate_ogg_crc(&[0u8; 64]));
+    }
+}

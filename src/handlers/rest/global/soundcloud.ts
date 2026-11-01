@@ -17,7 +17,6 @@ import { sdb } from "#db/worker";
  * @author SNIPPIK
  * @description Динамически загружаемый класс
  * @class RestSoundCloudAPI
- * @extends RestServerSide
  * @public
  */
 @DeclareRest({

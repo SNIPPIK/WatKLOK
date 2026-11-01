@@ -75,7 +75,7 @@ class AudioPlayers<T extends AudioPlayer> extends TaskCycle<T> {
             duration: PLAYER_SEND_NATIVE,
 
             // Оставляем в цикле только те плееры, которые сейчас проигрывают аудио и готовы к работе
-            filter: (item) => item.playing && item.voice?.connection?.ready,
+            filter: (item) => item.playing,
 
             /**
              * @description Выполняет отправку аудиопакетов из буфера в UDP-соединение для одного плеера.
@@ -234,7 +234,7 @@ class Messages<T extends CycleInteraction> extends TaskCycle<T> {
              * 2. Сообщение существует дольше, чем `MESSAGE_COOLDOWN_TIME`,
              *    либо прошло достаточно времени с момента создания.
              */
-            filter: (message) => !!message.edit && message.createdTimestamp + MESSAGE_COOLDOWN_TIME < Date.now() || message.createdTimestamp + MESSAGE_COOLDOWN_TIME < Date.now(),
+            filter: (message) => typeof message.edit === "function" && Date.now() - message.createdTimestamp >= MESSAGE_COOLDOWN_TIME,
 
             /**
              * Основная функция обновления, вызываемая циклически.

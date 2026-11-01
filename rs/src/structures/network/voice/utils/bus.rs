@@ -1,6 +1,8 @@
-use parking_lot::Mutex;
-use serde_json::{json, Value};
-use std::sync::Arc;
+use {
+    serde_json::{json, Value},
+    parking_lot::Mutex,
+    std::sync::Arc
+};
 
 /// Событие, которое шина отправляет в JS.
 ///
@@ -164,7 +166,9 @@ impl HostBus {
             // `guild_id` передаётся как есть: `None` превращается
             // в `null` в JSON, что JS-сторона понимает.
             HostEvent::Destroyed(guild_id) => json!({ "t": "destroyed", "guild_id": guild_id }),
-            HostEvent::AdapterDestroy => json!({ "t": "adapter_destroy" }),
+
+            // Если адаптер уничтожен
+            HostEvent::AdapterDestroy => json!({ "t": "adapter_destroy" })
         };
         let text = value.to_string();
 
@@ -220,5 +224,14 @@ impl HostBus {
     pub fn close(&self) {
         let _order = self.order.lock();
         *self.sink.lock() = None;
+    }
+}
+
+impl Drop for HostBus {
+    fn drop(&mut self) {
+        // sink: Option<Arc<dyn Fn>> — дропнется и так, но:
+        // ThreadsafeFunction внутри Arc<dyn Fn> может удерживать
+        // ссылку на JS-функцию до GC. Явного close() не требуется,
+        // достаточно обычного Drop.
     }
 }

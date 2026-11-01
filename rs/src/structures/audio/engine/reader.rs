@@ -5,7 +5,7 @@
 //! её отдельно и упрощает вынос в отдельный модуль.
 
 use super::constants::{AUDIO_FRAMES_CAPACITY, AUDIO_READ_CHUNK, MAX_PARSER_PENDING};
-use crate::structures::audio::{encoder::ogg::OggOpusDemuxer, ring_buffer::RingBuffer};
+use crate::structures::audio::{encoder::ogg::OggOpusDemuxer, ring::packet_queue::PacketQueue};
 use std::{
     io::{ErrorKind, Read},
     process::{Child, ChildStdout},
@@ -65,49 +65,18 @@ impl Drop for ReaderCleanup<'_> {
     }
 }
 
-/// RAII-уведомление consumer'а: если в буфер попал хотя бы один пакет,
-/// при освобождении (в том числе при раннем `return`) выполняется
-/// `notify_one()`.
-///
-/// Объявляется до guard'а мьютекса, поэтому освобождается после него:
-/// consumer просыпается уже без удерживаемого мьютекса и не упирается
-/// сразу в занятый.
-struct NotifyOnDrop<'a> {
-    cvar: &'a Condvar,
-    pending: bool,
-}
-
-impl NotifyOnDrop<'_> {
-    /// Будит consumer'а немедленно, если есть ещё не забранные им пакеты.
-    /// Нужно вызывать перед `wait` на полном буфере — иначе возможна
-    /// взаимная блокировка: reader ждёт места, consumer ждёт данных.
-    #[inline]
-    fn flush(&mut self) {
-        if self.pending {
-            self.cvar.notify_one();
-            self.pending = false;
-        }
-    }
-}
-
-impl Drop for NotifyOnDrop<'_> {
-    #[inline]
-    fn drop(&mut self) {
-        self.flush();
-    }
-}
-
 /// Читает stdout FFmpeg, разбирает Ogg/Opus на пакеты и складывает
-/// аудио-пакеты в кольцевой буфер.
+/// аудио-пакеты в очередь `PacketQueue`.
 ///
 /// Завершается, когда:
 /// * `active` сброшен;
 /// * `destroyed` выставлен;
-/// * FFmpeg закрыл stdout (EOF) — после обязательного flush последнего пакета;
+/// * FFmpeg закрыл stdout (EOF): завершённые пакеты уже переданы в буфер,
+///   оборванный хвост отбрасывается;
 /// * произошла ошибка чтения (кроме `Interrupted`, который повторяется) или
 ///   ошибка разбора;
 /// * парсер переполнен;
-/// * кольцевой буфер отверг пакет или его мьютекс отравлен.
+/// * очередь отвергла пакет или её мьютекс отравлен.
 ///
 /// При выходе (в том числе при панике) процесс FFmpeg гарантированно
 /// убивается и дожидается его завершения, после чего сбрасывается `active`.
@@ -117,17 +86,10 @@ impl Drop for NotifyOnDrop<'_> {
 /// * `active` — флаг активности reader'а.
 /// * `destroyed` — флаг уничтожения движка.
 /// * `pause_state` — состояние паузы (флаг + condvar).
-/// * `buffer_state` — кольцевой буфер + condvar для ожидания места и данных.
+/// * `buffer_state` — очередь пакетов + condvar для ожидания свободного места.
 /// * `child` — процесс FFmpeg; reader убивает его и дожидается завершения
 ///   при выходе.
-pub(crate) fn reader_loop(
-    stdout: ChildStdout,
-    active: Arc<AtomicBool>,
-    destroyed: Arc<AtomicBool>,
-    pause_state: Arc<(Mutex<bool>, Condvar)>,
-    buffer_state: Arc<(Mutex<RingBuffer>, Condvar)>,
-    child: Arc<Mutex<Option<Child>>>,
-) {
+pub(crate) fn reader_loop(stdout: ChildStdout, active: Arc<AtomicBool>, destroyed: Arc<AtomicBool>, pause_state: Arc<(Mutex<bool>, Condvar)>, buffer_state: Arc<(Mutex<PacketQueue>, Condvar)>, child: Arc<Mutex<Option<Child>>>) {
     // Объявлен первым → освобождается последним: к моменту его срабатывания
     // `read_and_demux` уже вернулся, а значит stdout закрыт, а парсер и
     // буферы освобождены. Так FFmpeg получает EPIPE раньше, чем мы его
@@ -143,13 +105,7 @@ pub(crate) fn reader_loop(
 /// Основной цикл. Владеет stdout, парсером и временными буферами; при любом
 /// выходе (`return` или паника) всё это освобождается до срабатывания
 /// `ReaderCleanup`.
-fn read_and_demux(
-    mut stdout: ChildStdout,
-    active: &AtomicBool,
-    destroyed: &AtomicBool,
-    pause_state: &(Mutex<bool>, Condvar),
-    buffer_state: &(Mutex<RingBuffer>, Condvar),
-) {
+fn read_and_demux(mut stdout: ChildStdout, active: &AtomicBool, destroyed: &AtomicBool, pause_state: &(Mutex<bool>, Condvar), buffer_state: &(Mutex<PacketQueue>, Condvar)) {
     // Разборщик Ogg/Opus, собирает аудио-пакеты из байтового потока.
     let mut parser = OggOpusDemuxer::new();
 
@@ -216,17 +172,9 @@ fn read_and_demux(
         // декодер получил бы битый кадр, поэтому он отбрасывается вместе с
         // парсером при завершении потока.
 
-        // Передача готовых пакетов в RingBuffer.
+        // Передача готовых пакетов в очередь.
         if !frames.is_empty() {
             let (buffer_lock, buffer_cvar) = buffer_state;
-
-            // ВАЖНО: объявлен до guard'а, чтобы уведомление происходило
-            // после снятия блокировки. Иначе consumer проснётся и сразу
-            // упрётся в занятый нами мьютекс.
-            let mut notifier = NotifyOnDrop {
-                cvar: buffer_cvar,
-                pending: false,
-            };
 
             let Ok(mut buffer) = buffer_lock.lock() else { return };
 
@@ -250,36 +198,17 @@ fn read_and_demux(
                         break;
                     }
 
-                    // Прежде чем уснуть на полном буфере, обязательно будим
-                    // consumer'а: он мог спать на этом же condvar в ожидании
-                    // данных и не знать о пакетах, уже положенных в этой
-                    // пачке. Иначе — взаимная блокировка (reader ждёт места,
-                    // consumer ждёт данных).
-                    notifier.flush();
-
+                    // Ждём, пока consumer (`get_packets`) освободит место.
                     buffer = match buffer_cvar.wait(buffer) {
                         Ok(b) => b,
                         Err(_) => return,
                     };
                 }
 
-                // Буфер отверг пакет — фатально. Флаг `active` сбросит
-                // ReaderCleanup уже после завершения процесса.
-                // (`RingBuffer.push` возвращает Err только если буфер полон,
-                // но мы только что проверили `!is_full()` — гонки нет,
-                // потому что producer здесь ровно один.)
-                if buffer.push(packet).is_err() {
-                    return;
-                }
-
-                notifier.pending = true;
+                // Место проверено выше, producer здесь один: `push` отклонил
+                // бы только пустой пакет, а парсер пустых не выдаёт.
+                buffer.push(&packet);
             }
-
-            // Здесь: сначала освобождается guard (снятие блокировки), затем
-            // notifier (notify_one). Consumer видит все пакеты пачки одним
-            // пробуждением — это и даёт «пачку» на выходе, если она большая.
-            // При `AUDIO_READ_CHUNK = 8 КиБ` пачка маленькая, и старт звучит
-            // плавно.
         }
 
         // EOF обработан (включая хвост) — выходим из цикла чтения.

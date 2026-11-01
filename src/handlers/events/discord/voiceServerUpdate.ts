@@ -4,9 +4,6 @@ import { db } from "#db";
 export default createEvent({
     data: { name: 'voiceServerUpdate' },
     run(packet) {
-        queueMicrotask(() => {
-            // Send data in adapter
-            return db.adapter.onVoiceServer({...packet, guild_id: packet.guildId});
-        });
+        return db.adapter.onVoiceServer({...packet, guild_id: packet.guildId});
     }
 });

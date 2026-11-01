@@ -58,16 +58,15 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents> {
     private _destroyed = false;
 
     /**
-     * Фасады старых полей `ws`, `udp`, `transport`.
+     * Фасады старых полей `udp`, `transport`.
      *
      * Раньше это были полноценные объекты с методами; теперь они читают
      * данные из нативного объекта через геттеры. Сохранены для обратной
      * совместимости: внешний код (плагины, UI) продолжает работать
      * без изменений.
      */
-    private readonly _ws: { readonly ready: boolean; readonly sequence: number };
     private readonly _udp: { readonly ready: boolean; readonly status: string; readonly packets: number; readonly lost: number };
-    private readonly _transport: { readonly ready: boolean; readonly ssrc: number | null; readonly _ws: any; readonly _udp: any };
+    private readonly _transport: { readonly ready: boolean; readonly ssrc: number | null; readonly _udp: any };
 
     /**
      * @description Получаем текущий статус голосового подключения
@@ -91,16 +90,6 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents> {
         // команды в мёртвый нативный объект.
         if (this._destroyed) return;
         this.native.setStatus(status);
-    };
-
-    /**
-     * @description Подключение к Discord по Websocket
-     * @public
-     */
-    public get ws() {
-        // Возвращаем `null` для уничтоженного подключения, чтобы
-        // вызывающий не пытался читать поля с мёртвого объекта.
-        return this._destroyed ? null : this._ws;
     };
 
     /**
@@ -200,10 +189,6 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents> {
         // объектом: значение читается в момент обращения, а не кэшируется.
         // Это важно: `ready` меняется со временем, и кэш был бы
         // некорректным.
-        const ws = this._ws = {
-            get ready() { return native.wsReady; },
-            get sequence() { return native.wsSequence; }
-        };
         const udp = this._udp = {
             get ready() { return native.udpReady; },
             get status() { return native.udpStatus; },
@@ -213,7 +198,6 @@ export class VoiceConnection extends TypedEmitter<VoiceConnectionEvents> {
         this._transport = {
             get ready() { return native.transportReady; },
             get ssrc() { return native.ssrc; },
-            get _ws() { return ws; },
             get _udp() { return udp; }
         };
 

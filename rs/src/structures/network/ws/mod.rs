@@ -1,12 +1,14 @@
-use tokio_tungstenite::tungstenite::Message;
 use crate::structures::network::ws::{
     inner::{Inner, WsEvent},
-    opcodes::ws_status
+    opcodes::ws_codes
 };
-use tokio::sync::mpsc;
-use std::sync::{
-    atomic::Ordering,
-    Arc
+use {
+    tokio_tungstenite::tungstenite::Message,
+    tokio::sync::mpsc,
+    std::sync::{
+        atomic::Ordering,
+        Arc
+    }
 };
 
 /// Voice WebSocket Discord (чистый Rust, без napi).
@@ -100,6 +102,14 @@ impl VoiceWebSocket {
         // Discord ждёт "/?v=8" — со слешем перед query.
         let url = format!("wss://{host}/?v=8");
 
+        // Новое поколение: всё, что осталось от прежнего соединения
+        // (задачи, события), теперь считается устаревшим и игнорируется.
+        let generation = self.inner.begin_connection();
+
+        // Статус выставляем сразу, а не из задачи: иначе между `reset()`
+        // (CLOSED) и стартом задачи снаружи виден ложный статус «закрыто».
+        self.inner.status.store(ws_codes::status::CONNECTING, Ordering::SeqCst);
+
         // Клон Arc'а: задача получит свою долю владения и не будет
         // зависеть от времени жизни этого объекта.
         let inner = self.inner.clone();
@@ -110,7 +120,7 @@ impl VoiceWebSocket {
         //
         // Runtime-хэндл сохраняем, чтобы уметь прервать задачу в reset().
         let handle = runtime::spawn(async move {
-            connection::run(inner, url).await;
+            connection::run(inner, url, generation).await;
         });
         *self.inner.conn_task.lock() = Some(handle);
         Ok(())
@@ -122,6 +132,11 @@ impl VoiceWebSocket {
     /// отправки, очищает очередь и приводит флаги к состоянию "отключено".
     /// Безопасен для повторного вызова.
     pub fn reset(&self) {
+        // Первым делом объявляем текущие задачи устаревшими: `abort()`
+        // сработает только на ближайшем `await`, а до тех пор задача,
+        // уже работающая на другом потоке, должна увидеть смену поколения.
+        self.inner.invalidate();
+
         // Прерываем текущую задачу соединения, если она запущена.
         // abort() не дожидается завершения — просто ставит метку; следующая
         // проверка await'а в задаче завершит её.
@@ -142,7 +157,7 @@ impl VoiceWebSocket {
         // Приводим флаги к исходному состоянию, чтобы снаружи объект
         // выглядел как "только что созданный, но не подключённый".
         self.inner.ready.store(false, Ordering::SeqCst);
-        self.inner.status.store(ws_status::CLOSED, Ordering::SeqCst);
+        self.inner.status.store(ws_codes::status::CLOSED, Ordering::SeqCst);
         self.inner.hb_pending.store(false, Ordering::SeqCst);
     }
 

@@ -4,13 +4,15 @@ use super::{
     reader::reader_loop,
     AudioEngine,
 };
-use napi::bindgen_prelude::*;
-use napi_derive::napi;
-use std::{
-    thread,
-    process::{ Command, Stdio },
-    sync::{
-        atomic::Ordering, Arc
+use {
+    napi::bindgen_prelude::*,
+    napi_derive::napi,
+    std::{
+        thread,
+        process::{ Command, Stdio },
+        sync::{
+            atomic::Ordering, Arc
+        }
     }
 };
 
@@ -143,10 +145,8 @@ impl AudioEngine {
             .spawn(move || reader_loop(stdout, active, destroyed, pause_state, buffer_state, child_state))
             .map_err(|e| {
                 // Если поток не создан — убиваем ffmpeg и сбрасываем флаги.
-                let mut child = match self.child.lock() {
-                    Ok(mut g) => g.take(),
-                    Err(_) => None,
-                };
+                // Отравленный мьютекс не повод оставлять ffmpeg живым.
+                let mut child = self.child.lock().unwrap_or_else(|p| p.into_inner()).take();
                 if let Some(ref mut c) = child {
                     let _ = c.kill();
                     let _ = c.wait();
@@ -171,7 +171,8 @@ impl AudioEngine {
                 self.wake_reader();
 
                 // Убиваем ffmpeg.
-                if let Ok(mut cg) = self.child.lock() {
+                {
+                    let mut cg = self.child.lock().unwrap_or_else(|p| p.into_inner());
                     if let Some(mut c) = cg.take() {
                         let _ = c.kill();
                         let _ = c.wait();

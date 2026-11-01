@@ -1,14 +1,16 @@
 use crate::structures::network::ws::runtime;
 use crate::utils::duration::mono_ms;
-use parking_lot::Mutex;
-use std::{
-    sync::{
-        atomic::{AtomicU64, Ordering},
-        Arc, Weak,
-    },
-    time::Duration,
+use {
+    tokio::{sync::Notify, task::JoinHandle},
+    parking_lot::Mutex,
+    std::{
+        sync::{
+            atomic::{AtomicU64, Ordering},
+            Arc, Weak
+        },
+        time::Duration
+    }
 };
-use tokio::{sync::Notify, task::JoinHandle};
 
 /// Значения `SpeakerType`: битовая маска поля `speaking` (op 5).
 ///
@@ -287,7 +289,7 @@ impl VoiceSpeakerManager {
 
                 // Спим до дедлайна. После пробуждения пересчитаем
                 // состояние (могло измениться).
-                Some(ms) => tokio::time::sleep(Duration::from_millis(ms)).await,
+                Some(ms) => tokio::time::sleep(Duration::from_millis(ms)).await
             }
         }
     }
@@ -306,18 +308,6 @@ impl VoiceSpeakerManager {
     /// Текущий тип спикера. `None`, если менеджер уничтожен.
     pub fn get_type(&self) -> Option<SpeakerType> {
         *self.ty.lock()
-    }
-
-    /// Задаёт тип без отправки пакета (`speaker.type = x`).
-    ///
-    /// На уничтоженном менеджере — no-op (иначе `destroy` «воскресал» бы).
-    /// Проверка `slot.is_some()` — это и есть проверка «не уничтожен»:
-    /// `destroy` выставляет `None`.
-    pub fn set_type(&self, ty: SpeakerType) {
-        let mut slot = self.ty.lock();
-        if slot.is_some() {
-            *slot = Some(ty);
-        }
     }
 
     /// `speaker.speaking = x`: продлевает дедлайн и, если статус
@@ -386,9 +376,7 @@ impl VoiceSpeakerManager {
         {
             let mut ty = self.ty.lock();
             // Уже уничтожен — выходим.
-            if ty.is_none() {
-                return;
-            }
+            if ty.is_none() { return; }
             *ty = None;
         }
 

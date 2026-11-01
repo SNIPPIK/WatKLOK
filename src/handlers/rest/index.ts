@@ -1,4 +1,7 @@
-import { APIRequestData, APIRequests, APIRequestsKeys, RestAPINames, APIPlatformType, REST_STOP_WORDS, RestWorkerResult } from "#handler/rest/index.abstract.js";
+import {
+    APIRequestData, APIRequests, APIRequestsKeys, RestAPINames, APIPlatformType, REST_STOP_WORDS_REG, RestWorkerResult,
+    FEAT_BLOCK_REG
+} from "#handler/rest/index.abstract.js";
 import type { RestServerSide } from "./index.server.js";
 import { Logger, SimpleWorker } from "#structures";
 import { RestClientSide } from "./index.client.js";
@@ -584,9 +587,11 @@ const normalize = (text: string) =>
         // Разбиваем на слова (пробелы любой длины)
         .split(/\s+/)
         // Фильтр коротких и стоп-слов
-        .filter(word => word.length > 1 && !REST_STOP_WORDS.has(word))
+        .filter(word => word.length > 1)
         // Обратно в строку
-        .join(" ");
+        .join(" ")
+        .replace(REST_STOP_WORDS_REG, "")
+        .replace(FEAT_BLOCK_REG, "");
 
 /**
  * Проверяет, существует ли в наборе слов кандидат, нечётко совпадающий с заданным словом.

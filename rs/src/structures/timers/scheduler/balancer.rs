@@ -1,79 +1,52 @@
 use crate::structures::{
     network::udp::inner_socket::SocketInner,
-    timers::scheduler::Scheduler,
+    timers::scheduler::{constants::*, Scheduler},
 };
-use once_cell::sync::Lazy;
 use std::{
     collections::HashMap,
     io,
-    sync::{Arc, Mutex},
+    sync::{Arc, LazyLock, Mutex, TryLockError},
 };
 
-/// Максимум сессий на один воркер (поток тика).
-///
-/// Компромисс: больше — один поток не справляется с syscall'ами и тики
-/// опаздывают; меньше — плодим потоки без нужды. 50 при тике 20 мс
-/// означает ~2.5 мс на сессию — с запасом покрывает `send` + учёт.
-const MAX_PER_WORKER: usize = 50;
-
-/// Воркер: планировщик и сессии, которые на нём работают.
-///
-/// Два поля, потому что данные нужны в двух местах:
-/// * `manager` — сам поток тика, ему нужен `id → Arc<SocketInner>`;
-/// * `sessions` — карта для балансировщика (посчитать `session_count`,
-///   удалить по id). Дублирование намеренное: `manager` может
-///   использовать другую структуру (например, `Vec` с индексами),
-///   и заставлять его возвращать `HashMap` было бы лишним coupling'ом.
-///
-/// Оба поля содержат `Arc<SocketInner>` — это N инкрементов refcount,
-/// не N копий. Дешевле, чем кажется на первый взгляд.
-struct Worker {
-    manager: Scheduler,
-    sessions: HashMap<u32, Arc<SocketInner>>,
+/// Нагрузка воркера, нс: измеренная стоимость тика или оценка по числу
+/// сессий (что больше). Оценка нужна, пока измерения свежих сессий не
+/// накопились: иначе много новых сессий разом попали бы на один воркер.
+fn load(worker: &Scheduler) -> u64 {
+    let estimated = worker.session_count() as u64 * SESSION_COST_ESTIMATE_NS;
+    worker.cost_ns().max(estimated)
 }
 
-impl Worker {
-    /// Создаёт пустой worker.
-    fn new() -> Self {
-        Self {
-            manager: Scheduler::new(),
-            sessions: HashMap::new(),
-        }
-    }
-
-    /// Проверяет, пуст ли worker.
-    #[inline]
-    fn is_empty(&self) -> bool {
-        self.sessions.is_empty()
-    }
-
-    /// Возвращает количество сессий.
-    #[inline]
-    fn session_count(&self) -> usize {
-        self.sessions.len()
-    }
-
-    /// Проверяет наличие свободного места.
-    #[inline]
-    fn has_capacity(&self) -> bool {
-        self.session_count() < MAX_PER_WORKER
-    }
+/// Есть ли у воркера запас: и по числу сессий, и по нагрузке «после
+/// добавления ещё одной сессии».
+fn has_room(worker: &Scheduler) -> bool {
+    worker.session_count() < MAX_SESSIONS_PER_WORKER
+        && load(worker) + SESSION_COST_ESTIMATE_NS < OVERLOAD_THRESHOLD_NS
 }
 
-/// Балансировщик: список воркеров и индекс `session_id -> worker_index`.
-///
-/// `session_map` нужен, чтобы `remove_session(id)` за O(1) находил
-/// воркер, на котором висит сессия. Без него пришлось бы обходить
-/// всех воркеров и искать `sessions.contains_key(id)` — O(N*M).
+/// Балансировщик: список воркеров и индекс `session_id -> worker_id`.
 pub struct AutoBalancer {
-    /// Список worker'ов.
-    ///
-    /// При очистке может использоваться `swap_remove`, поэтому индексы
-    /// могут изменяться.
-    workers: Vec<Worker>,
+    workers: Vec<Scheduler>,
 
-    /// Быстрый поиск worker по `session_id`.
-    session_map: HashMap<u32, usize>,
+    /// Хранит `worker_id`, а не индекс: индексы сдвигаются при `swap_remove`,
+    /// идентификаторы — нет.
+    session_map: HashMap<u32, u64>,
+
+    /// Следующий идентификатор воркера. Монотонный и не переиспользуется,
+    /// чтобы сессия, привязанная к удалённому воркеру, не «прилипла» к
+    /// новому с тем же id.
+    next_worker_id: u64,
+}
+
+/// Исход выноса сессии на другой воркер.
+enum OffloadOutcome {
+    /// Сессия перенесена на целевой воркер.
+    Moved,
+    /// Перенос не состоялся: сессия уже уехала/удалена, на источнике
+    /// осталась бы одна сессия, или целевой воркер не найден.
+    Noop,
+    /// Оба воркера отвергли сессию; она удалена из балансировщика.
+    /// `Arc` возвращается для дропа вне глобального лока.
+    Orphaned(Arc<SocketInner>),
 }
 
 impl Default for AutoBalancer {
@@ -83,181 +56,105 @@ impl Default for AutoBalancer {
 }
 
 impl AutoBalancer {
-    /// Создаёт балансировщик с одним (остановленным) воркером.
-    ///
-    /// Один воркер создаётся заранее, чтобы первый `add_session`
-    /// не тратил время на `create_worker`. Сам поток тика
-    /// (`Scheduler::new`) запускается лениво — при первом
-    /// `add_session`.
+    /// Создаёт балансировщик с одним (ещё без потока) воркером.
     pub fn new() -> Self {
         let mut balancer = Self {
             workers: Vec::new(),
             session_map: HashMap::new(),
+            next_worker_id: 1,
         };
         balancer.create_worker();
         balancer
     }
 
-    /// Добавляет нового воркера в конец списка.
-    ///
-    /// Возвращает индекс нового воркера — вызывающий сразу в него
-    /// кладёт сессию. Вынесено в отдельный метод, потому что
-    /// создание воркера нужно в двух местах: в `new` и в `add_session`
-    /// (когда все существующие заполнены).
-    #[inline]
+    /// Добавляет воркера в конец списка и возвращает его индекс.
     fn create_worker(&mut self) -> usize {
-        let index = self.workers.len();
-        self.workers.push(Worker::new());
-        index
+        let id = self.next_worker_id;
+        self.next_worker_id += 1;
+
+        self.workers.push(Scheduler::new(id));
+        self.workers.len() - 1
     }
 
-    /// Останавливает и удаляет пустые воркеры (кроме последнего).
-    ///
-    /// # Почему `swap_remove`
-    ///
-    /// `Vec::remove` сдвигает все элементы после удалённого на одну
-    /// позицию — O(N) и инвалидация всех индексов в `session_map`
-    /// для сдвинутых воркеров. `swap_remove` переносит последний
-    /// элемент на место удалённого — O(1), но **только у одного**
-    /// воркера меняется индекс: того, что был последним.
-    ///
-    /// Отсюда проверка `if empty_index != last_index`: если удалили
-    /// не последний, надо обновить индексы сессий перенесённого
-    /// воркера. Если удалили последний — обновлять нечего,
-    /// `session_map` для его сессий уже пуст (воркер был пуст).
-    ///
-    /// # Почему «кроме последнего»
-    ///
-    /// Всегда оставляем хотя бы одного воркера — иначе `add_session`
-    /// некуда будет класть сессию без создания нового, а `new`
-    /// создаёт ровно одного. Так «один воркер всегда есть» становится
-    /// инвариантом, на который можно опираться.
+    /// Индекс воркера по стабильному id. Воркеров единицы-десятки,
+    /// линейный поиск дешевле отдельной карты.
+    fn index_of(&self, worker_id: u64) -> Option<usize> {
+        self.workers.iter().position(|w| w.id() == worker_id)
+    }
+
+    /// Индекс наименее загруженного воркера с запасом (кроме `exclude`) или
+    /// нового воркера, если запаса нет нигде. При равной нагрузке выигрывает
+    /// воркер с меньшим числом сессий.
+    fn pick_worker(&mut self, exclude: Option<u64>) -> usize {
+        let best = self
+            .workers
+            .iter()
+            .enumerate()
+            .filter(|(_, w)| Some(w.id()) != exclude && has_room(w))
+            .min_by_key(|(_, w)| (load(w), w.session_count()))
+            .map(|(index, _)| index);
+
+        best.unwrap_or_else(|| self.create_worker())
+    }
+
+    /// Удаляет пустые воркеры, оставляя хотя бы один. Поток удаляемого
+    /// воркера останавливается в его `Drop`. `session_map` хранит
+    /// идентификаторы, поэтому после удаления остаётся валидной.
     fn cleanup_empty_workers(&mut self) {
         while self.workers.len() > 1 {
-            let Some(empty_index) = self.workers.iter().position(Worker::is_empty) else {
+            let Some(index) = self.workers.iter().position(|w| w.session_count() == 0)
+            else {
                 break;
             };
-            let last_index = self.workers.len() - 1;
 
-            // Явный `shutdown` до `swap_remove`: `Scheduler::Drop`
-            // тоже должен останавливать поток, но явный вызов
-            // гарантирует, что к моменту перестановки воркер уже
-            // не тикает. `swap_remove` сам по себе просто переносит
-            // значение — `Drop` старого произойдёт, но порядок
-            // относительно перестановки нам важен.
-            self.workers[empty_index].manager.shutdown();
-            self.workers.swap_remove(empty_index);
-
-            // Обновляем `session_map` для перенесённого воркера.
-            // Если удалили последний — переносить нечего, и цикл
-            // пустой.
-            if empty_index != last_index {
-                for session_id in self.workers[empty_index].sessions.keys() {
-                    self.session_map.insert(*session_id, empty_index);
-                }
-            }
+            drop(self.workers.swap_remove(index));
         }
     }
 
     /// Удаляет сессию. Снятые `Arc` кладутся в `dropped`: вызывающий
     /// освобождает их уже вне глобального лока.
-    ///
-    /// # Зачем `dropped` как параметр
-    ///
-    /// `Arc<SocketInner>::drop` может быть дорогим: `SocketInner`
-    /// содержит `RingBuffer`, у которого в `Drop` освобождаются
-    /// все слоты, а каждый слот — `Vec<u8>`. На сотнях пакетов это
-    /// заметно. Освобождать это под глобальным локом
-    /// `GLOBAL_BALANCER` — значит блокировать всех, кто хочет
-    /// добавить/удалить сессию, на время чужого `Drop`.
-    ///
-    /// Поэтому снятые `Arc` не дропаются здесь, а складываются в
-    /// `dropped`; вызывающий (`add_global_session` / `remove_global_session`)
-    /// отпускает лок и только потом дропает.
-    ///
-    /// # Молчание при отсутствии сессии
-    ///
-    /// `remove_session` для несуществующего `id` — не ошибка:
-    /// это может быть повторный вызов (например, `destroy` дважды).
-    /// Молча выходим — идемпотентность лучше, чем паника.
     fn remove_session_inner(&mut self, id: u32, dropped: &mut Vec<Arc<SocketInner>>) {
-        let Some(worker_index) = self.session_map.remove(&id) else {
+        let Some(worker_id) = self.session_map.remove(&id) else {
             return;
         };
-        let Some(worker) = self.workers.get_mut(worker_index) else {
+        let Some(index) = self.index_of(worker_id) else {
             return;
         };
 
-        // Сначала говорим планировщику «сессия больше не твоя» —
-        // иначе следующий тик мог бы попытаться её тикнуть, уже
-        // когда мы её удаляем.
-        worker.manager.remove_session(id);
-
-        // Забираем `Arc` из карты — он теперь в `dropped`, дропнется вне лока.
-        if let Some(session) = worker.sessions.remove(&id) {
+        if let Some(session) = self.workers[index].remove_session(id) {
             dropped.push(session);
         }
 
-        // Воркер мог стать пустым — пытаемся освободить.
         self.cleanup_empty_workers();
-
-        // И `session_map` мог сильно просесть по размеру — возвращаем
-        // память.
         self.shrink_session_map();
     }
 
-    /// Добавляет сессию на наименее загруженный воркер с запасом места
-    /// (или создаёт новый). Повторная регистрация того же `id` заменяет
-    /// прежнюю сессию.
+    /// Добавляет сессию на наименее загруженный воркер. Повторная регистрация
+    /// того же `id` заменяет прежнюю сессию.
     ///
     /// # Ошибки
     /// Не удалось запустить поток воркера; сессия не зарегистрирована.
-    pub fn add_session(&mut self, id: u32, session: Arc<SocketInner>) -> io::Result<Vec<Arc<SocketInner>>> {
+    pub fn add_session(
+        &mut self,
+        id: u32,
+        session: Arc<SocketInner>,
+    ) -> io::Result<Vec<Arc<SocketInner>>> {
         let mut dropped = Vec::new();
 
-        // Повторная регистрация: удаляем старую. Это освобождает
-        // место на воркере, куда пойдёт новая сессия, и снимает
-        // старый `Arc` (в `dropped`).
         if self.session_map.contains_key(&id) {
             self.remove_session_inner(id, &mut dropped);
         }
 
-        // Выбор воркера: среди тех, у кого есть место, — с минимальным
-        // числом сессий. `min_by_key` при равенстве вернёт первый,
-        // то есть распределение идёт «по порядку», а не случайно.
-        //
-        // `unwrap_or_else(|| self.create_worker())` — если все
-        // заполнены, создаём нового. Замыкание нужно, потому что
-        // `create_worker` берёт `&mut self`, а `iter()` уже держит
-        // заимствование (хотя в `unwrap_or_else` это разрешено:
-        // замыкание вызывается только когда `Option::None`, и
-        // заимствование уже отпущено).
-        let worker_index = self
-            .workers
-            .iter()
-            .enumerate()
-            .filter(|(_, worker)| worker.has_capacity())
-            .min_by_key(|(_, worker)| worker.session_count())
-            .map(|(index, _)| index)
-            .unwrap_or_else(|| self.create_worker());
+        let index = self.pick_worker(None);
+        let worker_id = self.workers[index].id();
 
-        let worker = &mut self.workers[worker_index];
-        worker.sessions.insert(id, session.clone());
-
-        // Регистрируем в планировщике. Если не удалось (не запустился
-        // поток), откатываем всё, что успели сделать: сессию из
-        // воркера, возможного пустого воркера из `workers`.
-        // `session_map` не трогали — там ещё нет записи для `id`,
-        // так что откатывать нечего.
-        if let Err(error) = worker.manager.add_session(id, session) {
-            worker.sessions.remove(&id);
+        // При ошибке `Scheduler::add_session` сам убирает сессию из реестра.
+        if let Err(error) = self.workers[index].add_session(id, session) {
             self.cleanup_empty_workers();
             return Err(error);
         }
 
-        self.session_map.insert(id, worker_index);
-
-        // Возвращаем `dropped` — вызывающий дропнет вне лока.
+        self.session_map.insert(id, worker_id);
         Ok(dropped)
     }
 
@@ -268,44 +165,78 @@ impl AutoBalancer {
         dropped
     }
 
-    /// Возвращает память `session_map` после массового удаления.
+    /// Переносит сессию с перегруженного воркера на другой.
     ///
-    /// `HashMap::shrink_to` — дорогая операция (перевыделение и
-    /// перехеширование), поэтому вызывать её на каждое удаление
-    /// бессмысленно. Здесь — эвристика:
-    ///
-    /// * `cap > KEEP_MIN` — не трогаем маленькие карты, там
-    ///   экономия не оправдывает затрат;
-    /// * `len * 4 < cap` — карта заполнена менее чем на 25%:
-    ///   памяти тратится заметно больше, чем нужно.
-    ///
-    /// `KEEP_MIN` = 256 — минимальный размер, ниже которого
-    /// `shrink_to` бессмысленен: сам overhead `HashMap` уже
-    /// больше, чем сэкономленные байты.
-    ///
-    /// `max(KEEP_MIN)` — не даём `shrink_to` ужаться до размера
-    /// меньше 256: следующее добавление сессий снова начнёт
-    /// расти, и `shrink_to` окажется бессмысленным.
+    /// Сначала сессию принимает новый воркер (`attach` атомарно меняет
+    /// владельца), затем прежний её отпускает. Старый воркер после смены
+    /// владельца сразу перестаёт её трогать, поэтому окна, в котором сессия
+    /// без воркера или обрабатывается двумя сразу, нет.
+    fn offload(&mut self, from_id: u64, id: u32) -> OffloadOutcome {          // <-- сигнатура
+        if self.session_map.get(&id) != Some(&from_id) {
+            return OffloadOutcome::Noop;                                      // <-- было None
+        }
+        let Some(from_index) = self.index_of(from_id) else {                  // <-- было ? на Option
+            return OffloadOutcome::Noop;
+        };
+        if self.workers[from_index].session_count() <= 1 {
+            return OffloadOutcome::Noop;                                      // <-- было None
+        }
+        let Some(session) = self.workers[from_index].session(id) else {       // <-- было ? на Option
+            return OffloadOutcome::Noop;
+        };
+
+        let target_index = self.pick_worker(Some(from_id));
+        let target_id = self.workers[target_index].id();
+
+        match self.workers[target_index].add_session(id, Arc::clone(&session)) {
+            Ok(()) => {
+                self.session_map.insert(id, target_id);
+                let _ = self.workers[from_index].remove_session(id);
+                OffloadOutcome::Moved                                         // <-- было None
+            }
+
+            Err(target_error) => {
+                match self.workers[from_index].add_session(id, session) {
+                    Ok(()) => {
+                        self.cleanup_empty_workers();
+                        OffloadOutcome::Noop                                  // <-- было None
+                    }
+
+                    Err(restore_error) => {
+                        eprintln!( /* без изменений */ );
+                        self.session_map.remove(&id);
+                        let orphan = self.workers[from_index].remove_session(id);
+                        self.cleanup_empty_workers();
+                        // <-- было `orphan`; `Option → enum`
+                        orphan.map_or(OffloadOutcome::Noop, OffloadOutcome::Orphaned)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Возвращает память `session_map` после массового удаления: сжатие
+    /// дорого, поэтому только при заполнении < 25% и не ниже `KEEP_MIN`.
     fn shrink_session_map(&mut self) {
         const KEEP_MIN: usize = 256;
 
         let cap = self.session_map.capacity();
         if cap > KEEP_MIN && self.session_map.len() * 4 < cap {
-            self.session_map.shrink_to(self.session_map.len().max(KEEP_MIN));
+            self.session_map
+                .shrink_to(self.session_map.len().max(KEEP_MIN));
         }
     }
 }
 
-/// Глобальный балансировщик.
-///
-/// `Mutex`, потому что обновления (add/remove) сериализуются —
-/// без этого `session_map` и `workers` могли бы разъехаться. Чтение
-/// (тикание сессий) не идёт через этот лок: планировщики получают
-/// `Arc<SocketInner>` и работают с ними не зависимо.
-pub static GLOBAL_BALANCER: Lazy<Mutex<AutoBalancer>> =
-    Lazy::new(|| Mutex::new(AutoBalancer::new()));
+/// Глобальный балансировщик. Отравление мьютекса игнорируется: состояние
+/// балансировщика остаётся согласованным после паники вызывающего.
+pub static GLOBAL_BALANCER: LazyLock<Mutex<AutoBalancer>> =
+    LazyLock::new(|| Mutex::new(AutoBalancer::new()));
 
 /// Регистрирует сессию в глобальном балансировщике.
+///
+/// # Ошибки
+/// Не удалось запустить поток планировщика.
 pub fn add_global_session(id: u32, session: Arc<SocketInner>) -> io::Result<()> {
     let dropped = {
         let mut balancer = GLOBAL_BALANCER
@@ -318,18 +249,8 @@ pub fn add_global_session(id: u32, session: Arc<SocketInner>) -> io::Result<()> 
     Ok(())
 }
 
-/// Удаляет сессию из глобального балансировщика.
-///
-/// Снятые `Arc` освобождаются после отпускания лока, чтобы тяжёлый `Drop`
-/// не выполнялся под глобальным мьютексом.
-///
-/// # Молчание при отсутствии сессии
-///
-/// Как и `remove_session_inner`, не паникует и не возвращает ошибку,
-/// если `id` не найден. Это делает `remove_global_session` безопасным
-/// для повторного вызова — что важно, потому что `SocketBuffered::destroy`
-/// идемпотентен и может вызвать `remove_global_session` дважды.
-#[inline]
+/// Удаляет сессию из глобального балансировщика; снятые `Arc`
+/// освобождаются после отпускания лока.
 pub fn remove_global_session(id: u32) {
     let dropped = {
         let mut balancer = GLOBAL_BALANCER
@@ -338,4 +259,131 @@ pub fn remove_global_session(id: u32) {
         balancer.remove_session(id)
     };
     drop(dropped);
+}
+
+/// Просьба перегруженного воркера вынести сессию на другой воркер.
+///
+/// Возвращает `true` **только** если сессия действительно переехала на
+/// целевой воркер. `false` — не было выноса: балансировщик занят, сессия
+/// уже уехала/удалена, на источнике одна сессия, либо оба воркера
+/// отвергли сессию.
+///
+/// Вызывается из потока воркера, поэтому НИКОГДА не блокируется: если
+/// балансировщик занят, просьба пропускается и повторится на одном из
+/// следующих перегруженных тиков.
+pub fn offload_session(from_worker: u64, id: u32) -> bool {
+    let outcome = {
+        let mut balancer = match GLOBAL_BALANCER.try_lock() {
+            Ok(guard) => guard,
+            Err(TryLockError::Poisoned(poisoned)) => poisoned.into_inner(),
+            Err(TryLockError::WouldBlock) => return false,
+        };
+        balancer.offload(from_worker, id)
+    };
+
+    match outcome {
+        OffloadOutcome::Moved => true,
+        OffloadOutcome::Noop => false,
+        // Orphan-сессию дропаем вне глобального лока, как и раньше.
+        OffloadOutcome::Orphaned(session) => {
+            drop(session);
+            false
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::UdpSocket;
+
+    fn session() -> Arc<SocketInner> {
+        let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+        Arc::new(SocketInner::new(socket))
+    }
+
+    #[test]
+    fn new_balancer_has_one_worker_with_room() {
+        let balancer = AutoBalancer::new();
+        assert_eq!(balancer.workers.len(), 1);
+        assert!(has_room(&balancer.workers[0]));
+    }
+
+    #[test]
+    fn worker_ids_are_stable_and_unique() {
+        let mut balancer = AutoBalancer::new();
+        let second = balancer.create_worker();
+        let third = balancer.create_worker();
+
+        let ids: Vec<u64> = balancer.workers.iter().map(Scheduler::id).collect();
+        assert_eq!(ids, vec![1, 2, 3]);
+        assert_eq!(balancer.workers[second].id(), 2);
+        assert_eq!(balancer.workers[third].id(), 3);
+    }
+
+    #[test]
+    fn cleanup_keeps_one_worker_and_ids_do_not_change() {
+        let mut balancer = AutoBalancer::new();
+        balancer.create_worker();
+        balancer.create_worker();
+
+        balancer.cleanup_empty_workers();
+        assert_eq!(balancer.workers.len(), 1);
+
+        // Новый воркер не получает идентификатор удалённого.
+        let index = balancer.create_worker();
+        assert!(balancer.workers[index].id() > 3);
+    }
+
+    #[test]
+    fn add_and_remove_session_roundtrip() {
+        let mut balancer = AutoBalancer::new();
+        balancer.add_session(1, session()).unwrap();
+        assert_eq!(balancer.session_map.len(), 1);
+        assert_eq!(balancer.workers[0].session_count(), 1);
+
+        let dropped = balancer.remove_session(1);
+        assert_eq!(dropped.len(), 1);
+        assert!(balancer.session_map.is_empty());
+        assert_eq!(balancer.workers[0].session_count(), 0);
+    }
+
+    #[test]
+    fn re_adding_same_id_replaces_previous_session() {
+        let mut balancer = AutoBalancer::new();
+        balancer.add_session(7, session()).unwrap();
+
+        let dropped = balancer.add_session(7, session()).unwrap();
+        assert_eq!(dropped.len(), 1, "прежняя сессия возвращается для дропа вне лока");
+        assert_eq!(balancer.session_map.len(), 1);
+    }
+
+    #[test]
+    fn offload_moves_session_to_another_worker() {
+        let mut balancer = AutoBalancer::new();
+        balancer.add_session(1, session()).unwrap();
+        balancer.add_session(2, session()).unwrap();
+
+        let from_id = balancer.workers[0].id();
+        assert_eq!(balancer.workers[0].session_count(), 2);
+
+        let outcome = balancer.offload(from_id, 1);
+        assert!(matches!(outcome, OffloadOutcome::Moved));
+
+        let new_worker = balancer.session_map[&1];
+        assert_ne!(new_worker, from_id);
+        assert_eq!(balancer.workers[0].session_count(), 1);
+        assert!(balancer.workers.iter().any(|w| w.id() == new_worker));
+    }
+
+    #[test]
+    fn offload_never_empties_the_source_worker() {
+        let mut balancer = AutoBalancer::new();
+        balancer.add_session(1, session()).unwrap();
+
+        let from_id = balancer.workers[0].id();
+        let outcome = balancer.offload(from_id, 1);
+        assert!(matches!(outcome, OffloadOutcome::Noop));
+        assert_eq!(balancer.session_map[&1], from_id);
+    }
 }

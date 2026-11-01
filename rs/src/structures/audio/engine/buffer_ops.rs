@@ -1,7 +1,9 @@
 use super::AudioEngine;
-use napi::bindgen_prelude::*;
-use napi_derive::napi;
-use std::sync::atomic::Ordering;
+use {
+    std::sync::atomic::Ordering,
+    napi::bindgen_prelude::*,
+    napi_derive::napi
+};
 
 #[napi]
 impl AudioEngine {
@@ -85,7 +87,7 @@ impl AudioEngine {
         let (buffer_lock, buffer_cvar) = &*self.buffer;
 
         let raw_packets = {
-            let buffer = match buffer_lock.lock() {
+            let mut buffer = match buffer_lock.lock() {
                 Ok(buffer) => buffer,
                 Err(_) => return Vec::new(),
             };
@@ -147,11 +149,8 @@ impl AudioEngine {
 
     /// Добавляет пакеты в буфер из JavaScript.
     ///
-    /// Добавление прекращается при заполнении буфера.
-    /// Ошибка переполнения не превращается в panic.
-    ///
-    /// Reader уведомляется только если хотя бы один пакет действительно
-    /// был добавлен.
+    /// Добавление прекращается при заполнении буфера: остальные пакеты
+    /// отбрасываются. Ошибка переполнения не превращается в panic.
     #[napi]
     pub fn add_packets(&self, packets: Vec<Vec<u8>>) {
         // Быстрый путь.
@@ -159,40 +158,23 @@ impl AudioEngine {
             return;
         }
 
-        let (buffer_lock, buffer_cvar) = &*self.buffer;
-        let mut added_any = false;
+        let mut buffer = match self.buffer.0.lock() {
+            Ok(buffer) => buffer,
+            Err(_) => return,
+        };
 
-        {
-            let buffer = match buffer_lock.lock() {
-                Ok(buffer) => buffer,
-                Err(_) => return,
-            };
-
-            // Повторная проверка под mutex.
-            if self.destroyed.load(Ordering::Acquire) {
-                return;
-            }
-
-            for packet in packets {
-                if buffer.is_full() { break; }
-
-                match buffer.push(packet) {
-                    Ok(()) => {
-                        added_any = true;
-                    }
-
-                    Err(_) => {
-                        // Не меняем active и не считаем это fatal error:
-                        // публичный API специально работает как best-effort.
-                        break;
-                    }
-                }
-            }
+        // Повторная проверка под mutex.
+        if self.destroyed.load(Ordering::Acquire) {
+            return;
         }
 
-        // Не держим buffer mutex во время notify.
-        if added_any {
-            buffer_cvar.notify_one();
+        for packet in packets {
+            if buffer.is_full() {
+                break;
+            }
+
+            // Пустые пакеты `push` пропускает.
+            buffer.push(&packet);
         }
     }
 
@@ -244,37 +226,16 @@ impl AudioEngine {
             return false;
         }
 
-        let percent = threshold_percent.min(100);
-
-        // Не вычисляем:
-        //
-        // max_capacity * percent
-        //
-        // напрямую, чтобы не иметь потенциального overflow usize.
-        //
-        // Сравнение:
-        //
-        //   len / max_capacity < percent / 100
-        //
-        // выполняем через произведение с меньшим числом:
-        //
-        //   len * 100 < max_capacity * percent
-        //
-        // Здесь тоже возможен overflow, поэтому используем div_ceil-подобную
-        // границу через количество допустимых элементов.
+        let percent = threshold_percent.min(100) as usize;
         let capacity = self.max_capacity;
 
         if capacity == 0 {
             return false;
         }
 
-        // Количество элементов, которое должно оставаться не достигнутым:
-        //
-        // percent == 100 -> допустимы все значения ниже capacity
-        // percent == 50 -> len < половины capacity
-        let threshold = capacity
-            .saturating_mul(percent as usize)
-            / 100;
+        // Порог в слотах. `saturating_mul` защищает от переполнения на
+        // 32-битных целях.
+        let threshold = capacity.saturating_mul(percent) / 100;
 
         buffer.len() < threshold
     }

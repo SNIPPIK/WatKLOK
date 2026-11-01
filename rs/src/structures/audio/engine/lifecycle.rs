@@ -1,15 +1,29 @@
 //! Уничтожение движка и `Drop`.
 
 use super::AudioEngine;
-use crate::structures::audio::ring_buffer::RingBuffer;
-use napi::bindgen_prelude::*;
-use napi_derive::napi;
-use std::sync::atomic::Ordering;
+use crate::structures::audio::ring::packet_queue::PacketQueue;
+use {
+    std::sync::atomic::Ordering,
+    napi::bindgen_prelude::*,
+    napi_derive::napi
+};
 
 // glibc: возвращает ОС освобождённые страницы из ВСЕХ арен malloc.
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 unsafe extern "C" {
     fn malloc_trim(pad: usize) -> i32;
+}
+
+/// `malloc_trim(0)` по очереди блокирует каждую арену glibc: любой поток,
+/// который в это время выделяет или освобождает память в ней (в том числе
+/// поток отправки аудио), ждёт, пока арена не будет обработана. Для проверки,
+/// не он ли даёт паузы при смене трека, его можно отключить переменной
+/// окружения `WATKLOK_NO_MALLOC_TRIM=1` без пересборки.
+#[cfg(all(target_os = "linux", target_env = "gnu"))]
+fn malloc_trim_enabled() -> bool {
+    use std::sync::OnceLock;
+    static ENABLED: OnceLock<bool> = OnceLock::new();
+    *ENABLED.get_or_init(|| std::env::var_os("WATKLOK_NO_MALLOC_TRIM").is_none())
 }
 
 #[napi]
@@ -163,13 +177,15 @@ impl AudioEngine {
                 .lock()
                 .unwrap_or_else(|p| p.into_inner());
 
-            *buffer = RingBuffer::new(1);
+            *buffer = PacketQueue::new(1);
         }
 
         // Все пакеты и буферы reader'а освобождены — отдаём память ОС.
         #[cfg(all(target_os = "linux", target_env = "gnu"))]
-        unsafe {
-            malloc_trim(0);
+        if malloc_trim_enabled() {
+            unsafe {
+                malloc_trim(0);
+            }
         }
     }
 }

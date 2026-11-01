@@ -40,13 +40,13 @@
   },
   "devDependencies": {
     "@napi-rs/cli": "^3.10.9",
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "typescript": "^7.0.2"
   },
   "scripts": {
     "start": "node    --expose-gc ./build/src/index.js",
     "start:ts": "node --expose-gc ./src/index.ts",
-    "start:bun": "bun ./src/index.ts",
+    "start:bun": "MALLOC_MMAP_THRESHOLD_=131072 bun ./src/index.ts",
     "start:shs": "build/native/sthp -p 9100 -s 192.168.1.1:9100",
     "build": "tsc",
     "build:native": "npm run build:copy && napi build --platform --release --cwd ./rs --esm --js index.mjs && npm run build:bindings",

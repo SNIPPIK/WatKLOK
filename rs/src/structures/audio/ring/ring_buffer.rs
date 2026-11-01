@@ -1,11 +1,13 @@
-use crossbeam_utils::CachePadded;
-use std::{
-    cell::UnsafeCell,
-    mem::MaybeUninit,
-    sync::atomic::{AtomicUsize, Ordering},
+use {
+    crossbeam_utils::CachePadded,
+    std::{
+        cell::UnsafeCell,
+        mem::MaybeUninit,
+        sync::atomic::{AtomicUsize, Ordering}
+    }
 };
 
-/// SPSC lock-free кольцевой буфер для `Vec<u8>`.
+/// Кольцевой буфер для `Vec<u8>` с lock-free доступом к счётчикам.
 ///
 /// # Архитектура
 ///
@@ -17,29 +19,32 @@ use std::{
 ///     - изменяет `tail` (Release)
 ///     - читает `head` (Acquire)
 ///
-/// # Инварианты
-/// - Ровно один producer и ровно один consumer одновременно.
-/// - `push_up` обязан вызываться **только** из consumer-потока
-///   (он тоже пишет в `tail`, как и `pop`/`pop_many`) — либо вызовы
-///   должны быть строго сериализованы вызывающей стороной.
-/// - `capacity` рекомендуется степенью двойки — тогда индексация
-///   использует битовую маску вместо деления.
+/// # Потокобезопасность
+/// Стороны сериализуются мьютексами: `producer` для `push_many`, `consumer`
+/// для `pop`. Поэтому `&RingBuffer` безопасно делить между любым числом
+/// потоков. Мьютексы не конкурируют между собой (producer и consumer берут
+/// разные), а `len`/`is_empty`/`is_full` работают без блокировок.
 ///
-/// Цель буфера — не допускать тихого уничтожения RTP/Opus пакетов
-/// при заполнении очереди: все операции возвращают не доставленные данные
-/// вызывающему коду (`Err(value)`), а не дропают их молча.
+/// # Ёмкость
+/// Округляется вверх до степени двойки: индексация идёт битовой маской, а
+/// счётчики `head`/`tail` корректно переполняются (для остатка от деления
+/// на не-степень двойки это было бы не так).
+///
+/// # Переполнение
+/// `push_many` возвращает число записанных пакетов; остаток входного
+/// итератора в буфер не попадает и отбрасывается, поэтому вызывающий
+/// сравнивает результат с размером пачки и учитывает потери.
 pub struct RingBuffer {
     /// Массив слотов. `UnsafeCell<MaybeUninit<Vec<u8>>>` — классическая
     /// схема "сырой слот без инициализации": запись/чтение/дроп вручную,
     /// никакой автоматической инициализации/деструктора у массива нет.
     buffer: Box<[UnsafeCell<MaybeUninit<Vec<u8>>>]>,
 
-    /// Ёмкость (число слотов). Не меняется после `new`.
+    /// Ёмкость (число слотов), степень двойки. Не меняется после `new`.
     capacity: usize,
 
-    /// `capacity - 1`, если capacity — степень двойки; иначе `None`.
-    /// Позволяет заменить `%` на `&` в `index()` — заметно дешевле в hot path.
-    mask: Option<usize>,
+    /// `capacity - 1`: заменяет `%` на `&` в `index()`.
+    mask: usize,
 
     /// Позиция producer. Меняется ТОЛЬКО producer'ом.
     /// CachePadded — разносит head/tail по разным кэш-линиям,
@@ -49,21 +54,25 @@ pub struct RingBuffer {
     /// Позиция consumer. Меняется ТОЛЬКО consumer'ом.
     tail: CachePadded<AtomicUsize>,
 
-    /// Сериализует producer-сторону (`push`, `push_many`).
+    /// Сериализует producer-сторону (`push_many`).
     ///
-    /// Очередь SPSC, но `SocketBuffered::push_packet*` и `discovery` могут
-    /// вызываться из разных потоков (JS-поток и tokio). Без блокировки два
-    /// producer'а писали бы в один слот: пакет терялся, а `Vec` утекал
-    /// (`MaybeUninit::write` не вызывает drop). Незанятый мьютекс стоит
-    /// ~20 нс, а пакеты идут ~50 раз/с на сессию.
-    producer: parking_lot::Mutex<()>
+    /// `SocketBuffered::push_packets` вызывается из разных потоков (JS-поток
+    /// и tokio). Без блокировки два producer'а писали бы в один слот: пакет
+    /// терялся, а `Vec` утекал (`MaybeUninit::write` не вызывает drop).
+    /// Незанятый мьютекс стоит ~20 нс, а пакеты идут ~50 раз/с на сессию.
+    producer: parking_lot::Mutex<()>,
+
+    /// Сериализует consumer-сторону (`pop`). Без неё два потока, вызвавшие
+    /// `pop` одновременно, прочитали бы один слот дважды (double free).
+    consumer: parking_lot::Mutex<()>,
 }
 
-// SAFETY: буфер спроектирован под SPSC. Producer работает только со своим
-// head, consumer — только со своим tail. Содержимое слотов синхронизировано
-// публикацией head/tail через Release/Acquire, поэтому передача владения
-// буфером между потоками (Send) и совместный доступ по ссылке (Sync)
-// безопасны при соблюдении инвариантов "один producer / один consumer".
+// SAFETY: слоты пишутся только под мьютексом `producer`, а читаются только
+// под `consumer`, поэтому на каждой стороне одновременно работает не более
+// одного потока. Между сторонами содержимое слотов синхронизировано
+// публикацией `head`/`tail` через Release/Acquire. Значит, безопасны и
+// передача владения буфером между потоками (Send), и совместный доступ по
+// ссылке (Sync).
 //
 // NB: компилятор не может доказать корректность этой ручной синхронизации —
 // тип с `UnsafeCell` не Send/Sync по умолчанию, поэтому impl'ы ручные.
@@ -73,12 +82,17 @@ unsafe impl Sync for RingBuffer {}
 impl RingBuffer {
     /// Создаёт пустой ring buffer.
     ///
-    /// `capacity` — максимальное количество одновременно хранимых пакетов.
+    /// `capacity` — максимальное количество одновременно хранимых пакетов;
+    /// округляется вверх до степени двойки.
     ///
     /// # Panics
-    /// Паникует, если `capacity == 0`.
+    /// Паникует, если `capacity == 0` или округление переполняет `usize`.
     pub fn new(capacity: usize) -> Self {
         assert!(capacity > 0, "RingBuffer capacity must be greater than zero");
+
+        let capacity = capacity
+            .checked_next_power_of_two()
+            .expect("RingBuffer capacity is too large");
 
         // Каждый слот — `MaybeUninit::uninit()`: Vec ещё не создан, дропать
         // его нельзя. Заполнение/дроп — только через явные методы ниже.
@@ -87,16 +101,14 @@ impl RingBuffer {
             .collect::<Vec<_>>()
             .into_boxed_slice();
 
-        // Степень двойки -> mask = cap-1; иначе None и index() идёт через `%`.
-        let mask = capacity.is_power_of_two().then_some(capacity - 1);
-
         Self {
             buffer,
             capacity,
-            mask,
+            mask: capacity - 1,
             head: CachePadded::new(AtomicUsize::new(0)),
             tail: CachePadded::new(AtomicUsize::new(0)),
-            producer: parking_lot::Mutex::new(())
+            producer: parking_lot::Mutex::new(()),
+            consumer: parking_lot::Mutex::new(()),
         }
     }
     
@@ -108,110 +120,18 @@ impl RingBuffer {
     /// позицию в физический индекс слота.
     ///
     /// Head/tail — счётчики-обёртки, а не индексы: они только растут
-    /// (с точностью до wrap-around), а реальный слот берётся по модулю ёмкости.
+    /// (с точностью до wrap-around), а реальный слот берётся по маске.
     /// Это избавляет от необходимости отдельно различать "пустой" и "полный".
+    /// Так как ёмкость — степень двойки, `2^64` кратно ей, и переполнение
+    /// счётчика не сдвигает слоты.
     #[inline(always)]
     fn index(&self, position: usize) -> usize {
-        match self.mask {
-            // Степень двойки: быстрый путь через битовую маску.
-            Some(mask) => position & mask,
-            // Fallback: деление с остатком.
-            None => position % self.capacity,
-        }
+        position & self.mask
     }
 
     // ========================================================================
     // Producer
     // ========================================================================
-
-    /// Пытается добавить один пакет.
-    ///
-    /// `Ok(())` — пакет успешно записан.
-    /// `Err(value)` — буфер заполнен, пакет возвращён вызывающему коду
-    /// (никакого silent drop).
-    ///
-    /// Пустые пакеты (`value.is_empty()`) отклоняются как бессмысленные
-    /// для RTP, но пакет всё равно возвращается через `Err`, чтобы
-    /// вызывающий код мог решить, что с ним делать.
-    #[inline(always)]
-    pub fn push(&self, value: Vec<u8>) -> Result<(), Vec<u8>> {
-        // Пустой пакет — сразу назад. Не жжём кэш и не занимаем слот.
-        if value.is_empty() {
-            return Err(value);
-        }
-
-        let _producer = self.producer.lock();
-
-        // head принадлежит producer'у — можно Relaxed.
-        let head = self.head.load(Ordering::Relaxed);
-
-        // tail пишется consumer'ом, поэтому Acquire — увидеть освобождения
-        // слотов ДО того, как мы решим, что места хватает.
-        let tail = self.tail.load(Ordering::Acquire);
-
-        // Занято >= capacity -> очередь полна, отдаём пакет обратно.
-        // Wrapping_sub корректен: обе позиции растут в одном пространстве
-        // (usize со wrap-around), разница всегда корректна.
-        if head.wrapping_sub(tail) >= self.capacity {
-            return Err(value);
-        }
-
-        let index = self.index(head);
-
-        // Слот свободен (мы это только что проверили) и принадлежит нам —
-        // конкурентов у этого индекса нет. Unsafe: MaybeUninit::write.
-        unsafe {
-            (*self.buffer[index].get()).write(value);
-        }
-
-        // Release: данные должны быть видны consumer'у ДО того, как он
-        // увидит новый head. Без этого он мог бы прочитать пустой слот.
-        self.head.store(head.wrapping_add(1), Ordering::Release);
-        Ok(())
-    }
-
-    /// Возвращает уже готовый пакет в начало очереди
-    /// (например, если отправка UDP завершилась ошибкой).
-    ///
-    /// Должен вызываться **из consumer-потока** и не должен пересекаться
-    /// по времени с вызовами `pop`/`pop_many` (все они пишут в `tail`).
-    ///
-    /// `Ok(())` — пакет возвращён. `Err(value)` — места нет.
-    #[inline(always)]
-    pub fn push_up(&self, value: Vec<u8>) -> Result<(), Vec<u8>> {
-        if value.is_empty() {
-            return Err(value);
-        }
-
-        // Обратная картина: head читается под Acquire (нужны опубликованные
-        // данные), tail наш — Relaxed.
-        let head = self.head.load(Ordering::Acquire);
-        let tail = self.tail.load(Ordering::Relaxed);
-
-        // Оставляем один слот запаса: `push_up` пишет в слот `tail - 1`, а
-        // producer, видя устаревший `tail`, мог бы писать ровно в него же
-        // (при `used == capacity - 1`) — гонка, потеря пакета и утечка `Vec`.
-        if head.wrapping_sub(tail) >= self.capacity.saturating_sub(1).max(1) {
-            return Err(value);
-        }
-
-        // Сдвигаем начало очереди назад на один слот. `wrapping_sub` корректен
-        // даже при tail == 0: получившееся "отрицательное" значение по модулю
-        // 2^usize::BITS остаётся согласованным с `index()`, т.к. вся арифметика
-        // позиций (head/tail/index) везде выполняется по модулю одной и той же
-        // величины 2^usize::BITS.
-        let new_tail = tail.wrapping_sub(1);
-        let index = self.index(new_tail);
-
-        unsafe {
-            (*self.buffer[index].get()).write(value);
-        }
-
-        // Release: публикуем слот для producer'а (если он вдруг смотрит
-        // на tail, чтобы понять, есть ли место).
-        self.tail.store(new_tail, Ordering::Release);
-        Ok(())
-    }
 
     /// Пытается добавить несколько пакетов.
     ///
@@ -249,7 +169,7 @@ impl RingBuffer {
         let used = head.wrapping_sub(tail);
 
         // saturating_sub — страховка от "фантомного" used > capacity.
-        // При корректном SPSC это невозможно, но стоит 0 тактов.
+        // Под замком producer это невозможно, но стоит 0 тактов.
         let free = self.capacity.saturating_sub(used);
 
         // Ранний выход: писать некуда. Возвращаем 0 — вызывающий сам
@@ -281,8 +201,8 @@ impl RingBuffer {
             let index = self.index(head.wrapping_add(written));
 
             // Слот неинициализирован (MaybeUninit) — пишем без чтения
-            // старого значения. Unsafe оправдан инвариантами SPSC:
-            // в этот слот не пишет никто, кроме нас.
+            // старого значения. Unsafe оправдан замком producer: в этот
+            // слот не пишет никто, кроме нас, а consumer его ещё не видит.
             unsafe {
                 (*self.buffer[index].get()).write(value);
             }
@@ -308,7 +228,11 @@ impl RingBuffer {
     /// Извлекает один пакет. `None` — очередь пуста.
     #[inline(always)]
     pub fn pop(&self) -> Option<Vec<u8>> {
-        // Consumer владеет tail.
+        // Единственный consumer в каждый момент времени: иначе два потока
+        // прочитали бы один слот.
+        let _consumer = self.consumer.lock();
+
+        // Под замком consumer владеет tail.
         let tail = self.tail.load(Ordering::Relaxed);
 
         // Producer публикует новые данные через Release.
@@ -330,49 +254,6 @@ impl RingBuffer {
         Some(value)
     }
 
-    /// Извлекает до `limit` пакетов в `out`.
-    #[inline]
-    pub fn pop_many(&self, out: &mut Vec<Vec<u8>>, limit: usize) {
-        if limit == 0 {
-            return;
-        }
-
-        // Consumer владеет tail — можно читать под Relaxed.
-        let tail = self.tail.load(Ordering::Relaxed);
-
-        // Один snapshot головы под Acquire, чтобы увидеть все опубликованные данные.
-        // Дальше не перечитываем head: если producer допишет ещё — заберём
-        // это следующим вызовом. Один Acquire на пачку — дешевле, чем N.
-        let head = self.head.load(Ordering::Acquire);
-
-        // min(capacity) — страховка от "фантомного" head далеко впереди:
-        // без неё wrapping_sub мог бы дать больше capacity, если бы
-        // инварианты SPSC были нарушены.
-        let available = head.wrapping_sub(tail).min(self.capacity);
-        let count = available.min(limit);
-
-        if count == 0 {
-            return;
-        }
-
-        // Заранее резервируем место в выходном векторе.
-        out.reserve(count);
-
-        // Читаем `count` элементов подряд, начиная с текущего tail.
-        for offset in 0..count {
-            let index = self.index(tail.wrapping_add(offset));
-            let value = unsafe { (*self.buffer[index].get()).assume_init_read() };
-            out.push(value);
-        }
-
-        // Один Release на всю пачку — симметрично pop_many.
-        self.tail.store(tail.wrapping_add(count), Ordering::Release);
-    }
-
-    // ========================================================================
-    // State
-    // ========================================================================
-
     /// Текущее количество пакетов (мгновенный snapshot, может устареть сразу
     /// после возврата). Используется для метрик и грубых проверок.
     #[inline]
@@ -388,12 +269,6 @@ impl RingBuffer {
         let tail = self.tail.load(Ordering::Acquire);
         let head = self.head.load(Ordering::Acquire);
         head.wrapping_sub(tail).min(self.capacity)
-    }
-
-    /// Количество свободных слотов для записи.
-    #[inline]
-    pub fn free_slots(&self) -> usize {
-        self.capacity.saturating_sub(self.len())
     }
 
     /// `true`, если буфер пуст (snapshot).
@@ -473,12 +348,17 @@ mod tests {
         vec![n; 4]
     }
 
+    /// Кладёт один пакет через `push_many`; `true`, если он записан.
+    fn put(rb: &RingBuffer, value: Vec<u8>) -> bool {
+        rb.push_many(vec![value]) == 1
+    }
+
     #[test]
     fn push_pop_basic() {
         let rb = RingBuffer::new(4);
         assert!(rb.is_empty());
-        assert!(rb.push(pkt(1)).is_ok());
-        assert!(rb.push(pkt(2)).is_ok());
+        assert!(put(&rb, pkt(1)));
+        assert!(put(&rb, pkt(2)));
         assert_eq!(rb.len(), 2);
         // FIFO: сначала тот, что положили раньше.
         assert_eq!(rb.pop(), Some(pkt(1)));
@@ -487,22 +367,20 @@ mod tests {
     }
 
     #[test]
-    fn push_rejects_empty() {
+    fn push_many_rejects_empty_packets() {
         let rb = RingBuffer::new(4);
-        // Пустой вектор должен вернуться как Err(value), а не потеряться.
-        assert_eq!(rb.push(Vec::new()), Err(Vec::new()));
+        assert!(!put(&rb, Vec::new()));
         assert!(rb.is_empty());
     }
 
     #[test]
-    fn push_full_returns_value() {
+    fn push_many_on_full_buffer_writes_nothing() {
         let rb = RingBuffer::new(2);
-        assert!(rb.push(pkt(1)).is_ok());
-        assert!(rb.push(pkt(2)).is_ok());
-        // Третий не влезает — получаем обратно ровно то, что клали.
-        let err = rb.push(pkt(3));
-        assert_eq!(err, Err(pkt(3)));
+        assert!(put(&rb, pkt(1)));
+        assert!(put(&rb, pkt(2)));
         assert!(rb.is_full());
+        assert!(!put(&rb, pkt(3)));
+        assert_eq!(rb.len(), 2);
     }
 
     #[test]
@@ -525,12 +403,9 @@ mod tests {
 
     #[test]
     fn push_many_stops_at_capacity_even_with_empties() {
-        // Отдельный кейс, чтобы явно проверить вторую половину контракта —
-        // "respects free space": когда непустых больше, чем свободных слотов,
-        // итератор обрывается ровно на границе free.
         let rb = RingBuffer::new(4);
         // Один слот занят -> free == 3.
-        rb.push(pkt(99)).unwrap();
+        assert!(put(&rb, pkt(99)));
 
         let written = rb.push_many(vec![
             pkt(1), Vec::new(), pkt(2), pkt(3), pkt(4), // непустых 4, влезет 3
@@ -538,77 +413,115 @@ mod tests {
         assert_eq!(written, 3);
         assert_eq!(rb.len(), 4);
         assert!(rb.is_full());
-
-        // pkt(4) не влез — он должен вернуться вызывающему через Err
-        // при попытке push'а вручную, а не пропасть.
-        assert_eq!(rb.push(pkt(4)), Err(pkt(4)));
-    }
-
-    #[test]
-    fn pop_many_limit_and_availability() {
-        let rb = RingBuffer::new(8);
-        for i in 0..5u8 {
-            rb.push(pkt(i)).unwrap();
-        }
-        let mut out = Vec::new();
-        rb.pop_many(&mut out, 3);
-        assert_eq!(out.len(), 3);
-        assert_eq!(rb.len(), 2);
-
-        // limit больше, чем доступно — берём всё, что есть.
-        out.clear();
-        rb.pop_many(&mut out, 10);
-        assert_eq!(out.len(), 2);
-        assert!(rb.is_empty());
-    }
-
-    #[test]
-    fn push_up_reinserts_at_front() {
-        let rb = RingBuffer::new(4);
-        rb.push(pkt(1)).unwrap();
-        rb.push(pkt(2)).unwrap();
-        let popped = rb.pop().unwrap(); // pkt(1)
-        rb.push_up(popped).unwrap(); // вернули pkt(1) обратно вперёд
-        // Порядок восстановлен: pkt(1) снова первый.
-        assert_eq!(rb.pop(), Some(pkt(1)));
-        assert_eq!(rb.pop(), Some(pkt(2)));
-    }
-
-    #[test]
-    fn push_up_fails_when_full() {
-        let rb = RingBuffer::new(2);
-        rb.push(pkt(1)).unwrap();
-        rb.push(pkt(2)).unwrap();
-        // Мест нет — push_up обязан вернуть значение, не перезаписав
-        // занятые слоты.
-        assert_eq!(rb.push_up(pkt(3)), Err(pkt(3)));
     }
 
     #[test]
     fn wraparound_index_correctness() {
-        let rb = RingBuffer::new(3); // не степень двойки -> путь через '%'
+        let rb = RingBuffer::new(3); // округляется до 4
         // 10 итераций — head/tail успеют обернуться несколько раз,
         // проверяем, что index() корректно маппит при wraparound.
         for round in 0..10u8 {
-            rb.push(pkt(round)).unwrap();
+            assert!(put(&rb, pkt(round)));
             assert_eq!(rb.pop(), Some(pkt(round)));
         }
     }
 
     #[test]
-    fn power_of_two_mask_used() {
+    fn capacity_is_rounded_up_to_power_of_two() {
         let rb = RingBuffer::new(8);
-        assert_eq!(rb.mask, Some(7));
-        let rb2 = RingBuffer::new(5);
-        assert_eq!(rb2.mask, None);
+        assert_eq!((rb.capacity, rb.mask), (8, 7));
+
+        let rb = RingBuffer::new(5);
+        assert_eq!((rb.capacity, rb.mask), (8, 7));
+
+        let rb = RingBuffer::new(1);
+        assert_eq!((rb.capacity, rb.mask), (1, 0));
+    }
+
+    /// Счётчики переполняются: слоты должны продолжать идти по кругу.
+    #[test]
+    fn counters_wrap_around_usize_boundary() {
+        let rb = RingBuffer::new(4);
+        let start = usize::MAX - 2;
+        rb.head.store(start, Ordering::Relaxed);
+        rb.tail.store(start, Ordering::Relaxed);
+
+        for round in 0..12u8 {
+            assert!(put(&rb, pkt(round)));
+            assert_eq!(rb.pop(), Some(pkt(round)));
+        }
+        assert!(rb.is_empty());
+    }
+
+    /// Несколько consumer'ов на общем буфере: каждый пакет достаётся ровно
+    /// одному из них (раньше это было гонкой на `tail` и double free).
+    #[test]
+    fn concurrent_consumers_get_each_packet_exactly_once() {
+        use std::{
+            sync::{atomic::AtomicUsize, Arc},
+            thread,
+            time::{Duration, Instant},
+        };
+
+        const TOTAL: usize = 20_000;
+
+        let rb = Arc::new(RingBuffer::new(64));
+        let consumed = Arc::new(AtomicUsize::new(0));
+        let deadline = Instant::now() + Duration::from_secs(20);
+
+        let producer = {
+            let rb = Arc::clone(&rb);
+            thread::spawn(move || {
+                let mut next = 0usize;
+                while next < TOTAL {
+                    let id = (next as u32).to_le_bytes().to_vec();
+                    if rb.push_many(vec![id]) == 1 {
+                        next += 1;
+                    } else {
+                        thread::yield_now();
+                    }
+                }
+            })
+        };
+
+        let consumers: Vec<_> = (0..3)
+            .map(|_| {
+                let rb = Arc::clone(&rb);
+                let consumed = Arc::clone(&consumed);
+                thread::spawn(move || {
+                    let mut got = Vec::new();
+                    while consumed.load(Ordering::Acquire) < TOTAL && Instant::now() < deadline {
+                        match rb.pop() {
+                            Some(packet) => {
+                                got.push(u32::from_le_bytes(packet[..4].try_into().unwrap()));
+                                consumed.fetch_add(1, Ordering::AcqRel);
+                            }
+                            None => thread::yield_now(),
+                        }
+                    }
+                    got
+                })
+            })
+            .collect();
+
+        producer.join().unwrap();
+
+        let mut all: Vec<u32> = Vec::new();
+        for consumer in consumers {
+            all.extend(consumer.join().unwrap());
+        }
+        all.sort_unstable();
+
+        let expected: Vec<u32> = (0..TOTAL as u32).collect();
+        assert_eq!(all, expected);
     }
 
     #[test]
     fn drop_releases_remaining_items() {
         let rb = RingBuffer::new(4);
-        rb.push(pkt(1)).unwrap();
-        rb.push(pkt(2)).unwrap();
+        assert!(put(&rb, pkt(1)));
+        assert!(put(&rb, pkt(2)));
         drop(rb.pop()); // освободили один слот
-        rb.push(pkt(3)).unwrap();
+        assert!(put(&rb, pkt(3)));
     }
 }

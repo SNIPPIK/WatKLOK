@@ -37,7 +37,7 @@ const PLAYER_PAUSE_OFFSET = 5e3;
  * @const
  * @private
  */
-const PLAYER_TIMEOUT_OFFSET = 3e3;
+const PLAYER_TIMEOUT_OFFSET = 2e3;
 
 /**
  * @author SNIPPIK
@@ -189,8 +189,8 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @public
      */
     public get playing() {
-        // Наличие аудио-ресурса и статуса
-        return this._status === "player/playing" && !!this._audio.current;
+        // Наличие статуса и голосового подключения
+        return this._status === "player/playing" && this._voice?.connection?.ready;
     };
 
     /**
@@ -198,6 +198,7 @@ export class AudioPlayer extends TypedEmitter<AudioPlayerEvents> {
      * @public
      */
     public set cycle(isActive: boolean) {
+        // Если нет ID плеера
         if (!this.id) return;
 
         // Подключаем плеер к циклу

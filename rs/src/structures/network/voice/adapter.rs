@@ -6,8 +6,11 @@
 //! получает уже разобранные пакеты и хранит их в общем состоянии.
 
 use crate::utils::array::SetArray;
-use parking_lot::Mutex;
-use std::fmt;
+use {
+    parking_lot::Mutex,
+    zeroize::Zeroize,
+    std::fmt
+};
 
 /// Пакет `VOICE_SERVER_UPDATE`.
 ///
@@ -85,4 +88,16 @@ pub struct AdapterData {
 
     /// Пользователи в голосовом канале (для E2EE).
     pub clients: Mutex<SetArray>
+}
+
+impl Drop for ServerPacket {
+    fn drop(&mut self) {
+        self.token.zeroize();
+    }
+}
+
+impl Drop for StatePacket {
+    fn drop(&mut self) {
+        self.session_id.zeroize();
+    }
 }

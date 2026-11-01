@@ -274,8 +274,8 @@
   },
 
   "queue.cleanup": {
-    "en-US": "## Playback stopped\n\nThe queue is still there, but the playback has finished, you can continue playing!",
-    "ru": "## Проигрывание остановлено\n\nОчередь все еще присутствует но проигрывание завершено, вы можете продолжить проигрывание!"
+    "en-US": "## `🔰` Playback stopped\n\nThe queue is still there, but the playback has finished, you can continue playing!",
+    "ru": "## `🔰` Проигрывание остановлено\n\nОчередь все еще присутствует но проигрывание завершено, вы можете продолжить проигрывание!"
   },
 
 

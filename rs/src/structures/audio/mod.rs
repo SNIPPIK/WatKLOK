@@ -1,4 +1,3 @@
 pub mod encoder;
-pub mod ring_buffer;
+pub mod ring;
 mod engine;
-pub mod opus;

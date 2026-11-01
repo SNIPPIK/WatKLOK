@@ -1,19 +1,19 @@
-//! Порт `UDPLayer` + `VoiceUDPSocket`: discovery-рукопожатие и отправка пакетов.
-
 use crate::structures::network::{udp::socket::SocketBuffered, ws::runtime};
-use parking_lot::Mutex;
-use std::{
-    net::Ipv4Addr,
-    sync::{
-        atomic::{AtomicBool, AtomicU8, Ordering},
-        Arc,
+use {
+    std::{
+        net::Ipv4Addr,
+        sync::{
+            atomic::{AtomicBool, AtomicU8, Ordering},
+            Arc,
+        },
+        time::Duration,
     },
-    time::Duration,
-};
-use tokio::{
-    sync::oneshot,
-    task::JoinHandle,
-    time::{sleep, sleep_until, Instant},
+    tokio::{
+        sync::oneshot,
+        task::JoinHandle,
+        time::{sleep, sleep_until, Instant},
+    },
+    parking_lot::Mutex
 };
 
 /// Максимальное количество отправок discovery.
@@ -221,6 +221,13 @@ impl UdpLayer {
         self.with_socket(|s| s.packets()).unwrap_or(0)
     }
 
+    /// Среднее опоздание отправки относительно расписания, мкс.
+    ///
+    /// Если сокета нет, возвращает 0.
+    pub fn lateness_us(&self) -> u32 {
+        self.with_socket(|s| s.send_lateness_us()).unwrap_or(0)
+    }
+
     /// Отправка пакетов: UDP-слой -> Rust-очередь -> Scheduler.
     ///
     /// Реальная отправка идёт в планировщике, поэтому метод не
@@ -236,7 +243,7 @@ impl UdpLayer {
     pub fn initialize_rtp(&self, ssrc: u32, key: Vec<u8>) -> Result<(), String> {
         match self.with_socket(|s| s.initialize_rtp(ssrc, key)) {
             Some(result) => result.map_err(|e| e.to_string()),
-            None => Err("UDP is not created".to_string()),
+            None => Err("UDP is not created".to_string())
         }
     }
 
@@ -309,8 +316,12 @@ impl UdpLayer {
                 {
                     let guard = worker.socket.lock();
                     match guard.as_ref() {
-                        Some(socket) => socket.discovery(ssrc),
-                        None => return,
+                        // Ошибка отправки не фатальна: следующая попытка
+                        // через `RETRY_DELAY`, итог решает общий тайм-аут.
+                        Some(socket) => {
+                            let _ = socket.discovery(ssrc);
+                        }
+                        None => return
                     }
                 }
 
@@ -372,16 +383,19 @@ impl UdpLayer {
     /// Освобождает уже изъятого из мьютекса клиента (шаги 2-5 из `destroy`).
     fn teardown(mut client: Client) {
         if let Some(task) = client.task.take() {
+            // abort() только сигналит; задача освободит Arc<Shared> при
+            // следующей точке .await. Дожидаемся в фоне, чтобы при частых
+            // create/destroy не накапливать «висящие» Shared.
             task.abort();
+            runtime::spawn(async move {
+                let _ = task.await;
+            });
         }
 
         client.shared.done.store(true, Ordering::Release);
         client.shared.status.store(STATUS_DISCONNECTED, Ordering::Release);
-        // Незавершённое ожидание получит ошибку приёма и тихо завершится.
         client.shared.tx.lock().take();
 
-        // Сокет забираем из мьютекса и уничтожаем уже без блокировки
-        // (`destroy` дожидается потока приёма).
         let socket = client.shared.socket.lock().take();
         if let Some(socket) = socket {
             socket.destroy();

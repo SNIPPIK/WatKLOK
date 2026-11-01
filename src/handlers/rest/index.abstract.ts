@@ -1,20 +1,10 @@
 import type { Track } from "#core/queue/index.js";
 
-export const REST_STOP_WORDS = new Set([
-    "official",
-    "video",
-    "audio",
-    "lyrics",
-    "lyric",
-    "mv",
-    "hd",
-    "hq",
-    "feat",
-    "ft",
-    "remastered",
-    "remaster",
-    "version",
-]);
+
+export const REST_STOP_WORDS_REG =
+    /\b(?:official|video|audio|lyrics?|mv|hd|hq|remaster(?:ed)?|version)\b|\bfeat\b\.?|\bft\b\.?/gi;
+
+export const FEAT_BLOCK_REG = /[\(\[]\s*(?:feat|ft)\.?\s+[^\)\]]*[\)\]]/gi;
 
 /**
  * @author SNIPPIK

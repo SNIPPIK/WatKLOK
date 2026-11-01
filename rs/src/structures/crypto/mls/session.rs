@@ -98,20 +98,18 @@ impl MlsSession {
         self.destroyed
     }
 
-    /// `true`, если сессия повторно инициализируется.
+    /// `true`, если после ошибки перехода сессию нужно инициализировать заново.
     ///
-    /// Устанавливается при `recoverFromInvalidTransition` или первой ошибке
-    /// обработки commit/welcome. Сбрасывается после успешного завершения
-    /// перехода с `transition_id == 0`.
+    /// Пока флаг поднят, `encrypt` ничего не шифрует. Сбрасывается после
+    /// успешной повторной инициализации.
     #[inline]
     pub fn reinitializing(&self) -> bool {
         self.reinitializing
     }
 
-    /// `true`, если в данный момент выполняется переход.
-    ///
-    /// Используется как защита от повторного входа в `execute_transition`
-    /// и от параллельного шифрования во время смены версии протокола.
+    /// `true`, пока выполняется `execute_transition` (защита от повторного
+    /// входа). Состояние кратковременное: снаружи оно видно только после
+    /// `destroy`, который поднимает флаг навсегда.
     #[inline]
     pub fn is_transitioning(&self) -> bool {
         self.is_transitioning
@@ -178,9 +176,7 @@ impl MlsSession {
 
             // Сессия ещё не создана — сохраняем до reinit.
             None => {
-                self.pending_external_sender =
-                    Some(data.to_vec());
-
+                self.pending_external_sender = Some(data.to_vec());
                 Ok(())
             }
         }
@@ -217,48 +213,6 @@ impl MlsSession {
     }
 
     // ---------------------------------------------------------------------
-    // Invalid transition recovery
-    // ---------------------------------------------------------------------
-
-    /// Запускает восстановление после невалидного перехода.
-    ///
-    /// Устанавливает флаг `reinitializing`, очищает ожидающие переходы
-    /// и выполняет `reinit_internal`.
-    ///
-    /// # Аргументы
-    /// * `transition_id` — идентификатор невалидного перехода.
-    ///
-    /// # Возвращаемое значение
-    /// Новый key-package, если он был создан.
-    #[inline]
-    pub fn recover_from_invalid_transition(&mut self, transition_id: u16) -> Result<Option<Vec<u8>>> {
-        // Уничтоженная сессия не восстанавливается.
-        if self.destroyed { return Ok(None); }
-
-        // Уже в процессе — не входим повторно.
-        else if self.reinitializing { return Ok(None); }
-
-        self.reinitializing = true;
-
-        // Все ожидающие переходы больше не актуальны.
-        self.clear_transitions();
-        let key = match self.reinit_internal() {
-            Ok(key) => key,
-            Err(error) => {
-                // Иначе флаг остался бы true навсегда: `encrypt` возвращал бы
-                // `None` (звук пропадает), а повторные восстановления были бы no-op.
-                self.reinitializing = false;
-                return Err(error);
-            }
-        };
-
-        // transition_id не используется в восстановлении — принимается для совместимости API.
-        let _ = transition_id;
-
-        Ok(key)
-    }
-
-    // ---------------------------------------------------------------------
     // Reinit
     // ---------------------------------------------------------------------
 
@@ -285,9 +239,7 @@ impl MlsSession {
             // Версия должна быть ненулевой для NonZeroU16.
             let version = NonZeroU16::new(self.version)
                 .ok_or_else(|| {
-                    MlsError::from_reason(
-                        "Protocol version must be non-zero",
-                    )
+                    MlsError::from_reason("Protocol version must be non-zero")
                 })?;
 
             // Парсим идентификаторы из строк.
@@ -297,33 +249,17 @@ impl MlsSession {
             match self.inner.as_mut() {
                 // Сессия уже существует — повторно инициализируем.
                 Some(inner) => {
-                    inner
-                        .reinit(
-                            version,
-                            user_id,
-                            channel_id,
-                            None,
-                        )
-                        .map_err(Self::map_err)?;
+                    inner.reinit(version, user_id, channel_id, None).map_err(Self::map_err)?;
                 }
 
                 // Сессия ещё не создана — создаём новую.
                 None => {
-                    self.inner = Some(
-                        davey::DaveSession::new(
-                            version,
-                            user_id,
-                            channel_id,
-                            None,
-                        )
-                            .map_err(Self::map_err)?,
-                    );
+                    self.inner = Some(davey::DaveSession::new(version, user_id, channel_id, None).map_err(Self::map_err)?);
                 }
             }
 
             // Применяем отложенный external sender.
-            if let Some(external_sender) =
-                self.pending_external_sender.take()
+            if let Some(external_sender) = self.pending_external_sender.take()
             {
                 self.inner
                     .as_mut()
@@ -350,23 +286,6 @@ impl MlsSession {
         }
 
         Ok(None)
-    }
-
-    // ---------------------------------------------------------------------
-    // Reset
-    // ---------------------------------------------------------------------
-
-    /// Сбрасывает состояние нативной сессии без её уничтожения.
-    #[inline]
-    pub fn reset(&mut self) -> Result<()> {
-        match self.inner.as_mut() {
-            Some(inner) => {
-                inner.reset().map_err(Self::map_err)
-            }
-
-            // Сессии ещё нет — сбрасывать нечего.
-            None => Ok(()),
-        }
     }
 
     // ---------------------------------------------------------------------
@@ -416,35 +335,8 @@ impl MlsSession {
     pub fn set_passthrough_mode(&mut self, enabled: bool, expiry: Option<u32>) {
         // Если сессии нет — операция игнорируется.
         if let Some(inner) = self.inner.as_mut() {
-            inner.set_passthrough_mode(
-                enabled,
-                expiry,
-            );
+            inner.set_passthrough_mode(enabled, expiry);
         }
-    }
-
-    // ---------------------------------------------------------------------
-    // Key package
-    // ---------------------------------------------------------------------
-
-    /// Возвращает сериализованный key-package.
-    ///
-    /// # Ошибки
-    /// Возвращает ошибку, если нативная сессия ещё не создана.
-    #[inline]
-    pub fn get_serialized_key_package(&mut self) -> Result<Vec<u8>> {
-        // Без активной сессии key-package создать нельзя.
-        let inner = self
-            .inner
-            .as_mut()
-            .ok_or_else(|| {
-                MlsError::from_reason(
-                    "Session not initialized",
-                )
-            })?;
-
-        let key_package = inner.create_key_package().map_err(Self::map_err)?;
-        Ok(Vec::from(key_package))
     }
 
     // ---------------------------------------------------------------------
@@ -472,7 +364,7 @@ impl MlsSession {
             None => {
                 return Ok(ProposalsResult {
                     commit: None,
-                    welcome: None,
+                    welcome: None
                 });
             }
         };
@@ -491,32 +383,27 @@ impl MlsSession {
                                 "recognized user id",
                             )
                         })
-                        .collect::<Result<Vec<_>>>()?,
+                        .collect::<Result<Vec<_>>>()?
                 ),
 
-                None => None,
+                None => None
             };
 
-        let result = inner.process_proposals(
-            operation,
-            proposals,
-            recognized_ids.as_deref(),
-        )
-            .map_err(Self::map_err)?;
+        let result = inner.process_proposals(operation, proposals, recognized_ids.as_deref()).map_err(Self::map_err)?;
 
         Ok(match result {
             // Результат содержит commit (и, возможно, welcome).
             Some(commit_welcome) => {
                 ProposalsResult {
                     commit: Some(Vec::from(commit_welcome.commit)),
-                    welcome: commit_welcome.welcome.map(Vec::from),
+                    welcome: commit_welcome.welcome.map(Vec::from)
                 }
             }
 
             // Коммит не требуется.
             None => ProposalsResult {
                 commit: None,
-                welcome: None,
+                welcome: None
             },
         })
     }
@@ -527,36 +414,23 @@ impl MlsSession {
 
     /// Обрабатывает commit от другого участника.
     ///
-    /// Первые два байта payload — `transition_id`.
+    /// Первые два байта payload — `transition_id`; оставшаяся часть передаётся
+    /// в `davey::DaveSession::process_commit`.
     ///
-    /// # Аргументы
-    /// * `payload` — сериализованные данные commit.
-    ///
-    /// # Возвращаемое значение
-    /// `TransitionResult` с `transition_id`, флагом успеха и признаком
-    /// невалидности (для инициирования повторной инициализации).
+    /// `davey` версии 0.2.x возвращает `Ok(false)`, если commit был проигнорирован.
+    /// Это не считается невалидным переходом и не запускает восстановление.
     #[inline]
     pub fn process_commit(&mut self, payload: &[u8]) -> Result<TransitionResult> {
-        // Удаляем устаревшие переходы.
         self.expire_transitions();
 
-        // Минимум 2 байта под transition_id.
         if payload.len() < 2 {
-            return Err(MlsError::from_reason(
-                "Commit payload too short",
-            ));
+            return Err(MlsError::from_reason("Commit payload too short"));
         }
 
-        // transition_id в первых двух байтах (BE).
-        let transition_id = u16::from_be_bytes([
-            payload[0],
-            payload[1],
-        ]);
+        let transition_id = u16::from_be_bytes([payload[0], payload[1]]);
 
-        // Если сессии нет — вернуть неуспех без повторной инициализации.
-        let inner = match self.inner.as_mut() {
-            Some(inner) => inner,
-
+        let processed = match self.inner.as_mut() {
+            Some(inner) => inner.process_commit(&payload[2..]),
             None => {
                 return Ok(TransitionResult {
                     transition_id,
@@ -566,23 +440,52 @@ impl MlsSession {
             }
         };
 
-        match inner.process_commit(&payload[2..]) {
-            Ok(()) => {
+        match processed {
+            Ok(false) => Ok(TransitionResult {
+                transition_id,
+                success: false,
+                invalidated: false,
+            }),
+            Ok(true) => {
+                // КРИТИЧНО: davey 0.2.x не обновляет decryptor ratchets
+                // внутри process_commit(). Подготовить переход нужно сразу
+                // после успешного COMMIT и ДО отправки TRANSITION_READY.
+                // Это верно и для ненулевых transition_id: EXECUTE_TRANSITION
+                // позже переключает отправляющий ratchet, но входящие ratchets
+                // должны быть готовы уже сейчас.
+                let version = self.version;
+                let prepare_result = self
+                    .inner
+                    .as_mut()
+                    .map(|inner| inner.prepare_transition(transition_id, version));
+
+                match prepare_result {
+                    Some(Ok(())) => {}
+                    Some(Err(_)) | None => {
+                        self.reinitializing = true;
+                        self.clear_transitions();
+                        return Ok(TransitionResult {
+                            transition_id,
+                            success: false,
+                            invalidated: true,
+                        });
+                    }
+                }
+
                 if transition_id != 0 {
-                    // Ненулевой id — переход откладывается до execute_transition.
+                    // Нативный davey уже подготовил ratchets и зарегистрировал
+                    // этот transition_id; здесь храним версию для обёртки.
                     self.pending_transitions.insert(
                         transition_id,
                         PendingTransition {
-                            version: self.version,
-                            expires_at: Instant::now()
-                                + TRANSITION_TIMEOUT,
+                            version,
+                            expires_at: Instant::now() + TRANSITION_TIMEOUT,
                         },
                     );
                 } else {
-                    // Нулевой id — переход завершён сразу.
+                    // davey выполнил переход с id == 0 прямо в prepare_transition.
                     self.reinitializing = false;
-                    self.last_transition_id =
-                        Some(transition_id);
+                    self.last_transition_id = Some(transition_id);
                 }
 
                 Ok(TransitionResult {
@@ -591,10 +494,9 @@ impl MlsSession {
                     invalidated: false,
                 })
             }
-
-            Err(error) => {
+            Err(_) => {
                 if !self.reinitializing {
-                    // Первая ошибка — сигнал о необходимости повторной инициализации.
+                    // Первая ошибка означает, что состояние MLS нужно пересобрать.
                     self.reinitializing = true;
                     self.clear_transitions();
 
@@ -604,9 +506,6 @@ impl MlsSession {
                         invalidated: true,
                     })
                 } else {
-                    // Уже повторно инициализируемся — повторную ошибку не сигналим.
-                    let _ = error;
-
                     Ok(TransitionResult {
                         transition_id,
                         success: false,
@@ -623,34 +522,21 @@ impl MlsSession {
 
     /// Обрабатывает welcome от другого участника.
     ///
-    /// Логика аналогична `process_commit`, но применяется к данным
-    /// приветственного сообщения.
-    ///
-    /// # Аргументы
-    /// * `payload` — сериализованные данные welcome.
+    /// Первые два байта payload — `transition_id`; остальные байты являются
+    /// сериализованным welcome. В новой API `davey` также принимает список
+    /// распознанных пользователей; текущий интерфейс обёртки его не передаёт.
     #[inline]
     pub fn process_welcome(&mut self, payload: &[u8]) -> Result<TransitionResult> {
-        // Удаляем устаревшие переходы.
         self.expire_transitions();
 
-        // Минимум 2 байта под transition_id.
         if payload.len() < 2 {
-            return Err(MlsError::from_reason(
-                "Welcome payload too short",
-            ));
+            return Err(MlsError::from_reason("Welcome payload too short"));
         }
 
-        // transition_id в первых двух байтах (BE).
-        let transition_id =
-            u16::from_be_bytes([
-                payload[0],
-                payload[1],
-            ]);
+        let transition_id = u16::from_be_bytes([payload[0], payload[1]]);
 
-        // Если сессии нет — вернуть неуспех без повторной инициализации.
-        let inner = match self.inner.as_mut() {
-            Some(inner) => inner,
-
+        let processed = match self.inner.as_mut() {
+            Some(inner) => inner.process_welcome(&payload[2..], None),
             None => {
                 return Ok(TransitionResult {
                     transition_id,
@@ -660,23 +546,41 @@ impl MlsSession {
             }
         };
 
-        match inner.process_welcome(&payload[2..]) {
+        match processed {
             Ok(()) => {
+                // Как и для COMMIT, process_welcome() в davey 0.2.x
+                // создаёт MLS-группу, но не готовит media key ratchets.
+                // Подготовка обязательна для нового участника до READY.
+                let version = self.version;
+                let prepare_result = self
+                    .inner
+                    .as_mut()
+                    .map(|inner| inner.prepare_transition(transition_id, version));
+
+                match prepare_result {
+                    Some(Ok(())) => {}
+                    Some(Err(_)) | None => {
+                        self.reinitializing = true;
+                        self.clear_transitions();
+                        return Ok(TransitionResult {
+                            transition_id,
+                            success: false,
+                            invalidated: true,
+                        });
+                    }
+                }
+
                 if transition_id != 0 {
-                    // Ненулевой id — переход откладывается до execute_transition.
                     self.pending_transitions.insert(
                         transition_id,
                         PendingTransition {
-                            version: self.version,
-                            expires_at: Instant::now()
-                                + TRANSITION_TIMEOUT,
+                            version,
+                            expires_at: Instant::now() + TRANSITION_TIMEOUT,
                         },
                     );
                 } else {
-                    // Нулевой id — переход завершён сразу.
                     self.reinitializing = false;
-                    self.last_transition_id =
-                        Some(transition_id);
+                    self.last_transition_id = Some(transition_id);
                 }
 
                 Ok(TransitionResult {
@@ -685,10 +589,8 @@ impl MlsSession {
                     invalidated: false,
                 })
             }
-
-            Err(error) => {
+            Err(_) => {
                 if !self.reinitializing {
-                    // Первая ошибка — сигнал о необходимости повторной инициализации.
                     self.reinitializing = true;
                     self.clear_transitions();
 
@@ -698,9 +600,6 @@ impl MlsSession {
                         invalidated: true,
                     })
                 } else {
-                    // Уже повторно инициализируемся — повторную ошибку не сигналим.
-                    let _ = error;
-
                     Ok(TransitionResult {
                         transition_id,
                         success: false,
@@ -718,48 +617,55 @@ impl MlsSession {
     /// Регистрирует ожидаемый переход.
     ///
     /// Для `transition_id == 0` переход выполняется немедленно. Для
-    /// `protocol_version == 0` включается passthrough с увеличенным сроком
-    /// (ожидание подтверждения понижения).
+    /// `protocol_version == 0` включается passthrough с увеличенным сроком.
+    /// При наличии нативной сессии подготовка также передаётся в `davey`.
     ///
-    /// # Аргументы
-    /// * `transition_id` — идентификатор перехода.
-    /// * `protocol_version` — целевая версия протокола.
-    ///
-    /// # Возвращаемое значение
-    /// `true`, если переход требует вызова `execute_transition`.
+    /// Возвращает `true`, если требуется отдельный вызов `execute_transition`.
     #[inline]
     pub fn prepare_transition(&mut self, transition_id: u16, protocol_version: u16) -> bool {
-        // Удаляем устаревшие переходы.
         self.expire_transitions();
 
-        // Регистрируем переход с тайм-аутом.
+        if self.destroyed || self.is_transitioning {
+            return false;
+        }
+
+        // В davey 0.2.x подготовка перехода — явный шаг протокола.
+        let prepare_result = self
+            .inner
+            .as_mut()
+            .map(|inner| inner.prepare_transition(transition_id, protocol_version));
+
+        if let Some(Err(_)) = prepare_result {
+            self.reinitializing = true;
+            self.clear_transitions();
+            return false;
+        }
+
         self.pending_transitions.insert(
             transition_id,
             PendingTransition {
                 version: protocol_version,
-                expires_at: Instant::now()
-                    + TRANSITION_TIMEOUT,
+                expires_at: Instant::now() + TRANSITION_TIMEOUT,
             },
         );
 
-        // transition_id == 0 — немедленный переход.
-        if transition_id == 0 {
-            let _ = self.execute_transition(0);
-        }
-
-        // Переход на версию 0 — включаем passthrough с увеличенным сроком.
         if protocol_version == 0 {
             if let Some(inner) = self.inner.as_mut() {
                 inner.set_passthrough_mode(
                     true,
-                    Some(
-                        TRANSITION_EXPIRY_PENDING_DOWNGRADE,
-                    ),
+                    Some(TRANSITION_EXPIRY_PENDING_DOWNGRADE),
                 );
             }
         }
 
-        transition_id != 0
+        if transition_id == 0 {
+            // davey уже применил transition_id == 0 внутри prepare_transition;
+            // здесь обновляем только состояние обёртки.
+            let _ = self.execute_transition(0);
+            false
+        } else {
+            true
+        }
     }
 
     // ---------------------------------------------------------------------
@@ -768,57 +674,67 @@ impl MlsSession {
 
     /// Выполняет ранее зарегистрированный переход.
     ///
-    /// # Аргументы
-    /// * `transition_id` — идентификатор перехода.
-    ///
-    /// # Возвращаемое значение
-    /// `true`, если переход выполнен; `false`, если запись отсутствует
-    /// или уже выполняется другой переход.
+    /// Для ненулевого `transition_id` сначала выполняется переход в `davey`,
+    /// после чего обновляется состояние обёртки. В отличие от старого API,
+    /// смена версии здесь не должна вызывать `reinit`: это сбросило бы группу,
+    /// commit/welcome которой уже обработаны.
     #[inline]
     pub fn execute_transition(&mut self, transition_id: u16) -> bool {
-        // Удаляем устаревшие переходы.
         self.expire_transitions();
 
-        // Защита от повторного входа.
-        if self.is_transitioning { return false; }
+        if self.is_transitioning {
+            return false;
+        }
 
-        // Переход должен быть зарегистрирован.
         let version = match self.pending_transitions.get(&transition_id) {
             Some(pending) => pending.version,
             None => return false,
         };
 
         self.is_transitioning = true;
-        let old_version = self.version;
 
-        // Применяем новую версию.
-        self.version = version;
+        // Для ненулевых id davey ожидает, что до этого был вызван
+        // DaveSession::prepare_transition. id == 0 уже применён этим вызовом.
+        if transition_id != 0 {
+            let execution_result = self
+                .inner
+                .as_mut()
+                .map(|inner| inner.execute_transition(transition_id));
 
-        // ТОЛЬКО при реальной смене версии reinit
-        if self.version > 0 && self.version != old_version {
-            let _ = self.reinit_internal();
+            match execution_result {
+                // Нативной сессии нет: на версию 0 (E2EE выключается) нечего
+                // выполнять, а на версию > 0 переход невозможен без сессии.
+                None if version == 0 => {}
+                
+                Some(Ok(true)) => {}
+                Some(Ok(false)) | None => {
+                    self.is_transitioning = false;
+                    return false;
+                }
+                Some(Err(_)) => {
+                    self.is_transitioning = false;
+                    self.reinitializing = true;
+                    self.clear_transitions();
+                    return false;
+                }
+            }
         }
 
-        // Фиксируем понижение до версии 0.
+        let old_version = self.version;
+        self.version = version;
+
         if old_version != 0 && self.version == 0 {
             self.downgraded = true;
         }
 
-        // При восстановлении после понижения включаем passthrough.
         if self.downgraded && self.version > 0 {
             if let Some(inner) = self.inner.as_mut() {
-                inner.set_passthrough_mode(
-                    true,
-                    Some(TRANSITION_EXPIRY),
-                );
+                inner.set_passthrough_mode(true, Some(TRANSITION_EXPIRY));
             }
-
             self.downgraded = false;
         }
 
         self.last_transition_id = Some(transition_id);
-
-        // Запись о переходе больше не нужна.
         self.pending_transitions.remove(&transition_id);
         self.is_transitioning = false;
 
@@ -829,49 +745,48 @@ impl MlsSession {
     // Encrypt
     // ---------------------------------------------------------------------
 
-    /// Шифрует массив Opus-пакетов.
+    /// Шифрует Opus-пакеты.
     ///
-    /// Возвращает `None`, если шифрование невозможно: версия 0, идёт
-    /// переход, идёт повторная инициализация, сессия не готова, либо один из
-    /// пакетов не удалось зашифровать (batch считается неуспешным целиком).
+    /// Возвращает зашифрованные пакеты и число тех, что отправить нельзя.
+    /// Если шифрование невозможно в принципе (версия 0, идёт переход или
+    /// повторная инициализация, сессия не готова) — не зашифровано ничего.
+    /// Если не удался один пакет, остальные всё равно шифруются: потеря
+    /// одного кадра лучше потери всей пачки.
     ///
     /// # Аргументы
     /// * `packets` — исходные Opus-пакеты.
-    ///
-    /// # Возвращаемое значение
-    /// Вектор зашифрованных пакетов или `None`.
     #[inline]
-    pub fn encrypt(&mut self, packets: Vec<Vec<u8>>) -> Option<Vec<Vec<u8>>> {
-        // Passthrough-режим или нестабильное состояние — не шифруем.
-        if self.version == 0 || self.is_transitioning || self.reinitializing { return None; }
+    pub fn encrypt(&mut self, packets: Vec<Vec<u8>>) -> (Vec<Vec<u8>>, usize) {
+        let total = packets.len();
 
-        let inner = self.inner.as_mut()?;
+        // Passthrough-режим или нестабильное состояние — не шифруем.
+        if self.version == 0 || self.is_transitioning || self.reinitializing {
+            return (Vec::new(), total);
+        }
+
+        let Some(inner) = self.inner.as_mut() else {
+            return (Vec::new(), total);
+        };
 
         // Сессия ещё не готова к шифрованию.
-        if !inner.is_ready() { return None; }
+        if !inner.is_ready() {
+            return (Vec::new(), total);
+        }
 
-        let mut output = Vec::with_capacity(packets.len());
+        let mut output = Vec::with_capacity(total);
         for packet in packets {
             // Нативный encrypt_opus может паниковать — перехватываем.
             let encrypted = std::panic::catch_unwind(
-                std::panic::AssertUnwindSafe(
-                    || {
-                        inner.encrypt_opus(&packet)
-                    },
-                ),
+                std::panic::AssertUnwindSafe(|| inner.encrypt_opus(&packet))
             );
 
-            match encrypted {
-                Ok(Ok(buffer)) => {
-                    output.push(buffer.to_vec());
-                }
-
-                // Batch считается неуспешным целиком.
-                _ => return None,
+            if let Ok(Ok(buffer)) = encrypted {
+                output.push(buffer.to_vec());
             }
         }
 
-        Some(output)
+        let failed = total - output.len();
+        (output, failed)
     }
 }
 
@@ -887,10 +802,9 @@ impl MlsSession {
         let now = Instant::now();
 
         // retain оставляет только те записи, чей срок ещё не истёк.
-        self.pending_transitions
-            .retain(|_, transition| {
-                transition.expires_at > now
-            });
+        self.pending_transitions.retain(|_, transition| {
+            transition.expires_at > now
+        });
     }
 
     /// Очищает все записи об ожидающих переходах.
@@ -908,10 +822,7 @@ impl MlsSession {
     /// упрощает поиск источника по префиксу в логах.
     #[inline]
     fn map_err<E: std::fmt::Display>(error: E) -> MlsError {
-        MlsError::from_reason(format!(
-            "[MlsSession] {}",
-            error
-        ))
+        MlsError::from_reason(format!("[MlsSession] {}", error))
     }
 
     /// Парсит строковый идентификатор в `u64`.
@@ -928,44 +839,21 @@ impl MlsSession {
     /// Возвращает ошибку с указанием имени поля, если строка не парсится.
     #[inline]
     fn parse_id(id: &str, name: &str) -> Result<u64> {
-        // Пытаемся распарсить строку; при ошибке подставляем имя поля.
+        // Пытаемся распарсить число; при ошибке подставляем имя поля.
         id.parse().map_err(|_| {
-            MlsError::from_reason(format!(
-                "Invalid {}: {}",
-                name,
-                id
-            ))
+            MlsError::from_reason(format!("Invalid {}: {}", name, id))
         })
     }
 
     /// Преобразует числовой код операции в enum `davey`.
     ///
-    /// # Аргументы
-    /// * `operation` — код операции из payload.
-    ///
-    /// # Возвращаемое значение
-    /// `ProposalsOperationType` для известного кода.
-    ///
-    /// # Ошибки
-    /// Возвращает ошибку для неизвестных значений.
+    /// 0 — APPEND; 1 — REVOKE.
     #[inline]
     fn map_operation(operation: u8) -> Result<davey::ProposalsOperationType> {
         match operation {
-            // Код 0 → APPEND.
-            0 => Ok(
-                davey::ProposalsOperationType::APPEND,
-            ),
-
-            // Код 1 → APPEND. Соответствует текущему протоколу —
-            // другие типы операций пока не используются.
-            1 => Ok(
-                davey::ProposalsOperationType::APPEND,
-            ),
-
-            // Любой другой код — ошибка.
-            _ => Err(MlsError::from_reason(format!(
-                "Invalid operation: {operation}"
-            ))),
+            0 => Ok(davey::ProposalsOperationType::APPEND),
+            1 => Ok(davey::ProposalsOperationType::REVOKE),
+            _ => Err(MlsError::from_reason(format!("Invalid operation: {operation}"))),
         }
     }
 }
@@ -1002,10 +890,6 @@ mod tests {
     // ---------------------------------------------------------------------
 
     #[test]
-    // Проверяет, что после `new` все поля находятся в исходном состоянии:
-    // флаги сброшены, нативной сессии нет, буферов нет, версия/ids сохранены.
-    // Проверка и через геттеры, и через прямые поля — чтобы не пропустить
-    // расхождение между ними.
     fn new_session_initial_state() {
         let s = session_v1();
 
@@ -1027,10 +911,6 @@ mod tests {
     }
 
     #[test]
-    // Отдельно проверяет все публичные геттеры в исходном состоянии.
-    // Дублирование с предыдущим тестом намеренное: если кто-то поменяет
-    // геттер, а поля останутся корректными (или наоборот), это будет
-    // видно по падению именно этого теста.
     fn getters_reflect_initial_state() {
         let s = session_v1();
         assert_eq!(s.destroyed(), false);
@@ -1047,18 +927,12 @@ mod tests {
     // ---------------------------------------------------------------------
 
     #[test]
-    // `destroy()` должен не только выставить флаг, но и очистить всё
-    // состояние: ожидающие переходы, отложенный external sender, ссылки
-    // на нативную сессию, last_transition_id, вторичные флаги.
     fn destroy_sets_destroyed_and_clears_state() {
         let mut s = session_v1();
-        s.pending_transitions.insert(
-            1,
-            PendingTransition {
-                version: 1,
-                expires_at: Instant::now() + Duration::from_secs(60),
-            },
-        );
+        s.pending_transitions.insert(1, PendingTransition {
+            version: 1,
+            expires_at: Instant::now() + Duration::from_secs(60),
+        });
         s.pending_external_sender = Some(vec![1, 2, 3]);
         s.last_transition_id = Some(9);
 
@@ -1075,8 +949,6 @@ mod tests {
     }
 
     #[test]
-    // Повторный `destroy()` не должен ничего ломать: второй вызов видит
-    // `destroyed == true` и сразу выходит.
     fn destroy_is_idempotent() {
         let mut s = session_v1();
         s.destroy();
@@ -1085,31 +957,18 @@ mod tests {
     }
 
     #[test]
-    // Уничтоженная сессия не реагирует на `prepare_epoch`: возвращает
-    // None и не трогает поле `version`.
     fn destroyed_short_circuits_prepare_epoch() {
         let mut s = session_v1();
         s.destroy();
         assert!(s.prepare_epoch(1, 5).unwrap().is_none());
-        // version не должен был измениться.
         assert_eq!(s.version, 1);
     }
 
     #[test]
-    // Уничтоженная сессия не запускает повторную инициализацию.
     fn destroyed_short_circuits_reinit() {
         let mut s = session_v1();
         s.destroy();
         assert!(s.reinit().unwrap().is_none());
-    }
-
-    #[test]
-    // Уничтоженная сессия не пытается восстанавливаться после
-    // невалидного перехода.
-    fn destroyed_short_circuits_recover() {
-        let mut s = session_v1();
-        s.destroy();
-        assert!(s.recover_from_invalid_transition(1).unwrap().is_none());
     }
 
     // ---------------------------------------------------------------------
@@ -1117,8 +976,6 @@ mod tests {
     // ---------------------------------------------------------------------
 
     #[test]
-    // Идентификаторы — положительные числа вплоть до `u64::MAX`.
-    // Ноль допустим: это валидное значение для snowflake-подобных id.
     fn parse_id_accepts_valid_numbers() {
         assert_eq!(MlsSession::parse_id("123", "user id").unwrap(), 123);
         assert_eq!(MlsSession::parse_id("0", "user id").unwrap(), 0);
@@ -1129,8 +986,6 @@ mod tests {
     }
 
     #[test]
-    // Всё, что не является десятичным числом без знака, отвергается:
-    // буквы, пустая строка, отрицательное значение, дробное.
     fn parse_id_rejects_invalid_input() {
         assert!(MlsSession::parse_id("abc", "user id").is_err());
         assert!(MlsSession::parse_id("", "user id").is_err());
@@ -1143,16 +998,18 @@ mod tests {
     // ---------------------------------------------------------------------
 
     #[test]
-    // Протокол сейчас знает только два кода операций: 0 и 1.
-    // Оба должны отображаться в APPEND.
     fn map_operation_accepts_0_and_1() {
-        assert!(MlsSession::map_operation(0).is_ok());
-        assert!(MlsSession::map_operation(1).is_ok());
+        assert_eq!(
+            MlsSession::map_operation(0).unwrap(),
+            davey::ProposalsOperationType::APPEND,
+        );
+        assert_eq!(
+            MlsSession::map_operation(1).unwrap(),
+            davey::ProposalsOperationType::REVOKE,
+        );
     }
 
     #[test]
-    // Всё, что не 0 и не 1, считается неизвестной операцией и
-    // превращается в ошибку — не должно молча проходить дальше.
     fn map_operation_rejects_unknown() {
         assert!(MlsSession::map_operation(2).is_err());
         assert!(MlsSession::map_operation(255).is_err());
@@ -1163,9 +1020,6 @@ mod tests {
     // ---------------------------------------------------------------------
 
     #[test]
-    // Проверяет, что `map_err` добавляет префикс `[MlsSession]` к тексту
-    // ошибки, но не теряет сам текст. Префикс нужен для поиска источника
-    // в логах.
     fn map_err_adds_prefix() {
         let err = MlsSession::map_err("boom");
         let msg = format!("{}", err);
@@ -1181,7 +1035,6 @@ mod tests {
     // ---------------------------------------------------------------------
 
     #[test]
-    // Запись с `expires_at` в прошлом считается устаревшей и удаляется.
     fn expire_transitions_removes_expired_entries() {
         let mut s = session_v1();
         s.pending_transitions.insert(
@@ -1198,7 +1051,6 @@ mod tests {
     }
 
     #[test]
-    // Свежая запись (срок в будущем) должна остаться.
     fn expire_transitions_keeps_fresh_entries() {
         let mut s = session_v1();
         s.pending_transitions.insert(
@@ -1215,8 +1067,6 @@ mod tests {
     }
 
     #[test]
-    // Смешанный случай: одна запись истекла, другая — нет. Удаляется
-    // только истёкшая, по ключу проверяется, что осталась именно свежая.
     fn expire_transitions_mixed() {
         let mut s = session_v1();
         s.pending_transitions.insert(
@@ -1241,7 +1091,6 @@ mod tests {
     }
 
     #[test]
-    // `clear_transitions` удаляет всё, что есть в мапе, независимо от сроков.
     fn clear_transitions_empties_map() {
         let mut s = session_v1();
         s.pending_transitions.insert(
@@ -1261,34 +1110,24 @@ mod tests {
     // ---------------------------------------------------------------------
 
     #[test]
-    // Переход с ненулевым id только регистрируется: `is_transitioning`
-    // остаётся false, `last_transition_id` не выставляется, `version`
-    // не меняется. Всё это произойдёт только в `execute_transition`.
     fn prepare_transition_with_nonzero_id_defers() {
         let mut s = session_v0();
         assert!(s.prepare_transition(5, 1));
         assert_eq!(s.pending_transitions.len(), 1);
         assert!(!s.is_transitioning);
         assert_eq!(s.last_transition_id(), None);
-        // version ещё не поменялся — переход отложен.
         assert_eq!(s.version, 0);
     }
 
     #[test]
-    // Переход с id == 0 выполняется сразу внутри `prepare_transition`.
-    // Возвращаемое значение — false, потому что вызывающему не нужно
-    // потом звать `execute_transition`.
     fn prepare_transition_with_zero_id_executes_immediately() {
         let mut s = session_v0();
-        // Для id == 0 возвращаемое значение — false.
         assert!(!s.prepare_transition(0, 0));
         assert_eq!(s.last_transition_id(), Some(0));
         assert!(s.pending_transitions.is_empty());
     }
 
     #[test]
-    // `execute_transition` без предварительной регистрации ничего не делает:
-    // в мапе нет записи, значит и переходить некуда.
     fn execute_transition_with_unknown_id_returns_false() {
         let mut s = session_v1();
         assert!(!s.execute_transition(42));
@@ -1296,9 +1135,6 @@ mod tests {
     }
 
     #[test]
-    // Обычный сценарий: зарегистрировали — выполнили. После выполнения
-    // запись удаляется, `last_transition_id` выставляется, флаг
-    // `is_transitioning` снимается.
     fn execute_transition_with_registered_id_succeeds() {
         let mut s = session_v0();
         s.prepare_transition(7, 0);
@@ -1309,9 +1145,6 @@ mod tests {
     }
 
     #[test]
-    // Переход с ненулевой версии на нулевую выставляет флаг `downgraded`.
-    // Он используется позже: при возврате к ненулевой версии включается
-    // passthrough на короткое время.
     fn execute_transition_downgrade_to_zero_sets_flag() {
         let mut s = session_v1();
         s.prepare_transition(3, 0);
@@ -1321,9 +1154,6 @@ mod tests {
     }
 
     #[test]
-    // Защита от повторного входа: если `is_transitioning` уже стоит,
-    // `execute_transition` обязан вернуть false и не начинать второй
-    // переход поверх первого.
     fn execute_transition_reentry_blocked() {
         let mut s = session_v0();
         s.prepare_transition(1, 0);
@@ -1336,7 +1166,6 @@ mod tests {
     // ---------------------------------------------------------------------
 
     #[test]
-    // Эпоха 0 не считается началом: `prepare_epoch` её игнорирует.
     fn prepare_epoch_ignores_epoch_zero() {
         let mut s = session_v1();
         assert!(s.prepare_epoch(0, 5).unwrap().is_none());
@@ -1344,7 +1173,6 @@ mod tests {
     }
 
     #[test]
-    // Только эпоха 1 запускает инициализацию. Эпоха 2 и далее — игнор.
     fn prepare_epoch_ignores_non_first_epoch() {
         let mut s = session_v1();
         assert!(s.prepare_epoch(2, 5).unwrap().is_none());
@@ -1352,8 +1180,6 @@ mod tests {
     }
 
     #[test]
-    // Если уже идёт повторная инициализация — новый `prepare_epoch`
-    // не должен её прерывать или запускать параллельно.
     fn prepare_epoch_skipped_while_reinitializing() {
         let mut s = session_v1();
         s.reinitializing = true;
@@ -1362,88 +1188,56 @@ mod tests {
     }
 
     // ---------------------------------------------------------------------
-    // recover_from_invalid_transition
+    // reinit
     // ---------------------------------------------------------------------
 
     #[test]
-    // Если уже идёт повторная инициализация, повторное восстановление
-    // не запускается.
-    fn recover_skipped_when_already_reinitializing() {
-        let mut s = session_v1();
-        s.reinitializing = true;
-        assert!(s.recover_from_invalid_transition(5).unwrap().is_none());
-    }
-
-    #[test]
-    // Восстановление очищает все ожидающие переходы: они больше
-    // не актуальны, потому что версия протокола будет пересобрана заново.
-    // После восстановления выставляется флаг `reinitializing`.
-    fn recover_clears_pending_transitions() {
-        let mut s = session_v0();
-        s.prepare_transition(1, 0);
-        assert_eq!(s.pending_transitions.len(), 1);
-
-        let _ = s.recover_from_invalid_transition(1).unwrap();
-
-        assert!(s.pending_transitions.is_empty());
-        assert!(s.reinitializing);
-    }
-
-    // ---------------------------------------------------------------------
-    // reinit / reset
-    // ---------------------------------------------------------------------
-
-    #[test]
-    // Для версии 0 при отсутствии нативной сессии `reinit` ничего
-    // не создаёт и возвращает None.
     fn reinit_version_zero_without_session_returns_none() {
         let mut s = session_v0();
         assert!(s.reinit().unwrap().is_none());
         assert!(s.inner.is_none());
     }
 
-    #[test]
-    // `reset` при отсутствии сессии — валидный no-op, а не ошибка.
-    // Упрощает вызывающему коду: не нужно проверять, создана ли сессия.
-    fn reset_without_session_is_ok() {
-        let mut s = session_v1();
-        assert!(s.reset().is_ok());
-    }
-
     // ---------------------------------------------------------------------
     // encrypt (без данных — только короткое замыкание)
     // ---------------------------------------------------------------------
 
-    #[test]
-    // Версия 0 = passthrough, шифрование не выполняется.
-    fn encrypt_version_zero_returns_none() {
-        let mut s = session_v0();
-        assert!(s.encrypt(Vec::new()).is_none());
+    /// Если шифрование невозможно, все пакеты считаются непереданными.
+    fn assert_all_failed(s: &mut MlsSession) {
+        let (out, failed) = s.encrypt(vec![vec![1], vec![2], vec![3]]);
+        assert!(out.is_empty());
+        assert_eq!(failed, 3);
     }
 
     #[test]
-    // Нативной сессии нет — шифровать нечем.
-    fn encrypt_without_session_returns_none() {
-        let mut s = session_v1();
-        assert!(s.encrypt(Vec::new()).is_none());
+    fn encrypt_version_zero_fails_all() {
+        assert_all_failed(&mut session_v0());
     }
 
     #[test]
-    // Во время перехода шифрование запрещено: версия протокола ещё
-    // не устоялась, шифровать нечем и некуда.
-    fn encrypt_while_transitioning_returns_none() {
+    fn encrypt_without_session_fails_all() {
+        assert_all_failed(&mut session_v1());
+    }
+
+    #[test]
+    fn encrypt_while_transitioning_fails_all() {
         let mut s = session_v1();
         s.is_transitioning = true;
-        assert!(s.encrypt(Vec::new()).is_none());
+        assert_all_failed(&mut s);
     }
 
     #[test]
-    // То же самое для повторной инициализации: пока состояние нестабильно,
-    // шифрование не запускается.
-    fn encrypt_while_reinitializing_returns_none() {
+    fn encrypt_while_reinitializing_fails_all() {
         let mut s = session_v1();
         s.reinitializing = true;
-        assert!(s.encrypt(Vec::new()).is_none());
+        assert_all_failed(&mut s);
+    }
+
+    #[test]
+    fn encrypt_empty_batch_is_not_a_failure() {
+        let (out, failed) = session_v1().encrypt(Vec::new());
+        assert!(out.is_empty());
+        assert_eq!(failed, 0);
     }
 
     // ---------------------------------------------------------------------
@@ -1451,25 +1245,9 @@ mod tests {
     // ---------------------------------------------------------------------
 
     #[test]
-    // Установка passthrough без нативной сессии — no-op: нативная сессия
-    // не должна создаваться «побочным эффектом» сеттера.
     fn set_passthrough_mode_without_session_is_noop() {
         let mut s = session_v1();
         s.set_passthrough_mode(true, Some(10));
-        // Нативной сессии нет — она не должна была создаться.
         assert!(s.inner.is_none());
-    }
-
-    // ---------------------------------------------------------------------
-    // get_serialized_key_package без сессии
-    // ---------------------------------------------------------------------
-
-    #[test]
-    // Без нативной сессии key-package создать нельзя: метод обязан
-    // вернуть ошибку, а не панику и не пустой вектор.
-    fn get_serialized_key_package_without_session_errors() {
-        let mut s = session_v1();
-        // Возвращаемый тип Result<Vec<u8>>, но нам достаточно is_err().
-        assert!(s.get_serialized_key_package().is_err());
     }
 }

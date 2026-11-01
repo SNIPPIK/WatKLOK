@@ -3,7 +3,7 @@ use std::{fmt, time::Instant};
 /// Ошибка MLS-сессии (текстовая причина, как раньше у napi-ошибки).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MlsError {
-  reason: String,
+  reason: String
 }
 
 impl MlsError {
@@ -11,19 +11,12 @@ impl MlsError {
   pub fn from_reason(reason: impl Into<String>) -> Self {
     Self { reason: reason.into() }
   }
-
-  /// Текст ошибки.
-  pub fn reason(&self) -> &str {
-    &self.reason
-  }
 }
-
 impl fmt::Display for MlsError {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     f.write_str(&self.reason)
   }
 }
-
 impl std::error::Error for MlsError {}
 
 /// Результат операций MLS-сессии.
@@ -40,7 +33,7 @@ pub struct ProposalsResult {
   pub commit: Option<Vec<u8>>,
 
   /// Данные welcome. `None`, если новых участников нет.
-  pub welcome: Option<Vec<u8>>,
+  pub welcome: Option<Vec<u8>>
 }
 
 /// Результат обработки commit или welcome.
@@ -57,7 +50,7 @@ pub struct TransitionResult {
   /// `true`, если переход признан невалидным и требует повторной инициализации.
   /// Устанавливается только при первой ошибке; повторные ошибки во время
   /// уже начатой повторной инициализации сигнал не выставляют.
-  pub invalidated: bool,
+  pub invalidated: bool
 }
 
 /// Запись об ожидаемом переходе.
@@ -71,5 +64,5 @@ pub struct PendingTransition {
 
   /// Момент времени, после которого запись считается устаревшей.
   /// Вычисляется как `Instant::now() + TRANSITION_TIMEOUT`.
-  pub(crate) expires_at: Instant,
+  pub(crate) expires_at: Instant
 }

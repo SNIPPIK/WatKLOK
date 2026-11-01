@@ -1,18 +1,18 @@
-use crate::structures::timers::scheduler::constants::TICK_INTERVAL_MS;
-use std::{
-    sync::{
-        atomic::{AtomicU16, AtomicU32, Ordering},
-        RwLock,
+use crate::utils::duration::FRAME_DURATION_MS;
+use {
+    parking_lot::RwLock,
+    std::{
+        sync::atomic::{compiler_fence, AtomicU16, AtomicU32, Ordering},
+        fmt
     },
-    fmt,
-};
-use aes_gcm::{
-    aead::{KeyInit, AeadInOut, inout::InOutBuf},
-    Aes256Gcm, Nonce
-};
-use rand::{
-    RngExt,
-    rng
+    aes_gcm::{
+        aead::{KeyInit, AeadInOut, inout::InOutBuf},
+        Aes256Gcm, Nonce
+    },
+    rand::{
+        RngExt,
+        rng
+    }
 };
 
 /// Размер RTP-заголовка без расширений (байт).
@@ -63,9 +63,36 @@ const RTP_PAYLOAD_TYPE_OPUS: u8 = 120;
 
 /// Приращение временной метки RTP для одного пакета.
 ///
-/// Для Opus с частотой дискретизации 48 кГц и кадрами по 20 мс получаем 960 семплов.
-/// `TICK_INTERVAL_MS` — интервал цикла отправки (20 мс).
-const TIMESTAMP_INC: u32 = 48000 * (TICK_INTERVAL_MS as u32) / 1000;
+/// Opus 48 кГц, кадр `FRAME_DURATION_MS` (20 мс) = 960 отсчётов.
+const TIMESTAMP_INC: u32 = 48000 * (FRAME_DURATION_MS as u32) / 1000;
+
+// ============================================================================
+// Зануление ключевого материала
+// ============================================================================
+
+/// Гарантированно записывает нули в `bytes`.
+///
+/// Обычный цикл `*b = 0` компилятор вправе выбросить как «мёртвую запись»,
+/// если буфер дальше не читается — а ради этого буфер и зануляется.
+/// `write_volatile` такую оптимизацию запрещает, `compiler_fence` не даёт
+/// переставить запись за пределы функции.
+fn wipe(bytes: &mut [u8]) {
+    for byte in bytes.iter_mut() {
+        // SAFETY: `byte` — валидная уникальная ссылка на инициализированный u8.
+        unsafe { std::ptr::write_volatile(byte, 0) };
+    }
+    compiler_fence(Ordering::SeqCst);
+}
+
+/// Владеет копией ключа и зануляет её при любом выходе из функции
+/// (в том числе через `?` и раннюю ошибку).
+struct WipeOnDrop(Vec<u8>);
+
+impl Drop for WipeOnDrop {
+    fn drop(&mut self) {
+        wipe(&mut self.0);
+    }
+}
 
 // ============================================================================
 // Ошибки криптографических операций
@@ -125,38 +152,44 @@ struct EncryptorState {
 /// - `timestamp` – 32-битная метка времени, увеличивается на `TIMESTAMP_INC` для каждого пакета.
 /// - `counter` – 32-битный счётчик nonce (используется как первые 4 байта 12-байтового nonce).
 ///
-/// # ЗАМЕЧАНИЕ ПО БЕЗОПАСНОСТИ NONCE
+/// # Безопасность nonce
 ///
-/// Случайный старт `counter` в [`initialize`] безопасен **только в том
-/// случае**, если Discord выдаёт НОВЫЙ ключ при каждом вызове `initialize`
-/// (например, при переподключении/resume). Если это предположение
-/// когда-либо нарушится — т.е. `initialize` будет вызван повторно с тем же
-/// ключом, — два сеанса независимо, со случайных точек, будут
-/// инкрементировать один и тот же 32-битный nonce-счётчик по одному и тому
-/// же пространству значений. По "парадоксу дней рождения" заметная
-/// вероятность коллизии появляется уже на десятках-сотнях тысяч пакетов за
-/// сеанс, а коллизия nonce при AES-GCM с одним и тем же ключом полностью
-/// ломает и конфиденциальность, и аутентификацию для столкнувшихся
-/// пакетов. Если гарантия "новый ключ на каждый initialize" не закреплена
-/// протоколом — счётчик нужно не рандомизировать заново, а хранить и
-/// увеличивать монотонно на весь срок жизни ключа.
+/// Для AES-GCM повтор пары (ключ, nonce) полностью ломает и
+/// конфиденциальность, и аутентификацию. Поэтому `counter` стартует
+/// случайно только в [`new`] и дальше **только растёт**: ни `initialize`,
+/// ни `destroy` его не трогают. Так повторная инициализация не может
+/// породить коллизию ни при новом ключе (nonce тогда не важен), ни при
+/// том же самом (например, resume или `destroy` + `initialize` с прежним
+/// ключом) — счётчик просто продолжает счёт. Раньше `initialize`
+/// перебрасывал счётчик случайно, а `destroy` обнулял его: при повторе
+/// ключа это давало коллизии «на днях рождения» (десятки тысяч пакетов)
+/// или гарантированный повтор после `destroy`. Бонус — безопасность
+/// больше не зависит от предположения «Discord выдаёт новый ключ на
+/// каждый `initialize`».
+///
+/// 32 бита хватает на ~2,7 года непрерывной отправки по 50 пакетов/с на
+/// одном ключе; ключ живёт в пределах голосовой сессии.
 ///
 /// # Потокобезопасность
-/// Все публичные методы принимают `&self`. Состояние шифра защищено `RwLock`.
+/// Все публичные методы принимают `&self`. Состояние шифра защищено `RwLock`
+/// (`parking_lot`: без отравления, поэтому паника в одном потоке не
+/// превращается в вечные `expect`-паники горячего пути у остальных).
 /// `initialize` и `destroy` берут write-lock и держат его на всё время
 /// изменения счётчиков — это важно: если сброс/установка счётчиков
 /// происходит не под тем же write-lock, что и запись `state`, конкурентные
 /// вызовы `initialize`/`destroy` могут переплестись и оставить свежий
-/// шифр с чужими (например, обнулёнными) счётчиками. `packet`/`packets`
-/// берут read-lock.
+/// шифр с чужими счётчиками. `packet_into` и `is_initialized` берут read-lock.
+///
+/// `packet_into` читает и продвигает `sequence`/`timestamp` двумя отдельными
+/// шагами, поэтому вызывающий обязан сериализовать его для одного сокета.
+/// В планировщике это обеспечивает мьютекс `Prepared` в `SocketInner`.
 pub struct VoiceRTPSocket {
     /// Состояние шифра; `None`, пока не вызван `initialize`.
     state: RwLock<Option<EncryptorState>>,
 
     /// Порядковый номер RTP-пакета (16 бит, оборачивается).
     ///
-    /// Продвигается только при отправке реального RTP-пакета —
-    /// sequence нумерует именно отправленные пакеты.
+    /// Продвигается на каждый собранный RTP-пакет (`packet_into`).
     /// При молчании и keepalive не двигается.
     sequence: AtomicU16,
 
@@ -164,8 +197,7 @@ pub struct VoiceRTPSocket {
     ///
     /// Продвигается на `TIMESTAMP_INC` (960 сэмплов = 20 мс) за каждый
     /// Opus-фрейм. При молчании продолжает расти (см. `advance_timestamp`),
-    /// чтобы timeline на стороне получателя не «застыла» — это требование
-    /// заимствовано из songbird.
+    /// чтобы timeline на стороне получателя не «застыла»
     timestamp: AtomicU32,
 
     /// Счётчик nonce (32 бита, инкрементируется после каждого использования).
@@ -203,33 +235,25 @@ impl VoiceRTPSocket {
     /// Продвигает sequence (+1) и timestamp (+`TIMESTAMP_INC`) на один
     /// Opus-фрейм.
     ///
-    /// Вызывается ровно один раз на каждый **реально отправленный** RTP-пакет.
-    /// В steady state (один пакет за тик) это ровно `+1 / +960` на 20 мс —
-    /// идеальное соответствие реальному времени.
-    ///
-    /// При burst'е (несколько пакетов за один тик) каждый пакет получает
-    /// свою позицию в timeline: seq N, N+1, N+2 и ts T, T+960, T+1920.
-    /// Это семантически корректно — это три разных 20-мс Opus-фрейма,
-    /// которые будут проиграны последовательно, даже если пришли одновременно.
+    /// Вызывается ровно один раз на каждый собранный RTP-пакет. В штатном
+    /// режиме (один пакет за тик) это `+1 / +960` на 20 мс. Если несколько
+    /// пакетов уходят за один тик (догоняющая отправка), каждый получает
+    /// свою позицию в timeline: seq N, N+1 и ts T, T+960.
     #[inline]
     fn advance_counters(&self) {
         self.sequence.fetch_add(1, Ordering::Relaxed);
         self.timestamp.fetch_add(TIMESTAMP_INC, Ordering::Relaxed);
     }
 
-    /// Продвигает только timestamp на `TIMESTAMP_INC`, **не трогая sequence**.
+    /// Продвигает timestamp на `frames` кадров (по 20 мс), не трогая sequence.
     ///
-    /// Используется, когда за тик не отправлено ни одного RTP-пакета
-    /// (молчание, пауза трека, только keepalive). Sequence не двигается —
-    /// он нумерует отправленные пакеты, а их не было.
-    ///
-    /// Зачем двигать timestamp в тишине: получатель использует timestamp
-    /// для reorder и расчёта джиттера относительно своих часов. Если
-    /// timestamp «застынет», при возобновлении потока получится скачок
-    /// timeline, и Discord уйдёт в accelerated playback или в NACK-шторм.
+    /// Планировщик не тикает для простаивающих сессий, поэтому провал в потоке
+    /// (пауза, молчание) компенсируется одним шагом при возобновлении отправки.
+    /// Умножение по модулю 2^32, как и сам timestamp: переполнение — норма RTP.
     #[inline]
-    pub(crate) fn advance_timestamp(&self) {
-        self.timestamp.fetch_add(TIMESTAMP_INC, Ordering::Relaxed);
+    pub(crate) fn advance_timestamp(&self, frames: u64) {
+        let delta = (frames as u32).wrapping_mul(TIMESTAMP_INC);
+        self.timestamp.fetch_add(delta, Ordering::Relaxed);
     }
 
     /// Инициализирует RTP-сокет.
@@ -238,9 +262,12 @@ impl VoiceRTPSocket {
     /// * `ssrc` — 32-битный идентификатор источника синхронизации.
     /// * `key` — 32-байтный ключ AES-256-GCM.
     ///
-    /// При каждой инициализации RTP-счётчики получают новые
-    /// случайные начальные значения — это защищает от повторного
-    /// использования nonce при повторном подключении
+    /// При каждой инициализации `sequence` и `timestamp` получают новые
+    /// случайные значения (новая RTP-«временная линия»). Счётчик nonce
+    /// НЕ сбрасывается — он только растёт (см. «Безопасность nonce»).
+    ///
+    /// Копия ключа, переданная по значению, зануляется на любом пути
+    /// выхода, включая ошибку длины.
     ///
     /// # Возвращаемое значение
     /// `Ok(())` при успешной инициализации.
@@ -248,43 +275,37 @@ impl VoiceRTPSocket {
     /// # Ошибки
     /// * `InvalidKeyLength` — ключ имеет неверную длину.
     /// * `EncryptionFailed` — не удалось создать AES-GCM cipher.
-    pub fn initialize(&self, ssrc: u32, mut key: Vec<u8>) -> Result<(), CryptoError> {
+    pub fn initialize(&self, ssrc: u32, key: Vec<u8>) -> Result<(), CryptoError> {
+        // С этого момента ключ принадлежит охраннику и будет занулён при
+        // выходе из функции — в том числе на ранних `return`/`?` ниже.
+        let key = WipeOnDrop(key);
+
         // Проверяем длину ключа — AES-256 требует ровно 32 байта.
-        if key.len() != KEY_SIZE {
-            return Err(CryptoError::InvalidKeyLength(key.len()));
+        if key.0.len() != KEY_SIZE {
+            return Err(CryptoError::InvalidKeyLength(key.0.len()));
         }
 
-        // Копируем ключ в массив фиксированной длины.
-        let mut key_array = [0u8; KEY_SIZE];
-        key_array.copy_from_slice(&key);
-
-        // Создаём шифр AES-256-GCM из ключа.
-        let cipher = Aes256Gcm::new_from_slice(&key_array)
+        // Создаём шифр AES-256-GCM прямо из переданного ключа: лишняя копия
+        // в стековом массиве не нужна (и её пришлось бы тоже занулять).
+        // Раундовые ключи внутри `Aes256Gcm` зануляются при его Drop
+        // (включена feature `zeroize`).
+        let cipher = Aes256Gcm::new_from_slice(&key.0)
             .map_err(|_| {
                 CryptoError::EncryptionFailed("invalid AES-256 key".into())
             })?;
 
-        // Обнуляем ключевой материал в памяти сразу после того, как он
-        // скопирован в cipher — простая защита без зависимости от crate
-        for byte in key_array.iter_mut() {
-            *byte = 0;
-        }
-        for byte in key.iter_mut() {
-            *byte = 0;
-        }
-
-        // Готовим генератор случайных чисел для сброса счётчиков.
+        // Готовим генератор случайных чисел для новой RTP-линии.
         let mut rng = rng();
 
         // Держим write-lock на всё время: сброс счётчиков и публикация
         // нового состояния должны быть атомарны относительно destroy().
-        let mut guard = self.state.write().expect("RTP state lock poisoned");
+        let mut guard = self.state.write();
 
         // Счётчики не участвуют в синхронизации памяти между потоками
         // помимо того, что уже обеспечивает write-lock; достаточно Relaxed.
+        // `counter` намеренно не трогаем.
         self.sequence.store(rng.random(), Ordering::Relaxed);
         self.timestamp.store(rng.random(), Ordering::Relaxed);
-        self.counter.store(rng.random(), Ordering::Relaxed);
 
         // Публикуем новое состояние, не отпуская write-lock — это и даёт
         // атомарность относительно destroy().
@@ -299,34 +320,7 @@ impl VoiceRTPSocket {
     /// `true`, если `initialize` уже был вызван и состояние шифра присутствует.
     #[inline]
     pub fn is_initialized(&self) -> bool {
-        // Читаем состояние под read-lock, обрабатывая отравление мьютекса.
-        self.state
-            .read()
-            .expect("RTP state lock poisoned")
-            .is_some()
-    }
-
-    /// Шифрует один Opus-фрейм и возвращает полный RTP-пакет.
-    ///
-    /// Формат результата:
-    ///
-    /// ```text
-    /// [RTP header][encrypted payload][GCM tag][nonce suffix]
-    /// ```
-    ///
-    /// # Аргументы
-    /// * `frame` — байтовый срез с Opus-данными.
-    ///
-    /// # Возвращаемое значение
-    /// `Vec<u8>` с готовым RTP-пакетом.
-    ///
-    /// # Ошибки
-    /// * `NotInitialized` — сокет ещё не инициализирован.
-    /// * `EncryptionFailed` — ошибка AES-GCM.
-    #[inline]
-    pub fn packet(&self, frame: &[u8]) -> Result<Vec<u8>, CryptoError> {
-        // Вся логика — в create_packet_raw.
-        self.create_packet_raw(frame)
+        self.state.read().is_some()
     }
 
     /// Генерирует 12-байтовый nonce для AES-GCM.
@@ -352,20 +346,18 @@ impl VoiceRTPSocket {
         nonce
     }
 
-    /// Формирует и шифрует полный RTP-пакет.
+    /// Формирует и шифрует RTP-пакет в переданный буфер (без аллокации, если
+    /// ёмкости `out` хватает). Буфер перед записью очищается.
     ///
-    /// # Аргументы
-    /// * `frame` — незашифрованный Opus-фрейм.
-    ///
-    /// # Возвращаемое значение
-    /// Готовый к отправке RTP-пакет.
+    /// Нужен горячему пути планировщика: аллокация на каждом тике берёт общий
+    /// лок аллокатора и может ждать другие потоки (например, `malloc_trim`).
     ///
     /// # Ошибки
     /// * `NotInitialized` — сокет не инициализирован.
     /// * `EncryptionFailed` — ошибка AES-GCM.
-    fn create_packet_raw(&self, frame: &[u8]) -> Result<Vec<u8>, CryptoError> {
+    pub fn packet_into(&self, frame: &[u8], out: &mut Vec<u8>) -> Result<(), CryptoError> {
         // Держим read-lock на всё время шифрования.
-        let guard = self.state.read().expect("RTP state lock poisoned");
+        let guard = self.state.read();
 
         // Если состояние отсутствует — сокет не инициализирован.
         let state = guard
@@ -379,41 +371,44 @@ impl VoiceRTPSocket {
         let nonce_bytes = self.generate_nonce();
         let nonce = Nonce::from(nonce_bytes);
 
-        // Выделяем память под весь пакет заранее.
-        let mut packet = Vec::with_capacity(
+        // Память под весь пакет резервируем заранее.
+        out.clear();
+        out.reserve(
             RTP_HEADER_SIZE
                 + frame.len()
                 + GCM_TAG_SIZE
-                + NONCE_COUNTER_SIZE,
+                + NONCE_COUNTER_SIZE
         );
 
         // RTP header остаётся открытым и используется как AAD.
-        packet.extend_from_slice(&header);
+        out.extend_from_slice(&header);
 
         // Добавляем исходный Opus payload.
-        packet.extend_from_slice(frame);
+        out.extend_from_slice(frame);
 
         // Шифруем payload непосредственно внутри итогового буфера.
-        let payload = &mut packet[RTP_HEADER_SIZE..];
+        let payload = &mut out[RTP_HEADER_SIZE..];
 
-        let tag = state
+        let tag = match state
             .cipher
-            .encrypt_inout_detached(
-                &nonce,
-                &header,
-                InOutBuf::from(payload),
-            )
-            .map_err(|error| {
-                CryptoError::EncryptionFailed(error.to_string())
-            })?;
+            .encrypt_inout_detached(&nonce, &header, InOutBuf::from(payload))
+        {
+            Ok(tag) => tag,
+            Err(error) => {
+                // В `out` лежит заголовок и открытый Opus-кадр: не оставляем
+                // его в переиспользуемом буфере.
+                out.clear();
+                return Err(CryptoError::EncryptionFailed(error.to_string()));
+            }
+        };
 
         // GCM authentication tag.
-        packet.extend_from_slice(tag.as_slice());
-        packet.extend_from_slice(&nonce_bytes[..NONCE_COUNTER_SIZE]);
+        out.extend_from_slice(tag.as_slice());
+        out.extend_from_slice(&nonce_bytes[..NONCE_COUNTER_SIZE]);
 
         // Пакет успешно собран — продвигаем RTP-счётчики.
         self.advance_counters();
-        Ok(packet)
+        Ok(())
     }
 
     /// Собирает 12-байтовый RTP-заголовок из ТЕКУЩИХ значений sequence/timestamp.
@@ -421,10 +416,6 @@ impl VoiceRTPSocket {
     /// Не мутирует состояние. Продвижение счётчиков выполняют
     /// [`advance_counters`] (обычный пакет) и [`advance_timestamp`]
     /// (холостой тик) — вызывающие обязаны дёрнуть один из них.
-    ///
-    /// Модель заимствована из songbird (`driver/tasks/mixer`): заголовок —
-    /// чистая функция от текущего состояния, а продвижение — явная операция,
-    /// которую легко увидеть и легко не забыть.
     #[inline]
     fn build_header(&self, ssrc: u32) -> [u8; RTP_HEADER_SIZE] {
         // Инициализируем заголовок нулями.
@@ -451,18 +442,20 @@ impl VoiceRTPSocket {
         header
     }
 
-    /// Сбрасывает состояние шифрования и счётчики.
+    /// Сбрасывает состояние шифрования: шифр (и его ключевой материал,
+    /// зануляется при Drop) удаляется, RTP-счётчики обнуляются.
     ///
+    /// `counter` nonce НЕ обнуляется: после `destroy` + `initialize` с тем
+    /// же ключом сброс в 0 повторил бы уже использованные nonce.
     /// После вызова требуется повторный [`initialize`].
     /// Повторный вызов безопасен.
     #[inline]
     pub fn destroy(&self) {
-        let mut guard = self.state.write().expect("RTP state lock poisoned");
+        let mut guard = self.state.write();
         *guard = None;
 
         self.sequence.store(0, Ordering::Relaxed);
         self.timestamp.store(0, Ordering::Relaxed);
-        self.counter.store(0, Ordering::Relaxed);
     }
 }
 
@@ -473,22 +466,163 @@ impl Default for VoiceRTPSocket {
     }
 }
 
-/// Деструктор: сбрасывает состояние шифра и счётчики.
-///
-/// В отладочной сборке выводит сообщение о вызове.
+/// Деструктор: удаляет шифр (его ключевой материал зануляется при Drop).
 impl Drop for VoiceRTPSocket {
     fn drop(&mut self) {
-        if let Ok(mut guard) = self.state.write() {
-            *guard = None;
-        }
+        // `&mut self`: других владельцев нет, берём состояние без блокировки.
+        // Drop шифра зануляет раундовые ключи.
+        *self.state.get_mut() = None;
+    }
+}
 
-        // Сбрасываем счётчики.
-        self.sequence.store(0, Ordering::Relaxed);
-        self.timestamp.store(0, Ordering::Relaxed);
-        self.counter.store(0, Ordering::Relaxed);
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-        // Отладочный вывод.
-        #[cfg(debug_assertions)]
-        println!("VoiceRTPSocket::drop");
+    const KEY: [u8; KEY_SIZE] = [0x42; KEY_SIZE];
+    const SSRC: u32 = 0x0102_0304;
+
+    fn ready_socket() -> VoiceRTPSocket {
+        let socket = VoiceRTPSocket::new();
+        socket.initialize(SSRC, KEY.to_vec()).unwrap();
+        socket
+    }
+
+    /// Неверная длина ключа — ошибка, состояние не инициализируется.
+    #[test]
+    fn rejects_wrong_key_length() {
+        let socket = VoiceRTPSocket::new();
+        assert!(matches!(
+            socket.initialize(SSRC, vec![0; 16]),
+            Err(CryptoError::InvalidKeyLength(16))
+        ));
+        assert!(!socket.is_initialized());
+    }
+
+    /// До `initialize` пакет собрать нельзя.
+    #[test]
+    fn packet_requires_initialization() {
+        let socket = VoiceRTPSocket::new();
+        let mut out = Vec::new();
+        assert!(matches!(
+            socket.packet_into(b"opus", &mut out),
+            Err(CryptoError::NotInitialized)
+        ));
+    }
+
+    /// Формат пакета: заголовок | шифртекст | тег(16) | nonce(4); шифртекст
+    /// совпадает с эталонным шифрованием тем же шифром, заголовок — AAD.
+    #[test]
+    fn packet_layout_matches_reference_encryption() {
+        let socket = ready_socket();
+        socket.sequence.store(0xFFFE, Ordering::Relaxed);
+        socket.timestamp.store(1_000, Ordering::Relaxed);
+        socket.counter.store(7, Ordering::Relaxed);
+
+        let frame = b"opus-frame-payload";
+        let mut out = Vec::new();
+        socket.packet_into(frame, &mut out).unwrap();
+
+        assert_eq!(out.len(), RTP_HEADER_SIZE + frame.len() + GCM_TAG_SIZE + NONCE_COUNTER_SIZE);
+
+        // Заголовок.
+        let header = &out[..RTP_HEADER_SIZE];
+        assert_eq!(header[0], RTP_VERSION);
+        assert_eq!(header[1], RTP_PAYLOAD_TYPE_OPUS);
+        assert_eq!(&header[2..4], &0xFFFEu16.to_be_bytes());
+        assert_eq!(&header[4..8], &1_000u32.to_be_bytes());
+        assert_eq!(&header[8..12], &SSRC.to_be_bytes());
+
+        // Nonce в хвосте — тот же счётчик, что использован при шифровании.
+        let nonce_tail = &out[out.len() - NONCE_COUNTER_SIZE..];
+        assert_eq!(nonce_tail, &7u32.to_be_bytes());
+
+        // Эталон: то же шифрование «снаружи».
+        let cipher = Aes256Gcm::new_from_slice(&KEY).unwrap();
+        let mut nonce_bytes = [0u8; NONCE_SIZE];
+        nonce_bytes[..NONCE_COUNTER_SIZE].copy_from_slice(&7u32.to_be_bytes());
+        let nonce = Nonce::from(nonce_bytes);
+        let mut expected = frame.to_vec();
+        let tag = cipher
+            .encrypt_inout_detached(&nonce, header, InOutBuf::from(expected.as_mut_slice()))
+            .unwrap();
+
+        let body = &out[RTP_HEADER_SIZE..RTP_HEADER_SIZE + frame.len()];
+        assert_eq!(body, expected.as_slice(), "шифртекст");
+        assert_ne!(body, frame.as_slice(), "payload не должен лежать открытым");
+        let tag_in_packet = &out[RTP_HEADER_SIZE + frame.len()..out.len() - NONCE_COUNTER_SIZE];
+        assert_eq!(tag_in_packet, tag.as_slice(), "тег");
+    }
+
+    /// Каждый пакет: sequence +1, timestamp +960, nonce +1; sequence
+    /// оборачивается через 0xFFFF.
+    #[test]
+    fn counters_advance_per_packet() {
+        let socket = ready_socket();
+        socket.sequence.store(u16::MAX, Ordering::Relaxed);
+        socket.timestamp.store(u32::MAX - 100, Ordering::Relaxed);
+        socket.counter.store(u32::MAX, Ordering::Relaxed);
+
+        let mut out = Vec::new();
+        socket.packet_into(b"a", &mut out).unwrap();
+        socket.packet_into(b"b", &mut out).unwrap();
+
+        assert_eq!(socket.sequence.load(Ordering::Relaxed), 1);
+        assert_eq!(
+            socket.timestamp.load(Ordering::Relaxed),
+            (u32::MAX - 100).wrapping_add(2 * TIMESTAMP_INC)
+        );
+        assert_eq!(socket.counter.load(Ordering::Relaxed), 1, "wrap u32::MAX -> 0 -> 1");
+    }
+
+    /// Счётчик nonce не сбрасывается ни `initialize`, ни `destroy`:
+    /// повтор того же ключа не повторяет nonce.
+    #[test]
+    fn nonce_counter_survives_reinitialize_and_destroy() {
+        let socket = ready_socket();
+        socket.counter.store(1_000, Ordering::Relaxed);
+
+        let mut out = Vec::new();
+        socket.packet_into(b"x", &mut out).unwrap(); // использован 1000
+
+        socket.destroy();
+        assert_eq!(socket.counter.load(Ordering::Relaxed), 1_001);
+
+        socket.initialize(SSRC, KEY.to_vec()).unwrap();
+        assert_eq!(socket.counter.load(Ordering::Relaxed), 1_001);
+
+        socket.packet_into(b"y", &mut out).unwrap();
+        assert_eq!(&out[out.len() - NONCE_COUNTER_SIZE..], &1_001u32.to_be_bytes());
+    }
+
+    /// `destroy` возвращает сокет в неинициализированное состояние.
+    #[test]
+    fn destroy_clears_state() {
+        let socket = ready_socket();
+        assert!(socket.is_initialized());
+        socket.destroy();
+        assert!(!socket.is_initialized());
+        socket.destroy(); // повторный вызов безопасен
+    }
+
+    /// Пропуск кадров двигает timestamp, но не sequence.
+    #[test]
+    fn advance_timestamp_leaves_sequence_alone() {
+        let socket = ready_socket();
+        socket.sequence.store(5, Ordering::Relaxed);
+        socket.timestamp.store(0, Ordering::Relaxed);
+
+        socket.advance_timestamp(3);
+
+        assert_eq!(socket.sequence.load(Ordering::Relaxed), 5);
+        assert_eq!(socket.timestamp.load(Ordering::Relaxed), 3 * TIMESTAMP_INC);
+    }
+
+    /// `wipe` и охранник действительно обнуляют буфер.
+    #[test]
+    fn wipe_zeroes_buffer() {
+        let mut buf = vec![0xAAu8; 32];
+        wipe(&mut buf);
+        assert!(buf.iter().all(|&b| b == 0));
     }
 }

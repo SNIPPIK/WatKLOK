@@ -1,13 +1,16 @@
-use tokio::time::{interval, Duration, MissedTickBehavior};
-use serde_json::json;
-use std::sync::{
-    atomic::Ordering, Arc
+use {
+    tokio::time::{interval, Duration, MissedTickBehavior},
+    tokio_tungstenite::tungstenite::Message,
+    std::sync::{
+        atomic::Ordering, Arc
+    },
+    serde_json::json
 };
-use tokio_tungstenite::tungstenite::Message;
 use crate::{
+    discord::opcodes::discord_opcode,
     utils::duration::{mono_ms},
     structures::network::ws::{
-        opcodes::{discord_opcode, close_codes},
+        opcodes::ws_codes,
         inner::Inner,
         runtime
     }
@@ -29,9 +32,13 @@ const MAX_HEARTBEAT_MS: u64 = 300_000;
 /// 3. Создаёт задачу в собственном runtime с интервалом `interval_ms`.
 /// 4. Пропускает первый тик (он нужен только для синхронизации интервала).
 /// 5. На каждом следующем тике:
-///    - если `hb_pending` уже установлен — значит предыдущий heartbeat
-///      не подтверждён: отправляем `close` с кодом `SESSION_TIMEOUT`
-///      и выходим;
+///    - если `hb_pending` уже установлен — предыдущий heartbeat не
+///      подтверждён. Если за этот интервал от сервера не пришло вообще
+///      ничего (или отсрочка уже использована) — соединение мёртво:
+///      шлём `close` с кодом `SESSION_TIMEOUT` (ровно один раз) и просим
+///      задачу соединения остановиться, чтобы сокет не висел «зомби»;
+///    - если же другой трафик идёт (ACK просто задержался за тяжёлыми
+///      кадрами), даём ОДНУ отсрочку и шлём следующий heartbeat;
 ///    - иначе выставляем `hb_pending = true` и отправляем heartbeat-пакет
 ///      с текущим временем и последним полученным seq.
 ///
@@ -39,12 +46,21 @@ const MAX_HEARTBEAT_MS: u64 = 300_000;
 /// * `inner` — общее состояние WebSocket-клиента.
 /// * `interval_ms` — интервал между heartbeat в миллисекундах
 ///   (ограничивается диапазоном `MIN_HEARTBEAT_MS..=MAX_HEARTBEAT_MS`).
-pub fn start(inner: Arc<Inner>, interval_ms: u64) {
+/// * `generation` — поколение соединения, к которому относится heartbeat.
+///   Как только оно устарело (reset/новый connect), задача завершается
+///   и ничего не отправляет и не эмитит.
+pub fn start(inner: Arc<Inner>, interval_ms: u64, generation: u64) {
     // Ограничиваем интервал: `tokio::time::interval` паникует на нулевой
     // длительности, а значение приходит из внешнего HELLO-пакета.
     // При нуле задача умирала бы молча (handle никто не дожидается),
     // и соединение отваливалось бы по серверному таймауту через ~40 с.
     let interval_ms = interval_ms.clamp(MIN_HEARTBEAT_MS, MAX_HEARTBEAT_MS);
+
+    // HELLO от уже устаревшего соединения не должен запускать пульс:
+    // он убил бы heartbeat нового соединения (см. ниже `prev.abort()`).
+    if !inner.is_current(generation) {
+        return;
+    }
 
     // Прерываем предыдущий heartbeat, если он ещё работает.
     if let Some(prev) = inner.hb_task.lock().take() {
@@ -74,29 +90,59 @@ pub fn start(inner: Arc<Inner>, interval_ms: u64) {
         // для синхронизации последующих интервалов.
         ticker.tick().await;
 
+        // Когда ушёл предыдущий heartbeat: всё, что пришло от сервера
+        // позже, доказывает, что соединение живо.
+        let mut last_beat_ms = mono_ms();
+
+        // Отсрочка на задержанный ACK уже использована? Сбрасывается,
+        // как только ACK приходит.
+        let mut grace_used = false;
+
         loop {
             // Ждём следующего тика.
             ticker.tick().await;
 
-            // Если предыдущий heartbeat не получил ACK — это тайм-аут.
+            // Соединение заменено или сброшено — пульс больше не наш.
+            if !inner_task.is_current(generation) {
+                return;
+            }
+
             // swap возвращает предыдущее значение, что позволяет
             // обнаружить пропуск без отдельных проверок.
             if inner_task.hb_pending.swap(true, Ordering::SeqCst) {
-                inner_task.emit_json(
-                    "close",
-                    json!({
-                        "code": close_codes::SESSION_TIMEOUT,
-                        "reason": "HEARTBEAT_ACK timeout"
-                    })
-                );
-                return;
+                let heard_since_last_beat =
+                    inner_task.last_rx_ms.load(Ordering::Relaxed) > last_beat_ms;
+
+                if !heard_since_last_beat || grace_used {
+                    // Тишина целый интервал (или ACK не приходит уже второй
+                    // раз подряд) — это тайм-аут. `close` уходит один раз
+                    // (finish_connection дедуплицирует), затем сокет
+                    // закрывается штатно: без этого он оставался бы
+                    // открытым до `reset()` и мог бы прислать второй `close`.
+                    inner_task.finish_connection(
+                        generation,
+                        ws_codes::close::SESSION_TIMEOUT,
+                        "HEARTBEAT_ACK timeout"
+                    );
+                    inner_task.kill_connection(generation);
+                    return;
+                }
+
+                // ACK задержался, но сервер что-то присылал: даём одну
+                // отсрочку. Новый heartbeat всё равно отправляем ниже —
+                // ACK на любой из них снимет ожидание.
+                grace_used = true;
+            } else {
+                grace_used = false;
             }
+
+            last_beat_ms = mono_ms();
 
             // Формируем heartbeat-пакет: текущее время и последний seq,
             // полученный от сервера. По ним сервер понимает, какую
             // часть нашей истории мы видели.
             let packet = json!({
-                "op": discord_opcode::HEARTBEAT,
+                "op": discord_opcode::voice::HEARTBEAT,
                 "d": {
                     "t": mono_ms(),
                     "seq_ack": inner_task.sequence.load(Ordering::SeqCst)

@@ -1,5 +1,7 @@
-use tokio::runtime::{Builder, Runtime};
-use std::sync::OnceLock;
+use {
+    tokio::runtime::{Builder, Runtime},
+    std::sync::OnceLock
+};
 
 /// Глобальный Tokio-runtime, разделяемый всеми WebSocket-сессиями.
 ///

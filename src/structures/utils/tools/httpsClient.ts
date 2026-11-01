@@ -1,6 +1,7 @@
-import { createBrotliDecompress, createGunzip, createInflate } from "node:zlib";
+import { createBrotliDecompress, createDeflate, createGunzip } from "node:zlib";
 import { request as httpsRequest, RequestOptions } from "node:https";
 import { IncomingMessage, request as httpRequest } from "node:http";
+import { pipeline } from "node:stream";
 
 /**
  * @author SNIPPIK
@@ -26,14 +27,8 @@ export interface httpsClient_head {
  * @abstract
  */
 abstract class Request {
-    /** Требуется, если был выполнен редирект */
+    /** Требуется если есть редирект */
     protected _redirect_url: string | null = null;
-
-    /** Максимальное количество редиректов */
-    private static readonly MAX_REDIRECTS = 5;
-
-    /** Тайм-аут запроса по умолчанию */
-    private static readonly REQUEST_TIMEOUT = 2e3;
 
     /**
      * @description Данные для создания запроса
@@ -48,13 +43,12 @@ abstract class Request {
         headers?: RequestOptions["headers"];
 
         // Если мы хотим что-то отправить серверу
-        body?: string | Buffer;
+        body?: string;
 
         // Пользовательский User-Agent
         userAgent?: string | boolean;
     } & RequestOptions = {
-        timeout: Request.REQUEST_TIMEOUT,
-        sessionTimeout: Request.REQUEST_TIMEOUT,
+        sessionTimeout: 5e3,
         headers: {
             "Accept-Encoding": "gzip, deflate, br",
             "Priority": "u=5, i"
@@ -62,367 +56,198 @@ abstract class Request {
     };
 
     /**
-     * @description Выполняет HTTP/HTTPS-запрос.
+     * Выполняет HTTP/HTTPS-запрос с поддержкой автоматического следования редиректам (до 5).
+     * Возвращает Promise с объектом `IncomingMessage` (ответ сервера).
      *
-     * Поддерживает:
-     * - HTTP/HTTPS;
-     * - автоматические редиректы;
-     * - относительные и абсолютные Location;
-     * - ограничение количества редиректов;
-     * - тайм-аут;
-     * - POST/GET/HEAD/PATCH;
-     * - передачу Buffer/string body;
-     * - автоматическую установку Content-Length.
+     * @remarks
+     * - Метод учитывает настройки из `this.data` (метод, заголовки, тело, тайм-аут и т.д.).
+     * - При получении статуса 3xx (редирект) из заголовка `Location` формируется новый запрос.
+     * - Тело запроса отправляется только для методов, отличных от GET и HEAD.
+     * - Устанавливается заголовок `Content-Length` автоматически.
+     * - Тайм-аут соединения отслеживается через событие `timeout`.
+     * - При любой ошибке или превышении лимита редиректов Promise отклоняется.
      *
-     * @returns Promise<IncomingMessage | Error>
+     * @returns Promise, который разрешается объектом ответа или отклоняется с ошибкой.
+     *
+     * @throws {Error} При слишком большом количестве редиректов (>5).
+     * @throws {Error} При некорректном URL редиректа.
+     * @throws {Error} При превышении времени ожидания соединения.
+     * @throws {Error} При ошибке соединения (сеть, DNS, SSL).
+     *
+     * @example
+     * ```ts
+     * const client = new HttpsClient({ hostname: 'api.example.com', path: '/data' });
+     * const response = await client.request;
+     * console.log(response.statusCode);
+     * ```
      */
     public get request(): Promise<IncomingMessage | Error> {
-        this._redirect_url = null;
-
-        return this._request(this.data, 0);
-    }
-
-    /**
-     * @description Выполняет один HTTP-запрос с поддержкой редиректов.
-     *
-     * @param options - Параметры запроса
-     * @param redirectCount - Текущее количество редиректов
-     * @private
-     */
-    private _request(
-        options: typeof this.data,
-        redirectCount: number
-    ): Promise<IncomingMessage | Error> {
         return new Promise((resolve) => {
-            if (redirectCount > Request.MAX_REDIRECTS) {
-                resolve(new Error(
-                    "[httpsClient]: Too many redirects"
-                ));
-
-                return;
-            }
-
-            const protocol = this.getProtocolRequest(options.protocol);
-
-            let settled = false;
+            const options = { ...this.data };
 
             /**
-             * Гарантирует, что Promise будет завершён только один раз.
+             * Рекурсивная функция для выполнения запроса с обработкой редиректов.
+             * @param opts - Опции запроса (hostname, path, method, headers и т.д.)
+             * @param redirectCount - Текущее количество выполненных редиректов
              */
-            const finish = (result: IncomingMessage | Error) => {
-                if (settled) return;
+            const makeRequest = (opts: typeof options, redirectCount = 0) => {
+                // Строгий лимит редиректов (RFC)
+                if (redirectCount > 5) {
+                    return resolve(Error(`[httpsClient]: Too many redirects`));
+                }
 
-                settled = true;
-                resolve(result);
-            };
+                // Создаём запрос с использованием протокола (http/https)
+                const protocol = this.getProtocolRequest(opts.protocol);
 
-            const req = protocol(
-                options,
-                (res) => {
-                    const status = res.statusCode ?? 0;
-                    const location = res.headers.location;
-
-                    /**
-                     * ========================================================
-                     * REDIRECT
-                     * ========================================================
-                     */
-
-                    if (
-                        location &&
-                        status >= 300 &&
-                        status < 400
-                    ) {
-                        let redirect: URL;
+                const req = protocol(opts, (res) => {
+                    if (res.headers.location && res.statusCode && res.statusCode >= 300 && res.statusCode < 400) {
+                        const newUrl = res.headers.location;
+                        const newOptions = { ...opts };
 
                         try {
-                            const base =
-                                `${options.protocol}//${options.hostname}` +
-                                `${options.port ? `:${options.port}` : ""}`;
+                            // Корректно обрабатываем относительные редиректы
+                            const base = `${opts.protocol}//${opts.hostname}${opts.port ? `:${opts.port}` : ""}`;
+                            const parsedUrl = new URL(newUrl, base);
 
-                            redirect = new URL(location, base);
-                        } catch {
-                            res.resume();
+                            newOptions.hostname = parsedUrl.hostname;
+                            newOptions.protocol = parsedUrl.protocol;
+                            newOptions.path = parsedUrl.pathname + parsedUrl.search;
+                            newOptions.port = parsedUrl.port || (parsedUrl.protocol === "https:" ? "443" : "80");
 
-                            finish(new Error(
-                                `[httpsClient]: Invalid redirect URL: ${location}`
-                            ));
-
-                            return;
+                            this._redirect_url = parsedUrl.href;
+                        } catch (e) {
+                            return resolve(Error(`[httpsClient]: Invalid redirect URL: ${newUrl}`));
                         }
 
-                        /**
-                         * Сохраняем последний URL редиректа.
-                         */
-                        this._redirect_url = redirect.href;
-
-                        /**
-                         * Полностью потребляем старый response.
-                         */
+                        // Потребляем поток старого ответа, чтобы избежать зависания сокетов
                         res.resume();
 
-                        /**
-                         * Создаём новые options.
-                         *
-                         * Исходный объект не мутируем.
-                         */
-                        const nextOptions = {
-                            ...options,
-
-                            protocol: redirect.protocol,
-                            hostname: redirect.hostname,
-
-                            port: redirect.port
-                                ? Number(redirect.port)
-                                : redirect.protocol === "https:"
-                                    ? 443
-                                    : 80,
-
-                            path:
-                                redirect.pathname +
-                                redirect.search
-                        };
-
-                        /**
-                         * Следующий запрос получает тот же timeout,
-                         * который был задан для исходного запроса.
-                         */
-                        this._request(
-                            nextOptions,
-                            redirectCount + 1
-                        )
-                            .then(finish)
-                            .catch((error) => {
-                                finish(
-                                    error instanceof Error
-                                        ? error
-                                        : Error(String(error))
-                                );
-                            });
-
-                        return;
+                        // Префиксный инкремент (++redirectCount или + 1)
+                        return makeRequest(newOptions, redirectCount + 1);
                     }
 
-                    /**
-                     * ========================================================
-                     * RESPONSE
-                     * ========================================================
-                     */
-
-                    finish(res);
+                    // Не редирект – возвращаем ответ
+                    resolve(res);
                 });
 
-            /**
-             * ================================================================
-             * TIMEOUT
-             * ================================================================
-             */
+                // Если в опциях есть тело и метод не GET/HEAD, отправляем тело
+                if (opts.body && opts.method !== "GET" && opts.method !== "HEAD") {
+                    const body = typeof opts.body === "string" ? Buffer.from(opts.body) : opts.body;
+                    req.setHeader("Content-Length", body.length);
+                    req.write(body);
+                }
 
-            req.setTimeout(
-                options.timeout ?? Request.REQUEST_TIMEOUT,
-                () => {
-                    req.destroy(
-                        new Error(
-                            `[httpsClient]: Timeout ` +
-                            `${options.hostname}:${options.port || 443}`
-                        )
+                // Обработка тайм-аута соединения (например, если сервер не отвечает)
+                req.once("timeout", () => {
+                    req.destroy();
+                    resolve(
+                        Error(`[httpsClient]: Connection Timeout Exceeded ${opts.hostname}:${opts.port || 443}`)
                     );
-                }
-            );
+                });
 
-            /**
-             * ================================================================
-             * ERROR
-             * ================================================================
-             */
+                // Обработка ошибок сокета (ECONNRESET, ENOTFOUND и т.п.)
+                req.once("error", (err) => {
+                    if (err?.name?.match(/routines:ssl3_get_record:decryption/)) throw Error("Failed to connect to Proxy!");
 
-            req.once("error", (error: Error) => {
-                /**
-                 * Если это наш timeout — сохраняем
-                 * нормальное сообщение.
-                 */
-                if (
-                    error.message.startsWith(
-                        "[httpsClient]: Timeout"
-                    )
-                ) {
-                    finish(error);
-                    return;
-                }
+                    // Вместо throw возвращаем ошибку через Promise, предотвращая краш приложения
+                    if (err?.name?.match(/routines:ssl3_get_record:decryption/)) {
+                        return resolve(Error("[httpsClient]: Failed to connect to Proxy!"));
+                    }
 
-                /**
-                 * SSL / proxy ошибка.
-                 */
-                if (
-                    error.message.includes(
-                        "ssl3_get_record"
-                    )
-                ) {
-                    finish(new Error(
-                        "[httpsClient]: Failed proxy/SSL handshake"
-                    ));
+                    resolve(Error(`[httpsClient]: Connection Error: ${err.message}`));
 
-                    return;
-                }
+                    req.destroy();
+                });
 
-                finish(new Error(
-                    `[httpsClient]: Error: ${error.message}`
-                ));
-            });
+                // Завершаем запрос (отправляем заголовки и тело, если не отправлено ранее)
+                req.end();
+            };
 
-            /**
-             * ================================================================
-             * BODY
-             * ================================================================
-             */
-
-            const method = options.method ?? "GET";
-
-            if (
-                options.body &&
-                method !== "GET" &&
-                method !== "HEAD"
-            ) {
-                const body = Buffer.isBuffer(options.body)
-                    ? options.body
-                    : Buffer.from(options.body);
-
-                req.setHeader(
-                    "Content-Length",
-                    body.length
-                );
-
-                req.end(body);
-                return;
-            }
-
-            /**
-             * ================================================================
-             * SEND
-             * ================================================================
-             */
-
-            req.end();
+            // Начинаем запрос
+            makeRequest(options);
         });
-    }
+    };
 
     /**
-     * @description Последняя ссылка перенаправления.
+     * @description Последняя ссылка перенаправления
      * @public
      */
-    public get redirect(): string | null {
+    public get redirect() {
         return this._redirect_url;
-    }
+    };
 
     /**
-     * @description Генерирует случайный User-Agent.
+     * Генерирует случайный User-Agent (Firefox на Linux/Windows)
      * @private
      */
     private get generateRandomUserAgent(): string {
-        const revision =
-            Math.floor(Math.random() * 2) + 147;
+        // Генерируем новый User-Agent
+        const revision = Math.floor(Math.random() * 2) + 147;
+        const OS = ["X11; Linux x86_64", "Windows NT 10.0; Win64; x64", "X11; Linux i686"];
+        const randomOS = OS[Math.floor(Math.random() * OS.length)];
 
-        const OS = [
-            "X11; Linux x86_64",
-            "Windows NT 10.0; Win64; x64"
-        ];
-
-        const randomOS =
-            OS[Math.floor(Math.random() * OS.length)];
-
-        return (
-            `Mozilla/5.0 (${randomOS}; rv:${revision}.0) ` +
-            `Gecko/20100101 Firefox/${revision}.0`
-        );
-    }
+        return `Mozilla/5.0 (${randomOS}; rv:${revision}.0) Gecko/20100101 Firefox/${revision}.0`;
+    };
 
     /**
-     * @description Инициализация класса.
-     *
-     * @param options - Параметры HTTP-запроса
+     * @description Инициализируем класс
+     * @param options - Опции
      * @constructor
+     * @public
      */
     public constructor(options: Request["data"]) {
-        const {
-            url,
-            userAgent,
-            agent,
-            ...baseOptions
-        } = options;
+        const { url, userAgent, agent, ...baseOptions } = options;
 
-        if (!url) {
-            throw new Error(
-                "[httpsClient]: Not found URL"
-            );
+        // Парсим URL и получаем компоненты (если URL передан)
+        let urlComponents: Partial<Pick<httpsClient["data"], "hostname" | "protocol" | "path" | "port">> = {};
+        if (url) {
+            try {
+                const parsed = new URL(url);
+                urlComponents = {
+                    protocol: parsed.protocol,
+                    hostname: parsed.hostname,
+                    path: parsed.pathname + parsed.search,
+                    port: parsed.port || (parsed.protocol === "https:" ? 443 : 80),
+                };
+            } catch {
+                // URL невалидный – выбрасываем ошибку, чтобы избежать неопределённого поведения
+                throw TypeError(`[httpsClient] Invalid URL: ${url}`);
+            }
+        } else {
+            throw Error("[httpsClient]: Not found URL");
         }
 
-        let parsedUrl: URL;
-
-        try {
-            parsedUrl = new URL(url);
-        } catch {
-            throw new TypeError(
-                `[httpsClient] Invalid URL: ${url}`
-            );
-        }
-
-        /**
-         * ================================================================
-         * HEADERS
-         * ================================================================
-         */
-
-        const headers = {
-            ...this.data.headers,
-            ...baseOptions.headers
-        };
+        // Готовим заголовки: базовые + User-Agent
+        const headers = { ...this.data.headers, ...baseOptions.headers };
 
         if (userAgent !== undefined) {
-            headers["User-Agent"] =
-                typeof userAgent === "string"
-                    ? userAgent
-                    : this.generateRandomUserAgent;
+            // вынесено в отдельный метод
+            headers["User-Agent"] = typeof userAgent === "string" ? userAgent : this.generateRandomUserAgent;
         }
 
-        /**
-         * ================================================================
-         * FINAL OPTIONS
-         * ================================================================
-         */
-
+        // Формируем финальный объект data:
+        //    - сначала значения по умолчанию из this.data
+        //    - затем компоненты URL (если есть)
+        //    - затем явные поля из baseOptions (включая headers)
+        //    - agent передаётся отдельно: если не указан – создаём новый
         this.data = {
             ...this.data,
+            ...urlComponents,
             ...baseOptions,
-
             agent,
             headers,
-
-            protocol: parsedUrl.protocol,
-            hostname: parsedUrl.hostname,
-
-            path:
-                parsedUrl.pathname +
-                parsedUrl.search,
-
-            port: parsedUrl.port
-                ? Number(parsedUrl.port)
-                : parsedUrl.protocol === "https:"
-                    ? 443
-                    : 80
         };
-    }
+    };
 
     /**
-     * @description Генерирует HTTP/HTTPS request функцию.
+     * @description Получаем протокол ссылки
+     * @returns httpsRequest | httpRequest
      * @private
      */
     private getProtocolRequest(protocol?: string) {
-        return protocol === "https:"
-            ? httpsRequest
-            : httpRequest;
-    }
+        return protocol === "https:" ? httpsRequest : httpRequest;
+    };
 }
-
 
 /**
  * @author SNIPPIK
@@ -432,173 +257,130 @@ abstract class Request {
  */
 export class httpsClient extends Request {
     /**
-     * @description Выполняем HEAD-запрос.
-     *
+     * @description Выполняем HEAD-запрос — получаем только заголовки
      * @returns Promise<httpsClient_head>
      * @public
      */
     public get toHead(): Promise<httpsClient_head> {
         this.data.method = "HEAD";
 
-        return this.request.then((response) => {
-            /**
-             * Если получена ошибка.
-             */
+        return new Promise(async (resolve) => {
+            const response = await this.request;
+
+            // Если получена ошибка
             if (response instanceof Error) {
-                return {
+                return resolve({
                     statusCode: undefined,
                     statusMessage: response.message,
                     headers: {}
-                };
+                });
             }
 
-            /**
-             * Полностью потребляем response.
-             *
-             * Это позволяет Node.js освободить/reuse socket.
-             */
+            // Потребляем поток (даже пустой для HEAD), чтобы освободить сокет в пул
             response.resume();
 
-            return {
+            return resolve({
                 statusCode: response.statusCode,
                 statusMessage: response.statusMessage,
-                headers:
-                    response.headers as Record<
-                        string,
-                        string | string[]
-                    >
-            };
+                headers: response.headers as Record<string, string | string[]>
+            });
         });
-    }
+    };
 
     /**
-     * @description Получаем страницу в формате string.
-     *
+     * @description Получаем страницу в формате string
      * @returns Promise<string | Error>
      * @public
      */
     public get toString(): Promise<string | Error> {
-        return this.request.then((res) => {
-            if (res instanceof Error) {
-                return res;
-            }
+        return new Promise((resolve) => {
+            this.request.then((res) => {
+                if (res instanceof Error) return resolve(res);
 
-            let stream: NodeJS.ReadableStream = res;
+                const encoding = res.headers["content-encoding"];
+                const streams: Array<any> = [res];
 
-            switch (res.headers["content-encoding"]) {
-                case "br":
-                    stream = res.pipe(
-                        createBrotliDecompress()
-                    );
-                    break;
+                // Настраиваем цепочку декомпрессии
+                if (encoding === "br") streams.push(createBrotliDecompress());
+                else if (encoding === "gzip") streams.push(createGunzip());
+                else if (encoding === "deflate") streams.push(createDeflate());
 
-                case "gzip":
-                    stream = res.pipe(
-                        createGunzip()
-                    );
-                    break;
+                const chunks: Buffer[] = [];
 
-                case "deflate":
-                    stream = res.pipe(
-                        createInflate()
-                    );
-                    break;
-            }
+                // Используем безопасный pipeline для предотвращения утечек памяти при декомпрессии
+                pipeline(
+                    streams[0],
+                    ...(streams.slice(1) as []),
+                    (err) => {
+                        // Если получена ошибка
+                        if (err) return resolve(Error(`[httpsClient]: Decoding Error: ${err.message}`));
 
-            return new Promise<string | Error>((resolve) => {
-                let text = "";
+                        const buffer = Buffer.concat(chunks);
+                        resolve(buffer.toString("utf-8"));
+                    }
+                );
 
-                stream.setEncoding("utf8");
-
-                stream.on("data", (chunk) => {
-                    text += chunk;
-                });
-
-                stream.once("end", () => {
-                    resolve(text);
-                });
-
-                stream.once("error", (error) => {
-                    resolve(
-                        Error(error.message)
-                    );
-                });
-            });
+                // Собираем бинарные фреймы (безопаснее, чем строковые, во избежание разрывов мульти байтовых UTF-8 символов)
+                const targetStream = streams[streams.length - 1];
+                targetStream.on("data", (chunk: Buffer) => chunks.push(chunk));
+            }).catch((err) => resolve(err));
         });
-    }
+    };
 
     /**
-     * @description Получаем страницу в формате JSON.
-     *
+     * @description Получаем со страницы JSON (Работает только тогда когда все страница JSON)
      * @returns Promise<json | Error>
      * @public
      */
     public get toJson(): Promise<json | Error> {
-        return this.toString.then((body) => {
-            if (body instanceof Error) {
-                return body;
-            }
+        return new Promise((resolve) => {
+            this.toString.then((body) => {
+                if (body instanceof Error) return resolve(body);
 
-            if (
-                typeof body !== "string" ||
-                body.trim().length === 0
-            ) {
-                return Error(
-                    `Empty response body from ${this.data.hostname}`
-                );
-            }
+                // Добавляем проверку на пустой/короткий body
+                if (typeof body !== "string" || body.trim().length === 0) {
+                    return resolve(Error(`Empty response body from ${this.data.hostname}`));
+                }
 
-            try {
-                return JSON.parse(body);
-            } catch {
-                return Error(
-                    `Invalid json response body at ${this.data.hostname}`
-                );
-            }
+                try {
+                    return resolve(JSON.parse(body));
+                } catch {
+                    return resolve(Error(`Invalid json response body at ${this.data.hostname}`));
+                }
+            }).catch((err) => resolve(err));
         });
-    }
+    };
 
     /**
-     * @description Берем данные из XML страницы.
-     *
+     * @description Берем данные из XML страницы
      * @returns Promise<string[] | Error>
      * @public
      */
-    public get toXML() {
-        return this.toString.then((body) => {
-            if (body instanceof Error) {
-                return body;
+    public get toXML(): Promise<Error | string[]> {
+        return new Promise(async (resolve) => {
+            try {
+                const body = await this.toString;
+
+                // Если при получении страниц произошла ошибка
+                if (body instanceof Error) return resolve(body);
+
+                // Более строгий и эффективный RegExp для извлечения текста между тегами
+                // Регулярное выражение: /<[^<>]+>([^<>]+)<\/[^<>]+>/g
+                const items = body.match(/<[^<>]+>([^<>]+)<\/[^<>]+>/gi);
+
+                // Если нет данных xml в странице
+                if (!items) return resolve([]);
+
+                const filtered = items
+                    .map(tag => tag.replace(/<\/?[^<>]+>/gi, "").trim())
+                    .filter(text => text.length > 0);
+
+                return resolve(filtered);
+            } catch (error) {
+                return resolve(Error(`[httpsClient]: Unexpected error occurred during XML parsing: ${error}`));
             }
-
-            const items = body.match(
-                /<[^<>]+>([^<>]+)<\/[^<>]+>/gi
-            );
-
-            if (!items) {
-                return [];
-            }
-
-            return items
-                .map((tag) =>
-                    tag
-                        .replace(
-                            /<\/?[^<>]+>/gi,
-                            ""
-                        )
-                        .trim()
-                )
-                .filter(
-                    (text) => text.length > 0
-                );
-        }).catch((error) => {
-            return [
-                Error(
-                    `[httpsClient]: ` +
-                    `Unexpected error occurred during XML parsing: ${error}`
-                )
-            ];
         });
-    }
+    };
 }
 
 /**

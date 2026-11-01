@@ -1,4 +1,7 @@
-use crate::structures::network::ws::{opcodes::discord_opcode, runtime};
+use crate::{
+    discord::opcodes::discord_opcode,
+    structures::network::ws::runtime
+};
 use super::{
     adapter::{AdapterData, ServerPacket, StatePacket},
     utils::{
@@ -9,18 +12,22 @@ use super::{
         transport::{Transport, TransportEvent, TransportState},
     }
 };
-use napi::{
-    bindgen_prelude::{Buffer, Error, Function, Result},
-    threadsafe_function::ThreadsafeFunctionCallMode,
-};
-use napi_derive::napi;
-use parking_lot::Mutex;
-use serde_json::{json, Map, Value};
-use tokio::task::JoinHandle;
-use std::time::Duration;
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc, Weak,
+use {
+    napi::{
+        bindgen_prelude::{Buffer, Error, Function, Result},
+        threadsafe_function::ThreadsafeFunctionCallMode,
+    },
+    std::{
+        sync::{
+            atomic::{AtomicBool, Ordering},
+            Arc, Weak,
+        },
+        time::Duration
+    },
+    serde_json::{json, Map, Value},
+    tokio::task::JoinHandle,
+    napi_derive::napi,
+    parking_lot::Mutex
 };
 
 /// Сколько подключение может оставаться в `Connecting` до уничтожения.
@@ -150,8 +157,8 @@ impl Config {
             "channel_id".into(),
             match &self.channel_id {
                 Some(id) => Value::String(id.clone()),
-                None => Value::Null,
-            },
+                None => Value::Null
+            }
         );
         d.insert("self_deaf".into(), Value::Bool(self.self_deaf));
         d.insert("self_mute".into(), Value::Bool(self.self_mute));
@@ -159,7 +166,7 @@ impl Config {
             d.insert("self_speaker".into(), Value::from(speaker));
         }
 
-        json!({ "op": discord_opcode::VOICE_STATE_UPDATE, "d": Value::Object(d) })
+        json!({ "op": discord_opcode::gateway::VOICE_STATE_UPDATE, "d": Value::Object(d) })
     }
 }
 
@@ -319,7 +326,7 @@ impl SpeakerHost for ConnectionInner {
         let Some(ws) = self.transport.ws() else { return };
 
         let packet = json!({
-            "op": discord_opcode::SPEAKING,
+            "op": discord_opcode::voice::SPEAKING,
             "d": {
                 "speaking": speaking.bits(),
                 "delay": 0,
@@ -439,8 +446,7 @@ impl ConnectionInner {
         let status = *self.status.lock();
         if matches!(status, Status::Connected | Status::Disconnected) { return; }
 
-        self.bus.log(
-            false,
+        self.bus.log(false,
             format!(
                 "[Voice]: connection timeout ({}s) in status `{}`",
                 CONNECT_DEADLINE.as_secs(),
@@ -617,6 +623,17 @@ impl ConnectionInner {
     }
 }
 
+impl Drop for ConnectionInner {
+    fn drop(&mut self) {
+        // Страховка: если NativeVoiceConnection::drop не отработал
+        // (например, паника внутри) — освобождаем ресурсы здесь.
+        // destroy() сам забирает sink через AdapterDestroy,
+        // но close() — на случай, если sink остался по другой причине.
+        self.destroy();
+        self.bus.close();
+    }
+}
+
 /// Голосовое подключение к Discord, доступное из JavaScript.
 ///
 /// Napi-обёртка над `ConnectionInner`: JS-сторона видит объект
@@ -730,13 +747,15 @@ impl NativeVoiceConnection {
     /// (например, callback уже освобождён на стороне JS).
     #[napi]
     pub fn on_event(&self, callback: Function<String, ()>) -> Result<()> {
-        // Строим потокобезопасную функцию. Это дорогая операция,
-        // но выполняется один раз при инициализации подключения.
+        // После destroy() sink уже забран AdapterDestroy; повторная установка
+        // нарушит контракт «AdapterDestroy — последнее событие» и удержит
+        // ThreadsafeFunction до Drop.
+        if self.inner.destroyed.load(Ordering::Acquire) {
+            return Err(Error::from_reason("VoiceConnection is destroyed"));
+        }
+
         let js_fn = callback.build_threadsafe_function().build()?;
 
-        // Замыкание получает уже готовую JSON-строку и передаёт её
-        // в JS. `Arc` нужен, потому что шина хранит получателя
-        // в `Arc<dyn Fn>` и вызывает его из разных потоков.
         self.inner.bus.set_sink(Arc::new(move |text: String| {
             let _ = js_fn.call(text, ThreadsafeFunctionCallMode::NonBlocking);
         }));
@@ -1010,24 +1029,36 @@ impl NativeVoiceConnection {
         self.inner.transport.udp().status().to_string()
     }
 
-    /// Количество отправленных UDP-пакетов.
+    /// Количество кадров в очереди отправки (вместе с подготовленным).
     ///
-    /// Метрика для диагностики: если пакеты отправляются, но звука
-    /// нет — проблема на стороне получателя. Если не отправляются —
-    /// проблема у нас.
+    /// Диагностика: растущее значение означает, что звук поступает быстрее,
+    /// чем уходит; ноль при тишине в канале — очередь вовремя опустошается.
     #[napi(getter)]
     pub fn udp_packets(&self) -> u32 {
         self.inner.transport.udp().packets()
     }
 
-    /// Количество потерянных UDP-пакетов.
+    /// Количество потерянных кадров на стороне клиента.
     ///
-    /// Метрика для диагностики проблем с сетью. «Потерянные» здесь —
-    /// на стороне клиента (не ушли в сокет или отброшены в очереди),
-    /// а не на стороне получателя.
+    /// Сюда входят переполнение очереди, ошибки шифрования, пакеты, не
+    /// ушедшие в сокет после повторных попыток, и кадры, отброшенные из-за
+    /// неготовности E2EE (DAVE). Потери на стороне получателя не видны.
     #[napi(getter)]
     pub fn udp_drops(&self) -> u32 {
-        self.inner.transport.udp().lost()
+        self.inner
+            .transport
+            .udp()
+            .lost()
+            .saturating_add(self.inner.transport.dave_drops())
+    }
+
+    /// Среднее опоздание отправки пакетов относительно расписания, мкс.
+    ///
+    /// Показывает точность планировщика: десятки мкс — норма, сотни и
+    /// больше — воркер не успевает или хост перегружен.
+    #[napi(getter)]
+    pub fn udp_lateness_us(&self) -> u32 {
+        self.inner.transport.udp().lateness_us()
     }
 }
 
