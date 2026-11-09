@@ -39,7 +39,7 @@
     "socks-proxy-agent": "^10.1.0"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^3.10.9",
+    "@napi-rs/cli": "^3.10.12",
     "@types/node": "^26.6.6",
     "typescript": "^7.0.2"
   },
