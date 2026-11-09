@@ -405,9 +405,9 @@ checksum = "4583a4551df46e2792f82ceeac45e850d2e2d5debba0b91f102385cda5b11f06"
 
 [[package]]
 name = "davey"
-version = "0.2.0-beta.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db3f09c5652ce7ae311f6a08ab7148eeee9ed4080399d2fbfd459f93b2707dd5"
+checksum = "91ef355984c094657aa4d0974cae40a144a11a001558dacab3ec3ac06c63ca34"
 dependencies = [
  "aead 0.5.2",
  "aes 0.8.4",
@@ -421,6 +421,7 @@ dependencies = [
  "openmls",
  "openmls_basic_credential",
  "openmls_rust_crypto",
+ "openmls_traits",
  "p256",
  "rand 0.8.8",
  "scrypt",
